@@ -63,38 +63,19 @@ export default function PlayerTimeline({
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "w-20 h-20 rounded-xl shadow-xl border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-700 cursor-pointer group relative overflow-hidden transform",
+          "w-28 h-28 rounded-xl shadow-xl border-2 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 transition-all duration-300 cursor-pointer group relative overflow-hidden",
           isThrowing && "animate-bounce scale-110 z-20",
-          hoveredCard === `${player.id}-${index}` && "scale-105 -translate-y-1 rotate-2",
+          hoveredCard === `${player.id}-${index}` && "scale-105 -translate-y-1",
           "hover:shadow-2xl hover:z-10"
         )}
         style={{
-          background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
+          backgroundColor: getRandomCardColor(),
           borderColor: "rgba(255,255,255,0.3)",
           boxShadow: '0 8px 25px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
         }}
         onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
         onMouseLeave={() => setHoveredCard(null)}
       >
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent"></div>
-        
-        {/* Floating animation elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white/30 rounded-full animate-pulse"
-              style={{
-                left: `${20 + i * 30}%`,
-                top: `${15 + i * 25}%`,
-                animationDelay: `${i * 0.5}s`,
-                animationDuration: `${2 + i}s`
-              }}
-            />
-          ))}
-        </div>
-        
         {/* Card content */}
         <div className="relative z-10 text-center w-full">
           {isThrowing ? (
@@ -105,19 +86,19 @@ export default function PlayerTimeline({
               <div className="text-lg font-black text-white">
                 {throwingCard?.song?.release_year}
               </div>
-              <div className="text-xs italic text-red-200 leading-tight truncate">
+              <div className="text-xs italic text-red-200 leading-tight break-words">
                 {throwingCard?.song?.deezer_artist}
               </div>
             </>
           ) : (
             <>
-              <div className="text-xs font-bold text-white/90 truncate w-full leading-tight">
+              <div className="text-xs font-bold text-white/90 leading-tight break-words mb-1">
                 {song.deezer_artist}
               </div>
-              <div className="text-lg font-black text-white my-1">
+              <div className="text-xl font-black text-white mb-1">
                 {song.release_year}
               </div>
-              <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+              <div className="text-xs italic text-white/75 leading-tight break-words">
                 {song.deezer_title}
               </div>
             </>
@@ -152,8 +133,8 @@ export default function PlayerTimeline({
       <div
         key={`drop-zone-${position}`}
         className={cn(
-          "flex items-center justify-center transition-all duration-500 relative",
-          isGhostHere ? "w-20 scale-110" : "w-3"
+          "flex items-center justify-center transition-all duration-300 relative",
+          isGhostHere ? "w-28 scale-110" : "w-4"
         )}
         onDragOver={(e) => handleDragOver(e, player.id, position)}
         onDragLeave={handleDragLeave}
@@ -161,46 +142,40 @@ export default function PlayerTimeline({
       >
         {isGhostHere && draggedSong && (
           <div
-            className="w-20 h-20 rounded-xl border-3 border-dashed flex flex-col items-center justify-center p-2 text-center transition-all duration-300 animate-pulse bg-white/20 backdrop-blur-sm transform scale-110"
+            className="w-28 h-28 rounded-xl border-3 border-dashed flex flex-col items-center justify-center p-3 text-center transition-all duration-300 bg-white/20 backdrop-blur-sm transform scale-110"
             style={{
-              borderColor: getRandomCardColor(),
+              borderColor: '#4ECDC4',
             }}
           >
-            <Music className="h-5 w-5 text-white mb-1 animate-bounce" />
-            <div className="text-xs text-white font-bold">Drop</div>
+            <Music className="h-6 w-6 text-white mb-2 animate-bounce" />
+            <div className="text-xs text-white font-bold">Drop Here</div>
           </div>
         )}
         {!isGhostHere && (
-          <div 
-            className="w-1 h-16 bg-white/30 rounded-full transition-all duration-300 hover:bg-white/50 hover:w-2 hover:h-20 hover:shadow-lg"
-          />
+          <div className="w-1 h-20 bg-white/30 rounded-full transition-all duration-300 hover:bg-white/50 hover:w-2 hover:h-24" />
         )}
       </div>
     );
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-7xl mx-auto">
+      <div className="flex items-center justify-center gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <div 
-            className="w-6 h-6 rounded-full border-2 border-white/50 shadow-lg animate-pulse" 
-            style={{ backgroundColor: getRandomCardColor() }}
-          />
           <h3 className="text-xl font-bold text-white">{player.name}'s Timeline</h3>
           {isCurrent && (
-            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse font-bold px-3 py-1 text-xs">
+            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold px-3 py-1 text-xs">
               Your Turn
             </Badge>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-yellow-400 animate-bounce" />
+          <Trophy className="h-5 w-5 text-yellow-400" />
           <span className="font-bold text-xl text-white">{player.score}/10</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2 p-3 min-h-28 overflow-x-auto">
+      <div className="flex items-center justify-center gap-3 p-4 min-h-36 overflow-x-auto">
         {/* Start drop zone */}
         {renderDropZone(0)}
         
@@ -214,9 +189,9 @@ export default function PlayerTimeline({
         
         {/* If no cards, show welcome message */}
         {player.timeline.length === 0 && !draggedSong && (
-          <div className="text-center py-6">
-            <Music className="h-10 w-10 text-purple-300 mx-auto mb-3 opacity-50 animate-pulse" />
-            <p className="text-purple-300 text-base">Drag the mystery song here to start!</p>
+          <div className="text-center py-8">
+            <Music className="h-12 w-12 text-purple-300 mx-auto mb-3 opacity-50" />
+            <p className="text-purple-300 text-lg">Drag the mystery song here to start!</p>
           </div>
         )}
       </div>

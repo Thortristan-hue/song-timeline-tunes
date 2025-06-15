@@ -33,7 +33,7 @@ export default function CircularPlayersLayout({
   const getPlayerPosition = (index: number) => {
     const angleInDegrees = fixedAngles[index % fixedAngles.length];
     const angle = (angleInDegrees * Math.PI) / 180; // Convert to radians
-    const radius = 300; // Distance from center
+    const radius = 320; // Distance from center
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     return { x, y, angle: angleInDegrees };
@@ -50,7 +50,7 @@ export default function CircularPlayersLayout({
         return (
           <div
             key={player.id}
-            className="absolute z-10 transition-all duration-1000 ease-out"
+            className="absolute z-10 transition-all duration-500 ease-out"
             style={{
               left: `calc(50% + ${x}px)`,
               top: `calc(50% + ${y}px)`,
@@ -58,7 +58,7 @@ export default function CircularPlayersLayout({
             }}
           >
             <div className={cn(
-              "flex items-center gap-3 p-3 rounded-2xl shadow-2xl transition-all duration-500 bg-white/15 backdrop-blur-xl border border-white/30 hover:bg-white/20 hover:scale-105",
+              "flex items-center gap-3 p-3 rounded-2xl shadow-2xl transition-all duration-300 bg-white/15 backdrop-blur-xl border border-white/30 hover:bg-white/20 hover:scale-105",
               isLeft && "flex-row-reverse",
               (isTop || (!isLeft && !isRight)) && "flex-col items-center"
             )}>
@@ -71,24 +71,24 @@ export default function CircularPlayersLayout({
               )}>
                 <div className="flex items-center gap-2 mb-1">
                   <div 
-                    className="w-4 h-4 rounded-full border border-white/50 shadow-lg animate-pulse" 
+                    className="w-4 h-4 rounded-full border border-white/50 shadow-lg" 
                     style={{ backgroundColor: getRandomCardColor() }}
                   />
                   <span className="font-bold text-white text-sm">{player.name}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs">
-                  <Trophy className="h-3 w-3 text-yellow-400 animate-bounce" />
+                  <Trophy className="h-3 w-3 text-yellow-400" />
                   <span className="text-white font-medium">{player.score}/10</span>
                 </div>
               </div>
 
-              {/* Square Stacked Cards */}
+              {/* Square Stacked Cards - Rotated 90 degrees relative to play area */}
               <div className="relative">
                 <div className="relative w-12 h-12 flex justify-center items-center">
                   {player.timeline.slice(0, 5).map((_, idx) => (
                     <div
                       key={idx}
-                      className="absolute transition-all duration-700 hover:scale-110 cursor-pointer animate-pulse"
+                      className="absolute transition-all duration-500 hover:scale-110 cursor-pointer"
                       style={{
                         zIndex: idx,
                         left: `${idx * 1}px`,
@@ -96,13 +96,11 @@ export default function CircularPlayersLayout({
                         opacity: Math.max(0.5, 1 - idx * 0.15),
                         width: 24,
                         height: 24,
-                        background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
+                        backgroundColor: getRandomCardColor(),
                         borderRadius: 4,
                         border: "1px solid rgba(255,255,255,0.3)",
                         boxShadow: `0 ${2 + idx}px ${4 + idx}px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)`,
-                        transform: `rotate(${(idx - 2) * 2}deg)`,
-                        animationDelay: `${idx * 0.2}s`,
-                        animationDuration: `${2 + idx * 0.5}s`
+                        transform: `rotate(${90 + (idx - 2) * 2}deg)`, // 90 degree base rotation plus slight variation
                       }}
                     />
                   ))}

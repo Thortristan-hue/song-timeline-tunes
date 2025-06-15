@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Play, Pause, Users, Clock, Trophy, Music, Check, X, Moon, Sun, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadSongsFromJson } from "@/utils/songLoader";
 
 interface Song {
   deezer_artist: string;
@@ -125,6 +126,7 @@ const Index = () => {
   const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [customSongs, setCustomSongs] = useState<Song[]>(mockSongs);
 
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
@@ -177,24 +179,37 @@ const Index = () => {
     }));
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === "application/json") {
+      try {
+        const songs = await loadSongsFromJson(file);
+        setCustomSongs(songs);
+        console.log(`Loaded ${songs.length} songs from JSON file`);
+      } catch (error) {
+        console.error("Error loading songs:", error);
+      }
+    }
+  };
+
   const startGame = () => {
     if (gameState.players.length < 2) return;
     
     const playersWithStartingSongs = gameState.players.map(player => ({
       ...player,
-      timeline: [mockSongs[Math.floor(Math.random() * mockSongs.length)]]
+      timeline: [customSongs[Math.floor(Math.random() * customSongs.length)]]
     }));
 
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
       players: playersWithStartingSongs,
-      currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
+      currentSong: customSongs[Math.floor(Math.random() * customSongs.length)]
     }));
   };
 
   const playPreview = () => {
-    if (!gameState.currentSong) return;
+    if (!gameState.currentSong?.preview_url) return;
     
     if (audio) {
       audio.pause();
@@ -300,7 +315,7 @@ const Index = () => {
           ...prev,
           players: updatedPlayers,
           currentTurn: (prev.currentTurn + 1) % prev.players.length,
-          currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
+          currentSong: customSongs[Math.floor(Math.random() * customSongs.length)],
           phase: winner ? 'finished' : 'playing',
           winner,
           cardResult: null
@@ -379,6 +394,23 @@ const Index = () => {
               <div>
                 <h3 className="text-xl font-bold mb-4 text-white">Join the Vibe</h3>
                 <PlayerJoinForm onJoin={joinLobby} isDarkMode={true}/>
+                
+                {/* JSON File Upload */}
+                <div className="mt-6">
+                  <label htmlFor="songFile" className="block text-sm font-medium text-white mb-2">
+                    Upload Songs (JSON)
+                  </label>
+                  <input
+                    id="songFile"
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-500 file:text-white hover:file:bg-purple-600"
+                  />
+                  <p className="text-xs text-purple-200 mt-1">
+                    Loaded {customSongs.length} songs
+                  </p>
+                </div>
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-4 text-white">Players in the Mix</h3>
@@ -508,73 +540,28 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Header - Fixed at top */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-3 shadow-2xl">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Music className="h-5 w-5 text-purple-400 animate-pulse" />
-                <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Timeline Tunes
-                </span>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-xs text-purple-300">Now Playing</div>
-                <div className="font-bold text-white text-sm" style={{ color: currentPlayer?.timelineColor }}>
-                  {currentPlayer?.name}
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-xs text-purple-300">Time</div>
-                <div className="font-bold text-white">{gameState.timeLeft}s</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Central Play Area */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
           <div className="text-center">
             {/* Current Song Card */}
             {gameState.currentSong && (
-              <div className="mb-4">
+              <div className="mb-6">
                 <div 
                   className={cn(
-                    "w-32 h-32 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group",
-                    draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)]"
+                    "w-36 h-36 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group",
+                    draggedSong ? "scale-75 opacity-50" : "hover:scale-110 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)]"
                   )}
                   style={{
-                    background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
+                    backgroundColor: getRandomCardColor(),
                     boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
                   }}
                   draggable
                   onDragStart={() => handleDragStart(gameState.currentSong!)}
                 >
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 to-transparent"></div>
-                  
-                  {/* Floating animation elements */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(4)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-1 h-1 bg-white/40 rounded-full animate-ping"
-                        style={{
-                          left: `${20 + i * 20}%`,
-                          top: `${15 + i * 20}%`,
-                          animationDelay: `${i * 0.3}s`,
-                          animationDuration: `${1.5 + i * 0.5}s`
-                        }}
-                      />
-                    ))}
-                  </div>
-                  
-                  <Music className={cn("h-8 w-8 mb-3 relative z-10 transition-transform duration-300", 
-                    draggedSong ? "animate-spin" : "animate-bounce group-hover:scale-110")} />
+                  <Music className="h-10 w-10 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-110" />
                   <div className="text-center relative z-10">
                     <div className="text-sm font-bold opacity-90">Mystery Track</div>
-                    <div className="text-3xl font-black animate-pulse">?</div>
+                    <div className="text-4xl font-black">?</div>
                     <div className="text-xs italic opacity-75">Drag to place</div>
                   </div>
                 </div>
@@ -582,19 +569,24 @@ const Index = () => {
             )}
 
             {/* Play Controls */}
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-24 h-2" />
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <div className="text-white text-sm">
+                {gameState.timeLeft}s
+              </div>
               <Button
                 onClick={gameState.isPlaying ? pausePreview : playPreview}
-                size="sm"
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-12 h-12 hover:scale-110 transition-all duration-200"
+                size="lg"
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16 hover:scale-110 transition-all duration-200"
               >
-                {gameState.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
               </Button>
+              <div className="text-white text-sm font-bold">
+                {currentPlayer?.name}
+              </div>
             </div>
 
             {/* Current Player's Timeline */}
-            <div className="max-w-6xl">
+            <div className="max-w-7xl">
               <PlayerTimeline
                 player={currentPlayer}
                 isCurrent={true}
