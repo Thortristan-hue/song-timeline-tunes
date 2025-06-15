@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Users, Clock, Trophy, Music, Check, X } from 'lucide-react';
+import { Play, Pause, Users, Clock, Trophy, Music, Check, X, Moon, Sun, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Mock song data structure
@@ -21,6 +20,7 @@ interface Player {
   id: string;
   name: string;
   color: string;
+  timelineColor: string;
   score: number;
   timeline: Song[];
 }
@@ -35,6 +35,7 @@ interface GameState {
   hostId: string;
   winner: Player | null;
   pendingPlacement: { playerId: string; song: Song; position: number } | null;
+  isDarkMode: boolean;
 }
 
 // Mock song data
@@ -86,6 +87,12 @@ const playerColors = [
   '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
 ];
 
+const timelineColors = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
+  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+  '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C'
+];
+
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>({
     phase: 'lobby',
@@ -96,11 +103,13 @@ const Index = () => {
     timeLeft: 30,
     hostId: 'host-1',
     winner: null,
-    pendingPlacement: null
+    pendingPlacement: null,
+    isDarkMode: false
   });
 
   const [playerName, setPlayerName] = useState('');
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
 
   // Timer effect
@@ -119,6 +128,10 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [gameState.isPlaying, gameState.timeLeft, audio]);
 
+  const toggleDarkMode = () => {
+    setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
+  };
+
   const joinLobby = () => {
     if (!playerName.trim()) return;
     
@@ -126,6 +139,7 @@ const Index = () => {
       id: `player-${Date.now()}`,
       name: playerName,
       color: playerColors[gameState.players.length % playerColors.length],
+      timelineColor: timelineColors[gameState.players.length % timelineColors.length],
       score: 0,
       timeline: []
     };
@@ -135,6 +149,15 @@ const Index = () => {
       players: [...prev.players, newPlayer]
     }));
     setPlayerName('');
+  };
+
+  const updatePlayerTimelineColor = (playerId: string, color: string) => {
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(p => 
+        p.id === playerId ? { ...p, timelineColor: color } : p
+      )
+    }));
   };
 
   const startGame = () => {
@@ -185,8 +208,23 @@ const Index = () => {
     setDraggedSong(song);
   };
 
+  const handleDragOver = (e: React.DragEvent, playerId: string, position: number) => {
+    e.preventDefault();
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer?.id !== playerId) return; // Prevent dropping on other players' timelines
+    
+    setDragOverPosition({ playerId, position });
+  };
+
+  const handleDragLeave = () => {
+    setDragOverPosition(null);
+  };
+
   const handleDrop = (playerId: string, position: number) => {
     if (!draggedSong) return;
+    
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer?.id !== playerId) return; // Prevent dropping on other players' timelines
 
     setGameState(prev => ({
       ...prev,
@@ -194,6 +232,7 @@ const Index = () => {
     }));
 
     setDraggedSong(null);
+    setDragOverPosition(null);
   };
 
   const confirmPlacement = () => {
@@ -263,26 +302,40 @@ const Index = () => {
 
   const getCurrentPlayer = () => gameState.players[gameState.currentTurn];
 
+  const themeClasses = gameState.isDarkMode 
+    ? 'bg-gray-900 text-white' 
+    : 'bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100';
+
   if (gameState.phase === 'lobby') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-orange-100 p-8">
+      <div className={cn("min-h-screen p-8", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-purple-100 via-pink-50 to-orange-100")}>
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <Music className="h-12 w-12 text-purple-600" />
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <Music className={cn("h-12 w-12", gameState.isDarkMode ? "text-purple-400" : "text-purple-600")} />
+              <h1 className={cn("text-5xl font-bold bg-gradient-to-r bg-clip-text text-transparent", 
+                gameState.isDarkMode ? "from-purple-400 to-pink-400" : "from-purple-600 to-pink-600")}>
                 Timeline Tunes
               </h1>
+              <Button
+                onClick={toggleDarkMode}
+                variant="outline"
+                size="sm"
+                className="ml-4"
+              >
+                {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
             </div>
-            <p className="text-xl text-gray-600 mb-8">
+            <p className={cn("text-xl mb-8", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>
               Guess the release year and place songs on your timeline!
             </p>
           </div>
 
-          <Card className="p-8 bg-white/80 backdrop-blur-sm shadow-xl rounded-3xl">
+          <Card className={cn("p-8 shadow-xl rounded-3xl", 
+            gameState.isDarkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/80 backdrop-blur-sm")}>
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">Game Lobby</h2>
-              <div className="flex items-center justify-center gap-2 text-gray-600">
+              <h2 className={cn("text-3xl font-bold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Game Lobby</h2>
+              <div className={cn("flex items-center justify-center gap-2", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>
                 <Users className="h-5 w-5" />
                 <span>{gameState.players.length}/6 players</span>
               </div>
@@ -290,14 +343,15 @@ const Index = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-xl font-semibold mb-4">Join Game</h3>
+                <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Join Game</h3>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Enter your name"
                     value={playerName}
                     onChange={(e) => setPlayerName(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={cn("flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent",
+                      gameState.isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "border-gray-200")}
                     onKeyPress={(e) => e.key === 'Enter' && joinLobby()}
                   />
                   <Button onClick={joinLobby} className="px-6 py-3 rounded-xl">
@@ -307,15 +361,16 @@ const Index = () => {
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold mb-4">Players</h3>
+                <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Players</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {gameState.players.map((player, index) => (
-                    <div key={player.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
+                    <div key={player.id} className={cn("flex items-center gap-3 p-2 rounded-lg", 
+                      gameState.isDarkMode ? "bg-gray-700" : "bg-gray-50")}>
                       <div 
                         className="w-4 h-4 rounded-full" 
                         style={{ backgroundColor: player.color }}
                       />
-                      <span className="font-medium">{player.name}</span>
+                      <span className={cn("font-medium", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</span>
                       {index === 0 && <Badge variant="outline">Host</Badge>}
                     </div>
                   ))}
@@ -326,15 +381,78 @@ const Index = () => {
             {gameState.players.length >= 2 && (
               <div className="text-center mt-8">
                 <Button 
-                  onClick={startGame} 
+                  onClick={() => setGameState(prev => ({ ...prev, phase: 'customization' }))} 
                   size="lg" 
                   className="px-8 py-4 text-lg rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 >
-                  Start Game
+                  Customize Players
                 </Button>
               </div>
             )}
           </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState.phase === 'customization') {
+    return (
+      <div className={cn("min-h-screen p-8", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-purple-100 via-pink-50 to-orange-100")}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className={cn("text-4xl font-bold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Customize Your Timeline</h1>
+            <Button
+              onClick={toggleDarkMode}
+              variant="outline"
+              size="sm"
+              className="mb-4"
+            >
+              {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <div className="space-y-6">
+            {gameState.players.map((player) => (
+              <Card key={player.id} className={cn("p-6 shadow-lg", 
+                gameState.isDarkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90 backdrop-blur-sm")}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded-full border-2 border-white shadow-md" 
+                      style={{ backgroundColor: player.color }}
+                    />
+                    <h3 className={cn("text-xl font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Palette className={cn("h-4 w-4", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")} />
+                    <span className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Timeline Color</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-2">
+                  {timelineColors.map((color) => (
+                    <div
+                      key={color}
+                      className={cn("w-12 h-12 rounded-lg cursor-pointer border-2 transition-all hover:scale-105",
+                        player.timelineColor === color ? "border-white shadow-lg scale-105" : "border-transparent")}
+                      style={{ backgroundColor: color }}
+                      onClick={() => updatePlayerTimelineColor(player.id, color)}
+                    />
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Button 
+              onClick={startGame} 
+              size="lg" 
+              className="px-8 py-4 text-lg rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              Start Game
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -387,26 +505,34 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 p-4">
+      <div className={cn("min-h-screen p-4", themeClasses)}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-lg">
+          <div className={cn("rounded-2xl p-6 mb-6 shadow-lg", 
+            gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm" : "bg-white/90 backdrop-blur-sm")}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Music className="h-8 w-8 text-purple-600" />
-                <h1 className="text-2xl font-bold text-gray-800">Timeline Tunes</h1>
+                <Music className={cn("h-8 w-8", gameState.isDarkMode ? "text-purple-400" : "text-purple-600")} />
+                <h1 className={cn("text-2xl font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Timeline Tunes</h1>
+                <Button
+                  onClick={toggleDarkMode}
+                  variant="outline"
+                  size="sm"
+                >
+                  {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
               </div>
               
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <div className="text-sm text-gray-600">Current Turn</div>
+                  <div className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Current Turn</div>
                   <div className="font-bold" style={{ color: currentPlayer?.color }}>
                     {currentPlayer?.name}
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className="text-sm text-gray-600">Time Left</div>
+                  <div className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Time Left</div>
                   <div className="font-bold text-lg">{gameState.timeLeft}s</div>
                 </div>
               </div>
@@ -415,11 +541,12 @@ const Index = () => {
 
           {/* Current Song Card */}
           {gameState.currentSong && (
-            <Card className="p-6 mb-6 bg-white/90 backdrop-blur-sm shadow-lg">
+            <Card className={cn("p-6 mb-6 shadow-lg", 
+              gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm border-gray-700" : "bg-white/90 backdrop-blur-sm")}>
               <div className="flex items-center gap-6">
                 <div className="flex-shrink-0">
                   <div 
-                    className="w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-2xl shadow-xl cursor-move transform transition-all duration-200 hover:scale-105 hover:shadow-2xl flex flex-col items-center justify-center p-4 text-white relative"
+                    className="w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-lg shadow-xl cursor-move transform transition-all duration-200 hover:scale-105 hover:shadow-2xl flex flex-col items-center justify-center p-4 text-white relative"
                     style={{
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
@@ -427,7 +554,7 @@ const Index = () => {
                     draggable
                     onDragStart={() => handleDragStart(gameState.currentSong!)}
                   >
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent"></div>
+                    <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent"></div>
                     <Music className="h-8 w-8 mb-2 relative z-10" />
                     <div className="text-center relative z-10">
                       <div className="text-xs font-medium opacity-90">Mystery Song</div>
@@ -438,11 +565,11 @@ const Index = () => {
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  <h3 className={cn("text-xl font-bold mb-2", gameState.isDarkMode ? "text-white" : "text-gray-800")}>
                     🎵 Mystery Song Playing...
                   </h3>
-                  <p className="text-gray-600 mb-1">Listen carefully and guess when this song was released!</p>
-                  <p className="text-sm text-gray-500">Place the card on your timeline in the correct chronological order</p>
+                  <p className={cn("mb-1", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Listen carefully and guess when this song was released!</p>
+                  <p className={cn("text-sm", gameState.isDarkMode ? "text-gray-400" : "text-gray-500")}>Place the card on your timeline in the correct chronological order</p>
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -461,26 +588,33 @@ const Index = () => {
 
           {/* Confirmation Dialog */}
           {gameState.pendingPlacement && (
-            <Card className="p-6 mb-6 bg-yellow-50 border-yellow-200 shadow-lg">
+            <Card className={cn("p-6 mb-6 border-yellow-200 shadow-lg", 
+              gameState.isDarkMode ? "bg-yellow-900/20 border-yellow-600" : "bg-yellow-50")}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-xl flex flex-col items-center justify-center text-white text-xs">
-                    <div className="font-medium">{gameState.pendingPlacement.song.deezer_artist}</div>
-                    <div className="text-lg font-bold">{gameState.pendingPlacement.song.release_year}</div>
-                    <div className="italic">{gameState.pendingPlacement.song.deezer_title}</div>
+                  <div 
+                    className="w-16 h-16 rounded-lg shadow-md border-2 border-gray-200 flex flex-col items-center justify-center p-2 text-center transform transition-all duration-200 hover:scale-105 cursor-pointer"
+                    style={{ backgroundColor: gameState.players.find(p => p.id === gameState.pendingPlacement?.playerId)?.timelineColor }}
+                    onClick={confirmPlacement}
+                  >
+                    <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
+                      Click to
+                    </div>
+                    <div className="text-lg font-bold text-white my-1">
+                      ?
+                    </div>
+                    <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+                      Confirm
+                    </div>
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg">Confirm Your Placement</h4>
-                    <p className="text-gray-600">
-                      You placed "{gameState.pendingPlacement.song.deezer_title}" by {gameState.pendingPlacement.song.deezer_artist} ({gameState.pendingPlacement.song.release_year})
+                    <h4 className={cn("font-bold text-lg", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Confirm Your Placement</h4>
+                    <p className={cn(gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>
+                      Click on the card to confirm placement and reveal song details
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={confirmPlacement} className="bg-green-600 hover:bg-green-700">
-                    <Check className="h-4 w-4 mr-2" />
-                    Confirm
-                  </Button>
                   <Button onClick={rejectPlacement} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                     <X className="h-4 w-4 mr-2" />
                     Cancel
@@ -493,52 +627,62 @@ const Index = () => {
           {/* Player Timelines - Vertical layout with horizontal timelines */}
           <div className="space-y-6">
             {gameState.players.map((player) => (
-              <Card key={player.id} className="p-6 bg-white/90 backdrop-blur-sm shadow-lg">
+              <Card key={player.id} className={cn("p-6 shadow-lg", 
+                gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm border-gray-700" : "bg-white/90 backdrop-blur-sm")}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-6 h-6 rounded-full border-2 border-white shadow-md" 
                       style={{ backgroundColor: player.color }}
                     />
-                    <h3 className="text-lg font-bold">{player.name}</h3>
+                    <h3 className={cn("text-lg font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
                     {player.id === currentPlayer?.id && (
                       <Badge className="bg-yellow-100 text-yellow-800 animate-pulse">Current Turn</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Trophy className="h-4 w-4 text-yellow-500" />
-                    <span className="font-bold">{player.score}/10</span>
+                    <span className={cn("font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.score}/10</span>
                   </div>
                 </div>
 
                 <div 
-                  className="min-h-24 border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50/50 overflow-x-auto"
-                  onDragOver={(e) => e.preventDefault()}
+                  className={cn("min-h-24 border-2 border-dashed rounded-lg p-4 overflow-x-auto transition-all duration-200",
+                    gameState.isDarkMode ? "border-gray-600 bg-gray-700/30" : "border-gray-300 bg-gray-50/50",
+                    dragOverPosition?.playerId === player.id ? "border-purple-400 bg-purple-50" : "")}
+                  onDragOver={(e) => handleDragOver(e, player.id, player.timeline.length)}
+                  onDragLeave={handleDragLeave}
                   onDrop={() => handleDrop(player.id, player.timeline.length)}
                 >
                   <div className="flex gap-3 min-w-fit">
                     {player.timeline.map((song, index) => (
-                      <div 
-                        key={index}
-                        className="w-20 h-20 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md border-2 border-gray-200 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transform transition-all duration-200 hover:scale-105 hover:shadow-lg"
-                        style={{
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
-                        }}
-                      >
-                        <div className="text-xs font-medium text-gray-700 truncate w-full leading-tight">
-                          {song.deezer_artist}
-                        </div>
-                        <div className="text-lg font-bold text-gray-900 my-1">
-                          {song.release_year}
-                        </div>
-                        <div className="text-xs italic text-gray-600 truncate w-full leading-tight">
-                          {song.deezer_title}
+                      <div key={index}>
+                        <div 
+                          className={cn("w-20 h-20 rounded-lg shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transform transition-all duration-200 hover:scale-105 hover:shadow-lg",
+                            dragOverPosition?.playerId === player.id && dragOverPosition.position === index ? "translate-x-2" : "")}
+                          style={{
+                            backgroundColor: player.timelineColor,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
+                            borderColor: 'rgba(255,255,255,0.3)'
+                          }}
+                          onDragOver={(e) => handleDragOver(e, player.id, index)}
+                          onDrop={() => handleDrop(player.id, index)}
+                        >
+                          <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
+                            {song.deezer_artist}
+                          </div>
+                          <div className="text-lg font-bold text-white my-1">
+                            {song.release_year}
+                          </div>
+                          <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+                            {song.deezer_title}
+                          </div>
                         </div>
                       </div>
                     ))}
                     {player.timeline.length === 0 && (
-                      <div className="text-gray-400 text-center py-6 px-8">
-                        Drop song cards here to build your timeline
+                      <div className={cn("text-center py-6 px-8", gameState.isDarkMode ? "text-gray-400" : "text-gray-400")}>
+                        {currentPlayer?.id === player.id ? "Drop song cards here to build your timeline" : "Timeline empty"}
                       </div>
                     )}
                   </div>
