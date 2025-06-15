@@ -2,7 +2,7 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Music } from "lucide-react";
+import { Trophy, Music, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/pages/Index";
 
@@ -14,6 +14,7 @@ interface PlayerTimelineProps {
   activeDrag: { playerId: string; position: number; song: Song | null } | null;
   hoveredCard: string | null;
   throwingCard: { song: Song; playerId: string; position: number } | null;
+  confirmingPlacement: { song: Song; position: number } | null;
   handleDragOver: (
     e: React.DragEvent,
     playerId: string,
@@ -23,6 +24,8 @@ interface PlayerTimelineProps {
   handleDrop: (playerId: string, position: number) => void;
   setHoveredCard: (id: string | null) => void;
   currentPlayerId: string;
+  confirmPlacement: () => void;
+  cancelPlacement: () => void;
 }
 
 // Random vibrant colors for cards
@@ -43,22 +46,27 @@ export default function PlayerTimeline({
   activeDrag,
   hoveredCard,
   throwingCard,
+  confirmingPlacement,
   handleDragOver,
   handleDragLeave,
   handleDrop,
   setHoveredCard,
-  currentPlayerId
+  currentPlayerId,
+  confirmPlacement,
+  cancelPlacement
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
     const isThrowing = throwingCard?.playerId === player.id && throwingCard?.position === index;
+    const isConfirming = confirmingPlacement?.position === index;
     
     return (
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "w-16 h-24 rounded-xl shadow-xl border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-700 cursor-pointer group relative overflow-hidden transform",
+          "w-20 h-20 rounded-xl shadow-xl border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-700 cursor-pointer group relative overflow-hidden transform",
           isThrowing && "animate-bounce scale-110 z-20",
-          hoveredCard === `${player.id}-${index}` && "scale-105 -translate-y-1"
+          hoveredCard === `${player.id}-${index}` && "scale-105 -translate-y-1 rotate-2",
+          "hover:shadow-2xl hover:z-10"
         )}
         style={{
           background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
@@ -71,8 +79,24 @@ export default function PlayerTimeline({
         {/* Gradient overlay */}
         <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent"></div>
         
+        {/* Floating animation elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white/30 rounded-full animate-pulse"
+              style={{
+                left: `${20 + i * 30}%`,
+                top: `${15 + i * 25}%`,
+                animationDelay: `${i * 0.5}s`,
+                animationDuration: `${2 + i}s`
+              }}
+            />
+          ))}
+        </div>
+        
         {/* Card content */}
-        <div className="relative z-10 text-center">
+        <div className="relative z-10 text-center w-full">
           {isThrowing ? (
             <>
               <div className="text-xs font-bold text-red-200 leading-tight mb-1">
@@ -81,7 +105,7 @@ export default function PlayerTimeline({
               <div className="text-lg font-black text-white">
                 {throwingCard?.song?.release_year}
               </div>
-              <div className="text-xs italic text-red-200 leading-tight">
+              <div className="text-xs italic text-red-200 leading-tight truncate">
                 {throwingCard?.song?.deezer_artist}
               </div>
             </>
@@ -99,6 +123,24 @@ export default function PlayerTimeline({
             </>
           )}
         </div>
+
+        {/* Confirmation buttons on the card */}
+        {isConfirming && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-xl flex items-center justify-center gap-2 z-30">
+            <button
+              onClick={confirmPlacement}
+              className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={cancelPlacement}
+              className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-all duration-200 hover:scale-110 shadow-lg"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -111,7 +153,7 @@ export default function PlayerTimeline({
         key={`drop-zone-${position}`}
         className={cn(
           "flex items-center justify-center transition-all duration-500 relative",
-          isGhostHere ? "w-16 scale-110" : "w-3"
+          isGhostHere ? "w-20 scale-110" : "w-3"
         )}
         onDragOver={(e) => handleDragOver(e, player.id, position)}
         onDragLeave={handleDragLeave}
@@ -119,7 +161,7 @@ export default function PlayerTimeline({
       >
         {isGhostHere && draggedSong && (
           <div
-            className="w-16 h-24 rounded-xl border-3 border-dashed flex flex-col items-center justify-center p-2 text-center transition-all duration-300 animate-pulse bg-white/20 backdrop-blur-sm transform scale-110"
+            className="w-20 h-20 rounded-xl border-3 border-dashed flex flex-col items-center justify-center p-2 text-center transition-all duration-300 animate-pulse bg-white/20 backdrop-blur-sm transform scale-110"
             style={{
               borderColor: getRandomCardColor(),
             }}
@@ -138,11 +180,11 @@ export default function PlayerTimeline({
   };
 
   return (
-    <Card className="p-4 shadow-2xl bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div 
-            className="w-6 h-6 rounded-full border-2 border-white/50 shadow-lg" 
+            className="w-6 h-6 rounded-full border-2 border-white/50 shadow-lg animate-pulse" 
             style={{ backgroundColor: getRandomCardColor() }}
           />
           <h3 className="text-xl font-bold text-white">{player.name}'s Timeline</h3>
@@ -153,7 +195,7 @@ export default function PlayerTimeline({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-yellow-400" />
+          <Trophy className="h-5 w-5 text-yellow-400 animate-bounce" />
           <span className="font-bold text-xl text-white">{player.score}/10</span>
         </div>
       </div>
@@ -178,6 +220,6 @@ export default function PlayerTimeline({
           </div>
         )}
       </div>
-    </Card>
+    </div>
   );
 }

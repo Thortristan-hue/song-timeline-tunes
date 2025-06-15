@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -495,7 +494,7 @@ const Index = () => {
 
         {/* Animated particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, i) => (
+          {[...Array(20)].map((_, i) => (
             <div
               key={i}
               className="absolute w-2 h-2 bg-white/20 rounded-full animate-pulse"
@@ -543,8 +542,8 @@ const Index = () => {
               <div className="mb-4">
                 <div 
                   className={cn(
-                    "w-32 h-40 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto",
-                    draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2"
+                    "w-32 h-32 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group",
+                    draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)]"
                   )}
                   style={{
                     background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
@@ -554,11 +553,28 @@ const Index = () => {
                   onDragStart={() => handleDragStart(gameState.currentSong!)}
                 >
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 to-transparent"></div>
+                  
+                  {/* Floating animation elements */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {[...Array(4)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-1 h-1 bg-white/40 rounded-full animate-ping"
+                        style={{
+                          left: `${20 + i * 20}%`,
+                          top: `${15 + i * 20}%`,
+                          animationDelay: `${i * 0.3}s`,
+                          animationDuration: `${1.5 + i * 0.5}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+                  
                   <Music className={cn("h-8 w-8 mb-3 relative z-10 transition-transform duration-300", 
-                    draggedSong ? "animate-spin" : "animate-bounce")} />
+                    draggedSong ? "animate-spin" : "animate-bounce group-hover:scale-110")} />
                   <div className="text-center relative z-10">
                     <div className="text-sm font-bold opacity-90">Mystery Track</div>
-                    <div className="text-3xl font-black">?</div>
+                    <div className="text-3xl font-black animate-pulse">?</div>
                     <div className="text-xs italic opacity-75">Drag to place</div>
                   </div>
                 </div>
@@ -571,14 +587,14 @@ const Index = () => {
               <Button
                 onClick={gameState.isPlaying ? pausePreview : playPreview}
                 size="sm"
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-12 h-12"
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-12 h-12 hover:scale-110 transition-all duration-200"
               >
                 {gameState.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>
             </div>
 
             {/* Current Player's Timeline */}
-            <div className="max-w-4xl">
+            <div className="max-w-6xl">
               <PlayerTimeline
                 player={currentPlayer}
                 isCurrent={true}
@@ -587,67 +603,25 @@ const Index = () => {
                 activeDrag={activeDrag}
                 hoveredCard={hoveredCard}
                 throwingCard={gameState.throwingCard}
+                confirmingPlacement={gameState.confirmingPlacement}
                 handleDragOver={handleDragOver}
                 handleDragLeave={handleDragLeave}
                 handleDrop={handleDrop}
                 setHoveredCard={setHoveredCard}
                 currentPlayerId={currentPlayer.id}
+                confirmPlacement={confirmPlacement}
+                cancelPlacement={cancelPlacement}
               />
             </div>
           </div>
         </div>
 
-        {/* Players arranged in circle */}
+        {/* Players arranged in circle at specific angles */}
         <CircularPlayersLayout 
           players={gameState.players}
           currentPlayerId={currentPlayer.id}
           isDarkMode={true}
         />
-
-        {/* Confirmation Modal */}
-        {gameState.confirmingPlacement && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl p-8 text-center max-w-md mx-4 shadow-2xl">
-              <div className="mb-6">
-                <div 
-                  className="w-24 h-32 mx-auto rounded-xl shadow-xl flex flex-col items-center justify-center p-3 text-white mb-4"
-                  style={{
-                    background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`
-                  }}
-                >
-                  <div className="text-xs font-bold text-white/90 truncate w-full text-center">
-                    {gameState.confirmingPlacement.song.deezer_artist}
-                  </div>
-                  <div className="text-xl font-black text-white my-1">
-                    {gameState.confirmingPlacement.song.release_year}
-                  </div>
-                  <div className="text-xs italic text-white/75 truncate w-full text-center">
-                    {gameState.confirmingPlacement.song.deezer_title}
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Confirm Placement</h3>
-                <p className="text-purple-200">Place this card at position {gameState.confirmingPlacement.position + 1}?</p>
-              </div>
-              <div className="flex gap-4 justify-center">
-                <Button 
-                  onClick={confirmPlacement}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2 rounded-xl"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm
-                </Button>
-                <Button 
-                  onClick={cancelPlacement}
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 font-bold px-6 py-2 rounded-xl"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Result Animation */}
         {gameState.cardResult && (
@@ -656,7 +630,7 @@ const Index = () => {
               "text-center animate-bounce",
               gameState.cardResult.correct ? "text-green-400" : "text-red-400"
             )}>
-              <div className="text-8xl mb-4">
+              <div className="text-8xl mb-4 animate-pulse">
                 {gameState.cardResult.correct ? "✓" : "✗"}
               </div>
               <div className="text-4xl font-bold text-white mb-2">
