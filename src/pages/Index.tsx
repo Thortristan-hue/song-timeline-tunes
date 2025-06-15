@@ -25,7 +25,7 @@ interface Player {
 }
 
 interface GameState {
-  phase: 'lobby' | 'customization' | 'playing' | 'finished';
+  phase: 'lobby' | 'playing' | 'finished';
   players: Player[];
   currentTurn: number;
   currentSong: Song | null;
@@ -92,6 +92,13 @@ const timelineColors = [
   '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C'
 ];
 
+export type { Song, Player };
+export { timelineColors };
+
+import PlayerJoinForm from "@/components/PlayerJoinForm";
+import PlayerTimeline from "@/components/PlayerTimeline";
+import SidePlayersStack from "@/components/SidePlayersStack";
+
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>({
     phase: 'lobby',
@@ -107,7 +114,6 @@ const Index = () => {
     throwingCard: null
   });
 
-  const [playerName, setPlayerName] = useState('');
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
@@ -149,31 +155,19 @@ const Index = () => {
     setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
   };
 
-  const joinLobby = () => {
-    if (!playerName.trim()) return;
-    
+  const joinLobby = (name: string, timelineColor: string) => {
+    if (!name.trim()) return;
     const newPlayer: Player = {
       id: `player-${Date.now()}`,
-      name: playerName,
+      name,
       color: playerColors[gameState.players.length % playerColors.length],
-      timelineColor: timelineColors[gameState.players.length % timelineColors.length],
+      timelineColor,
       score: 0,
       timeline: []
     };
-
     setGameState(prev => ({
       ...prev,
       players: [...prev.players, newPlayer]
-    }));
-    setPlayerName('');
-  };
-
-  const updatePlayerTimelineColor = (playerId: string, color: string) => {
-    setGameState(prev => ({
-      ...prev,
-      players: prev.players.map(p => 
-        p.id === playerId ? { ...p, timelineColor: color } : p
-      )
     }));
   };
 
@@ -363,33 +357,11 @@ const Index = () => {
 
           <Card className={cn("p-8 shadow-xl rounded-3xl", 
             gameState.isDarkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/80 backdrop-blur-sm")}>
-            <div className="text-center mb-8">
-              <h2 className={cn("text-3xl font-bold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Game Lobby</h2>
-              <div className={cn("flex items-center justify-center gap-2", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>
-                <Users className="h-5 w-5" />
-                <span>{gameState.players.length}/6 players</span>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Join Game</h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter your name"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    className={cn("flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent",
-                      gameState.isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "border-gray-200")}
-                    onKeyPress={(e) => e.key === 'Enter' && joinLobby()}
-                  />
-                  <Button onClick={joinLobby} className="px-6 py-3 rounded-xl">
-                    Join
-                  </Button>
-                </div>
+                <PlayerJoinForm onJoin={joinLobby} isDarkMode={gameState.isDarkMode}/>
               </div>
-
               <div>
                 <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Players</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -411,78 +383,15 @@ const Index = () => {
             {gameState.players.length >= 2 && (
               <div className="text-center mt-8">
                 <Button 
-                  onClick={() => setGameState(prev => ({ ...prev, phase: 'customization' }))} 
+                  onClick={startGame} 
                   size="lg" 
                   className="px-8 py-4 text-lg rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 >
-                  Customize Players
+                  Start Game
                 </Button>
               </div>
             )}
           </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (gameState.phase === 'customization') {
-    return (
-      <div className={cn("min-h-screen p-8", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-purple-100 via-pink-50 to-orange-100")}>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className={cn("text-4xl font-bold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Customize Your Timeline</h1>
-            <Button
-              onClick={toggleDarkMode}
-              variant="outline"
-              size="sm"
-              className="mb-4"
-            >
-              {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-          </div>
-
-          <div className="space-y-6">
-            {gameState.players.map((player) => (
-              <Card key={player.id} className={cn("p-6 shadow-lg", 
-                gameState.isDarkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90 backdrop-blur-sm")}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-8 h-8 rounded-full border-2 border-white shadow-md" 
-                      style={{ backgroundColor: player.color }}
-                    />
-                    <h3 className={cn("text-xl font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Palette className={cn("h-4 w-4", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")} />
-                    <span className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Timeline Color</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-6 gap-2">
-                  {timelineColors.map((color) => (
-                    <div
-                      key={color}
-                      className={cn("w-12 h-12 rounded-lg cursor-pointer border-2 transition-all hover:scale-105",
-                        player.timelineColor === color ? "border-white shadow-lg scale-105" : "border-transparent")}
-                      style={{ backgroundColor: color }}
-                      onClick={() => updatePlayerTimelineColor(player.id, color)}
-                    />
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <Button 
-              onClick={startGame} 
-              size="lg" 
-              className="px-8 py-4 text-lg rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              Start Game
-            </Button>
-          </div>
         </div>
       </div>
     );
@@ -531,12 +440,16 @@ const Index = () => {
     );
   }
 
-  if (gameState.phase === 'playing') {
+  if (gameState.phase === "playing") {
     const currentPlayer = getCurrentPlayer();
-
     return (
-      <div className={cn("min-h-screen p-4", themeClasses)}>
-        <div className="max-w-7xl mx-auto">
+      <div className={cn("min-h-screen w-full flex bg-gradient-to-br", themeClasses)}>
+        {/* Side stacks */}
+        <div className="hidden md:flex w-32">
+          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={gameState.isDarkMode}/>
+        </div>
+        {/* Main timeline */}
+        <div className="flex-1 flex flex-col justify-center items-center">
           {/* Header */}
           <div className={cn("rounded-2xl p-4 mb-4 shadow-lg", 
             gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm" : "bg-white/90 backdrop-blur-sm")}>
@@ -623,219 +536,28 @@ const Index = () => {
             </Card>
           )}
 
-          {/* Player Timelines */}
-          <div
-            className={cn(
-              "space-y-3",
-              // Responsive height so all players fit with no scrolling if 2+ players
-              gameState.players.length > 2
-                ? "grid grid-cols-1 md:grid-cols-2 gap-3"
-                : ""
-            )}
-            style={
-              gameState.players.length > 2
-                ? { maxHeight: "calc(100vh - 240px)", overflowY: "auto" }
-                : undefined
-            }
-          >
-            {gameState.players.map((player) => {
-              // If dragging over this timeline, insert the ghost card at the slot
-              let ghostIndex: number | null = null;
-              if (
-                activeDrag &&
-                activeDrag.playerId === player.id &&
-                draggedSong
-              ) {
-                ghostIndex = activeDrag.position;
-              }
-
-              return (
-                <Card
-                  key={player.id}
-                  className={cn(
-                    "p-4 shadow-lg transition-all duration-300",
-                    gameState.isDarkMode
-                      ? "bg-gray-800/90 backdrop-blur-sm border-gray-700"
-                      : "bg-white/90 backdrop-blur-sm"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-5 h-5 rounded-full border-2 border-white shadow-md" 
-                        style={{ backgroundColor: player.color }}
-                      />
-                      <h3 className={cn("text-base font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
-                      {player.id === currentPlayer?.id && (
-                        <Badge className="bg-yellow-100 text-yellow-800 animate-pulse text-xs">Current Turn</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-yellow-500" />
-                      <span className={cn("font-bold text-sm", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.score}/10</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className={cn(
-                      "min-h-20 border-2 border-dashed rounded-lg p-3 overflow-x-auto transition-all duration-300 flex items-center",
-                      gameState.isDarkMode
-                        ? "border-gray-600 bg-gray-700/30"
-                        : "border-gray-300 bg-gray-50/50"
-                    )}
-                    onDragOver={(e) =>
-                      handleDragOver(e, player.id, player.timeline.length)
-                    }
-                    onDragLeave={handleDragLeave}
-                    onDrop={() => handleDrop(player.id, player.timeline.length)}
-                  >
-                    <div className="flex gap-2 min-w-fit transition-all duration-300">
-                      {/* Timeline cards with possible ghost */}
-                      {player.timeline.map((song, index) => {
-                        // If inserting ghost card here, render it before this card
-                        const ghostHere =
-                          ghostIndex === index &&
-                          draggedSong &&
-                          player.id === currentPlayer?.id;
-
-                        return (
-                          <div key={`${player.id}-slot-${index}`} className="relative flex items-center">
-                            {/* GHOST CARD (appears as space when dragging) */}
-                            {ghostHere && (
-                              <div
-                                className={cn(
-                                  "w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center p-2 text-center flex-shrink-0",
-                                  "bg-gray-200/50 dark:bg-gray-900/30",
-                                  "scale-105 animate-pulse opacity-70 transition-all duration-300"
-                                )}
-                                style={{
-                                  borderColor: player.timelineColor,
-                                  borderStyle: "dashed",
-                                }}
-                              >
-                                <span className="text-xs text-gray-400">Place here</span>
-                              </div>
-                            )}
-                            {/* ACTUAL CARD */}
-                            <div
-                              className={cn(
-                                "w-16 h-16 rounded-sm shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-300 cursor-pointer group",
-                                "hover:scale-110 hover:animate-wiggle",
-                                // animate wiggle when dragging
-                                draggedSong &&
-                                currentPlayer?.id === player.id
-                                  ? "animate-wiggle"
-                                  : "",
-                              )}
-                              style={{
-                                backgroundColor: player.timelineColor,
-                                borderColor: "rgba(255,255,255,0.2)",
-                                boxShadow:
-                                  "0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)",
-                                transition: "transform 0.3s cubic-bezier(.25,1.7,.5,1.5), box-shadow 0.3s cubic-bezier(.25,1.7,.5,1.5)"
-                              }}
-                              onDragOver={(e) =>
-                                handleDragOver(e, player.id, index)
-                              }
-                              onDrop={() => handleDrop(player.id, index)}
-                              onClick={gameState.pendingPlacement?.playerId === player.id && gameState.pendingPlacement?.position === index ? confirmPlacement : undefined}
-                              onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
-                              onMouseLeave={() => setHoveredCard(null)}
-                            >
-                              {gameState.pendingPlacement?.playerId === player.id && 
-                               gameState.pendingPlacement?.position === index ? (
-                                <>
-                                  <div className="text-xs font-medium text-white/90 leading-tight mb-1">
-                                    Click to
-                                  </div>
-                                  <div className="text-sm font-bold text-white mb-1">
-                                    ?
-                                  </div>
-                                  <div className="text-xs italic text-white/75 leading-tight">
-                                    Confirm
-                                  </div>
-                                </>
-                              ) : gameState.throwingCard?.playerId === player.id && 
-                                gameState.throwingCard?.position === index ? (
-                                <>
-                                  <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
-                                    {gameState.throwingCard?.song?.deezer_artist}
-                                  </div>
-                                  <div className="text-sm font-bold text-white my-1">
-                                    {gameState.throwingCard?.song?.release_year}
-                                  </div>
-                                  <div className="text-xs italic text-white/75 truncate w-full leading-tight">
-                                    {gameState.throwingCard?.song?.deezer_title}
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className={cn("text-xs font-medium text-white/90 truncate w-full leading-tight transition-all duration-200",
-                                    hoveredCard === `${player.id}-${index}` ? "animate-pulse" : "")}>
-                                    {song.deezer_artist}
-                                  </div>
-                                  <div className="text-sm font-bold text-white my-1">
-                                    {song.release_year}
-                                  </div>
-                                  <div className="text-xs italic text-white/75 truncate w-full leading-tight">
-                                    {song.deezer_title}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {/* If ghost card slot is at end of list */}
-                      {ghostIndex === player.timeline.length &&
-                        draggedSong &&
-                        player.id === currentPlayer?.id && (
-                          <div
-                            className={cn(
-                              "w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center p-2 text-center flex-shrink-0 scale-105 animate-pulse opacity-70 transition-all duration-300",
-                              "bg-gray-200/50 dark:bg-gray-900/30"
-                            )}
-                            style={{
-                              borderColor: player.timelineColor,
-                              borderStyle: "dashed",
-                            }}
-                          >
-                            <span className="text-xs text-gray-400">
-                              Place here
-                            </span>
-                          </div>
-                        )}
-                      {/* If timeline empty */}
-                      {player.timeline.length === 0 &&
-                        !gameState.pendingPlacement && (
-                          <div
-                            className={cn(
-                              "text-center py-4 px-6 transition-all duration-300 text-sm",
-                              gameState.isDarkMode
-                                ? "text-gray-400"
-                                : "text-gray-400"
-                            )}
-                          >
-                            {currentPlayer?.id === player.id
-                              ? "Drop song cards here"
-                              : "Timeline empty"}
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          {/* Timeline */}
+          <PlayerTimeline
+            player={currentPlayer}
+            isCurrent={true}
+            isDarkMode={gameState.isDarkMode}
+            draggedSong={draggedSong}
+            activeDrag={activeDrag}
+            hoveredCard={hoveredCard}
+            pendingPlacement={gameState.pendingPlacement}
+            throwingCard={gameState.throwingCard}
+            confirmPlacement={confirmPlacement}
+            handleDragOver={handleDragOver}
+            handleDragLeave={handleDragLeave}
+            handleDrop={handleDrop}
+            setHoveredCard={setHoveredCard}
+            currentPlayerId={currentPlayer.id}
+          />
         </div>
-        <style>{`
-          @keyframes wiggle {
-            0%, 100% { transform: rotate(0deg) scale(1.05); }
-            20% { transform: rotate(-2deg) scale(1.08); }
-            50% { transform: rotate(2deg) scale(1.08); }
-            80% { transform: rotate(-2deg) scale(1.05); }
-          }
-        `}</style>
+        {/* Right stacks for mobile */}
+        <div className="md:hidden w-full flex justify-center gap-1 mt-6">
+          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={gameState.isDarkMode}/>
+        </div>
       </div>
     );
   }
