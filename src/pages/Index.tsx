@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,7 +97,7 @@ export { timelineColors };
 
 import PlayerJoinForm from "@/components/PlayerJoinForm";
 import PlayerTimeline from "@/components/PlayerTimeline";
-import SidePlayersStack from "@/components/SidePlayersStack";
+import CircularPlayersLayout from "@/components/CircularPlayersLayout";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -244,66 +243,76 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
-    // Create pending placement for confirmation
-    setGameState((prev) => ({
-      ...prev,
-      pendingPlacement: { playerId, song: draggedSong, position },
-    }));
-
-    setDraggedSong(null);
-    setDragOverPosition(null);
-    setActiveDrag(null);
-  };
-
-  const confirmPlacement = () => {
-    if (!gameState.pendingPlacement) return;
-
-    const { playerId, song, position } = gameState.pendingPlacement;
+    // Immediately place the card and check correctness
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return;
 
-    const isCorrect = checkPlacementCorrectness(player.timeline, song, position);
+    const isCorrect = checkPlacementCorrectness(player.timeline, draggedSong, position);
 
     setGameState(prev => {
       const updatedPlayers = prev.players.map(p => {
         if (p.id === playerId) {
+          const newTimeline = [...p.timeline];
+          newTimeline.splice(position, 0, draggedSong);
+          
           if (isCorrect) {
-            const newTimeline = [...p.timeline];
-            newTimeline.splice(position, 0, song);
             return { 
               ...p, 
               timeline: newTimeline,
               score: p.score + 1
             };
+          } else {
+            // For wrong placement, we'll show the throwing animation then remove
+            return { 
+              ...p, 
+              timeline: newTimeline
+            };
           }
-          return p;
         }
         return p;
       });
 
       const winner = updatedPlayers.find(p => p.score >= 10);
 
-      if (isCorrect) {
+      if (!isCorrect) {
+        // Set throwing card for animation
+        setTimeout(() => {
+          setGameState(prev => ({
+            ...prev,
+            players: prev.players.map(p => {
+              if (p.id === playerId) {
+                const newTimeline = [...p.timeline];
+                newTimeline.splice(position, 1); // Remove the wrong card
+                return { ...p, timeline: newTimeline };
+              }
+              return p;
+            }),
+            throwingCard: null
+          }));
+        }, 1500);
+
         return {
           ...prev,
           players: updatedPlayers,
-          currentTurn: (prev.currentTurn + 1) % prev.players.length,
-          currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
-          pendingPlacement: null,
-          phase: winner ? 'finished' : 'playing',
-          winner
-        };
-      } else {
-        return {
-          ...prev,
-          players: updatedPlayers,
-          throwingCard: { playerId, song, position },
-          pendingPlacement: null,
+          throwingCard: { playerId, song: draggedSong, position },
           currentTurn: (prev.currentTurn + 1) % prev.players.length,
           currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
         };
       }
+
+      return {
+        ...prev,
+        players: updatedPlayers,
+        currentTurn: (prev.currentTurn + 1) % prev.players.length,
+        currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
+        phase: winner ? 'finished' : 'playing',
+        winner
+      };
     });
+
+    setDraggedSong(null);
+    setDragOverPosition(null);
+    setActiveDrag(null);
   };
 
   const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
@@ -471,132 +480,107 @@ const Index = () => {
   if (gameState.phase === "playing") {
     const currentPlayer = getCurrentPlayer();
     return (
-      <div className={cn("min-h-screen w-full flex relative overflow-hidden", themeClasses)}>
-        {/* Subtle animated background */}
+      <div className={cn("min-h-screen w-full relative overflow-hidden", 
+        "bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900")}>
+        
+        {/* Animated background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse delay-1000"></div>
+          <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse delay-500"></div>
         </div>
 
-        {/* Side stacks */}
-        <div className="hidden md:flex w-32 relative z-10">
-          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={true}/>
-        </div>
-        
-        {/* Main timeline */}
-        <div className="flex-1 flex flex-col justify-center items-center relative z-10">
-          {/* Modern header */}
-          <div className="rounded-2xl p-4 mb-6 shadow-2xl bg-white/10 backdrop-blur-xl border border-white/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Music className="h-6 w-6 text-purple-400 animate-pulse" />
-                </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Timeline Tunes</h1>
-                <Button
-                  onClick={toggleDarkMode}
-                  variant="outline"
-                  size="sm"
-                  className="backdrop-blur-sm bg-white/10 border-white/20 hover:bg-white/20"
-                >
-                  {gameState.isDarkMode ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-purple-400" />}
-                </Button>
+        {/* Header */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <Music className="h-6 w-6 text-purple-400 animate-pulse" />
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Timeline Tunes
+                </h1>
               </div>
               
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <div className="text-sm text-purple-300">Now Playing</div>
-                  <div className="font-bold text-white" style={{ color: currentPlayer?.timelineColor }}>
-                    {currentPlayer?.name}
-                  </div>
+              <div className="text-center">
+                <div className="text-sm text-purple-300">Now Playing</div>
+                <div className="font-bold text-white" style={{ color: currentPlayer?.timelineColor }}>
+                  {currentPlayer?.name}
                 </div>
-                
-                <div className="text-center">
-                  <div className="text-sm text-purple-300">Time Left</div>
-                  <div className="font-bold text-lg text-white">{gameState.timeLeft}s</div>
-                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className="text-sm text-purple-300">Time Left</div>
+                <div className="font-bold text-lg text-white">{gameState.timeLeft}s</div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Enhanced Current Song Card */}
-          {gameState.currentSong && (
-            <Card className="p-6 mb-6 shadow-2xl bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl">
-              <div className="flex items-center gap-6">
-                <div className="flex-shrink-0">
-                  <div 
-                    className={cn(
-                      "w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-indigo-600 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 group",
-                      draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2"
-                    )}
-                    style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-                      boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
-                    }}
-                    draggable
-                    onDragStart={() => handleDragStart(gameState.currentSong!)}
-                    onMouseEnter={() => setHoveredCard('mystery-song')}
-                    onMouseLeave={() => setHoveredCard(null)}
-                  >
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/30 to-transparent"></div>
-                    <Music className={cn("h-8 w-8 mb-2 relative z-10 transition-transform duration-300", 
-                      hoveredCard === 'mystery-song' ? "animate-bounce scale-110" : "",
-                      draggedSong ? "animate-spin" : "")} />
-                    <div className="text-center relative z-10">
-                      <div className="text-sm font-bold opacity-90">Mystery Track</div>
-                      <div className="text-3xl font-black">?</div>
-                      <div className="text-xs italic opacity-75 animate-pulse">Drag to timeline</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-3 text-white">
-                    🎵 Mystery Song is Playing...
-                  </h3>
-                  <p className="mb-2 text-purple-200">Listen carefully and guess when this song was released!</p>
-                  <p className="text-sm text-purple-300">Drag the card to your timeline in chronological order</p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-24 mb-2" />
-                    <Button
-                      onClick={gameState.isPlaying ? pausePreview : playPreview}
-                      size="lg"
-                      className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl"
-                    >
-                      {gameState.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                    </Button>
+        {/* Central Play Area */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+          <div className="text-center mb-8">
+            {/* Current Song Card */}
+            {gameState.currentSong && (
+              <div className="mb-6">
+                <div 
+                  className={cn(
+                    "w-40 h-40 bg-gradient-to-br from-purple-600 via-pink-500 to-indigo-600 rounded-3xl shadow-2xl cursor-move flex flex-col items-center justify-center p-6 text-white relative transition-all duration-300 mx-auto",
+                    draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2"
+                  )}
+                  style={{
+                    boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)'
+                  }}
+                  draggable
+                  onDragStart={() => handleDragStart(gameState.currentSong!)}
+                >
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent"></div>
+                  <Music className={cn("h-12 w-12 mb-4 relative z-10 transition-transform duration-300", 
+                    draggedSong ? "animate-spin" : "animate-bounce")} />
+                  <div className="text-center relative z-10">
+                    <div className="text-lg font-bold opacity-90">Mystery Track</div>
+                    <div className="text-4xl font-black">?</div>
+                    <div className="text-sm italic opacity-75">Drag to timeline</div>
                   </div>
                 </div>
               </div>
-            </Card>
-          )}
+            )}
 
-          {/* Timeline */}
-          <PlayerTimeline
-            player={currentPlayer}
-            isCurrent={true}
-            isDarkMode={true}
-            draggedSong={draggedSong}
-            activeDrag={activeDrag}
-            hoveredCard={hoveredCard}
-            pendingPlacement={gameState.pendingPlacement}
-            throwingCard={gameState.throwingCard}
-            confirmPlacement={confirmPlacement}
-            handleDragOver={handleDragOver}
-            handleDragLeave={handleDragLeave}
-            handleDrop={handleDrop}
-            setHoveredCard={setHoveredCard}
-            currentPlayerId={currentPlayer.id}
-          />
+            {/* Play Controls */}
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-32" />
+              <Button
+                onClick={gameState.isPlaying ? pausePreview : playPreview}
+                size="lg"
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16"
+              >
+                {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+              </Button>
+            </div>
+
+            {/* Current Player's Timeline */}
+            <PlayerTimeline
+              player={currentPlayer}
+              isCurrent={true}
+              isDarkMode={true}
+              draggedSong={draggedSong}
+              activeDrag={activeDrag}
+              hoveredCard={hoveredCard}
+              throwingCard={gameState.throwingCard}
+              handleDragOver={handleDragOver}
+              handleDragLeave={handleDragLeave}
+              handleDrop={handleDrop}
+              setHoveredCard={setHoveredCard}
+              currentPlayerId={currentPlayer.id}
+            />
+          </div>
         </div>
-        
-        {/* Right stacks for mobile */}
-        <div className="md:hidden w-full flex justify-center gap-1 mt-6 relative z-10">
-          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={true}/>
-        </div>
+
+        {/* Players arranged in circle */}
+        <CircularPlayersLayout 
+          players={gameState.players}
+          currentPlayerId={currentPlayer.id}
+          isDarkMode={true}
+        />
       </div>
     );
   }
