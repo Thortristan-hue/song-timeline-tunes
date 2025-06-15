@@ -113,6 +113,13 @@ const Index = () => {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
+  // New state to track actual insertion position for ghost rendering
+  const [activeDrag, setActiveDrag] = useState<{
+    playerId: string;
+    position: number;
+    song: Song | null;
+  } | null>(null);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (gameState.isPlaying && gameState.timeLeft > 0) {
@@ -215,33 +222,41 @@ const Index = () => {
 
   const handleDragStart = (song: Song) => {
     setDraggedSong(song);
+    setActiveDrag(null); // start fresh, will be set on drag over
   };
 
-  const handleDragOver = (e: React.DragEvent, playerId: string, position: number) => {
+  const handleDragOver = (
+    e: React.DragEvent,
+    playerId: string,
+    position: number
+  ) => {
     e.preventDefault();
     const currentPlayer = getCurrentPlayer();
-    if (currentPlayer?.id !== playerId) return;
-    
+    if (!draggedSong || currentPlayer?.id !== playerId) return;
+
     setDragOverPosition({ playerId, position });
+    setActiveDrag({ playerId, position, song: draggedSong });
   };
 
   const handleDragLeave = () => {
     setDragOverPosition(null);
+    setActiveDrag(null);
   };
 
   const handleDrop = (playerId: string, position: number) => {
     if (!draggedSong) return;
-    
+
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
-    setGameState(prev => ({
+    setGameState((prev) => ({
       ...prev,
-      pendingPlacement: { playerId, song: draggedSong, position }
+      pendingPlacement: { playerId, song: draggedSong, position },
     }));
 
     setDraggedSong(null);
     setDragOverPosition(null);
+    setActiveDrag(null);
   };
 
   const confirmPlacement = () => {
@@ -518,7 +533,7 @@ const Index = () => {
 
   if (gameState.phase === 'playing') {
     const currentPlayer = getCurrentPlayer();
-    
+
     return (
       <div className={cn("min-h-screen p-4", themeClasses)}>
         <div className="max-w-7xl mx-auto">
@@ -609,157 +624,216 @@ const Index = () => {
           )}
 
           {/* Player Timelines */}
-          <div className={cn("space-y-3 overflow-y-auto", getResponsivePlayerHeight())}>
-            {gameState.players.map((player) => (
-              <Card key={player.id} className={cn("p-4 shadow-lg transition-all duration-300", 
-                gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm border-gray-700" : "bg-white/90 backdrop-blur-sm",
-                dragOverPosition?.playerId === player.id ? "ring-2 ring-purple-400 scale-[1.01]" : "")}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-5 h-5 rounded-full border-2 border-white shadow-md" 
-                      style={{ backgroundColor: player.color }}
-                    />
-                    <h3 className={cn("text-base font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
-                    {player.id === currentPlayer?.id && (
-                      <Badge className="bg-yellow-100 text-yellow-800 animate-pulse text-xs">Current Turn</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-yellow-500" />
-                    <span className={cn("font-bold text-sm", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.score}/10</span>
-                  </div>
-                </div>
+          <div
+            className={cn(
+              "space-y-3",
+              // Responsive height so all players fit with no scrolling if 2+ players
+              gameState.players.length > 2
+                ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+                : ""
+            )}
+            style={
+              gameState.players.length > 2
+                ? { maxHeight: "calc(100vh - 240px)", overflowY: "auto" }
+                : undefined
+            }
+          >
+            {gameState.players.map((player) => {
+              // If dragging over this timeline, insert the ghost card at the slot
+              let ghostIndex: number | null = null;
+              if (
+                activeDrag &&
+                activeDrag.playerId === player.id &&
+                draggedSong
+              ) {
+                ghostIndex = activeDrag.position;
+              }
 
-                <div 
-                  className={cn("min-h-20 border-2 border-dashed rounded-lg p-3 overflow-x-auto transition-all duration-300",
-                    gameState.isDarkMode ? "border-gray-600 bg-gray-700/30" : "border-gray-300 bg-gray-50/50",
-                    dragOverPosition?.playerId === player.id ? "border-purple-400 bg-purple-50/30 scale-[1.01]" : "")}
-                  onDragOver={(e) => handleDragOver(e, player.id, player.timeline.length)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={() => handleDrop(player.id, player.timeline.length)}
+              return (
+                <Card
+                  key={player.id}
+                  className={cn(
+                    "p-4 shadow-lg transition-all duration-300",
+                    gameState.isDarkMode
+                      ? "bg-gray-800/90 backdrop-blur-sm border-gray-700"
+                      : "bg-white/90 backdrop-blur-sm"
+                  )}
                 >
-                  <div className="flex gap-2 min-w-fit">
-                    {player.timeline.map((song, index) => {
-                      const isPendingCard = gameState.pendingPlacement?.playerId === player.id && 
-                                          gameState.pendingPlacement?.position === index;
-                      const isThrowingCard = gameState.throwingCard?.playerId === player.id && 
-                                           gameState.throwingCard?.position === index;
-                      const shouldShift = dragOverPosition?.playerId === player.id && 
-                                         dragOverPosition?.position <= index && 
-                                         dragOverPosition?.position !== index;
-                      
-                      return (
-                        <div key={index} className="relative">
-                          <div 
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-5 h-5 rounded-full border-2 border-white shadow-md" 
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <h3 className={cn("text-base font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</h3>
+                      {player.id === currentPlayer?.id && (
+                        <Badge className="bg-yellow-100 text-yellow-800 animate-pulse text-xs">Current Turn</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <span className={cn("font-bold text-sm", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.score}/10</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={cn(
+                      "min-h-20 border-2 border-dashed rounded-lg p-3 overflow-x-auto transition-all duration-300 flex items-center",
+                      gameState.isDarkMode
+                        ? "border-gray-600 bg-gray-700/30"
+                        : "border-gray-300 bg-gray-50/50"
+                    )}
+                    onDragOver={(e) =>
+                      handleDragOver(e, player.id, player.timeline.length)
+                    }
+                    onDragLeave={handleDragLeave}
+                    onDrop={() => handleDrop(player.id, player.timeline.length)}
+                  >
+                    <div className="flex gap-2 min-w-fit transition-all duration-300">
+                      {/* Timeline cards with possible ghost */}
+                      {player.timeline.map((song, index) => {
+                        // If inserting ghost card here, render it before this card
+                        const ghostHere =
+                          ghostIndex === index &&
+                          draggedSong &&
+                          player.id === currentPlayer?.id;
+
+                        return (
+                          <div key={`${player.id}-slot-${index}`} className="relative flex items-center">
+                            {/* GHOST CARD (appears as space when dragging) */}
+                            {ghostHere && (
+                              <div
+                                className={cn(
+                                  "w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center p-2 text-center flex-shrink-0",
+                                  "bg-gray-200/50 dark:bg-gray-900/30",
+                                  "scale-105 animate-pulse opacity-70 transition-all duration-300"
+                                )}
+                                style={{
+                                  borderColor: player.timelineColor,
+                                  borderStyle: "dashed",
+                                }}
+                              >
+                                <span className="text-xs text-gray-400">Place here</span>
+                              </div>
+                            )}
+                            {/* ACTUAL CARD */}
+                            <div
+                              className={cn(
+                                "w-16 h-16 rounded-sm shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-300 cursor-pointer group",
+                                "hover:scale-110 hover:animate-wiggle",
+                                // animate wiggle when dragging
+                                draggedSong &&
+                                currentPlayer?.id === player.id
+                                  ? "animate-wiggle"
+                                  : "",
+                              )}
+                              style={{
+                                backgroundColor: player.timelineColor,
+                                borderColor: "rgba(255,255,255,0.2)",
+                                boxShadow:
+                                  "0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)",
+                                transition: "transform 0.3s cubic-bezier(.25,1.7,.5,1.5), box-shadow 0.3s cubic-bezier(.25,1.7,.5,1.5)"
+                              }}
+                              onDragOver={(e) =>
+                                handleDragOver(e, player.id, index)
+                              }
+                              onDrop={() => handleDrop(player.id, index)}
+                              onClick={gameState.pendingPlacement?.playerId === player.id && gameState.pendingPlacement?.position === index ? confirmPlacement : undefined}
+                              onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
+                              onMouseLeave={() => setHoveredCard(null)}
+                            >
+                              {gameState.pendingPlacement?.playerId === player.id && 
+                               gameState.pendingPlacement?.position === index ? (
+                                <>
+                                  <div className="text-xs font-medium text-white/90 leading-tight mb-1">
+                                    Click to
+                                  </div>
+                                  <div className="text-sm font-bold text-white mb-1">
+                                    ?
+                                  </div>
+                                  <div className="text-xs italic text-white/75 leading-tight">
+                                    Confirm
+                                  </div>
+                                </>
+                              ) : gameState.throwingCard?.playerId === player.id && 
+                                gameState.throwingCard?.position === index ? (
+                                <>
+                                  <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
+                                    {gameState.throwingCard?.song?.deezer_artist}
+                                  </div>
+                                  <div className="text-sm font-bold text-white my-1">
+                                    {gameState.throwingCard?.song?.release_year}
+                                  </div>
+                                  <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+                                    {gameState.throwingCard?.song?.deezer_title}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className={cn("text-xs font-medium text-white/90 truncate w-full leading-tight transition-all duration-200",
+                                    hoveredCard === `${player.id}-${index}` ? "animate-pulse" : "")}>
+                                    {song.deezer_artist}
+                                  </div>
+                                  <div className="text-sm font-bold text-white my-1">
+                                    {song.release_year}
+                                  </div>
+                                  <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+                                    {song.deezer_title}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* If ghost card slot is at end of list */}
+                      {ghostIndex === player.timeline.length &&
+                        draggedSong &&
+                        player.id === currentPlayer?.id && (
+                          <div
                             className={cn(
-                              "w-16 h-16 rounded-sm shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-300 cursor-pointer",
-                              shouldShift ? "translate-x-4 rotate-1" : "",
-                              isPendingCard ? "ring-2 ring-yellow-400 animate-[bounce_0.5s_ease-in-out] scale-110" : "",
-                              isThrowingCard ? "animate-[spin_0.5s_ease-in-out,translateX(200px)_0.5s_ease-in-out,translateY(-100px)_0.5s_ease-in-out,fadeOut_0.5s_ease-in-out] opacity-0" : "",
-                              !isPendingCard && !isThrowingCard ? "hover:scale-105 hover:animate-[wiggle_0.5s_ease-in-out] hover:shadow-lg" : ""
+                              "w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center p-2 text-center flex-shrink-0 scale-105 animate-pulse opacity-70 transition-all duration-300",
+                              "bg-gray-200/50 dark:bg-gray-900/30"
                             )}
                             style={{
-                              backgroundColor: player.timelineColor,
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)',
-                              borderColor: 'rgba(255,255,255,0.2)'
+                              borderColor: player.timelineColor,
+                              borderStyle: "dashed",
                             }}
-                            onDragOver={(e) => handleDragOver(e, player.id, index)}
-                            onDrop={() => handleDrop(player.id, index)}
-                            onClick={isPendingCard ? confirmPlacement : undefined}
-                            onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
-                            onMouseLeave={() => setHoveredCard(null)}
                           >
-                            {isPendingCard ? (
-                              <>
-                                <div className="text-xs font-medium text-white/90 leading-tight mb-1">
-                                  Click to
-                                </div>
-                                <div className="text-sm font-bold text-white mb-1">
-                                  ?
-                                </div>
-                                <div className="text-xs italic text-white/75 leading-tight">
-                                  Confirm
-                                </div>
-                              </>
-                            ) : isThrowingCard ? (
-                              <>
-                                <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
-                                  {gameState.throwingCard?.song?.deezer_artist}
-                                </div>
-                                <div className="text-sm font-bold text-white my-1">
-                                  {gameState.throwingCard?.song?.release_year}
-                                </div>
-                                <div className="text-xs italic text-white/75 truncate w-full leading-tight">
-                                  {gameState.throwingCard?.song?.deezer_title}
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className={cn("text-xs font-medium text-white/90 truncate w-full leading-tight transition-all duration-200",
-                                  hoveredCard === `${player.id}-${index}` ? "animate-pulse" : "")}>
-                                  {song.deezer_artist}
-                                </div>
-                                <div className="text-sm font-bold text-white my-1">
-                                  {song.release_year}
-                                </div>
-                                <div className="text-xs italic text-white/75 truncate w-full leading-tight">
-                                  {song.deezer_title}
-                                </div>
-                              </>
+                            <span className="text-xs text-gray-400">
+                              Place here
+                            </span>
+                          </div>
+                        )}
+                      {/* If timeline empty */}
+                      {player.timeline.length === 0 &&
+                        !gameState.pendingPlacement && (
+                          <div
+                            className={cn(
+                              "text-center py-4 px-6 transition-all duration-300 text-sm",
+                              gameState.isDarkMode
+                                ? "text-gray-400"
+                                : "text-gray-400"
                             )}
+                          >
+                            {currentPlayer?.id === player.id
+                              ? "Drop song cards here"
+                              : "Timeline empty"}
                           </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {gameState.pendingPlacement?.playerId === player.id && 
-                     gameState.pendingPlacement?.position === player.timeline.length && (
-                      <div className="relative">
-                        <div 
-                          className="w-16 h-16 rounded-sm shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 ring-2 ring-yellow-400 animate-[bounce_0.5s_ease-in-out] scale-110 cursor-pointer transition-all duration-300"
-                          style={{
-                            backgroundColor: player.timelineColor,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)',
-                            borderColor: 'rgba(255,255,255,0.2)'
-                          }}
-                          onClick={confirmPlacement}
-                        >
-                          <div className="text-xs font-medium text-white/90 leading-tight mb-1">
-                            Click to
-                          </div>
-                          <div className="text-sm font-bold text-white mb-1">
-                            ?
-                          </div>
-                          <div className="text-xs italic text-white/75 leading-tight">
-                            Confirm
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {player.timeline.length === 0 && !gameState.pendingPlacement && (
-                      <div className={cn("text-center py-4 px-6 transition-all duration-300 text-sm", 
-                        gameState.isDarkMode ? "text-gray-400" : "text-gray-400",
-                        dragOverPosition?.playerId === player.id ? "scale-105" : "")}>
-                        {currentPlayer?.id === player.id ? "Drop song cards here" : "Timeline empty"}
-                      </div>
-                    )}
+                        )}
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </div>
-
         <style>{`
           @keyframes wiggle {
             0%, 100% { transform: rotate(0deg) scale(1.05); }
-            25% { transform: rotate(-2deg) scale(1.05); }
-            75% { transform: rotate(2deg) scale(1.05); }
-          }
-          @keyframes fadeOut {
-            to { opacity: 0; }
+            20% { transform: rotate(-2deg) scale(1.08); }
+            50% { transform: rotate(2deg) scale(1.08); }
+            80% { transform: rotate(-2deg) scale(1.05); }
           }
         `}</style>
       </div>
