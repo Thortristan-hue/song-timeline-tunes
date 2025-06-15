@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ interface GameState {
   pendingPlacement: { playerId: string; song: Song; position: number } | null;
   isDarkMode: boolean;
   throwingCard: { song: Song; playerId: string; position: number } | null;
+  confirmingPlacement: { song: Song; position: number } | null;
+  cardResult: { correct: boolean; song: Song } | null;
 }
 
 const mockSongs: Song[] = [
@@ -86,14 +89,17 @@ const playerColors = [
   '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
 ];
 
-const timelineColors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C'
-];
+// Random vibrant colors for cards
+const getRandomCardColor = () => {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', 
+    '#BB8FCE', '#85C1E9', '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C',
+    '#FF9999', '#66CDAA', '#87CEFA', '#DEB887', '#F0A0A0', '#B0E0E6'
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
 
 export type { Song, Player };
-export { timelineColors };
 
 import PlayerJoinForm from "@/components/PlayerJoinForm";
 import PlayerTimeline from "@/components/PlayerTimeline";
@@ -111,7 +117,9 @@ const Index = () => {
     winner: null,
     pendingPlacement: null,
     isDarkMode: false,
-    throwingCard: null
+    throwingCard: null,
+    confirmingPlacement: null,
+    cardResult: null
   });
 
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
@@ -119,7 +127,6 @@ const Index = () => {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
-  // New state to track actual insertion position for ghost rendering
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
     position: number;
@@ -155,13 +162,13 @@ const Index = () => {
     setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
   };
 
-  const joinLobby = (name: string, timelineColor: string) => {
+  const joinLobby = (name: string) => {
     if (!name.trim()) return;
     const newPlayer: Player = {
       id: `player-${Date.now()}`,
       name,
       color: playerColors[gameState.players.length % playerColors.length],
-      timelineColor,
+      timelineColor: getRandomCardColor(),
       score: 0,
       timeline: []
     };
@@ -243,76 +250,71 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
-    // Immediately place the card and check correctness
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) return;
+    // Show confirmation
+    setGameState(prev => ({
+      ...prev,
+      confirmingPlacement: { song: draggedSong, position }
+    }));
 
-    const isCorrect = checkPlacementCorrectness(player.timeline, draggedSong, position);
+    setDraggedSong(null);
+    setActiveDrag(null);
+  };
 
-    setGameState(prev => {
-      const updatedPlayers = prev.players.map(p => {
-        if (p.id === playerId) {
-          const newTimeline = [...p.timeline];
-          newTimeline.splice(position, 0, draggedSong);
-          
-          if (isCorrect) {
-            return { 
-              ...p, 
-              timeline: newTimeline,
-              score: p.score + 1
-            };
-          } else {
-            // For wrong placement, we'll show the throwing animation then remove
-            return { 
-              ...p, 
-              timeline: newTimeline
-            };
+  const confirmPlacement = () => {
+    if (!gameState.confirmingPlacement) return;
+
+    const { song, position } = gameState.confirmingPlacement;
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer) return;
+
+    const isCorrect = checkPlacementCorrectness(currentPlayer.timeline, song, position);
+
+    // Show result animation
+    setGameState(prev => ({
+      ...prev,
+      cardResult: { correct: isCorrect, song },
+      confirmingPlacement: null
+    }));
+
+    // After animation, update timeline
+    setTimeout(() => {
+      setGameState(prev => {
+        const updatedPlayers = prev.players.map(p => {
+          if (p.id === currentPlayer.id) {
+            if (isCorrect) {
+              const newTimeline = [...p.timeline];
+              newTimeline.splice(position, 0, song);
+              return { 
+                ...p, 
+                timeline: newTimeline,
+                score: p.score + 1
+              };
+            }
+            return p;
           }
-        }
-        return p;
-      });
+          return p;
+        });
 
-      const winner = updatedPlayers.find(p => p.score >= 10);
-
-      if (!isCorrect) {
-        // Set throwing card for animation
-        setTimeout(() => {
-          setGameState(prev => ({
-            ...prev,
-            players: prev.players.map(p => {
-              if (p.id === playerId) {
-                const newTimeline = [...p.timeline];
-                newTimeline.splice(position, 1); // Remove the wrong card
-                return { ...p, timeline: newTimeline };
-              }
-              return p;
-            }),
-            throwingCard: null
-          }));
-        }, 1500);
+        const winner = updatedPlayers.find(p => p.score >= 10);
 
         return {
           ...prev,
           players: updatedPlayers,
-          throwingCard: { playerId, song: draggedSong, position },
           currentTurn: (prev.currentTurn + 1) % prev.players.length,
-          currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
+          currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
+          phase: winner ? 'finished' : 'playing',
+          winner,
+          cardResult: null
         };
-      }
+      });
+    }, 2000);
+  };
 
-      return {
-        ...prev,
-        players: updatedPlayers,
-        currentTurn: (prev.currentTurn + 1) % prev.players.length,
-        currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
-        phase: winner ? 'finished' : 'playing',
-        winner
-      };
-    });
-
-    setDraggedSong(null);
-    setDragOverPosition(null);
-    setActiveDrag(null);
+  const cancelPlacement = () => {
+    setGameState(prev => ({
+      ...prev,
+      confirmingPlacement: null
+    }));
   };
 
   const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
@@ -480,98 +482,118 @@ const Index = () => {
   if (gameState.phase === "playing") {
     const currentPlayer = getCurrentPlayer();
     return (
-      <div className={cn("min-h-screen w-full relative overflow-hidden", 
-        "bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900")}>
+      <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
         
-        {/* Animated background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse delay-500"></div>
+        {/* Background Texture */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.2) 0%, transparent 50%),
+                             radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                             repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 10px)`
+          }} />
         </div>
 
-        {/* Header */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 shadow-2xl">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3">
-                <Music className="h-6 w-6 text-purple-400 animate-pulse" />
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+        {/* Animated particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-white/20 rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Header - Fixed at top */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-3 shadow-2xl">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Music className="h-5 w-5 text-purple-400 animate-pulse" />
+                <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                   Timeline Tunes
-                </h1>
+                </span>
               </div>
               
               <div className="text-center">
-                <div className="text-sm text-purple-300">Now Playing</div>
-                <div className="font-bold text-white" style={{ color: currentPlayer?.timelineColor }}>
+                <div className="text-xs text-purple-300">Now Playing</div>
+                <div className="font-bold text-white text-sm" style={{ color: currentPlayer?.timelineColor }}>
                   {currentPlayer?.name}
                 </div>
               </div>
               
               <div className="text-center">
-                <div className="text-sm text-purple-300">Time Left</div>
-                <div className="font-bold text-lg text-white">{gameState.timeLeft}s</div>
+                <div className="text-xs text-purple-300">Time</div>
+                <div className="font-bold text-white">{gameState.timeLeft}s</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Central Play Area */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="text-center mb-8">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+          <div className="text-center">
             {/* Current Song Card */}
             {gameState.currentSong && (
-              <div className="mb-6">
+              <div className="mb-4">
                 <div 
                   className={cn(
-                    "w-40 h-40 bg-gradient-to-br from-purple-600 via-pink-500 to-indigo-600 rounded-3xl shadow-2xl cursor-move flex flex-col items-center justify-center p-6 text-white relative transition-all duration-300 mx-auto",
+                    "w-32 h-40 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto",
                     draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2"
                   )}
                   style={{
-                    boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`,
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
                   }}
                   draggable
                   onDragStart={() => handleDragStart(gameState.currentSong!)}
                 >
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/30 to-transparent"></div>
-                  <Music className={cn("h-12 w-12 mb-4 relative z-10 transition-transform duration-300", 
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 to-transparent"></div>
+                  <Music className={cn("h-8 w-8 mb-3 relative z-10 transition-transform duration-300", 
                     draggedSong ? "animate-spin" : "animate-bounce")} />
                   <div className="text-center relative z-10">
-                    <div className="text-lg font-bold opacity-90">Mystery Track</div>
-                    <div className="text-4xl font-black">?</div>
-                    <div className="text-sm italic opacity-75">Drag to timeline</div>
+                    <div className="text-sm font-bold opacity-90">Mystery Track</div>
+                    <div className="text-3xl font-black">?</div>
+                    <div className="text-xs italic opacity-75">Drag to place</div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Play Controls */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-32" />
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-24 h-2" />
               <Button
                 onClick={gameState.isPlaying ? pausePreview : playPreview}
-                size="lg"
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16"
+                size="sm"
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-12 h-12"
               >
-                {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                {gameState.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </Button>
             </div>
 
             {/* Current Player's Timeline */}
-            <PlayerTimeline
-              player={currentPlayer}
-              isCurrent={true}
-              isDarkMode={true}
-              draggedSong={draggedSong}
-              activeDrag={activeDrag}
-              hoveredCard={hoveredCard}
-              throwingCard={gameState.throwingCard}
-              handleDragOver={handleDragOver}
-              handleDragLeave={handleDragLeave}
-              handleDrop={handleDrop}
-              setHoveredCard={setHoveredCard}
-              currentPlayerId={currentPlayer.id}
-            />
+            <div className="max-w-4xl">
+              <PlayerTimeline
+                player={currentPlayer}
+                isCurrent={true}
+                isDarkMode={true}
+                draggedSong={draggedSong}
+                activeDrag={activeDrag}
+                hoveredCard={hoveredCard}
+                throwingCard={gameState.throwingCard}
+                handleDragOver={handleDragOver}
+                handleDragLeave={handleDragLeave}
+                handleDrop={handleDrop}
+                setHoveredCard={setHoveredCard}
+                currentPlayerId={currentPlayer.id}
+              />
+            </div>
           </div>
         </div>
 
@@ -581,6 +603,71 @@ const Index = () => {
           currentPlayerId={currentPlayer.id}
           isDarkMode={true}
         />
+
+        {/* Confirmation Modal */}
+        {gameState.confirmingPlacement && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-3xl p-8 text-center max-w-md mx-4 shadow-2xl">
+              <div className="mb-6">
+                <div 
+                  className="w-24 h-32 mx-auto rounded-xl shadow-xl flex flex-col items-center justify-center p-3 text-white mb-4"
+                  style={{
+                    background: `linear-gradient(135deg, ${getRandomCardColor()}, ${getRandomCardColor()}dd)`
+                  }}
+                >
+                  <div className="text-xs font-bold text-white/90 truncate w-full text-center">
+                    {gameState.confirmingPlacement.song.deezer_artist}
+                  </div>
+                  <div className="text-xl font-black text-white my-1">
+                    {gameState.confirmingPlacement.song.release_year}
+                  </div>
+                  <div className="text-xs italic text-white/75 truncate w-full text-center">
+                    {gameState.confirmingPlacement.song.deezer_title}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Confirm Placement</h3>
+                <p className="text-purple-200">Place this card at position {gameState.confirmingPlacement.position + 1}?</p>
+              </div>
+              <div className="flex gap-4 justify-center">
+                <Button 
+                  onClick={confirmPlacement}
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2 rounded-xl"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm
+                </Button>
+                <Button 
+                  onClick={cancelPlacement}
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 font-bold px-6 py-2 rounded-xl"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result Animation */}
+        {gameState.cardResult && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className={cn(
+              "text-center animate-bounce",
+              gameState.cardResult.correct ? "text-green-400" : "text-red-400"
+            )}>
+              <div className="text-8xl mb-4">
+                {gameState.cardResult.correct ? "✓" : "✗"}
+              </div>
+              <div className="text-4xl font-bold text-white mb-2">
+                {gameState.cardResult.correct ? "CORRECT!" : "WRONG!"}
+              </div>
+              <div className="text-xl text-white/80">
+                {gameState.cardResult.song.deezer_title} ({gameState.cardResult.song.release_year})
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
