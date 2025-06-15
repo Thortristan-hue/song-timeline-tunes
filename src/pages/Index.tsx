@@ -111,6 +111,7 @@ const Index = () => {
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   // Timer effect
   useEffect(() => {
@@ -546,16 +547,23 @@ const Index = () => {
               <div className="flex items-center gap-6">
                 <div className="flex-shrink-0">
                   <div 
-                    className="w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-lg shadow-xl cursor-move transform transition-all duration-200 hover:scale-105 hover:shadow-2xl flex flex-col items-center justify-center p-4 text-white relative"
+                    className={cn(
+                      "w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-lg shadow-xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-200",
+                      draggedSong ? "animate-pulse scale-105" : "hover:scale-105 hover:animate-bounce"
+                    )}
                     style={{
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+                      borderRadius: '12px'
                     }}
                     draggable
                     onDragStart={() => handleDragStart(gameState.currentSong!)}
+                    onMouseEnter={() => setHoveredCard('mystery-song')}
+                    onMouseLeave={() => setHoveredCard(null)}
                   >
                     <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-white/20 to-transparent"></div>
-                    <Music className="h-8 w-8 mb-2 relative z-10" />
+                    <Music className={cn("h-8 w-8 mb-2 relative z-10 transition-transform duration-200", 
+                      hoveredCard === 'mystery-song' ? "animate-bounce" : "")} />
                     <div className="text-center relative z-10">
                       <div className="text-xs font-medium opacity-90">Mystery Song</div>
                       <div className="text-lg font-bold">?</div>
@@ -647,41 +655,131 @@ const Index = () => {
                 </div>
 
                 <div 
-                  className={cn("min-h-24 border-2 border-dashed rounded-lg p-4 overflow-x-auto transition-all duration-200",
+                  className={cn("min-h-24 border-2 border-dashed rounded-lg p-4 overflow-x-auto transition-all duration-300",
                     gameState.isDarkMode ? "border-gray-600 bg-gray-700/30" : "border-gray-300 bg-gray-50/50",
-                    dragOverPosition?.playerId === player.id ? "border-purple-400 bg-purple-50" : "")}
+                    dragOverPosition?.playerId === player.id ? "border-purple-400 bg-purple-50 scale-[1.02]" : "")}
                   onDragOver={(e) => handleDragOver(e, player.id, player.timeline.length)}
                   onDragLeave={handleDragLeave}
                   onDrop={() => handleDrop(player.id, player.timeline.length)}
                 >
                   <div className="flex gap-3 min-w-fit">
-                    {player.timeline.map((song, index) => (
-                      <div key={index}>
+                    {player.timeline.map((song, index) => {
+                      const isPendingCard = gameState.pendingPlacement?.playerId === player.id && 
+                                          gameState.pendingPlacement?.position === index;
+                      const isShiftingCard = dragOverPosition?.playerId === player.id && 
+                                           dragOverPosition?.position <= index && 
+                                           dragOverPosition?.position !== index;
+                      
+                      return (
+                        <div key={index} className="relative">
+                          <div 
+                            className={cn(
+                              "w-20 h-20 rounded-lg shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transition-all duration-300 cursor-pointer",
+                              isShiftingCard ? "translate-x-6" : "",
+                              isPendingCard ? "ring-4 ring-yellow-400 animate-pulse" : "hover:scale-105 hover:shadow-lg"
+                            )}
+                            style={{
+                              backgroundColor: player.timelineColor,
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
+                              borderColor: 'rgba(255,255,255,0.3)',
+                              borderRadius: '12px'
+                            }}
+                            onDragOver={(e) => handleDragOver(e, player.id, index)}
+                            onDrop={() => handleDrop(player.id, index)}
+                            onClick={isPendingCard ? confirmPlacement : undefined}
+                            onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
+                            onMouseLeave={() => setHoveredCard(null)}
+                          >
+                            {isPendingCard ? (
+                              <>
+                                <div className="text-xs font-medium text-white/90 leading-tight mb-1">
+                                  Click to
+                                </div>
+                                <div className="text-lg font-bold text-white mb-1">
+                                  ?
+                                </div>
+                                <div className="text-xs italic text-white/75 leading-tight">
+                                  Confirm
+                                </div>
+                                {/* Confirmation buttons overlay */}
+                                <div className="absolute -top-2 -right-2 flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-6 h-6 p-0 bg-red-500 border-red-500 hover:bg-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      rejectPlacement();
+                                    }}
+                                  >
+                                    <X className="h-3 w-3 text-white" />
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={cn("text-xs font-medium text-white/90 truncate w-full leading-tight transition-all duration-200",
+                                  hoveredCard === `${player.id}-${index}` ? "animate-pulse" : "")}>
+                                  {song.deezer_artist}
+                                </div>
+                                <div className="text-lg font-bold text-white my-1">
+                                  {song.release_year}
+                                </div>
+                                <div className="text-xs italic text-white/75 truncate w-full leading-tight">
+                                  {song.deezer_title}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Pending placement card */}
+                    {gameState.pendingPlacement?.playerId === player.id && 
+                     gameState.pendingPlacement?.position === player.timeline.length && (
+                      <div className="relative">
                         <div 
-                          className={cn("w-20 h-20 rounded-lg shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transform transition-all duration-200 hover:scale-105 hover:shadow-lg",
-                            dragOverPosition?.playerId === player.id && dragOverPosition.position === index ? "translate-x-2" : "")}
+                          className="w-20 h-20 rounded-lg shadow-md border-2 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 ring-4 ring-yellow-400 animate-pulse cursor-pointer transition-all duration-300 hover:scale-105"
                           style={{
                             backgroundColor: player.timelineColor,
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)',
-                            borderColor: 'rgba(255,255,255,0.3)'
+                            borderColor: 'rgba(255,255,255,0.3)',
+                            borderRadius: '12px'
                           }}
-                          onDragOver={(e) => handleDragOver(e, player.id, index)}
-                          onDrop={() => handleDrop(player.id, index)}
+                          onClick={confirmPlacement}
                         >
-                          <div className="text-xs font-medium text-white/90 truncate w-full leading-tight">
-                            {song.deezer_artist}
+                          <div className="text-xs font-medium text-white/90 leading-tight mb-1">
+                            Click to
                           </div>
-                          <div className="text-lg font-bold text-white my-1">
-                            {song.release_year}
+                          <div className="text-lg font-bold text-white mb-1">
+                            ?
                           </div>
-                          <div className="text-xs italic text-white/75 truncate w-full leading-tight">
-                            {song.deezer_title}
+                          <div className="text-xs italic text-white/75 leading-tight">
+                            Confirm
+                          </div>
+                          {/* Confirmation buttons overlay */}
+                          <div className="absolute -top-2 -right-2 flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-6 h-6 p-0 bg-red-500 border-red-500 hover:bg-red-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                rejectPlacement();
+                              }}
+                            >
+                              <X className="h-3 w-3 text-white" />
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                    {player.timeline.length === 0 && (
-                      <div className={cn("text-center py-6 px-8", gameState.isDarkMode ? "text-gray-400" : "text-gray-400")}>
+                    )}
+                    
+                    {player.timeline.length === 0 && !gameState.pendingPlacement && (
+                      <div className={cn("text-center py-6 px-8 transition-all duration-300", 
+                        gameState.isDarkMode ? "text-gray-400" : "text-gray-400",
+                        dragOverPosition?.playerId === player.id ? "scale-105" : "")}>
                         {currentPlayer?.id === player.id ? "Drop song cards here to build your timeline" : "Timeline empty"}
                       </div>
                     )}
