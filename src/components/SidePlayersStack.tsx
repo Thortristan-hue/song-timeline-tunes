@@ -12,36 +12,39 @@ interface SidePlayersStackProps {
 export default function SidePlayersStack({ players, currentId, isDarkMode }: SidePlayersStackProps) {
   return (
     <div className={cn(
-      "flex flex-col justify-center items-center gap-4 h-full w-32 py-4"
+      "flex flex-col justify-center items-center gap-6 h-full w-32 py-4"
     )}>
       {players.filter(p => p.id !== currentId).map((player) => (
         <div key={player.id} className="flex flex-col items-center group transition-all">
-          <div className="relative h-20 w-12 flex justify-center items-center">
-            {/* Stack cards visually */}
+          <div className="relative h-24 w-20 flex justify-center items-center">
+            {/* Stack cards visually - now square */}
             {player.timeline.map((_, idx) => (
               <div
                 key={idx}
-                className="absolute left-0 right-0 mx-auto"
+                className="absolute left-0 right-0 mx-auto transition-all duration-300 group-hover:scale-105"
                 style={{
                   zIndex: idx,
-                  top: `${idx * 3}px`,
-                  opacity: 0.45,
-                  width: 32,
-                  height: 48,
-                  background: player.timelineColor,
-                  borderRadius: 6,
-                  border: "2px solid rgba(0,0,0,0.08)",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.07)",
-                  transition: "all 0.28s cubic-bezier(.25,1.7,.5,1.5)"
+                  top: `${idx * 2}px`,
+                  opacity: Math.max(0.3, 1 - idx * 0.15),
+                  width: 40,
+                  height: 40,
+                  background: `linear-gradient(135deg, ${player.timelineColor}, ${player.timelineColor}dd)`,
+                  borderRadius: 8,
+                  border: "2px solid rgba(255,255,255,0.2)",
+                  boxShadow: `0 ${2 + idx}px ${6 + idx * 2}px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)`,
+                  transform: `rotate(${(idx - 2) * 2}deg)`,
                 }}
               ></div>
             ))}
           </div>
-          <div className={cn('text-xs mt-0.5', isDarkMode ? "text-gray-300" : "text-gray-700")}>
-            {player.name}
-          </div>
-          <div className={cn('text-xs mb-2', isDarkMode ? "text-gray-400" : "text-gray-500")}>
-            {player.timeline.length} cards
+          <div className="text-center mt-2">
+            <div className={cn('text-sm font-bold', isDarkMode ? "text-white" : "text-gray-700")}>
+              {player.name}
+            </div>
+            <div className={cn('text-xs opacity-75', isDarkMode ? "text-purple-300" : "text-gray-500")}>
+              {player.timeline.length} cards
+            </div>
+            <div className="w-8 h-1 mx-auto mt-1 rounded-full opacity-50" style={{ backgroundColor: player.timelineColor }}></div>
           </div>
         </div>
       ))}

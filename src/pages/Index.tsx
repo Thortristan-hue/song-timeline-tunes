@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -216,7 +217,7 @@ const Index = () => {
 
   const handleDragStart = (song: Song) => {
     setDraggedSong(song);
-    setActiveDrag(null); // start fresh, will be set on drag over
+    setActiveDrag(null);
   };
 
   const handleDragOver = (
@@ -243,6 +244,7 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
+    // Create pending placement for confirmation
     setGameState((prev) => ({
       ...prev,
       pendingPlacement: { playerId, song: draggedSong, position },
@@ -262,10 +264,10 @@ const Index = () => {
 
     const isCorrect = checkPlacementCorrectness(player.timeline, song, position);
 
-    if (isCorrect) {
-      setGameState(prev => {
-        const updatedPlayers = prev.players.map(p => {
-          if (p.id === playerId) {
+    setGameState(prev => {
+      const updatedPlayers = prev.players.map(p => {
+        if (p.id === playerId) {
+          if (isCorrect) {
             const newTimeline = [...p.timeline];
             newTimeline.splice(position, 0, song);
             return { 
@@ -275,10 +277,13 @@ const Index = () => {
             };
           }
           return p;
-        });
+        }
+        return p;
+      });
 
-        const winner = updatedPlayers.find(p => p.score >= 10);
+      const winner = updatedPlayers.find(p => p.score >= 10);
 
+      if (isCorrect) {
         return {
           ...prev,
           players: updatedPlayers,
@@ -288,17 +293,17 @@ const Index = () => {
           phase: winner ? 'finished' : 'playing',
           winner
         };
-      });
-    } else {
-      // Show the card with details then throw it off screen
-      setGameState(prev => ({
-        ...prev,
-        throwingCard: { playerId, song, position },
-        pendingPlacement: null,
-        currentTurn: (prev.currentTurn + 1) % prev.players.length,
-        currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
-      }));
-    }
+      } else {
+        return {
+          ...prev,
+          players: updatedPlayers,
+          throwingCard: { playerId, song, position },
+          pendingPlacement: null,
+          currentTurn: (prev.currentTurn + 1) % prev.players.length,
+          currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
+        };
+      }
+    });
   };
 
   const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
@@ -319,61 +324,63 @@ const Index = () => {
 
   const getCurrentPlayer = () => gameState.players[gameState.currentTurn];
 
-  const getResponsivePlayerHeight = () => {
-    const playerCount = gameState.players.length;
-    if (playerCount <= 2) return 'h-auto';
-    if (playerCount <= 4) return 'max-h-[calc(100vh-400px)]';
-    return 'max-h-[calc(100vh-350px)]';
-  };
-
   const themeClasses = gameState.isDarkMode 
     ? 'bg-gray-900 text-white' 
-    : 'bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100';
+    : 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900';
 
   if (gameState.phase === 'lobby') {
     return (
-      <div className={cn("min-h-screen p-8", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-purple-100 via-pink-50 to-orange-100")}>
-        <div className="max-w-4xl mx-auto">
+      <div className={cn("min-h-screen p-8 relative overflow-hidden", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900")}>
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
+          <div className="absolute top-40 left-1/2 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-500"></div>
+        </div>
+
+        <div className="max-w-4xl mx-auto relative z-10">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <Music className={cn("h-12 w-12", gameState.isDarkMode ? "text-purple-400" : "text-purple-600")} />
-              <h1 className={cn("text-5xl font-bold bg-gradient-to-r bg-clip-text text-transparent", 
-                gameState.isDarkMode ? "from-purple-400 to-pink-400" : "from-purple-600 to-pink-600")}>
+              <div className="relative">
+                <Music className="h-16 w-16 text-purple-400 animate-bounce" />
+                <div className="absolute inset-0 h-16 w-16 text-purple-400 animate-ping opacity-20">
+                  <Music className="h-16 w-16" />
+                </div>
+              </div>
+              <h1 className="text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
                 Timeline Tunes
               </h1>
               <Button
                 onClick={toggleDarkMode}
                 variant="outline"
                 size="sm"
-                className="ml-4"
+                className="ml-4 backdrop-blur-sm bg-white/10 border-white/20 hover:bg-white/20 transition-all duration-300"
               >
-                {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {gameState.isDarkMode ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-purple-400" />}
               </Button>
             </div>
-            <p className={cn("text-xl mb-8", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>
-              Guess the release year and place songs on your timeline!
+            <p className="text-xl mb-8 text-purple-200/80 font-medium">
+              Place songs in chronological order • Feel the rhythm of time ✨
             </p>
           </div>
 
-          <Card className={cn("p-8 shadow-xl rounded-3xl", 
-            gameState.isDarkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/80 backdrop-blur-sm")}>
+          <Card className="p-8 shadow-2xl rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Join Game</h3>
-                <PlayerJoinForm onJoin={joinLobby} isDarkMode={gameState.isDarkMode}/>
+                <h3 className="text-xl font-bold mb-4 text-white">Join the Vibe</h3>
+                <PlayerJoinForm onJoin={joinLobby} isDarkMode={true}/>
               </div>
               <div>
-                <h3 className={cn("text-xl font-semibold mb-4", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Players</h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
+                <h3 className="text-xl font-bold mb-4 text-white">Players in the Mix</h3>
+                <div className="space-y-3 max-h-40 overflow-y-auto">
                   {gameState.players.map((player, index) => (
-                    <div key={player.id} className={cn("flex items-center gap-3 p-2 rounded-lg", 
-                      gameState.isDarkMode ? "bg-gray-700" : "bg-gray-50")}>
+                    <div key={player.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 transition-all duration-300 hover:bg-white/20">
                       <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: player.color }}
+                        className="w-5 h-5 rounded-full shadow-lg ring-2 ring-white/30" 
+                        style={{ backgroundColor: player.timelineColor }}
                       />
-                      <span className={cn("font-medium", gameState.isDarkMode ? "text-white" : "text-gray-800")}>{player.name}</span>
-                      {index === 0 && <Badge variant="outline">Host</Badge>}
+                      <span className="font-medium text-white">{player.name}</span>
+                      {index === 0 && <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold">Host</Badge>}
                     </div>
                   ))}
                 </div>
@@ -385,9 +392,9 @@ const Index = () => {
                 <Button 
                   onClick={startGame} 
                   size="lg" 
-                  className="px-8 py-4 text-lg rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="px-12 py-4 text-lg rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl font-bold"
                 >
-                  Start Game
+                  Start the Music 🎵
                 </Button>
               </div>
             )}
@@ -399,37 +406,58 @@ const Index = () => {
 
   if (gameState.phase === 'finished' && gameState.winner) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-orange-50 to-red-100 p-8">
-        <div className="max-w-4xl mx-auto text-center">
+      <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 p-8 relative overflow-hidden">
+        {/* Celebration confetti effect */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-white rounded-full animate-bounce opacity-60"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${1 + Math.random()}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="mb-12">
-            <Trophy className="h-24 w-24 text-yellow-500 mx-auto mb-6" />
-            <h1 className="text-6xl font-bold text-yellow-600 mb-4">Game Over!</h1>
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">
-              🎉 {gameState.winner.name} Wins! 🎉
+            <div className="relative mb-6">
+              <Trophy className="h-32 w-32 text-yellow-300 mx-auto animate-bounce" />
+              <div className="absolute inset-0 h-32 w-32 text-yellow-300 animate-ping opacity-30 mx-auto">
+                <Trophy className="h-32 w-32" />
+              </div>
+            </div>
+            <h1 className="text-7xl font-black text-white mb-4 animate-pulse drop-shadow-lg">LEGENDARY!</h1>
+            <h2 className="text-5xl font-bold text-yellow-100 mb-6 drop-shadow-md">
+              🎉 {gameState.winner.name} Mastered Time! 🎉
             </h2>
-            <p className="text-xl text-gray-600">
-              Congratulations on completing your timeline!
+            <p className="text-2xl text-white/90 font-medium">
+              Perfect chronological harmony achieved ✨
             </p>
           </div>
 
-          <Card className="p-8 bg-white/90 backdrop-blur-sm shadow-xl rounded-3xl">
-            <h3 className="text-2xl font-bold mb-6">Final Scores</h3>
+          <Card className="p-8 bg-white/20 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/30">
+            <h3 className="text-3xl font-bold mb-6 text-white">Final Harmony</h3>
             <div className="space-y-4">
               {gameState.players
                 .sort((a, b) => b.score - a.score)
                 .map((player, index) => (
-                  <div key={player.id} className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
+                  <div key={player.id} className="flex items-center justify-between p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
+                    <div className="flex items-center gap-4">
+                      <span className="text-3xl font-black text-white/60">#{index + 1}</span>
                       <div 
-                        className="w-6 h-6 rounded-full" 
-                        style={{ backgroundColor: player.color }}
+                        className="w-8 h-8 rounded-full shadow-lg ring-2 ring-white/50" 
+                        style={{ backgroundColor: player.timelineColor }}
                       />
-                      <span className="text-lg font-medium">{player.name}</span>
+                      <span className="text-xl font-bold text-white">{player.name}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <span className="text-xl font-bold">{player.score}/10</span>
+                    <div className="flex items-center gap-3">
+                      <Trophy className="h-6 w-6 text-yellow-400" />
+                      <span className="text-2xl font-black text-white">{player.score}/10</span>
                     </div>
                   </div>
                 ))}
@@ -443,94 +471,104 @@ const Index = () => {
   if (gameState.phase === "playing") {
     const currentPlayer = getCurrentPlayer();
     return (
-      <div className={cn("min-h-screen w-full flex bg-gradient-to-br", themeClasses)}>
-        {/* Side stacks */}
-        <div className="hidden md:flex w-32">
-          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={gameState.isDarkMode}/>
+      <div className={cn("min-h-screen w-full flex relative overflow-hidden", themeClasses)}>
+        {/* Subtle animated background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-20 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse delay-1000"></div>
         </div>
+
+        {/* Side stacks */}
+        <div className="hidden md:flex w-32 relative z-10">
+          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={true}/>
+        </div>
+        
         {/* Main timeline */}
-        <div className="flex-1 flex flex-col justify-center items-center">
-          {/* Header */}
-          <div className={cn("rounded-2xl p-4 mb-4 shadow-lg", 
-            gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm" : "bg-white/90 backdrop-blur-sm")}>
+        <div className="flex-1 flex flex-col justify-center items-center relative z-10">
+          {/* Modern header */}
+          <div className="rounded-2xl p-4 mb-6 shadow-2xl bg-white/10 backdrop-blur-xl border border-white/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Music className={cn("h-6 w-6", gameState.isDarkMode ? "text-purple-400" : "text-purple-600")} />
-                <h1 className={cn("text-xl font-bold", gameState.isDarkMode ? "text-white" : "text-gray-800")}>Timeline Tunes</h1>
+                <div className="relative">
+                  <Music className="h-6 w-6 text-purple-400 animate-pulse" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Timeline Tunes</h1>
                 <Button
                   onClick={toggleDarkMode}
                   variant="outline"
                   size="sm"
+                  className="backdrop-blur-sm bg-white/10 border-white/20 hover:bg-white/20"
                 >
-                  {gameState.isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {gameState.isDarkMode ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-purple-400" />}
                 </Button>
               </div>
               
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <div className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Current Turn</div>
-                  <div className="font-bold" style={{ color: currentPlayer?.color }}>
+                  <div className="text-sm text-purple-300">Now Playing</div>
+                  <div className="font-bold text-white" style={{ color: currentPlayer?.timelineColor }}>
                     {currentPlayer?.name}
                   </div>
                 </div>
                 
                 <div className="text-center">
-                  <div className={cn("text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Time Left</div>
-                  <div className="font-bold text-lg">{gameState.timeLeft}s</div>
+                  <div className="text-sm text-purple-300">Time Left</div>
+                  <div className="font-bold text-lg text-white">{gameState.timeLeft}s</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Current Song Card */}
+          {/* Enhanced Current Song Card */}
           {gameState.currentSong && (
-            <Card className={cn("p-4 mb-4 shadow-lg", 
-              gameState.isDarkMode ? "bg-gray-800/90 backdrop-blur-sm border-gray-700" : "bg-white/90 backdrop-blur-sm")}>
+            <Card className="p-6 mb-6 shadow-2xl bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl">
               <div className="flex items-center gap-6">
                 <div className="flex-shrink-0">
                   <div 
                     className={cn(
-                      "w-28 h-28 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-sm shadow-xl cursor-move flex flex-col items-center justify-center p-3 text-white relative transition-all duration-200",
-                      draggedSong ? "animate-pulse scale-105" : "hover:scale-105 hover:animate-bounce"
+                      "w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-indigo-600 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 group",
+                      draggedSong ? "animate-pulse scale-110 rotate-3" : "hover:scale-105 hover:rotate-2"
                     )}
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                      boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
                     }}
                     draggable
                     onDragStart={() => handleDragStart(gameState.currentSong!)}
                     onMouseEnter={() => setHoveredCard('mystery-song')}
                     onMouseLeave={() => setHoveredCard(null)}
                   >
-                    <div className="absolute inset-0 rounded-sm bg-gradient-to-br from-white/20 to-transparent"></div>
-                    <Music className={cn("h-6 w-6 mb-1 relative z-10 transition-transform duration-200", 
-                      hoveredCard === 'mystery-song' ? "animate-bounce" : "",
-                      draggedSong ? "animate-[pulse_1s_ease-in-out_infinite]" : "")} />
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/30 to-transparent"></div>
+                    <Music className={cn("h-8 w-8 mb-2 relative z-10 transition-transform duration-300", 
+                      hoveredCard === 'mystery-song' ? "animate-bounce scale-110" : "",
+                      draggedSong ? "animate-spin" : "")} />
                     <div className="text-center relative z-10">
-                      <div className="text-xs font-medium opacity-90">Mystery</div>
-                      <div className="text-lg font-bold">?</div>
-                      <div className="text-xs italic opacity-75">Drag me</div>
+                      <div className="text-sm font-bold opacity-90">Mystery Track</div>
+                      <div className="text-3xl font-black">?</div>
+                      <div className="text-xs italic opacity-75 animate-pulse">Drag to timeline</div>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className={cn("text-lg font-bold mb-2", gameState.isDarkMode ? "text-white" : "text-gray-800")}>
-                    🎵 Mystery Song Playing...
+                  <h3 className="text-2xl font-bold mb-3 text-white">
+                    🎵 Mystery Song is Playing...
                   </h3>
-                  <p className={cn("mb-1 text-sm", gameState.isDarkMode ? "text-gray-300" : "text-gray-600")}>Listen carefully and guess when this song was released!</p>
-                  <p className={cn("text-xs", gameState.isDarkMode ? "text-gray-400" : "text-gray-500")}>Place the card on your timeline in the correct chronological order</p>
+                  <p className="mb-2 text-purple-200">Listen carefully and guess when this song was released!</p>
+                  <p className="text-sm text-purple-300">Drag the card to your timeline in chronological order</p>
                 </div>
                 
                 <div className="flex items-center gap-4">
-                  <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-24" />
-                  <Button
-                    onClick={gameState.isPlaying ? pausePreview : playPreview}
-                    size="sm"
-                    className="rounded-full"
-                  >
-                    {gameState.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
+                  <div className="text-center">
+                    <Progress value={(30 - gameState.timeLeft) / 30 * 100} className="w-24 mb-2" />
+                    <Button
+                      onClick={gameState.isPlaying ? pausePreview : playPreview}
+                      size="lg"
+                      className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl"
+                    >
+                      {gameState.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -540,7 +578,7 @@ const Index = () => {
           <PlayerTimeline
             player={currentPlayer}
             isCurrent={true}
-            isDarkMode={gameState.isDarkMode}
+            isDarkMode={true}
             draggedSong={draggedSong}
             activeDrag={activeDrag}
             hoveredCard={hoveredCard}
@@ -554,9 +592,10 @@ const Index = () => {
             currentPlayerId={currentPlayer.id}
           />
         </div>
+        
         {/* Right stacks for mobile */}
-        <div className="md:hidden w-full flex justify-center gap-1 mt-6">
-          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={gameState.isDarkMode}/>
+        <div className="md:hidden w-full flex justify-center gap-1 mt-6 relative z-10">
+          <SidePlayersStack players={gameState.players} currentId={currentPlayer.id} isDarkMode={true}/>
         </div>
       </div>
     );

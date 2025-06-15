@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Palette } from "lucide-react";
-import { timelineColors } from "@/pages/Index"; // We'll export this array
+import { Palette, Sparkles } from "lucide-react";
+import { timelineColors } from "@/pages/Index";
 import { cn } from "@/lib/utils";
 
 interface PlayerJoinFormProps {
@@ -22,29 +22,31 @@ export default function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormPro
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <input
         type="text"
-        placeholder="Enter your name"
+        placeholder="Enter your stage name..."
         value={name}
         onChange={e => setName(e.target.value)}
-        className={cn(
-          "flex-1 px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent",
-          isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "border-gray-200"
-        )}
+        className="w-full px-4 py-3 rounded-xl border-0 bg-white/20 backdrop-blur-sm text-white placeholder-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/30 transition-all duration-300"
       />
-      <div className="flex items-center gap-2">
-        <Palette size={18} className={isDarkMode ? "text-gray-200" : "text-gray-600"} />
-        <span className={cn("text-sm", isDarkMode ? "text-gray-200" : "text-gray-700")}>
-          Timeline Color:
-        </span>
-        <div className="flex gap-1">
+      
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-purple-300" />
+          <span className="text-sm font-medium text-purple-200">
+            Choose your vibe:
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {timelineColors.map((c) => (
             <button
               type="button"
               className={cn(
-                "w-7 h-7 rounded shadow-sm border-2 focus:outline-none transition-all",
-                color === c ? "ring-2 ring-purple-500 border-white scale-110" : "border-transparent"
+                "w-8 h-8 rounded-full shadow-lg border-2 focus:outline-none transition-all duration-300 hover:scale-110",
+                color === c ? 
+                  "ring-2 ring-white border-white scale-110 shadow-xl" : 
+                  "border-white/30 hover:border-white/60"
               )}
               key={c}
               style={{ backgroundColor: c }}
@@ -54,7 +56,13 @@ export default function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormPro
           ))}
         </div>
       </div>
-      <Button type="submit" className="px-6 py-3 mt-3 rounded-xl w-full">Join</Button>
+      
+      <Button 
+        type="submit" 
+        className="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 transition-all duration-300 shadow-xl font-bold"
+      >
+        Join the Rhythm
+      </Button>
     </form>
   );
 }
