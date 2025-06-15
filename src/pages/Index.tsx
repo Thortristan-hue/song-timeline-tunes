@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Users, Clock, Trophy, Music } from 'lucide-react';
+import { Play, Pause, Users, Clock, Trophy, Music, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Mock song data structure
@@ -33,6 +33,8 @@ interface GameState {
   isPlaying: boolean;
   timeLeft: number;
   hostId: string;
+  winner: Player | null;
+  pendingPlacement: { playerId: string; song: Song; position: number } | null;
 }
 
 // Mock song data
@@ -60,6 +62,22 @@ const mockSongs: Song[] = [
     preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
     release_year: "1983",
     genre: "Pop"
+  },
+  {
+    deezer_artist: "Madonna",
+    deezer_title: "Like a Virgin",
+    deezer_album: "Like a Virgin",
+    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+    release_year: "1984",
+    genre: "Pop"
+  },
+  {
+    deezer_artist: "Nirvana",
+    deezer_title: "Smells Like Teen Spirit",
+    deezer_album: "Nevermind",
+    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+    release_year: "1991",
+    genre: "Grunge"
   }
 ];
 
@@ -76,7 +94,9 @@ const Index = () => {
     currentSong: null,
     isPlaying: false,
     timeLeft: 30,
-    hostId: 'host-1'
+    hostId: 'host-1',
+    winner: null,
+    pendingPlacement: null
   });
 
   const [playerName, setPlayerName] = useState('');
@@ -141,7 +161,6 @@ const Index = () => {
       audio.pause();
     }
 
-    // Note: Using a placeholder sound since we can't access the actual Deezer URLs in this demo
     const newAudio = new Audio(gameState.currentSong.preview_url);
     newAudio.volume = 0.5;
     
@@ -169,25 +188,77 @@ const Index = () => {
   const handleDrop = (playerId: string, position: number) => {
     if (!draggedSong) return;
 
+    setGameState(prev => ({
+      ...prev,
+      pendingPlacement: { playerId, song: draggedSong, position }
+    }));
+
+    setDraggedSong(null);
+  };
+
+  const confirmPlacement = () => {
+    if (!gameState.pendingPlacement) return;
+
+    const { playerId, song, position } = gameState.pendingPlacement;
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Check if placement is correct (simplified logic)
+    const isCorrect = checkPlacementCorrectness(player.timeline, song, position);
+
     setGameState(prev => {
-      const updatedPlayers = prev.players.map(player => {
-        if (player.id === playerId) {
-          const newTimeline = [...player.timeline];
-          newTimeline.splice(position, 0, draggedSong);
-          return { ...player, timeline: newTimeline };
+      const updatedPlayers = prev.players.map(p => {
+        if (p.id === playerId && isCorrect) {
+          const newTimeline = [...p.timeline];
+          newTimeline.splice(position, 0, song);
+          return { 
+            ...p, 
+            timeline: newTimeline,
+            score: p.score + 1
+          };
         }
-        return player;
+        return p;
       });
+
+      // Check for winner
+      const winner = updatedPlayers.find(p => p.score >= 10);
 
       return {
         ...prev,
         players: updatedPlayers,
         currentTurn: (prev.currentTurn + 1) % prev.players.length,
-        currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)]
+        currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
+        pendingPlacement: null,
+        phase: winner ? 'finished' : 'playing',
+        winner
       };
     });
+  };
 
-    setDraggedSong(null);
+  const rejectPlacement = () => {
+    setGameState(prev => ({
+      ...prev,
+      currentTurn: (prev.currentTurn + 1) % prev.players.length,
+      currentSong: mockSongs[Math.floor(Math.random() * mockSongs.length)],
+      pendingPlacement: null
+    }));
+  };
+
+  const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
+    const newYear = parseInt(newSong.release_year);
+    
+    // Check if the placement maintains chronological order
+    if (position > 0) {
+      const prevYear = parseInt(timeline[position - 1].release_year);
+      if (newYear < prevYear) return false;
+    }
+    
+    if (position < timeline.length) {
+      const nextYear = parseInt(timeline[position].release_year);
+      if (newYear > nextYear) return false;
+    }
+    
+    return true;
   };
 
   const getCurrentPlayer = () => gameState.players[gameState.currentTurn];
@@ -269,6 +340,49 @@ const Index = () => {
     );
   }
 
+  if (gameState.phase === 'finished' && gameState.winner) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-orange-50 to-red-100 p-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="mb-12">
+            <Trophy className="h-24 w-24 text-yellow-500 mx-auto mb-6" />
+            <h1 className="text-6xl font-bold text-yellow-600 mb-4">Game Over!</h1>
+            <h2 className="text-4xl font-bold text-gray-800 mb-6">
+              🎉 {gameState.winner.name} Wins! 🎉
+            </h2>
+            <p className="text-xl text-gray-600">
+              Congratulations on completing your timeline!
+            </p>
+          </div>
+
+          <Card className="p-8 bg-white/90 backdrop-blur-sm shadow-xl rounded-3xl">
+            <h3 className="text-2xl font-bold mb-6">Final Scores</h3>
+            <div className="space-y-4">
+              {gameState.players
+                .sort((a, b) => b.score - a.score)
+                .map((player, index) => (
+                  <div key={player.id} className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
+                      <div 
+                        className="w-6 h-6 rounded-full" 
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="text-lg font-medium">{player.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                      <span className="text-xl font-bold">{player.score}/10</span>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (gameState.phase === 'playing') {
     const currentPlayer = getCurrentPlayer();
     
@@ -303,20 +417,32 @@ const Index = () => {
           {gameState.currentSong && (
             <Card className="p-6 mb-6 bg-white/90 backdrop-blur-sm shadow-lg">
               <div className="flex items-center gap-6">
-                <div 
-                  className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center cursor-move"
-                  draggable
-                  onDragStart={() => handleDragStart(gameState.currentSong!)}
-                >
-                  <Music className="h-8 w-8 text-white" />
+                <div className="flex-shrink-0">
+                  <div 
+                    className="w-32 h-32 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-2xl shadow-xl cursor-move transform transition-all duration-200 hover:scale-105 hover:shadow-2xl flex flex-col items-center justify-center p-4 text-white relative"
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                    }}
+                    draggable
+                    onDragStart={() => handleDragStart(gameState.currentSong!)}
+                  >
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent"></div>
+                    <Music className="h-8 w-8 mb-2 relative z-10" />
+                    <div className="text-center relative z-10">
+                      <div className="text-xs font-medium opacity-90">Mystery Song</div>
+                      <div className="text-lg font-bold">?</div>
+                      <div className="text-xs italic opacity-75">Drag to timeline</div>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800">
-                    {gameState.currentSong.deezer_title}
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                    🎵 Mystery Song Playing...
                   </h3>
-                  <p className="text-gray-600">by {gameState.currentSong.deezer_artist}</p>
-                  <p className="text-sm text-gray-500">{gameState.currentSong.deezer_album}</p>
+                  <p className="text-gray-600 mb-1">Listen carefully and guess when this song was released!</p>
+                  <p className="text-sm text-gray-500">Place the card on your timeline in the correct chronological order</p>
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -333,19 +459,50 @@ const Index = () => {
             </Card>
           )}
 
-          {/* Player Timelines */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Confirmation Dialog */}
+          {gameState.pendingPlacement && (
+            <Card className="p-6 mb-6 bg-yellow-50 border-yellow-200 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-xl flex flex-col items-center justify-center text-white text-xs">
+                    <div className="font-medium">{gameState.pendingPlacement.song.deezer_artist}</div>
+                    <div className="text-lg font-bold">{gameState.pendingPlacement.song.release_year}</div>
+                    <div className="italic">{gameState.pendingPlacement.song.deezer_title}</div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Confirm Your Placement</h4>
+                    <p className="text-gray-600">
+                      You placed "{gameState.pendingPlacement.song.deezer_title}" by {gameState.pendingPlacement.song.deezer_artist} ({gameState.pendingPlacement.song.release_year})
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={confirmPlacement} className="bg-green-600 hover:bg-green-700">
+                    <Check className="h-4 w-4 mr-2" />
+                    Confirm
+                  </Button>
+                  <Button onClick={rejectPlacement} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Player Timelines - Vertical layout with horizontal timelines */}
+          <div className="space-y-6">
             {gameState.players.map((player) => (
               <Card key={player.id} className="p-6 bg-white/90 backdrop-blur-sm shadow-lg">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div 
-                      className="w-6 h-6 rounded-full" 
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-md" 
                       style={{ backgroundColor: player.color }}
                     />
                     <h3 className="text-lg font-bold">{player.name}</h3>
                     {player.id === currentPlayer?.id && (
-                      <Badge className="bg-yellow-100 text-yellow-800">Current Turn</Badge>
+                      <Badge className="bg-yellow-100 text-yellow-800 animate-pulse">Current Turn</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -355,22 +512,32 @@ const Index = () => {
                 </div>
 
                 <div 
-                  className="min-h-32 border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50/50"
+                  className="min-h-24 border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50/50 overflow-x-auto"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(player.id, player.timeline.length)}
                 >
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-3 min-w-fit">
                     {player.timeline.map((song, index) => (
                       <div 
                         key={index}
-                        className="bg-white rounded-lg p-3 shadow-sm border min-w-32"
+                        className="w-20 h-20 bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-md border-2 border-gray-200 flex flex-col items-center justify-center p-2 text-center flex-shrink-0 transform transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                        style={{
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
+                        }}
                       >
-                        <div className="text-sm font-medium truncate">{song.deezer_title}</div>
-                        <div className="text-xs text-gray-500">{song.release_year}</div>
+                        <div className="text-xs font-medium text-gray-700 truncate w-full leading-tight">
+                          {song.deezer_artist}
+                        </div>
+                        <div className="text-lg font-bold text-gray-900 my-1">
+                          {song.release_year}
+                        </div>
+                        <div className="text-xs italic text-gray-600 truncate w-full leading-tight">
+                          {song.deezer_title}
+                        </div>
                       </div>
                     ))}
                     {player.timeline.length === 0 && (
-                      <div className="text-gray-400 text-center w-full py-4">
+                      <div className="text-gray-400 text-center py-6 px-8">
                         Drop song cards here to build your timeline
                       </div>
                     )}
