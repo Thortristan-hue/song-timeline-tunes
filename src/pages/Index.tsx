@@ -752,7 +752,7 @@ const Index = () => {
           </div>
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes wiggle {
             0%, 100% { transform: rotate(0deg) scale(1.05); }
             25% { transform: rotate(-2deg) scale(1.05); }
