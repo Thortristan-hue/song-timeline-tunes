@@ -10,16 +10,6 @@ interface CircularPlayersLayoutProps {
   isDarkMode: boolean;
 }
 
-// Random vibrant colors for cards
-const getRandomCardColor = () => {
-  const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', 
-    '#BB8FCE', '#85C1E9', '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C',
-    '#FF9999', '#66CDAA', '#87CEFA', '#DEB887', '#F0A0A0', '#B0E0E6'
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
 export default function CircularPlayersLayout({ 
   players, 
   currentPlayerId, 
@@ -27,13 +17,13 @@ export default function CircularPlayersLayout({
 }: CircularPlayersLayoutProps) {
   const otherPlayers = players.filter(p => p.id !== currentPlayerId);
   
-  // Fixed angles for player positioning: 60°, 90°, 120°, 210°, 240°, 270°
+  // Fixed angles for player positioning on the ground: 60°, 90°, 120°, 210°, 240°, 270°
   const fixedAngles = [60, 90, 120, 210, 240, 270];
   
   const getPlayerPosition = (index: number) => {
     const angleInDegrees = fixedAngles[index % fixedAngles.length];
     const angle = (angleInDegrees * Math.PI) / 180; // Convert to radians
-    const radius = 320; // Distance from center
+    const radius = 400; // Distance from center
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     return { x, y, angle: angleInDegrees };
@@ -53,12 +43,12 @@ export default function CircularPlayersLayout({
             className="absolute z-10 transition-all duration-500 ease-out"
             style={{
               left: `calc(50% + ${x}px)`,
-              top: `calc(50% + ${y}px)`,
+              top: `calc(80% + ${y * 0.3}px)`, // Position on "ground" with perspective
               transform: 'translate(-50%, -50%)',
             }}
           >
             <div className={cn(
-              "flex items-center gap-3 p-3 rounded-2xl shadow-2xl transition-all duration-300 bg-white/15 backdrop-blur-xl border border-white/30 hover:bg-white/20 hover:scale-105",
+              "flex items-center gap-4 p-4 rounded-2xl shadow-2xl transition-all duration-300 bg-black/30 backdrop-blur-xl border border-white/20 hover:bg-black/40 hover:scale-105",
               isLeft && "flex-row-reverse",
               (isTop || (!isLeft && !isRight)) && "flex-col items-center"
             )}>
@@ -69,43 +59,43 @@ export default function CircularPlayersLayout({
                 isLeft && "text-right",
                 isRight && "text-left"
               )}>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-3 mb-2">
                   <div 
-                    className="w-4 h-4 rounded-full border border-white/50 shadow-lg" 
-                    style={{ backgroundColor: getRandomCardColor() }}
+                    className="w-5 h-5 rounded-full border-2 border-white/50 shadow-lg" 
+                    style={{ backgroundColor: player.timelineColor }}
                   />
-                  <span className="font-bold text-white text-sm">{player.name}</span>
+                  <span className="font-bold text-white text-base">{player.name}</span>
                 </div>
-                <div className="flex items-center gap-1 text-xs">
-                  <Trophy className="h-3 w-3 text-yellow-400" />
+                <div className="flex items-center gap-2 text-sm">
+                  <Trophy className="h-4 w-4 text-yellow-400" />
                   <span className="text-white font-medium">{player.score}/10</span>
                 </div>
               </div>
 
-              {/* Square Stacked Cards - Rotated 90 degrees relative to play area */}
+              {/* Square Stacked Cards on the ground - rotated 90 degrees */}
               <div className="relative">
-                <div className="relative w-12 h-12 flex justify-center items-center">
-                  {player.timeline.slice(0, 5).map((_, idx) => (
+                <div className="relative w-16 h-16 flex justify-center items-center">
+                  {player.timeline.slice(0, 5).map((card, idx) => (
                     <div
                       key={idx}
                       className="absolute transition-all duration-500 hover:scale-110 cursor-pointer"
                       style={{
                         zIndex: idx,
-                        left: `${idx * 1}px`,
-                        top: `${idx * -1.5}px`,
-                        opacity: Math.max(0.5, 1 - idx * 0.15),
-                        width: 24,
-                        height: 24,
-                        backgroundColor: getRandomCardColor(),
-                        borderRadius: 4,
-                        border: "1px solid rgba(255,255,255,0.3)",
-                        boxShadow: `0 ${2 + idx}px ${4 + idx}px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)`,
-                        transform: `rotate(${90 + (idx - 2) * 2}deg)`, // 90 degree base rotation plus slight variation
+                        left: `${idx * 1.5}px`,
+                        top: `${idx * -2}px`,
+                        opacity: Math.max(0.6, 1 - idx * 0.1),
+                        width: 28,
+                        height: 28,
+                        backgroundColor: card.cardColor,
+                        borderRadius: 6,
+                        border: "2px solid rgba(255,255,255,0.4)",
+                        boxShadow: `0 ${3 + idx}px ${6 + idx}px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        transform: `rotate(${90 + (idx - 2) * 3}deg)`, // 90 degree base rotation plus variation
                       }}
                     />
                   ))}
                 </div>
-                <div className="text-center mt-1">
+                <div className="text-center mt-2">
                   <div className="text-xs text-purple-200 font-medium">
                     {player.timeline.length} cards
                   </div>

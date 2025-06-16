@@ -14,6 +14,7 @@ interface Song {
   preview_url: string;
   release_year: string;
   genre: string;
+  cardColor?: string; // Add persistent color
 }
 
 interface Player {
@@ -99,6 +100,14 @@ const getRandomCardColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// Assign persistent color to song if it doesn't have one
+const assignCardColor = (song: Song): Song => {
+  if (!song.cardColor) {
+    return { ...song, cardColor: getRandomCardColor() };
+  }
+  return song;
+};
+
 export type { Song, Player };
 
 import PlayerJoinForm from "@/components/PlayerJoinForm";
@@ -149,7 +158,6 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [gameState.isPlaying, gameState.timeLeft, audio]);
 
-  // Auto-remove throwing card after animation
   useEffect(() => {
     if (gameState.throwingCard) {
       const timeout = setTimeout(() => {
@@ -184,7 +192,9 @@ const Index = () => {
     if (file && file.type === "application/json") {
       try {
         const songs = await loadSongsFromJson(file);
-        setCustomSongs(songs);
+        // Assign colors to all songs
+        const songsWithColors = songs.map(assignCardColor);
+        setCustomSongs(songsWithColors);
         console.log(`Loaded ${songs.length} songs from JSON file`);
       } catch (error) {
         console.error("Error loading songs:", error);
@@ -197,14 +207,14 @@ const Index = () => {
     
     const playersWithStartingSongs = gameState.players.map(player => ({
       ...player,
-      timeline: [customSongs[Math.floor(Math.random() * customSongs.length)]]
+      timeline: [assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)])]
     }));
 
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
       players: playersWithStartingSongs,
-      currentSong: customSongs[Math.floor(Math.random() * customSongs.length)]
+      currentSong: assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)])
     }));
   };
 
@@ -264,7 +274,6 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
-    // Show confirmation
     setGameState(prev => ({
       ...prev,
       confirmingPlacement: { song: draggedSong, position }
@@ -283,14 +292,12 @@ const Index = () => {
 
     const isCorrect = checkPlacementCorrectness(currentPlayer.timeline, song, position);
 
-    // Show result animation
     setGameState(prev => ({
       ...prev,
       cardResult: { correct: isCorrect, song },
       confirmingPlacement: null
     }));
 
-    // After animation, update timeline
     setTimeout(() => {
       setGameState(prev => {
         const updatedPlayers = prev.players.map(p => {
@@ -315,7 +322,7 @@ const Index = () => {
           ...prev,
           players: updatedPlayers,
           currentTurn: (prev.currentTurn + 1) % prev.players.length,
-          currentSong: customSongs[Math.floor(Math.random() * customSongs.length)],
+          currentSong: assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)]),
           phase: winner ? 'finished' : 'playing',
           winner,
           cardResult: null
@@ -356,7 +363,6 @@ const Index = () => {
   if (gameState.phase === 'lobby') {
     return (
       <div className={cn("min-h-screen p-8 relative overflow-hidden", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900")}>
-        {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
@@ -395,7 +401,6 @@ const Index = () => {
                 <h3 className="text-xl font-bold mb-4 text-white">Join the Vibe</h3>
                 <PlayerJoinForm onJoin={joinLobby} isDarkMode={true}/>
                 
-                {/* JSON File Upload */}
                 <div className="mt-6">
                   <label htmlFor="songFile" className="block text-sm font-medium text-white mb-2">
                     Upload Songs (JSON)
@@ -449,7 +454,6 @@ const Index = () => {
   if (gameState.phase === 'finished' && gameState.winner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 p-8 relative overflow-hidden">
-        {/* Celebration confetti effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {[...Array(20)].map((_, i) => (
             <div
@@ -514,25 +518,33 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     return (
       <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        
-        {/* Background Texture */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.2) 0%, transparent 50%),
-                             radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                             repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 10px)`
-          }} />
-        </div>
-
-        {/* Animated particles */}
+        {/* 3D Floor Effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(20)].map((_, i) => (
+          {/* Floor grid */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-2/3 opacity-20"
+            style={{
+              background: `
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px',
+              transform: 'perspective(500px) rotateX(60deg)',
+              transformOrigin: 'bottom'
+            }}
+          />
+          
+          {/* Horizon glow */}
+          <div className="absolute bottom-1/3 left-0 right-0 h-32 bg-gradient-to-t from-purple-500/30 to-transparent blur-xl" />
+          
+          {/* Floating particles */}
+          {[...Array(15)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-2 h-2 bg-white/20 rounded-full animate-pulse"
+              className="absolute w-1 h-1 bg-white/30 rounded-full animate-pulse"
               style={{
                 left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
+                top: `${Math.random() * 50}%`,
                 animationDelay: `${Math.random() * 3}s`,
                 animationDuration: `${2 + Math.random() * 2}s`
               }}
@@ -540,25 +552,25 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Central Play Area */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+        {/* Central floating timeline area */}
+        <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20">
           <div className="text-center">
             {/* Current Song Card */}
             {gameState.currentSong && (
-              <div className="mb-6">
+              <div className="mb-8">
                 <div 
                   className={cn(
-                    "w-36 h-36 rounded-2xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group",
-                    draggedSong ? "scale-75 opacity-50" : "hover:scale-110 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)]"
+                    "w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group border-2 border-white/20",
+                    draggedSong ? "scale-75 opacity-50" : "hover:scale-105 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] hover:-translate-y-2"
                   )}
                   style={{
-                    backgroundColor: getRandomCardColor(),
+                    backgroundColor: gameState.currentSong.cardColor || getRandomCardColor(),
                     boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
                   }}
                   draggable
                   onDragStart={() => handleDragStart(gameState.currentSong!)}
                 >
-                  <Music className="h-10 w-10 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-110" />
+                  <Music className="h-12 w-12 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-110" />
                   <div className="text-center relative z-10">
                     <div className="text-sm font-bold opacity-90">Mystery Track</div>
                     <div className="text-4xl font-black">?</div>
@@ -569,24 +581,24 @@ const Index = () => {
             )}
 
             {/* Play Controls */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <div className="text-white text-sm">
+            <div className="flex items-center justify-center gap-6 mb-12">
+              <div className="text-white text-lg font-bold bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
                 {gameState.timeLeft}s
               </div>
               <Button
                 onClick={gameState.isPlaying ? pausePreview : playPreview}
                 size="lg"
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16 hover:scale-110 transition-all duration-200"
+                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-20 h-20 hover:scale-110 transition-all duration-200"
               >
-                {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                {gameState.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
               </Button>
-              <div className="text-white text-sm font-bold">
+              <div className="text-white text-lg font-bold bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
                 {currentPlayer?.name}
               </div>
             </div>
 
-            {/* Current Player's Timeline */}
-            <div className="max-w-7xl">
+            {/* Current Player's Floating Timeline */}
+            <div className="max-w-7xl transform perspective-1000" style={{ transform: 'translateZ(50px)' }}>
               <PlayerTimeline
                 player={currentPlayer}
                 isCurrent={true}
@@ -600,7 +612,7 @@ const Index = () => {
                 handleDragLeave={handleDragLeave}
                 handleDrop={handleDrop}
                 setHoveredCard={setHoveredCard}
-                currentPlayerId={currentPlayer.id}
+                currentPlayerId={currentPlayer?.id}
                 confirmPlacement={confirmPlacement}
                 cancelPlacement={cancelPlacement}
               />
@@ -608,10 +620,10 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Players arranged in circle at specific angles */}
+        {/* Other players on the ground in circle */}
         <CircularPlayersLayout 
           players={gameState.players}
-          currentPlayerId={currentPlayer.id}
+          currentPlayerId={currentPlayer?.id}
           isDarkMode={true}
         />
 
