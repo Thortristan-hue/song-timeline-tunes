@@ -23,7 +23,7 @@ export default function CircularPlayersLayout({
   const getPlayerPosition = (index: number) => {
     const angleInDegrees = fixedAngles[index % fixedAngles.length];
     const angle = (angleInDegrees * Math.PI) / 180; // Convert to radians
-    const radius = 450; // Distance from center
+    const radius = 400; // Distance from center
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     return { x, y, angle: angleInDegrees };
@@ -43,65 +43,61 @@ export default function CircularPlayersLayout({
             className="absolute z-10 transition-all duration-700 ease-out"
             style={{
               left: `calc(50% + ${x}px)`,
-              top: `calc(75% + ${y * 0.4}px)`, // Position on "ground" with perspective
+              top: `calc(70% + ${y * 0.5}px)`, // Position on "ground" with perspective
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <div className={cn(
-              "flex items-center gap-4 p-4 rounded-2xl shadow-2xl transition-all duration-500 bg-black/40 backdrop-blur-xl border border-white/30 hover:bg-black/50 hover:scale-105 hover:shadow-[0_0_30px_rgba(147,51,234,0.4)]",
-              isLeft && "flex-row-reverse",
-              (isTop || (!isLeft && !isRight)) && "flex-col items-center"
-            )}>
+            {/* Remove the container box - just show cards laid on table */}
+            <div className="flex flex-col items-center">
               
-              {/* Player Info */}
-              <div className={cn(
-                "text-center transition-all duration-300",
-                isLeft && "text-right",
-                isRight && "text-left"
-              )}>
-                <div className="flex items-center gap-3 mb-2">
+              {/* Player Info - floating above cards */}
+              <div className="text-center mb-3 bg-black/30 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20">
+                <div className="flex items-center gap-2 mb-1">
                   <div 
-                    className="w-6 h-6 rounded-full border-2 border-white/50 shadow-lg animate-pulse" 
+                    className="w-4 h-4 rounded-full border border-white/50" 
                     style={{ backgroundColor: player.timelineColor }}
                   />
-                  <span className="font-bold text-white text-base drop-shadow-lg">{player.name}</span>
+                  <span className="font-bold text-white text-sm">{player.name}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Trophy className="h-4 w-4 text-yellow-400 animate-pulse" />
+                <div className="flex items-center gap-2 text-xs">
+                  <Trophy className="h-3 w-3 text-yellow-400" />
                   <span className="text-white font-medium">{player.score}/10</span>
+                  <span className="text-white/70">({player.timeline.length} cards)</span>
                 </div>
               </div>
 
-              {/* Square Stacked Cards on the ground - rotated 90 degrees */}
+              {/* Cards laid flat on the table in a small fan */}
               <div className="relative">
-                <div className="relative w-20 h-20 flex justify-center items-center">
+                <div className="relative w-24 h-16 flex justify-center items-center">
                   {player.timeline.slice(0, 8).map((card, idx) => (
                     <div
                       key={idx}
-                      className="absolute transition-all duration-700 hover:scale-125 cursor-pointer group"
+                      className="absolute transition-all duration-500 hover:scale-110 cursor-pointer group"
                       style={{
                         zIndex: idx,
-                        left: `${idx * 2}px`,
-                        top: `${idx * -2.5}px`,
-                        opacity: Math.max(0.7, 1 - idx * 0.08),
-                        width: 32,
-                        height: 32,
+                        left: `${idx * 3}px`,
+                        top: `${idx * -1}px`,
+                        opacity: Math.max(0.8, 1 - idx * 0.05),
+                        width: 28,
+                        height: 28,
                         backgroundColor: card.cardColor,
-                        borderRadius: 8,
-                        border: "2px solid rgba(255,255,255,0.5)",
-                        boxShadow: `0 ${4 + idx * 2}px ${8 + idx * 2}px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.3)`,
-                        transform: `rotate(${90 + (idx - 3) * 4}deg) perspective(300px) rotateX(15deg)`, // 90 degree base rotation plus 3D effect
+                        borderRadius: 6,
+                        border: "1px solid rgba(255,255,255,0.4)",
+                        boxShadow: `0 ${2 + idx}px ${4 + idx}px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        transform: `rotate(${(idx - 3) * 3}deg) perspective(200px) rotateX(20deg)`, // Laid flat on table with slight 3D
                       }}
                     >
-                      {/* Shimmer effect on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out rounded-lg" />
+                      {/* Card content - show release year */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-bold text-white drop-shadow-sm">
+                          {card.release_year}
+                        </span>
+                      </div>
+                      
+                      {/* Subtle shine effect on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out rounded-md" />
                     </div>
                   ))}
-                </div>
-                <div className="text-center mt-3">
-                  <div className="text-xs text-purple-200 font-medium drop-shadow-lg">
-                    {player.timeline.length} cards
-                  </div>
                 </div>
               </div>
             </div>

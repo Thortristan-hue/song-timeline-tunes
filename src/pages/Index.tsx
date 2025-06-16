@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,6 +100,16 @@ const getRandomCardColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// Filter songs to only include those with release year and preview URL
+const filterValidSongs = (songs: Song[]): Song[] => {
+  return songs.filter(song => 
+    song.release_year && 
+    song.release_year !== "Unknown" && 
+    song.preview_url && 
+    song.preview_url.trim() !== ""
+  );
+};
+
 // Assign persistent color to song if it doesn't have one
 const assignCardColor = (song: Song): Song => {
   if (!song.cardColor) {
@@ -136,7 +145,7 @@ const Index = () => {
   const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [customSongs, setCustomSongs] = useState<Song[]>(mockSongs);
+  const [customSongs, setCustomSongs] = useState<Song[]>(filterValidSongs(mockSongs));
 
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
@@ -200,10 +209,11 @@ const Index = () => {
     if (file && file.type === "application/json") {
       try {
         const songs = await loadSongsFromJson(file);
-        // Assign colors to all songs
-        const songsWithColors = songs.map(assignCardColor);
+        // Filter valid songs and assign colors
+        const validSongs = filterValidSongs(songs);
+        const songsWithColors = validSongs.map(assignCardColor);
         setCustomSongs(songsWithColors);
-        console.log(`Loaded ${songs.length} songs from JSON file`);
+        console.log(`Loaded ${songsWithColors.length} valid songs from JSON file`);
       } catch (error) {
         console.error("Error loading songs:", error);
       }
@@ -213,16 +223,22 @@ const Index = () => {
   const startGame = () => {
     if (gameState.players.length < 2) return;
     
+    const validSongs = filterValidSongs(customSongs);
+    if (validSongs.length === 0) {
+      console.error("No valid songs available");
+      return;
+    }
+    
     const playersWithStartingSongs = gameState.players.map(player => ({
       ...player,
-      timeline: [assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)])]
+      timeline: [assignCardColor(validSongs[Math.floor(Math.random() * validSongs.length)])]
     }));
 
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
       players: playersWithStartingSongs,
-      currentSong: assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)])
+      currentSong: assignCardColor(validSongs[Math.floor(Math.random() * validSongs.length)])
     }));
   };
 
@@ -241,24 +257,31 @@ const Index = () => {
       console.log("Attempting to play preview:", gameState.currentSong.preview_url);
       const newAudio = new Audio();
       
-      // Set a fallback audio file for testing
-      const fallbackAudio = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEhBSVy0v7DfzMGIWzB7t2QQAoUUKndy7ZpHgU3i+PtzE8ICXrDxen2eS8FKHzE8tiINwYZZ7fx4KxXFAhGi+fxvmEiAi6J1f7FgDQGKGq+8t2ONwYaYbP03J9NEgxRnNzuwntCBHbUxOyJJAMjc8v0xH8yBh5kvO7fkyEJKGS0+eWSNATKBypvAY0AAAQAtKOO1Y2Gj6GQXI9MKAkfpxV3+uTYWWqhqKFjVYU6I+MKJ3mA4LZbGjW8lYyWqGANJwOH0vCF+mgJOz+CzomdLhfOIp15tXJUfCLo+PdnOBzILJBi2cW0GhPIYKGKqlhNFRwRfhGj7HVbKHfI5HCO6UMPFfUrMj0JTzO5CaFbZTDrYnz8HTdgAAEAgACAAICAgAAAgAAAAIAAAICAAAgAABjB1cOAEAzpyJJWkQWAAF0ZZGKVYyEhD8pOAFEVVpJGj26BhwYMBQTAQjGYOAJATYk6A7+tCXIAG1wB1PpCRVOGiJZEj1qDCE+fBAmHzGBcQJEIBwXPnSXlUcxDAcjCg9+IQRN1X5CHhYjMU83XCs5ZTM0fVRsFTFKG1ErBCEWJAs4NgJECyZDfBFbHBFMDSJ5QApABBsZNFdvDSZLHQw9CjYSCgIFMRcAPA==";
+      // Create a simple fallback beep sound
+      const createBeepSound = () => {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 1);
+      };
       
-      // Use fallback if Deezer URL fails
+      // Use fallback if external URL fails
       newAudio.addEventListener('error', () => {
-        console.log("External audio failed, using fallback");
-        newAudio.src = fallbackAudio;
-        newAudio.play().catch(() => {
+        console.log("External audio failed, using fallback beep");
+        try {
+          createBeepSound();
+        } catch (e) {
           console.log("Fallback audio also failed, continuing without sound");
-        });
-      });
-
-      newAudio.addEventListener('loadstart', () => {
-        console.log("Audio loading started");
-      });
-
-      newAudio.addEventListener('canplaythrough', () => {
-        console.log("Audio can play through");
+        }
       });
 
       newAudio.src = gameState.currentSong.preview_url;
@@ -277,7 +300,6 @@ const Index = () => {
       console.log("Audio playing successfully");
     } catch (error) {
       console.error("Error playing audio:", error);
-      console.log("Preview URL that failed:", gameState.currentSong.preview_url);
       // Still set the game state even if audio fails
       setGameState(prev => ({ 
         ...prev, 
@@ -462,7 +484,7 @@ const Index = () => {
                     className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-500 file:text-white hover:file:bg-purple-600"
                   />
                   <p className="text-xs text-purple-200 mt-1">
-                    Loaded {customSongs.length} songs
+                    Loaded {customSongs.length} valid songs
                   </p>
                 </div>
               </div>
@@ -616,19 +638,18 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Floating Mystery Card */}
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
+        {/* Floating Mystery Card - positioned to not overlap timeline */}
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-30">
           {gameState.currentSong && (
-            <div className="mb-8">
+            <div className="mb-4">
               <div 
                 className={cn(
-                  "w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-500 mx-auto group border-2 border-white/20",
-                  draggedSong ? "scale-75 opacity-30" : "hover:scale-110 hover:shadow-[0_0_40px_rgba(147,51,234,0.8)] hover:-translate-y-4 animate-float"
+                  "w-32 h-32 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-3 text-white relative transition-all duration-300 mx-auto group border-2 border-white/20",
+                  draggedSong ? "scale-75 opacity-30" : "hover:scale-105 hover:shadow-[0_0_30px_rgba(147,51,234,0.6)]"
                 )}
                 style={{
                   backgroundColor: gameState.currentSong.cardColor || '#6366f1',
-                  boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.2)',
-                  transform: `perspective(1000px) ${draggedSong ? 'scale(0.75)' : 'rotateX(-10deg)'}`
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.2)',
                 }}
                 draggable
                 onDragStart={() => handleDragStart(gameState.currentSong!)}
@@ -636,29 +657,29 @@ const Index = () => {
                 {/* Mystical glow effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl" />
                 
-                <Music className="h-12 w-12 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
+                <Music className="h-8 w-8 mb-2 relative z-10" />
                 <div className="text-center relative z-10">
-                  <div className="text-sm font-bold opacity-90">Mystery Track</div>
-                  <div className="text-4xl font-black animate-pulse">?</div>
-                  <div className="text-xs italic opacity-75">Drag to place</div>
+                  <div className="text-xs font-bold opacity-90">Mystery</div>
+                  <div className="text-2xl font-black">?</div>
+                  <div className="text-xs italic opacity-75">Drag me</div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Enhanced Play Controls */}
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <div className="text-white text-lg font-bold bg-black/40 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20 shadow-xl">
+          {/* Play Controls - separate from mystery card */}
+          <div className="flex items-center justify-center gap-6">
+            <div className="text-white text-sm font-bold bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm border border-white/20">
               {gameState.timeLeft}s
             </div>
             <Button
               onClick={gameState.isPlaying ? pausePreview : playPreview}
               size="lg"
-              className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-2xl w-24 h-24 hover:scale-125 transition-all duration-300 animate-pulse"
+              className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16 hover:scale-110 transition-all duration-300"
             >
-              {gameState.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10" />}
+              {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
             </Button>
-            <div className="text-white text-lg font-bold bg-black/40 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20 shadow-xl">
+            <div className="text-white text-sm font-bold bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm border border-white/20">
               {currentPlayer?.name}
             </div>
           </div>
@@ -694,16 +715,16 @@ const Index = () => {
         {gameState.cardResult && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50">
             <div className={cn(
-              "text-center animate-bounce",
+              "text-center",
               gameState.cardResult.correct ? "text-green-400" : "text-red-400"
             )}>
-              <div className="text-9xl mb-6 animate-pulse drop-shadow-2xl">
+              <div className="text-8xl mb-6 drop-shadow-2xl">
                 {gameState.cardResult.correct ? "✓" : "✗"}
               </div>
-              <div className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
+              <div className="text-4xl font-bold text-white mb-4 drop-shadow-lg">
                 {gameState.cardResult.correct ? "CORRECT!" : "WRONG!"}
               </div>
-              <div className="text-2xl text-white/90 drop-shadow-lg">
+              <div className="text-xl text-white/90 drop-shadow-lg">
                 {gameState.cardResult.song.deezer_title} ({gameState.cardResult.song.release_year})
               </div>
             </div>
