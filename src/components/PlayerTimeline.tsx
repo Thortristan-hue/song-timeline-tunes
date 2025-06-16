@@ -15,6 +15,7 @@ interface PlayerTimelineProps {
   hoveredCard: string | null;
   throwingCard: { song: Song; playerId: string; position: number } | null;
   confirmingPlacement: { song: Song; position: number } | null;
+  placedCardPosition: number | null;
   handleDragOver: (
     e: React.DragEvent,
     playerId: string,
@@ -37,6 +38,7 @@ export default function PlayerTimeline({
   hoveredCard,
   throwingCard,
   confirmingPlacement,
+  placedCardPosition,
   handleDragOver,
   handleDragLeave,
   handleDrop,
@@ -47,7 +49,7 @@ export default function PlayerTimeline({
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
     const isThrowing = throwingCard?.playerId === player.id && throwingCard?.position === index;
-    const isConfirming = confirmingPlacement?.position === index;
+    const isConfirming = placedCardPosition === index && confirmingPlacement?.position === index;
     
     return (
       <div
@@ -78,7 +80,7 @@ export default function PlayerTimeline({
           </div>
         </div>
 
-        {/* Confirmation buttons overlay */}
+        {/* Confirmation buttons overlay - only on the newly placed card */}
         {isConfirming && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 z-30">
             <button
@@ -136,7 +138,7 @@ export default function PlayerTimeline({
   if (!player) return null;
 
   return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 mt-16">
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 mt-20">
       {/* Floating header */}
       <div className="flex items-center justify-center gap-4 mb-6">
         <div className="flex items-center gap-4">

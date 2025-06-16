@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,6 +147,8 @@ const Index = () => {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [customSongs, setCustomSongs] = useState<Song[]>(filterValidSongs(mockSongs));
+  const [audioRetryCount, setAudioRetryCount] = useState(0);
+  const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
 
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
@@ -176,6 +179,15 @@ const Index = () => {
       return () => clearTimeout(timeout);
     }
   }, [gameState.throwingCard]);
+
+  // Stop audio when new song is generated
+  useEffect(() => {
+    if (audio && gameState.currentSong) {
+      audio.pause();
+      setGameState(prev => ({ ...prev, isPlaying: false }));
+      setAudioRetryCount(0); // Reset retry count for new song
+    }
+  }, [gameState.currentSong?.deezer_title, gameState.currentSong?.deezer_artist]);
 
   const toggleDarkMode = () => {
     setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
@@ -242,6 +254,28 @@ const Index = () => {
     }));
   };
 
+  const createBeepSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 1);
+      
+      console.log("Fallback beep sound played");
+    } catch (e) {
+      console.log("Fallback audio also failed");
+    }
+  };
+
   const playPreview = async () => {
     if (!gameState.currentSong?.preview_url) {
       console.log("No preview URL available for current song");
@@ -253,54 +287,72 @@ const Index = () => {
       audio.currentTime = 0;
     }
 
-    try {
-      console.log("Attempting to play preview:", gameState.currentSong.preview_url);
-      const newAudio = new Audio();
+    const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
+      const maxRetries = 3;
       
-      // Create a simple fallback beep sound
-      const createBeepSound = () => {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+      try {
+        console.log(`Attempting to play preview (attempt ${retryCount + 1}):`, gameState.currentSong.preview_url);
+        const newAudio = new Audio();
         
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 1);
-      };
-      
-      // Use fallback if external URL fails
-      newAudio.addEventListener('error', () => {
-        console.log("External audio failed, using fallback beep");
-        try {
-          createBeepSound();
-        } catch (e) {
-          console.log("Fallback audio also failed, continuing without sound");
-        }
-      });
+        return new Promise<void>((resolve, reject) => {
+          const handleError = async () => {
+            console.log(`Audio loading error (attempt ${retryCount + 1}):`, newAudio.error);
+            
+            if (retryCount < maxRetries) {
+              console.log(`Retrying audio load... (${retryCount + 1}/${maxRetries})`);
+              setAudioRetryCount(retryCount + 1);
+              setTimeout(() => {
+                tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
+              }, 1000); // Wait 1 second before retry
+            } else {
+              console.log("Max retries reached, using fallback beep");
+              createBeepSound();
+              resolve();
+            }
+          };
 
-      newAudio.src = gameState.currentSong.preview_url;
-      newAudio.volume = 0.5;
-      newAudio.crossOrigin = "anonymous";
-      
-      await newAudio.play();
-      setAudio(newAudio);
-      
+          const handleLoad = async () => {
+            try {
+              await newAudio.play();
+              setAudio(newAudio);
+              setAudioRetryCount(0);
+              console.log("Audio playing successfully");
+              resolve();
+            } catch (playError) {
+              console.log("Play error:", playError);
+              handleError();
+            }
+          };
+
+          newAudio.addEventListener('error', handleError);
+          newAudio.addEventListener('canplaythrough', handleLoad);
+          
+          newAudio.src = gameState.currentSong.preview_url;
+          newAudio.volume = 0.5;
+          newAudio.crossOrigin = "anonymous";
+          newAudio.load();
+        });
+      } catch (error) {
+        console.error("Error in tryPlayAudio:", error);
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            tryPlayAudio(retryCount + 1);
+          }, 1000);
+        } else {
+          createBeepSound();
+        }
+      }
+    };
+
+    try {
+      await tryPlayAudio(audioRetryCount);
       setGameState(prev => ({ 
         ...prev, 
         isPlaying: true, 
         timeLeft: 30 
       }));
-      
-      console.log("Audio playing successfully");
     } catch (error) {
-      console.error("Error playing audio:", error);
-      // Still set the game state even if audio fails
+      console.error("Final error playing audio:", error);
       setGameState(prev => ({ 
         ...prev, 
         isPlaying: true, 
@@ -345,6 +397,21 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
+    // First place the card in the timeline
+    const newTimeline = [...currentPlayer.timeline];
+    newTimeline.splice(position, 0, draggedSong);
+    
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(p => 
+        p.id === currentPlayer.id 
+          ? { ...p, timeline: newTimeline }
+          : p
+      )
+    }));
+
+    // Set the placed card position and show confirmation
+    setPlacedCardPosition(position);
     setGameState(prev => ({
       ...prev,
       confirmingPlacement: { song: draggedSong, position }
@@ -361,7 +428,11 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     if (!currentPlayer) return;
 
-    const isCorrect = checkPlacementCorrectness(currentPlayer.timeline, song, position);
+    const isCorrect = checkPlacementCorrectness(
+      currentPlayer.timeline.filter((_, index) => index !== position), 
+      song, 
+      position
+    );
 
     setGameState(prev => ({
       ...prev,
@@ -369,20 +440,25 @@ const Index = () => {
       confirmingPlacement: null
     }));
 
+    setPlacedCardPosition(null);
+
     setTimeout(() => {
       setGameState(prev => {
         const updatedPlayers = prev.players.map(p => {
           if (p.id === currentPlayer.id) {
             if (isCorrect) {
-              const newTimeline = [...p.timeline];
-              newTimeline.splice(position, 0, song);
               return { 
                 ...p, 
-                timeline: newTimeline,
                 score: p.score + 1
               };
+            } else {
+              // Remove the card if incorrect
+              const newTimeline = p.timeline.filter((_, index) => index !== position);
+              return { 
+                ...p, 
+                timeline: newTimeline
+              };
             }
-            return p;
           }
           return p;
         });
@@ -403,10 +479,21 @@ const Index = () => {
   };
 
   const cancelPlacement = () => {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer || placedCardPosition === null) return;
+
+    // Remove the placed card from timeline
     setGameState(prev => ({
       ...prev,
+      players: prev.players.map(p => 
+        p.id === currentPlayer.id 
+          ? { ...p, timeline: p.timeline.filter((_, index) => index !== placedCardPosition) }
+          : p
+      ),
       confirmingPlacement: null
     }));
+
+    setPlacedCardPosition(null);
   };
 
   const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
@@ -622,26 +709,19 @@ const Index = () => {
           
           {/* Horizon glow effect */}
           <div className="absolute bottom-1/3 left-0 right-0 h-40 bg-gradient-to-t from-purple-500/40 via-pink-500/20 to-transparent blur-2xl" />
-          
-          {/* Atmospheric particles */}
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white/40 rounded-full animate-pulse"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 60}%`,
-                animationDelay: `${Math.random() * 4}s`,
-                animationDuration: `${3 + Math.random() * 3}s`
-              }}
-            />
-          ))}
         </div>
 
-        {/* Floating Mystery Card - positioned to not overlap timeline */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-30">
+        {/* Floating Mystery Card - positioned higher to avoid overlap */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
           {gameState.currentSong && (
             <div className="mb-4">
+              {audioRetryCount > 0 && (
+                <div className="text-center mb-2">
+                  <div className="text-xs text-yellow-300 bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
+                    Retrying audio... ({audioRetryCount}/3)
+                  </div>
+                </div>
+              )}
               <div 
                 className={cn(
                   "w-32 h-32 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-3 text-white relative transition-all duration-300 mx-auto group border-2 border-white/20",
@@ -695,6 +775,7 @@ const Index = () => {
           hoveredCard={hoveredCard}
           throwingCard={gameState.throwingCard}
           confirmingPlacement={gameState.confirmingPlacement}
+          placedCardPosition={placedCardPosition}
           handleDragOver={handleDragOver}
           handleDragLeave={handleDragLeave}
           handleDrop={handleDrop}
