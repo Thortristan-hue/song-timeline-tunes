@@ -30,7 +30,7 @@ export default function CircularPlayersLayout({
   };
 
   return (
-    <>
+    <div>
       {otherPlayers.map((player, index) => {
         const { x, y, angle } = getPlayerPosition(index);
         const isLeft = x < -50;
@@ -108,6 +108,6 @@ export default function CircularPlayersLayout({
           </div>
         );
       })}
-    </>
+    </div>
   );
 }

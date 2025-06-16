@@ -53,7 +53,7 @@ export default function PlayerTimeline({
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "w-32 h-32 rounded-xl shadow-2xl border-2 flex flex-col items-center justify-center p-3 text-center flex-shrink-0 transition-all duration-500 cursor-pointer group relative overflow-hidden",
+          "w-40 h-40 rounded-xl shadow-2xl border-2 flex flex-col items-center justify-center p-4 text-center flex-shrink-0 transition-all duration-500 cursor-pointer group relative overflow-hidden",
           isThrowing && "animate-bounce scale-110 z-20",
           hoveredCard === `${player.id}-${index}` && "scale-110 -translate-y-4 z-10 shadow-[0_0_40px_rgba(147,51,234,0.6)]",
           "hover:shadow-[0_0_40px_rgba(147,51,234,0.4)] hover:z-10 hover:-translate-y-4 hover:scale-110 hover:rotate-1"
@@ -73,7 +73,7 @@ export default function PlayerTimeline({
         {/* Card content */}
         <div className="relative z-10 text-center w-full">
           {isThrowing ? (
-            <>
+            <div>
               <div className="text-xs font-bold text-red-200 leading-tight mb-1">
                 WRONG!
               </div>
@@ -83,19 +83,19 @@ export default function PlayerTimeline({
               <div className="text-xs italic text-red-200 leading-tight break-words">
                 {throwingCard?.song?.deezer_artist}
               </div>
-            </>
+            </div>
           ) : (
-            <>
-              <div className="text-xs font-bold text-white/90 leading-tight break-words mb-1 line-clamp-2">
+            <div>
+              <div className="text-sm font-bold text-white/90 leading-tight break-words mb-2 line-clamp-2">
                 {song.deezer_artist}
               </div>
-              <div className="text-xl font-black text-white mb-1">
+              <div className="text-2xl font-black text-white mb-2">
                 {song.release_year}
               </div>
-              <div className="text-xs italic text-white/75 leading-tight break-words line-clamp-2">
+              <div className="text-sm italic text-white/75 leading-tight break-words line-clamp-3">
                 {song.deezer_title}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -128,7 +128,7 @@ export default function PlayerTimeline({
         key={`drop-zone-${position}`}
         className={cn(
           "flex items-center justify-center transition-all duration-300 relative",
-          isGhostHere ? "w-32 scale-110" : "w-8"
+          isGhostHere ? "w-40 scale-110" : "w-8"
         )}
         onDragOver={(e) => handleDragOver(e, player.id, position)}
         onDragLeave={handleDragLeave}
@@ -136,7 +136,7 @@ export default function PlayerTimeline({
       >
         {isGhostHere && draggedSong && (
           <div
-            className="w-32 h-32 rounded-xl border-4 border-dashed flex flex-col items-center justify-center p-3 text-center transition-all duration-300 bg-purple-500/30 backdrop-blur-sm transform scale-110 animate-pulse shadow-2xl"
+            className="w-40 h-40 rounded-xl border-4 border-dashed flex flex-col items-center justify-center p-4 text-center transition-all duration-300 bg-purple-500/30 backdrop-blur-sm transform scale-110 animate-pulse shadow-2xl"
             style={{
               borderColor: '#4ECDC4',
               boxShadow: '0 0 30px rgba(78, 205, 196, 0.5)'
@@ -148,7 +148,7 @@ export default function PlayerTimeline({
           </div>
         )}
         {!isGhostHere && (
-          <div className="w-2 h-24 bg-white/20 rounded-full transition-all duration-300 hover:bg-purple-400/50 hover:w-3 hover:h-28 hover:shadow-lg" />
+          <div className="w-2 h-32 bg-white/20 rounded-full transition-all duration-300 hover:bg-purple-400/50 hover:w-3 hover:h-36 hover:shadow-lg" />
         )}
       </div>
     );
@@ -176,7 +176,7 @@ export default function PlayerTimeline({
       </div>
 
       {/* Floating timeline - no background box */}
-      <div className="flex items-center justify-center gap-4 min-h-36 overflow-x-auto" 
+      <div className="flex items-center justify-center gap-4 min-h-44 overflow-x-auto" 
            style={{ 
              perspective: '1200px',
              transform: 'translateZ(100px)'
@@ -186,10 +186,10 @@ export default function PlayerTimeline({
         
         {/* Cards with drop zones between them */}
         {player.timeline.map((song, index) => (
-          <React.Fragment key={`timeline-${index}`}>
+          <div key={`timeline-${index}`} className="flex items-center gap-4">
             {renderCard(song, index)}
             {renderDropZone(index + 1)}
-          </React.Fragment>
+          </div>
         ))}
         
         {/* If no cards, show welcome message */}

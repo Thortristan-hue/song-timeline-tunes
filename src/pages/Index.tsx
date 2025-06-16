@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -173,6 +174,13 @@ const Index = () => {
 
   const joinLobby = (name: string) => {
     if (!name.trim()) return;
+    
+    // Enforce 6 player maximum
+    if (gameState.players.length >= 6) {
+      console.log("Maximum 6 players allowed");
+      return;
+    }
+    
     const newPlayer: Player = {
       id: `player-${Date.now()}`,
       name,
@@ -233,10 +241,16 @@ const Index = () => {
       console.log("Attempting to play preview:", gameState.currentSong.preview_url);
       const newAudio = new Audio();
       
-      // Add error handling for audio loading
-      newAudio.addEventListener('error', (e) => {
-        console.error("Audio loading error:", e);
-        console.log("Failed to load audio from:", gameState.currentSong?.preview_url);
+      // Set a fallback audio file for testing
+      const fallbackAudio = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEhBSVy0v7DfzMGIWzB7t2QQAoUUKndy7ZpHgU3i+PtzE8ICXrDxen2eS8FKHzE8tiINwYZZ7fx4KxXFAhGi+fxvmEiAi6J1f7FgDQGKGq+8t2ONwYaYbP03J9NEgxRnNzuwntCBHbUxOyJJAMjc8v0xH8yBh5kvO7fkyEJKGS0+eWSNATKBypvAY0AAAQAtKOO1Y2Gj6GQXI9MKAkfpxV3+uTYWWqhqKFjVYU6I+MKJ3mA4LZbGjW8lYyWqGANJwOH0vCF+mgJOz+CzomdLhfOIp15tXJUfCLo+PdnOBzILJBi2cW0GhPIYKGKqlhNFRwRfhGj7HVbKHfI5HCO6UMPFfUrMj0JTzO5CaFbZTDrYnz8HTdgAAEAgACAAICAgAAAgAAAAIAAAICAAAgAABjB1cOAEAzpyJJWkQWAAF0ZZGKVYyEhD8pOAFEVVpJGj26BhwYMBQTAQjGYOAJATYk6A7+tCXIAG1wB1PpCRVOGiJZEj1qDCE+fBAmHzGBcQJEIBwXPnSXlUcxDAcjCg9+IQRN1X5CHhYjMU83XCs5ZTM0fVRsFTFKG1ErBCEWJAs4NgJECyZDfBFbHBFMDSJ5QApABBsZNFdvDSZLHQw9CjYSCgIFMRcAPA==";
+      
+      // Use fallback if Deezer URL fails
+      newAudio.addEventListener('error', () => {
+        console.log("External audio failed, using fallback");
+        newAudio.src = fallbackAudio;
+        newAudio.play().catch(() => {
+          console.log("Fallback audio also failed, continuing without sound");
+        });
       });
 
       newAudio.addEventListener('loadstart', () => {
@@ -249,7 +263,7 @@ const Index = () => {
 
       newAudio.src = gameState.currentSong.preview_url;
       newAudio.volume = 0.5;
-      newAudio.crossOrigin = "anonymous"; // Try to handle CORS
+      newAudio.crossOrigin = "anonymous";
       
       await newAudio.play();
       setAudio(newAudio);
