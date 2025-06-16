@@ -218,24 +218,59 @@ const Index = () => {
     }));
   };
 
-  const playPreview = () => {
-    if (!gameState.currentSong?.preview_url) return;
+  const playPreview = async () => {
+    if (!gameState.currentSong?.preview_url) {
+      console.log("No preview URL available for current song");
+      return;
+    }
     
     if (audio) {
       audio.pause();
+      audio.currentTime = 0;
     }
 
-    const newAudio = new Audio(gameState.currentSong.preview_url);
-    newAudio.volume = 0.5;
-    
-    newAudio.play().catch(console.error);
-    setAudio(newAudio);
-    
-    setGameState(prev => ({ 
-      ...prev, 
-      isPlaying: true, 
-      timeLeft: 30 
-    }));
+    try {
+      console.log("Attempting to play preview:", gameState.currentSong.preview_url);
+      const newAudio = new Audio();
+      
+      // Add error handling for audio loading
+      newAudio.addEventListener('error', (e) => {
+        console.error("Audio loading error:", e);
+        console.log("Failed to load audio from:", gameState.currentSong?.preview_url);
+      });
+
+      newAudio.addEventListener('loadstart', () => {
+        console.log("Audio loading started");
+      });
+
+      newAudio.addEventListener('canplaythrough', () => {
+        console.log("Audio can play through");
+      });
+
+      newAudio.src = gameState.currentSong.preview_url;
+      newAudio.volume = 0.5;
+      newAudio.crossOrigin = "anonymous"; // Try to handle CORS
+      
+      await newAudio.play();
+      setAudio(newAudio);
+      
+      setGameState(prev => ({ 
+        ...prev, 
+        isPlaying: true, 
+        timeLeft: 30 
+      }));
+      
+      console.log("Audio playing successfully");
+    } catch (error) {
+      console.error("Error playing audio:", error);
+      console.log("Preview URL that failed:", gameState.currentSong.preview_url);
+      // Still set the game state even if audio fails
+      setGameState(prev => ({ 
+        ...prev, 
+        isPlaying: true, 
+        timeLeft: 30 
+      }));
+    }
   };
 
   const pausePreview = () => {
@@ -518,107 +553,121 @@ const Index = () => {
     const currentPlayer = getCurrentPlayer();
     return (
       <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        {/* 3D Floor Effect */}
+        {/* Enhanced 3D Floor Effect */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Floor grid */}
+          {/* Main floor with perspective */}
           <div 
-            className="absolute bottom-0 left-0 right-0 h-2/3 opacity-20"
+            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-30"
             style={{
               background: `
+                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.3) 0%, transparent 70%),
                 linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
                 linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
               `,
-              backgroundSize: '50px 50px',
-              transform: 'perspective(500px) rotateX(60deg)',
+              backgroundSize: '60px 60px',
+              transform: 'perspective(800px) rotateX(65deg)',
               transformOrigin: 'bottom'
             }}
           />
           
-          {/* Horizon glow */}
-          <div className="absolute bottom-1/3 left-0 right-0 h-32 bg-gradient-to-t from-purple-500/30 to-transparent blur-xl" />
+          {/* Secondary floor grid for depth */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-2/3 opacity-15"
+            style={{
+              background: `
+                linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px)
+              `,
+              backgroundSize: '120px 120px',
+              transform: 'perspective(1000px) rotateX(70deg)',
+              transformOrigin: 'bottom'
+            }}
+          />
           
-          {/* Floating particles */}
-          {[...Array(15)].map((_, i) => (
+          {/* Horizon glow effect */}
+          <div className="absolute bottom-1/3 left-0 right-0 h-40 bg-gradient-to-t from-purple-500/40 via-pink-500/20 to-transparent blur-2xl" />
+          
+          {/* Atmospheric particles */}
+          {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-white/30 rounded-full animate-pulse"
+              className="absolute w-1 h-1 bg-white/40 rounded-full animate-pulse"
               style={{
                 left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 50}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
+                top: `${Math.random() * 60}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${3 + Math.random() * 3}s`
               }}
             />
           ))}
         </div>
 
-        {/* Central floating timeline area */}
-        <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="text-center">
-            {/* Current Song Card */}
-            {gameState.currentSong && (
-              <div className="mb-8">
-                <div 
-                  className={cn(
-                    "w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-300 mx-auto group border-2 border-white/20",
-                    draggedSong ? "scale-75 opacity-50" : "hover:scale-105 hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] hover:-translate-y-2"
-                  )}
-                  style={{
-                    backgroundColor: gameState.currentSong.cardColor || getRandomCardColor(),
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
-                  }}
-                  draggable
-                  onDragStart={() => handleDragStart(gameState.currentSong!)}
-                >
-                  <Music className="h-12 w-12 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-110" />
-                  <div className="text-center relative z-10">
-                    <div className="text-sm font-bold opacity-90">Mystery Track</div>
-                    <div className="text-4xl font-black">?</div>
-                    <div className="text-xs italic opacity-75">Drag to place</div>
-                  </div>
+        {/* Floating Mystery Card */}
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
+          {gameState.currentSong && (
+            <div className="mb-8">
+              <div 
+                className={cn(
+                  "w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-500 mx-auto group border-2 border-white/20",
+                  draggedSong ? "scale-75 opacity-30" : "hover:scale-110 hover:shadow-[0_0_40px_rgba(147,51,234,0.8)] hover:-translate-y-4 animate-float"
+                )}
+                style={{
+                  backgroundColor: gameState.currentSong.cardColor || '#6366f1',
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transform: `perspective(1000px) ${draggedSong ? 'scale(0.75)' : 'rotateX(-10deg)'}`
+                }}
+                draggable
+                onDragStart={() => handleDragStart(gameState.currentSong!)}
+              >
+                {/* Mystical glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl" />
+                
+                <Music className="h-12 w-12 mb-3 relative z-10 transition-transform duration-300 group-hover:scale-125 group-hover:rotate-12" />
+                <div className="text-center relative z-10">
+                  <div className="text-sm font-bold opacity-90">Mystery Track</div>
+                  <div className="text-4xl font-black animate-pulse">?</div>
+                  <div className="text-xs italic opacity-75">Drag to place</div>
                 </div>
               </div>
-            )}
-
-            {/* Play Controls */}
-            <div className="flex items-center justify-center gap-6 mb-12">
-              <div className="text-white text-lg font-bold bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
-                {gameState.timeLeft}s
-              </div>
-              <Button
-                onClick={gameState.isPlaying ? pausePreview : playPreview}
-                size="lg"
-                className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-20 h-20 hover:scale-110 transition-all duration-200"
-              >
-                {gameState.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
-              </Button>
-              <div className="text-white text-lg font-bold bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
-                {currentPlayer?.name}
-              </div>
             </div>
+          )}
 
-            {/* Current Player's Floating Timeline */}
-            <div className="max-w-7xl transform perspective-1000" style={{ transform: 'translateZ(50px)' }}>
-              <PlayerTimeline
-                player={currentPlayer}
-                isCurrent={true}
-                isDarkMode={true}
-                draggedSong={draggedSong}
-                activeDrag={activeDrag}
-                hoveredCard={hoveredCard}
-                throwingCard={gameState.throwingCard}
-                confirmingPlacement={gameState.confirmingPlacement}
-                handleDragOver={handleDragOver}
-                handleDragLeave={handleDragLeave}
-                handleDrop={handleDrop}
-                setHoveredCard={setHoveredCard}
-                currentPlayerId={currentPlayer?.id}
-                confirmPlacement={confirmPlacement}
-                cancelPlacement={cancelPlacement}
-              />
+          {/* Enhanced Play Controls */}
+          <div className="flex items-center justify-center gap-8 mb-8">
+            <div className="text-white text-lg font-bold bg-black/40 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20 shadow-xl">
+              {gameState.timeLeft}s
+            </div>
+            <Button
+              onClick={gameState.isPlaying ? pausePreview : playPreview}
+              size="lg"
+              className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-2xl w-24 h-24 hover:scale-125 transition-all duration-300 animate-pulse"
+            >
+              {gameState.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10" />}
+            </Button>
+            <div className="text-white text-lg font-bold bg-black/40 px-6 py-3 rounded-full backdrop-blur-sm border border-white/20 shadow-xl">
+              {currentPlayer?.name}
             </div>
           </div>
         </div>
+
+        {/* Current Player's Floating Timeline */}
+        <PlayerTimeline
+          player={currentPlayer}
+          isCurrent={true}
+          isDarkMode={true}
+          draggedSong={draggedSong}
+          activeDrag={activeDrag}
+          hoveredCard={hoveredCard}
+          throwingCard={gameState.throwingCard}
+          confirmingPlacement={gameState.confirmingPlacement}
+          handleDragOver={handleDragOver}
+          handleDragLeave={handleDragLeave}
+          handleDrop={handleDrop}
+          setHoveredCard={setHoveredCard}
+          currentPlayerId={currentPlayer?.id}
+          confirmPlacement={confirmPlacement}
+          cancelPlacement={cancelPlacement}
+        />
 
         {/* Other players on the ground in circle */}
         <CircularPlayersLayout 
@@ -629,18 +678,18 @@ const Index = () => {
 
         {/* Result Animation */}
         {gameState.cardResult && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50">
             <div className={cn(
               "text-center animate-bounce",
               gameState.cardResult.correct ? "text-green-400" : "text-red-400"
             )}>
-              <div className="text-8xl mb-4 animate-pulse">
+              <div className="text-9xl mb-6 animate-pulse drop-shadow-2xl">
                 {gameState.cardResult.correct ? "✓" : "✗"}
               </div>
-              <div className="text-4xl font-bold text-white mb-2">
+              <div className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
                 {gameState.cardResult.correct ? "CORRECT!" : "WRONG!"}
               </div>
-              <div className="text-xl text-white/80">
+              <div className="text-2xl text-white/90 drop-shadow-lg">
                 {gameState.cardResult.song.deezer_title} ({gameState.cardResult.song.release_year})
               </div>
             </div>
@@ -652,5 +701,18 @@ const Index = () => {
 
   return null;
 };
+
+// Add CSS for floating animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes float {
+    0%, 100% { transform: perspective(1000px) rotateX(-10deg) translateY(0px); }
+    50% { transform: perspective(1000px) rotateX(-10deg) translateY(-10px); }
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+`;
+document.head.appendChild(style);
 
 export default Index;
