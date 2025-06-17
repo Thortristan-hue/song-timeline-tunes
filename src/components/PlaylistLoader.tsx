@@ -25,7 +25,7 @@ export default function PlaylistLoader({ onPlaylistLoaded, isDarkMode }: Playlis
       return;
     }
 
-    if (!playlistUrl.includes('deezer.com/playlist/')) {
+    if (!playlistUrl.includes('deezer.com/en/playlist/')) {
       setError('Please enter a valid Deezer playlist URL');
       return;
     }
