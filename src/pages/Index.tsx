@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
+import VictoryScreen from '@/pages/VictoryScreen';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -798,174 +798,13 @@ const playPreview = async () => {
     );
   }
 
+  // Replace the entire victory screen section with this:
   if (gameState.phase === 'finished' && gameState.winner) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-        {/* Enhanced 3D Environmental Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div 
-            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-20"
-            style={{
-              background: `
-                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.4) 0%, transparent 70%),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
-              `,
-              backgroundSize: '80px 80px',
-              transform: 'perspective(1000px) rotateX(60deg)',
-              transformOrigin: 'bottom'
-            }}
-          />
-          
-          {/* Celebration particles */}
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-white rounded-full opacity-60"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animation: `celebration ${1 + Math.random()}s ease-in-out infinite`,
-                animationDelay: `${Math.random() * 2}s`
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="max-w-6xl mx-auto text-center relative z-10 pt-12">
-          <div className="mb-12">
-            <div className="relative mb-6">
-              <Trophy className="h-32 w-32 text-yellow-300 mx-auto drop-shadow-2xl animate-pulse" />
-              <div className="absolute inset-0 h-32 w-32 text-yellow-300 opacity-30 mx-auto animate-spin" style={{ animationDuration: '10s' }}>
-                <Trophy className="h-32 w-32" />
-              </div>
-            </div>
-            <h1 className="text-8xl font-black text-white mb-6 drop-shadow-lg animate-fade-in">
-              🎉 LEGENDARY! 🎉
-            </h1>
-            <h2 className="text-6xl font-bold bg-gradient-to-r from-yellow-300 via-orange-300 to-red-300 bg-clip-text text-transparent mb-8 drop-shadow-md animate-fade-in" style={{ animationDelay: '0.5s' }}>
-              {gameState.winner.name} Mastered Time!
-            </h2>
-            <p className="text-3xl text-white/90 font-medium mb-12 animate-fade-in" style={{ animationDelay: '1s' }}>
-              Perfect chronological harmony achieved ✨
-            </p>
-          </div>
-
-          <div className="max-w-5xl mx-auto animate-fade-in" style={{ animationDelay: '1.5s' }}>
-            <Card className="p-10 bg-black/40 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
-              <h3 className="text-4xl font-bold mb-8 text-white">Final Leaderboard</h3>
-              
-              {/* Podium for top 3 */}
-              <div className="flex justify-center items-end gap-6 mb-12">
-                {gameState.players
-                  .sort((a, b) => b.score - a.score)
-                  .slice(0, 3)
-                  .map((player, index) => {
-                    const positions = [1, 0, 2]; // Center, Left, Right
-                    const actualIndex = positions[index];
-                    const heights = ['h-32', 'h-40', 'h-24'];
-                    const podiumColors = [
-                      'bg-gradient-to-t from-gray-400 to-gray-300',
-                      'bg-gradient-to-t from-yellow-400 to-yellow-300',
-                      'bg-gradient-to-t from-orange-600 to-orange-400'
-                    ];
-                    
-                    return (
-                      <div key={player.id} className="text-center" style={{ order: actualIndex }}>
-                        <div className="mb-4">
-                          <div 
-                            className="w-16 h-16 rounded-full mx-auto mb-2 ring-4 ring-white/50 shadow-xl" 
-                            style={{ backgroundColor: player.timelineColor }}
-                          />
-                          <div className="text-white font-bold text-lg mb-1">{player.name}</div>
-                          <div className="text-white/80 text-sm">{player.score} points</div>
-                        </div>
-                        <div className={`w-24 ${heights[index]} ${podiumColors[index]} rounded-t-xl mx-auto relative shadow-xl`}>
-                          <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
-                            {index === 0 && <Trophy className="h-8 w-8 text-yellow-600" />}
-                            {index === 1 && <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>}
-                            {index === 2 && <div className="w-8 h-8 bg-orange-700 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* Full ranking */}
-              <div className="space-y-4">
-                {gameState.players
-                  .sort((a, b) => b.score - a.score)
-                  .map((player, index) => (
-                    <div 
-                      key={player.id} 
-                      className={`flex items-center justify-between p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${
-                        index === 0 
-                          ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/50 shadow-lg shadow-yellow-400/25'
-                          : index === 1
-                          ? 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border-gray-400/50 shadow-lg shadow-gray-400/25'
-                          : index === 2
-                          ? 'bg-gradient-to-r from-orange-600/20 to-orange-700/20 border-orange-600/50 shadow-lg shadow-orange-600/25'
-                          : 'bg-white/10 backdrop-blur-sm border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-4">
-                          {index === 0 && <Trophy className="h-8 w-8 text-yellow-400" />}
-                          {index === 1 && <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">2</div>}
-                          {index === 2 && <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold">3</div>}
-                          {index > 2 && <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">{index + 1}</div>}
-                        </div>
-                        <div 
-                          className="w-10 h-10 rounded-full shadow-lg ring-4 ring-white/50" 
-                          style={{ backgroundColor: player.timelineColor }}
-                        />
-                        <span className="text-2xl font-bold text-white">{player.name}</span>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="text-3xl font-black text-white">{player.score}</div>
-                          <div className="text-sm text-white/70">points</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xl font-bold text-white">{player.timeline.length}</div>
-                          <div className="text-sm text-white/70">cards</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-              
-              <div className="mt-10">
-                <Button 
-                  onClick={() => window.location.reload()}
-                  size="lg" 
-                  className="px-12 py-4 text-lg rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl font-bold"
-                >
-                  Play Again 🎵
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        <style>{`
-          @keyframes celebration {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-          }
-          
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          .animate-fade-in {
-            animation: fade-in 1s ease-out forwards;
-            opacity: 0;
-          }
-        `}</style>
-      </div>
+      <VictoryScreen 
+        winner={gameState.winner}
+        players={gameState.players}
+      />
     );
   }
 
