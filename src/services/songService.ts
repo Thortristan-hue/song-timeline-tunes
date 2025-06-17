@@ -171,7 +171,7 @@ class SongService {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'TimelineTunes/1.0'
+          'User-Agent': 'TimelineTunes/1.0',
           'Authorization': 'Discogs token=8c454de03e9c40e4926b95160145a221'
         }
       });
