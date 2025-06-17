@@ -244,22 +244,22 @@ class SongService {
     };
   }
 
-  async loadPlaylist(playlistUrl: string): Promise<{ total: number; processed: number }> {
+  async loadPlaylist(playlistUrl: string): Promise<Song[]> {
     try {
       const playlistId = this.extractPlaylistId(playlistUrl);
       console.log(`Loading playlist ${playlistId}...`);
-      
+  
       this.playlistTracks = await this.fetchPlaylistTracks(playlistId);
       console.log(`Found ${this.playlistTracks.length} tracks in playlist`);
-      
-      // Pre-load current and next songs
-      await this.loadNextSong();
-      await this.loadNextSong();
-      
-      return {
-        total: this.playlistTracks.length,
-        processed: 2
-      };
+  
+      // Process all tracks and create Song objects
+      const processedSongs: Song[] = [];
+      for (const track of this.playlistTracks) {
+        const song = await this.enhanceTrackMetadata(track);
+        if (song) processedSongs.push(song);
+      }
+  
+      return processedSongs;
     } catch (error) {
       console.error('Error loading playlist:', error);
       throw error;
