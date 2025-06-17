@@ -158,7 +158,7 @@ class SongService {
     await this.rateLimit();
     
     const query = `${artist} ${title}`;
-    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release&token=ae8185cd460b42acbb7d8c58d90192e3`;
+    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release&token=c520ffd74b9e4794905beddbc2924eb6`;
     
     try {
       const response = await fetch(url, {
