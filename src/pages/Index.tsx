@@ -713,7 +713,11 @@ const playPreview = async () => {
                       
                       {showPlaylistLoader && (
                         <div className="mt-4 p-4 bg-black/20 rounded-xl border border-white/10">
-                          <PlaylistLoader onPlaylistLoaded={handlePlaylistLoaded} isDarkMode={true} />
+                          <PlaylistLoader
+                            onPlaylistLoaded={handlePlaylistLoaded}
+                            setCustomSongs={setCustomSongs}
+                            isDarkMode={gameState.isDarkMode}
+                          />
                         </div>
                       )}
                       
