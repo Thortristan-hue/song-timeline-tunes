@@ -193,6 +193,7 @@ const Index = () => {
   const [audioRetryCount, setAudioRetryCount] = useState(0);
   const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
   const [transitionProgress, setTransitionProgress] = useState(0);
+  const [showPlaylistLoader, setShowPlaylistLoader] = useState(false);
 
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
@@ -615,6 +616,15 @@ const Index = () => {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   };
 
+  const handlePlaylistLoaded = (success: boolean) => {
+    if (success) {
+      console.log("Playlist loaded successfully");
+      setShowPlaylistLoader(false);
+    } else {
+      console.error("Failed to load playlist");
+    }
+  };
+
   if (gameState.phase === 'lobby') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
@@ -681,36 +691,73 @@ const Index = () => {
                 <h3 className="text-xl font-bold mb-4 text-white">Join the Vibe</h3>
                 <PlayerJoinForm onJoin={joinLobby} isDarkMode={true}/>
                 
-                <div className="mt-6">
-                  <label htmlFor="songFile" className="block text-sm font-medium text-white mb-2">
-                    Upload Songs (JSON)
-                  </label>
-                  <input
-                    id="songFile"
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileUpload}
-                    className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-500 file:text-white hover:file:bg-purple-600"
-                  />
-                  <p className="text-xs text-purple-200 mt-1">
-                    Loaded {customSongs.length} valid songs
-                  </p>
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <h4 className="text-lg font-semibold text-white mb-3">Load Songs</h4>
+                    <div className="space-y-3">
+                      <Button
+                        onClick={() => setShowPlaylistLoader(!showPlaylistLoader)}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 transition-all duration-300"
+                      >
+                        {showPlaylistLoader ? 'Hide Playlist Loader' : 'Load from Deezer Playlist'}
+                      </Button>
+                      
+                      {showPlaylistLoader && (
+                        <div className="mt-4 p-4 bg-black/20 rounded-xl border border-white/10">
+                          <PlaylistLoader onPlaylistLoaded={handlePlaylistLoaded} isDarkMode={true} />
+                        </div>
+                      )}
+                      
+                      <div className="text-center text-white/60">or</div>
+                      
+                      <div>
+                        <label htmlFor="songFile" className="block text-sm font-medium text-white mb-2">
+                          Upload Songs (JSON)
+                        </label>
+                        <input
+                          id="songFile"
+                          type="file"
+                          accept=".json"
+                          onChange={handleFileUpload}
+                          className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-500 file:text-white hover:file:bg-purple-600"
+                        />
+                        <p className="text-xs text-purple-200 mt-1">
+                          Loaded {customSongs.length} valid songs
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-4 text-white">Players in the Mix</h3>
                 <div className="space-y-3 max-h-40 overflow-y-auto">
-                  {gameState.players.map((player, index) => (
-                    <div key={player.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 transition-all duration-300 hover:bg-white/20">
-                      <div 
-                        className="w-5 h-5 rounded-full shadow-lg ring-2 ring-white/30" 
-                        style={{ backgroundColor: player.timelineColor }}
-                      />
-                      <span className="font-medium text-white">{player.name}</span>
-                      {index === 0 && <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold">Host</Badge>}
+                  {gameState.players.length === 0 ? (
+                    <div className="text-center text-purple-200/60 py-8">
+                      <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Waiting for players to join...</p>
                     </div>
-                  ))}
+                  ) : (
+                    gameState.players.map((player, index) => (
+                      <div key={player.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 transition-all duration-300 hover:bg-white/20">
+                        <div 
+                          className="w-5 h-5 rounded-full shadow-lg ring-2 ring-white/30" 
+                          style={{ backgroundColor: player.timelineColor }}
+                        />
+                        <span className="font-medium text-white">{player.name}</span>
+                        {index === 0 && <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-bold">Host</Badge>}
+                      </div>
+                    ))
+                  )}
                 </div>
+                
+                {gameState.players.length > 0 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-purple-200/80">
+                      {gameState.players.length}/6 players joined
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
