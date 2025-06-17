@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ interface Song {
   preview_url: string;
   release_year: string;
   genre: string;
-  cardColor?: string; // Add persistent color
+  cardColor?: string;
 }
 
 interface Player {
@@ -41,6 +40,7 @@ interface GameState {
   throwingCard: { song: Song; playerId: string; position: number } | null;
   confirmingPlacement: { song: Song; position: number } | null;
   cardResult: { correct: boolean; song: Song } | null;
+  transitioningTurn: boolean;
 }
 
 const mockSongs: Song[] = [
@@ -139,7 +139,8 @@ const Index = () => {
     isDarkMode: false,
     throwingCard: null,
     confirmingPlacement: null,
-    cardResult: null
+    cardResult: null,
+    transitioningTurn: false
   });
 
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
@@ -149,6 +150,7 @@ const Index = () => {
   const [customSongs, setCustomSongs] = useState<Song[]>(filterValidSongs(mockSongs));
   const [audioRetryCount, setAudioRetryCount] = useState(0);
   const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
+  const [transitionProgress, setTransitionProgress] = useState(0);
 
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
@@ -188,6 +190,52 @@ const Index = () => {
       setAudioRetryCount(0); // Reset retry count for new song
     }
   }, [gameState.currentSong?.deezer_title, gameState.currentSong?.deezer_artist]);
+
+  // Smooth transition progress tracking
+  useEffect(() => {
+    if (gameState.transitioningTurn) {
+      setTransitionProgress(0);
+      const startTime = Date.now();
+      const duration = 1200;
+      
+      const updateProgress = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        setTransitionProgress(progress);
+        
+        if (progress < 1) {
+          requestAnimationFrame(updateProgress);
+        }
+      };
+      
+      requestAnimationFrame(updateProgress);
+    }
+  }, [gameState.transitioningTurn]);
+
+  // Card result auto-clear
+  useEffect(() => {
+    if (gameState.cardResult) {
+      const timeout = setTimeout(() => {
+        setGameState(prev => ({
+          ...prev,
+          cardResult: null,
+          transitioningTurn: true
+        }));
+
+        setTimeout(() => {
+          setGameState(prev => ({
+            ...prev,
+            currentTurn: (prev.currentTurn + 1) % prev.players.length,
+            currentSong: assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)]),
+            timeLeft: 30,
+            transitioningTurn: false
+          }));
+          setTransitionProgress(0);
+        }, 1200);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [gameState.cardResult, customSongs]);
 
   const toggleDarkMode = () => {
     setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
@@ -288,7 +336,7 @@ const Index = () => {
     }
 
     const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
-      const maxRetries = 3;
+      const maxRetries = 10;
       
       try {
         console.log(`Attempting to play preview (attempt ${retryCount + 1}):`, gameState.currentSong.preview_url);
@@ -303,7 +351,7 @@ const Index = () => {
               setAudioRetryCount(retryCount + 1);
               setTimeout(() => {
                 tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
-              }, 1000); // Wait 1 second before retry
+              }, 2000); // Wait 2 seconds before retry
             } else {
               console.log("Max retries reached, using fallback beep");
               createBeepSound();
@@ -337,7 +385,7 @@ const Index = () => {
         if (retryCount < maxRetries) {
           setTimeout(() => {
             tryPlayAudio(retryCount + 1);
-          }, 1000);
+          }, 2000);
         } else {
           createBeepSound();
         }
@@ -468,11 +516,8 @@ const Index = () => {
         return {
           ...prev,
           players: updatedPlayers,
-          currentTurn: (prev.currentTurn + 1) % prev.players.length,
-          currentSong: assignCardColor(customSongs[Math.floor(Math.random() * customSongs.length)]),
           phase: winner ? 'finished' : 'playing',
-          winner,
-          cardResult: null
+          winner
         };
       });
     }, 2000);
@@ -514,29 +559,54 @@ const Index = () => {
 
   const getCurrentPlayer = () => gameState.players[gameState.currentTurn];
 
-  const themeClasses = gameState.isDarkMode 
-    ? 'bg-gray-900 text-white' 
-    : 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900';
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
 
   if (gameState.phase === 'lobby') {
     return (
-      <div className={cn("min-h-screen p-8 relative overflow-hidden", gameState.isDarkMode ? "bg-gray-900" : "bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900")}>
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+        {/* Enhanced 3D Environmental Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-          <div className="absolute top-40 left-1/2 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-500"></div>
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-20"
+            style={{
+              background: `
+                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.4) 0%, transparent 70%),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '80px 80px',
+              transform: 'perspective(1000px) rotateX(60deg)',
+              transformOrigin: 'bottom'
+            }}
+          />
+          
+          {/* Ambient particles */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-purple-300 rounded-full opacity-30"
+              style={{
+                left: `${20 + (i * 7)}%`,
+                top: `${30 + Math.sin(i) * 20}%`,
+                animation: `float ${3 + (i % 3)}s ease-in-out infinite`,
+                animationDelay: `${i * 0.5}s`
+              }}
+            />
+          ))}
         </div>
 
-        <div className="max-w-4xl mx-auto relative z-10">
+        <div className="max-w-4xl mx-auto relative z-10 pt-20">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-4">
               <div className="relative">
-                <Music className="h-16 w-16 text-purple-400 animate-bounce" />
-                <div className="absolute inset-0 h-16 w-16 text-purple-400 animate-ping opacity-20">
+                <Music className="h-16 w-16 text-purple-400" />
+                <div className="absolute inset-0 h-16 w-16 text-purple-400 opacity-20">
                   <Music className="h-16 w-16" />
                 </div>
               </div>
-              <h1 className="text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
+              <h1 className="text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
                 Timeline Tunes
               </h1>
               <Button
@@ -553,7 +623,7 @@ const Index = () => {
             </p>
           </div>
 
-          <Card className="p-8 shadow-2xl rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20">
+          <Card className="p-8 shadow-2xl rounded-3xl bg-black/30 backdrop-blur-xl border border-white/20">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h3 className="text-xl font-bold mb-4 text-white">Join the Vibe</h3>
@@ -605,37 +675,60 @@ const Index = () => {
             )}
           </Card>
         </div>
+
+        <style jsx>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+          }
+        `}</style>
       </div>
     );
   }
 
   if (gameState.phase === 'finished' && gameState.winner) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 p-8 relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+        {/* Enhanced 3D Environmental Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-20"
+            style={{
+              background: `
+                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.4) 0%, transparent 70%),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '80px 80px',
+              transform: 'perspective(1000px) rotateX(60deg)',
+              transformOrigin: 'bottom'
+            }}
+          />
+          
+          {/* Celebration particles */}
           {[...Array(20)].map((_, i) => (
             <div
               key={i}
-              className="absolute w-2 h-2 bg-white rounded-full animate-bounce opacity-60"
+              className="absolute w-2 h-2 bg-white rounded-full opacity-60"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${1 + Math.random()}s`
+                animation: `celebration ${1 + Math.random()}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 2}s`
               }}
             />
           ))}
         </div>
 
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+        <div className="max-w-4xl mx-auto text-center relative z-10 pt-20">
           <div className="mb-12">
             <div className="relative mb-6">
-              <Trophy className="h-32 w-32 text-yellow-300 mx-auto animate-bounce" />
-              <div className="absolute inset-0 h-32 w-32 text-yellow-300 animate-ping opacity-30 mx-auto">
+              <Trophy className="h-32 w-32 text-yellow-300 mx-auto" />
+              <div className="absolute inset-0 h-32 w-32 text-yellow-300 opacity-30 mx-auto">
                 <Trophy className="h-32 w-32" />
               </div>
             </div>
-            <h1 className="text-7xl font-black text-white mb-4 animate-pulse drop-shadow-lg">LEGENDARY!</h1>
+            <h1 className="text-7xl font-black text-white mb-4 drop-shadow-lg">LEGENDARY!</h1>
             <h2 className="text-5xl font-bold text-yellow-100 mb-6 drop-shadow-md">
               🎉 {gameState.winner.name} Mastered Time! 🎉
             </h2>
@@ -644,7 +737,7 @@ const Index = () => {
             </p>
           </div>
 
-          <Card className="p-8 bg-white/20 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/30">
+          <Card className="p-8 bg-black/30 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
             <h3 className="text-3xl font-bold mb-6 text-white">Final Harmony</h3>
             <div className="space-y-4">
               {gameState.players
@@ -668,6 +761,13 @@ const Index = () => {
             </div>
           </Card>
         </div>
+
+        <style jsx>{`
+          @keyframes celebration {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -675,97 +775,110 @@ const Index = () => {
   if (gameState.phase === "playing") {
     const currentPlayer = getCurrentPlayer();
     return (
-      <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        {/* Enhanced 3D Floor Effect */}
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+        {/* Enhanced 3D Environmental Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Main floor with perspective */}
           <div 
-            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-30"
+            className="absolute bottom-0 left-0 right-0 h-3/4 opacity-20"
             style={{
               background: `
-                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.3) 0%, transparent 70%),
+                radial-gradient(ellipse at center bottom, rgba(147,51,234,0.4) 0%, transparent 70%),
                 linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
                 linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
               `,
-              backgroundSize: '60px 60px',
-              transform: 'perspective(800px) rotateX(65deg)',
-              transformOrigin: 'bottom'
+              backgroundSize: '80px 80px',
+              transform: 'perspective(1000px) rotateX(60deg)',
+              transformOrigin: 'bottom',
+              transition: 'transform 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           />
           
-          {/* Secondary floor grid for depth */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 h-2/3 opacity-15"
-            style={{
-              background: `
-                linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px),
-                linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px)
-              `,
-              backgroundSize: '120px 120px',
-              transform: 'perspective(1000px) rotateX(70deg)',
-              transformOrigin: 'bottom'
-            }}
-          />
-          
-          {/* Horizon glow effect */}
-          <div className="absolute bottom-1/3 left-0 right-0 h-40 bg-gradient-to-t from-purple-500/40 via-pink-500/20 to-transparent blur-2xl" />
+          {/* Ambient particles */}
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-purple-300 rounded-full opacity-30"
+              style={{
+                left: `${20 + (i * 7)}%`,
+                top: `${30 + Math.sin(i) * 20}%`,
+                animation: `float ${3 + (i % 3)}s ease-in-out infinite`,
+                animationDelay: `${i * 0.5}s`
+              }}
+            />
+          ))}
         </div>
 
-        {/* Floating Mystery Card - positioned higher to avoid overlap */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30">
-          {gameState.currentSong && (
-            <div className="mb-4">
-              {audioRetryCount > 0 && (
-                <div className="text-center mb-2">
-                  <div className="text-xs text-yellow-300 bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
-                    Retrying audio... ({audioRetryCount}/3)
-                  </div>
-                </div>
-              )}
-              <div 
-                className={cn(
-                  "w-32 h-32 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-3 text-white relative transition-all duration-300 mx-auto group border-2 border-white/20",
-                  draggedSong ? "scale-75 opacity-30" : "hover:scale-105 hover:shadow-[0_0_30px_rgba(147,51,234,0.6)]"
-                )}
-                style={{
-                  backgroundColor: gameState.currentSong.cardColor || '#6366f1',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.2)',
-                }}
-                draggable
-                onDragStart={() => handleDragStart(gameState.currentSong!)}
-              >
-                {/* Mystical glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl" />
-                
-                <Music className="h-8 w-8 mb-2 relative z-10" />
-                <div className="text-center relative z-10">
-                  <div className="text-xs font-bold opacity-90">Mystery</div>
-                  <div className="text-2xl font-black">?</div>
-                  <div className="text-xs italic opacity-75">Drag me</div>
+        {/* Game HUD - Top bar */}
+        <div className="absolute top-6 left-6 right-6 z-40">
+          <div className="flex justify-between items-center">
+            {/* Timer and Controls */}
+            <div className="flex items-center gap-4">
+              <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                <div className="flex items-center gap-3 text-white">
+                  <Clock className="h-4 w-4" />
+                  <span className="font-mono text-lg font-bold">{gameState.timeLeft}s</span>
                 </div>
               </div>
+              <Button
+                onClick={gameState.isPlaying ? pausePreview : playPreview}
+                className="rounded-full bg-purple-600 hover:bg-purple-700 w-12 h-12 shadow-lg transition-all duration-300 hover:scale-110"
+              >
+                {gameState.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+              </Button>
+              {audioRetryCount > 0 && (
+                <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
+                  <span className="text-xs text-yellow-300">
+                    Retrying audio... ({audioRetryCount}/10)
+                  </span>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Play Controls - separate from mystery card */}
-          <div className="flex items-center justify-center gap-6">
-            <div className="text-white text-sm font-bold bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm border border-white/20">
-              {gameState.timeLeft}s
-            </div>
-            <Button
-              onClick={gameState.isPlaying ? pausePreview : playPreview}
-              size="lg"
-              className="rounded-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-xl w-16 h-16 hover:scale-110 transition-all duration-300"
-            >
-              {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-            </Button>
-            <div className="text-white text-sm font-bold bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm border border-white/20">
-              {currentPlayer?.name}
+            {/* Current Player Info */}
+            <div className="bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
+              <div className="flex items-center gap-3 text-white">
+                <div 
+                  className="w-4 h-4 rounded-full ring-2 ring-white/50" 
+                  style={{ backgroundColor: currentPlayer?.color }}
+                />
+                <span className="font-semibold">{currentPlayer?.name}'s Turn</span>
+                <Badge className="bg-purple-600 text-white">
+                  {currentPlayer?.score}/10
+                </Badge>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Current Player's Floating Timeline */}
+        {/* Mystery Card */}
+        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
+          {gameState.currentSong && (
+            <div 
+              className="w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-500 group"
+              style={{
+                backgroundColor: gameState.currentSong.cardColor || '#6366f1',
+                transform: draggedSong ? 'scale(0.8) rotate(5deg)' : 'scale(1) rotate(0deg)',
+                animation: 'mysteryFloat 4s ease-in-out infinite',
+                opacity: gameState.transitioningTurn ? 0.7 : 1,
+                filter: gameState.transitioningTurn ? 'blur(2px)' : 'blur(0px)'
+              }}
+              draggable
+              onDragStart={() => handleDragStart(gameState.currentSong!)}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl" />
+              <Music className="h-16 w-16 mb-3 opacity-80" />
+              <div className="text-center">
+                <div className="text-sm font-bold opacity-90 mb-1">Mystery Song</div>
+                <div className="text-5xl font-black mb-2">?</div>
+                <div className="text-xs italic opacity-75">Drag to timeline</div>
+              </div>
+              
+              <div className="absolute -inset-2 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </div>
+          )}
+        </div>
+
+        {/* Current Player's Timeline */}
         <PlayerTimeline
           player={currentPlayer}
           isCurrent={true}
@@ -785,50 +898,94 @@ const Index = () => {
           cancelPlacement={cancelPlacement}
         />
 
-        {/* Other players on the ground in circle */}
+        {/* Other players */}
         <CircularPlayersLayout 
           players={gameState.players}
           currentPlayerId={currentPlayer?.id}
           isDarkMode={true}
         />
 
+        {/* Placement Confirmation */}
+        {gameState.confirmingPlacement && (
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30">
+            <div className="flex gap-3 bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/20 shadow-2xl">
+              <Button
+                onClick={confirmPlacement}
+                className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-2 transition-all duration-300 hover:scale-105 shadow-lg"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Confirm
+              </Button>
+              <Button
+                onClick={cancelPlacement}
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-2 transition-all duration-300 hover:scale-105"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Result Animation */}
         {gameState.cardResult && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50">
-            <div className={cn(
-              "text-center",
-              gameState.cardResult.correct ? "text-green-400" : "text-red-400"
-            )}>
-              <div className="text-8xl mb-6 drop-shadow-2xl">
-                {gameState.cardResult.correct ? "✓" : "✗"}
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center z-50">
+            <div 
+              className="text-center transform transition-all duration-1000"
+              style={{
+                animation: 'resultPop 2s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+              }}
+            >
+              <div className={`text-9xl mb-6 ${gameState.cardResult.correct ? 'text-green-400' : 'text-red-400'}`}>
+                {gameState.cardResult.correct ? '✓' : '✗'}
               </div>
-              <div className="text-4xl font-bold text-white mb-4 drop-shadow-lg">
-                {gameState.cardResult.correct ? "CORRECT!" : "WRONG!"}
+              <div className="text-5xl font-bold text-white mb-4">
+                {gameState.cardResult.correct ? 'PERFECT!' : 'NOT QUITE!'}
               </div>
-              <div className="text-xl text-white/90 drop-shadow-lg">
-                {gameState.cardResult.song.deezer_title} ({gameState.cardResult.song.release_year})
+              <div className="text-xl text-white/80">
+                {gameState.cardResult.song.deezer_title} • {gameState.cardResult.song.release_year}
               </div>
             </div>
           </div>
         )}
+
+        <style jsx>{`
+          @keyframes mysteryFloat {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-10px) rotate(2deg); }
+            50% { transform: translateY(-5px) rotate(-1deg); }
+            75% { transform: translateY(-15px) rotate(1deg); }
+          }
+          
+          @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+          }
+          
+          @keyframes resultPop {
+            0% { 
+              transform: scale(0) rotate(180deg); 
+              opacity: 0; 
+              filter: blur(10px);
+            }
+            50% { 
+              transform: scale(1.2) rotate(0deg); 
+              opacity: 1; 
+              filter: blur(2px);
+            }
+            100% { 
+              transform: scale(1) rotate(0deg); 
+              opacity: 1; 
+              filter: blur(0px);
+            }
+          }
+        `}</style>
       </div>
     );
   }
 
   return null;
 };
-
-// Add CSS for floating animation
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes float {
-    0%, 100% { transform: perspective(1000px) rotateX(-10deg) translateY(0px); }
-    50% { transform: perspective(1000px) rotateX(-10deg) translateY(-10px); }
-  }
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-`;
-document.head.appendChild(style);
 
 export default Index;

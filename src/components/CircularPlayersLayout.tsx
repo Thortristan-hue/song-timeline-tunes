@@ -17,93 +17,75 @@ export default function CircularPlayersLayout({
 }: CircularPlayersLayoutProps) {
   const otherPlayers = players.filter(p => p.id !== currentPlayerId);
   
-  // Fixed angles for player positioning on the ground: 60°, 90°, 120°, 210°, 240°, 270°
-  const fixedAngles = [60, 90, 120, 210, 240, 270];
-  
-  const getPlayerPosition = (index: number) => {
-    const angleInDegrees = fixedAngles[index % fixedAngles.length];
-    const angle = (angleInDegrees * Math.PI) / 180; // Convert to radians
-    const radius = 400; // Distance from center
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-    return { x, y, angle: angleInDegrees };
-  };
-
   return (
-    <div>
-      {otherPlayers.map((player, index) => {
-        const { x, y, angle } = getPlayerPosition(index);
-        const isLeft = x < -50;
-        const isRight = x > 50;
-        const isTop = y < -50;
-        
-        return (
+    <div className="absolute bottom-4 left-0 right-0 z-20">
+      <div className="flex justify-center items-center gap-8 px-8">
+        {otherPlayers.map((player, index) => (
           <div
             key={player.id}
-            className="absolute z-10 transition-all duration-700 ease-out"
-            style={{
-              left: `calc(50% + ${x}px)`,
-              top: `calc(70% + ${y * 0.5}px)`, // Position on "ground" with perspective
-              transform: 'translate(-50%, -50%)',
-            }}
+            className="transition-all duration-1200 ease-out"
           >
-            {/* Remove the container box - just show cards laid on table */}
-            <div className="flex flex-col items-center">
-              
-              {/* Player Info - floating above cards */}
-              <div className="text-center mb-3 bg-black/30 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20">
-                <div className="flex items-center gap-2 mb-1">
+            <div className="text-center">
+              {/* Enhanced player info card */}
+              <div className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-3 shadow-xl">
+                <div className="flex items-center gap-3 text-white text-base">
                   <div 
-                    className="w-4 h-4 rounded-full border border-white/50" 
-                    style={{ backgroundColor: player.timelineColor }}
+                    className="w-4 h-4 rounded-full ring-2 ring-white/50" 
+                    style={{ backgroundColor: player.color }}
                   />
-                  <span className="font-bold text-white text-sm">{player.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <Trophy className="h-3 w-3 text-yellow-400" />
-                  <span className="text-white font-medium">{player.score}/10</span>
-                  <span className="text-white/70">({player.timeline.length} cards)</span>
+                  <span className="font-semibold">{player.name}</span>
+                  <Badge className="bg-purple-600 text-white text-sm">
+                    {player.score}
+                  </Badge>
                 </div>
               </div>
-
-              {/* Cards laid flat on the table in a small fan */}
-              <div className="relative">
-                <div className="relative w-24 h-16 flex justify-center items-center">
-                  {player.timeline.slice(0, 8).map((card, idx) => (
-                    <div
-                      key={idx}
-                      className="absolute transition-all duration-500 hover:scale-110 cursor-pointer group"
-                      style={{
-                        zIndex: idx,
-                        left: `${idx * 3}px`,
-                        top: `${idx * -1}px`,
-                        opacity: Math.max(0.8, 1 - idx * 0.05),
-                        width: 28,
-                        height: 28,
-                        backgroundColor: card.cardColor,
-                        borderRadius: 6,
-                        border: "1px solid rgba(255,255,255,0.4)",
-                        boxShadow: `0 ${2 + idx}px ${4 + idx}px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)`,
-                        transform: `rotate(${(idx - 3) * 3}deg) perspective(200px) rotateX(20deg)`, // Laid flat on table with slight 3D
-                      }}
-                    >
-                      {/* Card content - show release year */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-bold text-white drop-shadow-sm">
-                          {card.release_year}
-                        </span>
-                      </div>
-                      
-                      {/* Subtle shine effect on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out rounded-md" />
-                    </div>
-                  ))}
-                </div>
+              
+              {/* Enhanced timeline preview with overlapping cards */}
+              <div className="flex justify-center" style={{ gap: '-8px' }}>
+                {player.timeline.slice(0, 5).map((song, songIndex) => (
+                  <div
+                    key={songIndex}
+                    className="w-7 h-7 rounded text-xs flex items-center justify-center text-white font-bold shadow-lg border border-white/20 transition-all duration-300 hover:scale-110 hover:z-10 relative"
+                    style={{ 
+                      backgroundColor: song.cardColor,
+                      marginLeft: songIndex > 0 ? '-4px' : '0',
+                      zIndex: player.timeline.length - songIndex,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
+                    }}
+                  >
+                    {/* Card shine effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded" />
+                    <span className="relative z-10">
+                      {song.release_year.slice(-2)}
+                    </span>
+                  </div>
+                ))}
+                {/* Overflow indicator with enhanced styling */}
+                {player.timeline.length > 5 && (
+                  <div 
+                    className="w-7 h-7 rounded bg-white/30 text-xs flex items-center justify-center text-white font-bold border border-white/20 backdrop-blur-sm shadow-lg"
+                    style={{ 
+                      marginLeft: '-4px',
+                      zIndex: 1,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    +{player.timeline.length - 5}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Badge({ className, children }: { className: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", className)}>
+      {children}
     </div>
   );
 }
