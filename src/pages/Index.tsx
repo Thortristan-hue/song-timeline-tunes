@@ -7,7 +7,7 @@ import { Play, Pause, Users, Clock, Trophy, Music, Check, X, Moon, Sun, Palette 
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
 
-const PROXY_BASE = 'https://your-worker-name.your-subdomain.workers.dev/?url=';
+const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
 interface Song {
   deezer_artist: string;
