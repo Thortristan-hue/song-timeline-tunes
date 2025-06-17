@@ -85,10 +85,7 @@ class SongService {
 
   private async searchMusicBrainz(artist: string, title: string): Promise<EnhancedMetadata | null> {
     await this.rateLimit();
-  
-    // Proxy base for all MusicBrainz API requests
     const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
-  
     const query = `"${artist}" AND recording:"${title}"`;
     const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=1`;
     const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
@@ -96,7 +93,7 @@ class SongService {
     try {
       const response = await fetch(proxyUrl, {
         headers: {
-          'User-Agent': 'TimelineTunes/1.0 (contact@timelinetunes.com)'
+          'User-Agent': 'TimelineTunes/1.0 (97uselobp@mozmail.com)'
         }
       });
   
@@ -107,7 +104,7 @@ class SongService {
       const data = await response.json();
   
       if (!data.recordings || data.recordings.length === 0) {
-        return null;
+        return { error: 'No results found on MusicBrainz.' };
       }
   
       const recording = data.recordings[0];
@@ -175,6 +172,7 @@ class SongService {
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'TimelineTunes/1.0'
+          'Authorization': 'Discogs token=8c454de03e9c40e4926b95160145a221'
         }
       });
       
