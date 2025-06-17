@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Player } from "@/pages/Index";
 import { Badge } from './ui/badge';
+import '../styles/enhanced-animations.css';
 
 interface CircularPlayersLayoutProps {
   players: Player[];
@@ -51,7 +52,10 @@ export default function CircularPlayersLayout({
           return (
             <div
               key={player.id}
-              className="transition-all duration-1200 ease-out"
+              className={cn(
+                "transition-all duration-1200 ease-out",
+                willBecomeCurrent && "player-elevate"
+              )}
               style={{
                 transform: `translateY(${slideOffset}px) scale(${scaleValue})`,
                 opacity: opacityValue
@@ -59,7 +63,10 @@ export default function CircularPlayersLayout({
             >
               <div className="text-center">
                 <div 
-                  className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-3 shadow-xl"
+                  className={cn(
+                    "bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-3 shadow-xl",
+                    willBecomeCurrent && "glow-pulse"
+                  )}
                   style={{
                     borderColor: willBecomeCurrent ? '#4ECDC4' : 'rgba(255,255,255,0.2)',
                     boxShadow: willBecomeCurrent 
@@ -69,7 +76,10 @@ export default function CircularPlayersLayout({
                 >
                   <div className="flex items-center gap-3 text-white text-base">
                     <div 
-                      className="w-4 h-4 rounded-full ring-2 ring-white/50" 
+                      className={cn(
+                        "w-4 h-4 rounded-full ring-2 ring-white/50",
+                        willBecomeCurrent && "timeline-expand"
+                      )}
                       style={{ 
                         backgroundColor: player.color,
                         transform: willBecomeCurrent ? `scale(${1 + 0.3 * transitionProgress})` : 'scale(1)'
@@ -87,7 +97,10 @@ export default function CircularPlayersLayout({
                   {player.timeline.slice(0, 5).map((song, songIndex) => (
                     <div
                       key={songIndex}
-                      className="w-7 h-7 rounded text-xs flex items-center justify-center text-white font-bold shadow-lg border border-white/20 transition-all duration-300 hover:scale-110 hover:z-10 relative"
+                      className={cn(
+                        "w-7 h-7 rounded text-xs flex items-center justify-center text-white font-bold shadow-lg border border-white/20 transition-all duration-300 hover:scale-110 hover:z-10 relative",
+                        willBecomeCurrent && "timeline-expand"
+                      )}
                       style={{ 
                         backgroundColor: song.cardColor,
                         marginLeft: songIndex > 0 ? '-4px' : '0',
@@ -109,7 +122,10 @@ export default function CircularPlayersLayout({
                   ))}
                   {player.timeline.length > 5 && (
                     <div 
-                      className="w-7 h-7 rounded bg-white/30 text-xs flex items-center justify-center text-white font-bold border border-white/20 backdrop-blur-sm shadow-lg"
+                      className={cn(
+                        "w-7 h-7 rounded bg-white/30 text-xs flex items-center justify-center text-white font-bold border border-white/20 backdrop-blur-sm shadow-lg",
+                        willBecomeCurrent && "timeline-expand"
+                      )}
                       style={{ 
                         marginLeft: '-4px',
                         zIndex: 1,
@@ -146,4 +162,3 @@ export default function CircularPlayersLayout({
     </div>
   );
 }
-
