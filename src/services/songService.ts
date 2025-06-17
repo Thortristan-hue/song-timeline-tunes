@@ -252,7 +252,7 @@ class SongService {
       this.playlistTracks = await this.fetchPlaylistTracks(playlistId);
       console.log(`Found ${this.playlistTracks.length} tracks in playlist`);
   
-      // Process all tracks and create Song objects
+      // Enhance all tracks and collect valid songs
       const processedSongs: Song[] = [];
       for (const track of this.playlistTracks) {
         const song = await this.enhanceTrackMetadata(track);
@@ -265,11 +265,6 @@ class SongService {
       throw error;
     }
   }
-
-  private async loadNextSong(): Promise<void> {
-    if (this.playlistTracks.length === 0) {
-      return;
-    }
     
     let attempts = 0;
     const maxAttempts = Math.min(10, this.playlistTracks.length);
