@@ -119,7 +119,7 @@ class SongService {
         try {
           const groupResponse = await fetch(proxyGroupUrl, {
             headers: {
-              'User-Agent': 'TimelineTunes/1.0 (contact@timelinetunes.com)'
+              'User-Agent': 'TimelineTunes/1.0 (97uselobp@mozmail.com)'
             }
           });
   
@@ -163,7 +163,8 @@ class SongService {
     const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release`;
     
     try {
-      const response = await fetch(url, {
+      const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl, {
         headers: {
           'User-Agent': 'TimelineTunes/1.0',
           'Authorization': 'Discogs token=8c454de03e9c40e4926b95160145a221'
