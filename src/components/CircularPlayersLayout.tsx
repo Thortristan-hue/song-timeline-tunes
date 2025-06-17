@@ -1,8 +1,8 @@
-
 import React from "react";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Player } from "@/pages/Index";
+import { Badge } from './ui/badge';
 
 interface CircularPlayersLayoutProps {
   players: Player[];
