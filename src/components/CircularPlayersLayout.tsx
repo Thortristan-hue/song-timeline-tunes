@@ -26,7 +26,6 @@ export default function CircularPlayersLayout({
             className="transition-all duration-1200 ease-out"
           >
             <div className="text-center">
-              {/* Enhanced player info card */}
               <div className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-3 shadow-xl">
                 <div className="flex items-center gap-3 text-white text-base">
                   <div 
@@ -40,7 +39,6 @@ export default function CircularPlayersLayout({
                 </div>
               </div>
               
-              {/* Enhanced timeline preview with overlapping cards */}
               <div className="flex justify-center" style={{ gap: '-8px' }}>
                 {player.timeline.slice(0, 5).map((song, songIndex) => (
                   <div
@@ -53,14 +51,12 @@ export default function CircularPlayersLayout({
                       boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
                     }}
                   >
-                    {/* Card shine effect */}
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded" />
                     <span className="relative z-10">
                       {song.release_year.slice(-2)}
                     </span>
                   </div>
                 ))}
-                {/* Overflow indicator with enhanced styling */}
                 {player.timeline.length > 5 && (
                   <div 
                     className="w-7 h-7 rounded bg-white/30 text-xs flex items-center justify-center text-white font-bold border border-white/20 backdrop-blur-sm shadow-lg"

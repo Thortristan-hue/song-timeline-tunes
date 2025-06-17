@@ -48,7 +48,6 @@ export default function PlayerTimeline({
   cancelPlacement
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
-    const isThrowing = throwingCard?.playerId === player.id && throwingCard?.position === index;
     const isConfirming = placedCardPosition === index && confirmingPlacement?.position === index;
     
     return (
@@ -69,22 +68,18 @@ export default function PlayerTimeline({
         onMouseEnter={() => setHoveredCard(`${player.id}-${index}`)}
         onMouseLeave={() => setHoveredCard(null)}
       >
-        {/* Card shine effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
         
-        {/* Card content */}
-        <div className="relative z-10 text-center w-full">
-          <Music className="h-8 w-8 mb-1 opacity-80 mx-auto" />
-          <div className="font-bold text-xs mb-1 truncate w-full">
-            {song.deezer_title.length > 12 ? song.deezer_title.substring(0, 12) + '...' : song.deezer_title}
-          </div>
-          <div className="text-xs opacity-75 truncate w-full mb-1">
+        <div className="relative z-10 text-center w-full h-full flex flex-col justify-between">
+          <div className="text-xs opacity-75 truncate w-full leading-tight">
             {song.deezer_artist.length > 10 ? song.deezer_artist.substring(0, 10) + '...' : song.deezer_artist}
           </div>
-          <div className="text-lg font-black">{song.release_year}</div>
+          <div className="text-lg font-black my-1">{song.release_year}</div>
+          <div className="font-bold text-xs truncate w-full leading-tight">
+            {song.deezer_title.length > 12 ? song.deezer_title.substring(0, 12) + '...' : song.deezer_title}
+          </div>
         </div>
 
-        {/* Confirmation buttons overlay */}
         {isConfirming && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-lg flex items-center justify-center gap-2 z-30">
             <button
@@ -141,15 +136,16 @@ export default function PlayerTimeline({
 
   if (!player) return null;
 
+  const timelineWidth = player.timeline.length * 120 + (player.timeline.length + 1) * 8;
+
   return (
     <div 
-      className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-25"
+      className="absolute bottom-32 left-1/2 z-25"
       style={{
-        transform: 'translateX(-50%) perspective(1200px) rotateX(-8deg)',
+        transform: `translateX(calc(-50% - ${timelineWidth / 2}px + 50vw)) perspective(1200px) rotateX(-8deg)`,
         transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      {/* Player info header */}
       <div className="flex items-center justify-center gap-4 mb-6">
         <div className="bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
           <div className="flex items-center gap-3 text-white">
@@ -168,12 +164,9 @@ export default function PlayerTimeline({
         </div>
       </div>
 
-      {/* Timeline container with enhanced styling */}
       <div className="flex items-center gap-4 p-6 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl">
-        {/* Start drop zone */}
         {renderDropZone(0)}
         
-        {/* Cards with drop zones between them */}
         {player.timeline.map((song, index) => (
           <React.Fragment key={`timeline-${index}`}>
             {renderCard(song, index)}
@@ -181,7 +174,6 @@ export default function PlayerTimeline({
           </React.Fragment>
         ))}
         
-        {/* Welcome message for empty timeline */}
         {player.timeline.length === 0 && !draggedSong && (
           <div className="text-center py-6 px-12">
             <Music className="h-12 w-12 text-purple-300 mx-auto mb-3 opacity-50" />

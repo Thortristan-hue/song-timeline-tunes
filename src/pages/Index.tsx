@@ -351,7 +351,7 @@ const Index = () => {
               setAudioRetryCount(retryCount + 1);
               setTimeout(() => {
                 tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
-              }, 2000); // Wait 2 seconds before retry
+              }, 2000);
             } else {
               console.log("Max retries reached, using fallback beep");
               createBeepSound();
@@ -720,46 +720,81 @@ const Index = () => {
           ))}
         </div>
 
-        <div className="max-w-4xl mx-auto text-center relative z-10 pt-20">
+        <div className="max-w-6xl mx-auto text-center relative z-10 pt-20">
           <div className="mb-12">
             <div className="relative mb-6">
-              <Trophy className="h-32 w-32 text-yellow-300 mx-auto" />
+              <Trophy className="h-32 w-32 text-yellow-300 mx-auto drop-shadow-2xl" />
               <div className="absolute inset-0 h-32 w-32 text-yellow-300 opacity-30 mx-auto">
                 <Trophy className="h-32 w-32" />
               </div>
             </div>
-            <h1 className="text-7xl font-black text-white mb-4 drop-shadow-lg">LEGENDARY!</h1>
-            <h2 className="text-5xl font-bold text-yellow-100 mb-6 drop-shadow-md">
-              🎉 {gameState.winner.name} Mastered Time! 🎉
+            <h1 className="text-8xl font-black text-white mb-6 drop-shadow-lg">
+              🎉 LEGENDARY! 🎉
+            </h1>
+            <h2 className="text-6xl font-bold bg-gradient-to-r from-yellow-300 via-orange-300 to-red-300 bg-clip-text text-transparent mb-8 drop-shadow-md">
+              {gameState.winner.name} Mastered Time!
             </h2>
-            <p className="text-2xl text-white/90 font-medium">
+            <p className="text-3xl text-white/90 font-medium mb-12">
               Perfect chronological harmony achieved ✨
             </p>
           </div>
 
-          <Card className="p-8 bg-black/30 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
-            <h3 className="text-3xl font-bold mb-6 text-white">Final Harmony</h3>
-            <div className="space-y-4">
-              {gameState.players
-                .sort((a, b) => b.score - a.score)
-                .map((player, index) => (
-                  <div key={player.id} className="flex items-center justify-between p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-                    <div className="flex items-center gap-4">
-                      <span className="text-3xl font-black text-white/60">#{index + 1}</span>
-                      <div 
-                        className="w-8 h-8 rounded-full shadow-lg ring-2 ring-white/50" 
-                        style={{ backgroundColor: player.timelineColor }}
-                      />
-                      <span className="text-xl font-bold text-white">{player.name}</span>
+          <div className="max-w-4xl mx-auto">
+            <Card className="p-10 bg-black/40 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
+              <h3 className="text-4xl font-bold mb-8 text-white">Final Leaderboard</h3>
+              <div className="space-y-6">
+                {gameState.players
+                  .sort((a, b) => b.score - a.score)
+                  .map((player, index) => (
+                    <div 
+                      key={player.id} 
+                      className={`flex items-center justify-between p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${
+                        index === 0 
+                          ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-400/50 shadow-lg shadow-yellow-400/25'
+                          : index === 1
+                          ? 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border-gray-400/50 shadow-lg shadow-gray-400/25'
+                          : index === 2
+                          ? 'bg-gradient-to-r from-orange-600/20 to-orange-700/20 border-orange-600/50 shadow-lg shadow-orange-600/25'
+                          : 'bg-white/10 backdrop-blur-sm border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
+                          {index === 0 && <Trophy className="h-8 w-8 text-yellow-400" />}
+                          {index === 1 && <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold">2</div>}
+                          {index === 2 && <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold">3</div>}
+                          {index > 2 && <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold">{index + 1}</div>}
+                        </div>
+                        <div 
+                          className="w-10 h-10 rounded-full shadow-lg ring-4 ring-white/50" 
+                          style={{ backgroundColor: player.timelineColor }}
+                        />
+                        <span className="text-2xl font-bold text-white">{player.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-3xl font-black text-white">{player.score}</div>
+                          <div className="text-sm text-white/70">points</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-white">{player.timeline.length}</div>
+                          <div className="text-sm text-white/70">cards</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Trophy className="h-6 w-6 text-yellow-400" />
-                      <span className="text-2xl font-black text-white">{player.score}/10</span>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </Card>
+                  ))}
+              </div>
+              <div className="mt-10">
+                <Button 
+                  onClick={() => window.location.reload()}
+                  size="lg" 
+                  className="px-12 py-4 text-lg rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl font-bold"
+                >
+                  Play Again 🎵
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
 
         <style jsx>{`
