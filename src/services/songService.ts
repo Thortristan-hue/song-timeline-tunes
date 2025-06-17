@@ -1,5 +1,5 @@
-
 import { Song } from "@/pages/Index";
+const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
 interface DeezerTrack {
   id: number;
@@ -44,11 +44,9 @@ class SongService {
     return Promise.resolve();
   }
 
-  private extractPlaylistId(url: string): string {
-    const match = url.match(/playlist\/(\d+)/);
-    if (!match) {
-      throw new Error(`Could not extract playlist ID from URL: ${url}`);
-    }
+  private extractPlaylistId(playlistUrl: string): string {
+    const match = playlistUrl.match(/playlist\/(\d+)/);
+    if (!match) throw new Error('Invalid Deezer playlist URL');
     return match[1];
   }
 
@@ -61,9 +59,10 @@ class SongService {
       await this.rateLimit();
       
       const url = `https://api.deezer.com/playlist/${playlistId}/tracks?index=${index}&limit=${limit}`;
+      const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
       
       try {
-        const response = await fetch(url);
+        const response = await fetch(proxyUrl);
         if (!response.ok) {
           throw new Error(`Deezer API error: ${response.status}`);
         }
