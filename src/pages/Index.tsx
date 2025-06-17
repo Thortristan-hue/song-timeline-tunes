@@ -7,6 +7,8 @@ import { Play, Pause, Users, Clock, Trophy, Music, Check, X, Moon, Sun, Palette 
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
 
+const PROXY_BASE = 'https://your-worker-name.your-subdomain.workers.dev/?url=';
+
 interface Song {
   deezer_artist: string;
   deezer_title: string;
@@ -375,73 +377,80 @@ const Index = () => {
     }
   };
 
-  const playPreview = async () => {
-    if (!gameState.currentSong?.preview_url) {
-      console.log("No preview URL available for current song");
-      return;
-    }
+
+const playPreview = async () => {
+  if (!gameState.currentSong?.preview_url) {
+    console.log("No preview URL available for current song");
+    return;
+  }
+  
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+
+  const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
+    const maxRetries = 10;
     
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
+    try {
+      const previewUrl = gameState.currentSong.preview_url;
+      const isExternal = previewUrl && !previewUrl.startsWith('blob:');
+      const proxiedUrl = isExternal
+        ? `${PROXY_BASE}${encodeURIComponent(previewUrl)}`
+        : previewUrl;
 
-    const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
-      const maxRetries = 10;
+      console.log(`Attempting to play preview (attempt ${retryCount + 1}):`, proxiedUrl);
+      const newAudio = new Audio();
       
-      try {
-        console.log(`Attempting to play preview (attempt ${retryCount + 1}):`, gameState.currentSong.preview_url);
-        const newAudio = new Audio();
-        
-        return new Promise<void>((resolve, reject) => {
-          const handleError = async () => {
-            console.log(`Audio loading error (attempt ${retryCount + 1}):`, newAudio.error);
-            
-            if (retryCount < maxRetries) {
-              console.log(`Retrying audio load... (${retryCount + 1}/${maxRetries})`);
-              setAudioRetryCount(retryCount + 1);
-              setTimeout(() => {
-                tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
-              }, 2000);
-            } else {
-              console.log("Max retries reached, using fallback beep");
-              createBeepSound();
-              resolve();
-            }
-          };
-
-          const handleLoad = async () => {
-            try {
-              await newAudio.play();
-              setAudio(newAudio);
-              setAudioRetryCount(0);
-              console.log("Audio playing successfully");
-              resolve();
-            } catch (playError) {
-              console.log("Play error:", playError);
-              handleError();
-            }
-          };
-
-          newAudio.addEventListener('error', handleError);
-          newAudio.addEventListener('canplaythrough', handleLoad);
+      return new Promise<void>((resolve, reject) => {
+        const handleError = async () => {
+          console.log(`Audio loading error (attempt ${retryCount + 1}):`, newAudio.error);
           
-          newAudio.src = gameState.currentSong.preview_url;
-          newAudio.volume = 0.5;
-          newAudio.crossOrigin = "anonymous";
-          newAudio.load();
-        });
-      } catch (error) {
-        console.error("Error in tryPlayAudio:", error);
-        if (retryCount < maxRetries) {
-          setTimeout(() => {
-            tryPlayAudio(retryCount + 1);
-          }, 2000);
-        } else {
-          createBeepSound();
-        }
+          if (retryCount < maxRetries) {
+            console.log(`Retrying audio load... (${retryCount + 1}/${maxRetries})`);
+            setAudioRetryCount(retryCount + 1);
+            setTimeout(() => {
+              tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
+            }, 2000);
+          } else {
+            console.log("Max retries reached, using fallback beep");
+            createBeepSound();
+            resolve();
+          }
+        };
+
+        const handleLoad = async () => {
+          try {
+            await newAudio.play();
+            setAudio(newAudio);
+            setAudioRetryCount(0);
+            console.log("Audio playing successfully");
+            resolve();
+          } catch (playError) {
+            console.log("Play error:", playError);
+            handleError();
+          }
+        };
+
+        newAudio.addEventListener('error', handleError);
+        newAudio.addEventListener('canplaythrough', handleLoad);
+        
+        newAudio.src = proxiedUrl;
+        newAudio.volume = 0.5;
+        newAudio.crossOrigin = "anonymous";
+        newAudio.load();
+      });
+    } catch (error) {
+      console.error("Error in tryPlayAudio:", error);
+      if (retryCount < maxRetries) {
+        setTimeout(() => {
+          tryPlayAudio(retryCount + 1);
+        }, 2000);
+      } else {
+        createBeepSound();
       }
-    };
+    }
+  };
 
     try {
       await tryPlayAudio(audioRetryCount);
