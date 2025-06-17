@@ -119,6 +119,47 @@ const assignCardColor = (song: Song): Song => {
   return song;
 };
 
+// Sound effects utility
+const createSoundEffect = (frequency: number, duration: number, type: 'sine' | 'square' | 'triangle' = 'sine') => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+    oscillator.type = type;
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  } catch (e) {
+    console.log("Sound effect failed to play");
+  }
+};
+
+const playSuccessSound = () => {
+  createSoundEffect(523, 0.2); // C note
+  setTimeout(() => createSoundEffect(659, 0.2), 100); // E note
+  setTimeout(() => createSoundEffect(784, 0.3), 200); // G note
+};
+
+const playErrorSound = () => {
+  createSoundEffect(220, 0.3, 'square'); // Low A note with square wave
+};
+
+const playCardPlaceSound = () => {
+  createSoundEffect(440, 0.1, 'triangle'); // A note with triangle wave
+};
+
+const playTurnChangeSound = () => {
+  createSoundEffect(330, 0.15); // E note
+  setTimeout(() => createSoundEffect(440, 0.15), 150); // A note
+};
+
 export type { Song, Player };
 
 import PlayerJoinForm from "@/components/PlayerJoinForm";
@@ -212,15 +253,23 @@ const Index = () => {
     }
   }, [gameState.transitioningTurn]);
 
-  // Card result auto-clear
+  // Card result auto-clear with sound effects
   useEffect(() => {
     if (gameState.cardResult) {
+      if (gameState.cardResult.correct) {
+        playSuccessSound();
+      } else {
+        playErrorSound();
+      }
+      
       const timeout = setTimeout(() => {
         setGameState(prev => ({
           ...prev,
           cardResult: null,
           transitioningTurn: true
         }));
+
+        playTurnChangeSound();
 
         setTimeout(() => {
           setGameState(prev => ({
@@ -444,6 +493,8 @@ const Index = () => {
 
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
+
+    playCardPlaceSound();
 
     // First place the card in the timeline
     const newTimeline = [...currentPlayer.timeline];
@@ -676,7 +727,7 @@ const Index = () => {
           </Card>
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
@@ -720,29 +771,68 @@ const Index = () => {
           ))}
         </div>
 
-        <div className="max-w-6xl mx-auto text-center relative z-10 pt-20">
+        <div className="max-w-6xl mx-auto text-center relative z-10 pt-12">
           <div className="mb-12">
             <div className="relative mb-6">
-              <Trophy className="h-32 w-32 text-yellow-300 mx-auto drop-shadow-2xl" />
-              <div className="absolute inset-0 h-32 w-32 text-yellow-300 opacity-30 mx-auto">
+              <Trophy className="h-32 w-32 text-yellow-300 mx-auto drop-shadow-2xl animate-pulse" />
+              <div className="absolute inset-0 h-32 w-32 text-yellow-300 opacity-30 mx-auto animate-spin" style={{ animationDuration: '10s' }}>
                 <Trophy className="h-32 w-32" />
               </div>
             </div>
-            <h1 className="text-8xl font-black text-white mb-6 drop-shadow-lg">
+            <h1 className="text-8xl font-black text-white mb-6 drop-shadow-lg animate-fade-in">
               🎉 LEGENDARY! 🎉
             </h1>
-            <h2 className="text-6xl font-bold bg-gradient-to-r from-yellow-300 via-orange-300 to-red-300 bg-clip-text text-transparent mb-8 drop-shadow-md">
+            <h2 className="text-6xl font-bold bg-gradient-to-r from-yellow-300 via-orange-300 to-red-300 bg-clip-text text-transparent mb-8 drop-shadow-md animate-fade-in" style={{ animationDelay: '0.5s' }}>
               {gameState.winner.name} Mastered Time!
             </h2>
-            <p className="text-3xl text-white/90 font-medium mb-12">
+            <p className="text-3xl text-white/90 font-medium mb-12 animate-fade-in" style={{ animationDelay: '1s' }}>
               Perfect chronological harmony achieved ✨
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto animate-fade-in" style={{ animationDelay: '1.5s' }}>
             <Card className="p-10 bg-black/40 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
               <h3 className="text-4xl font-bold mb-8 text-white">Final Leaderboard</h3>
-              <div className="space-y-6">
+              
+              {/* Podium for top 3 */}
+              <div className="flex justify-center items-end gap-6 mb-12">
+                {gameState.players
+                  .sort((a, b) => b.score - a.score)
+                  .slice(0, 3)
+                  .map((player, index) => {
+                    const positions = [1, 0, 2]; // Center, Left, Right
+                    const actualIndex = positions[index];
+                    const heights = ['h-32', 'h-40', 'h-24'];
+                    const podiumColors = [
+                      'bg-gradient-to-t from-gray-400 to-gray-300',
+                      'bg-gradient-to-t from-yellow-400 to-yellow-300',
+                      'bg-gradient-to-t from-orange-600 to-orange-400'
+                    ];
+                    
+                    return (
+                      <div key={player.id} className="text-center" style={{ order: actualIndex }}>
+                        <div className="mb-4">
+                          <div 
+                            className="w-16 h-16 rounded-full mx-auto mb-2 ring-4 ring-white/50 shadow-xl" 
+                            style={{ backgroundColor: player.timelineColor }}
+                          />
+                          <div className="text-white font-bold text-lg mb-1">{player.name}</div>
+                          <div className="text-white/80 text-sm">{player.score} points</div>
+                        </div>
+                        <div className={`w-24 ${heights[index]} ${podiumColors[index]} rounded-t-xl mx-auto relative shadow-xl`}>
+                          <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
+                            {index === 0 && <Trophy className="h-8 w-8 text-yellow-600" />}
+                            {index === 1 && <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white font-bold text-sm">2</div>}
+                            {index === 2 && <div className="w-8 h-8 bg-orange-700 rounded-full flex items-center justify-center text-white font-bold text-sm">3</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Full ranking */}
+              <div className="space-y-4">
                 {gameState.players
                   .sort((a, b) => b.score - a.score)
                   .map((player, index) => (
@@ -771,7 +861,7 @@ const Index = () => {
                         />
                         <span className="text-2xl font-bold text-white">{player.name}</span>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-6">
                         <div className="text-right">
                           <div className="text-3xl font-black text-white">{player.score}</div>
                           <div className="text-sm text-white/70">points</div>
@@ -784,6 +874,7 @@ const Index = () => {
                     </div>
                   ))}
               </div>
+              
               <div className="mt-10">
                 <Button 
                   onClick={() => window.location.reload()}
@@ -797,10 +888,20 @@ const Index = () => {
           </div>
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes celebration {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
             50% { transform: translateY(-20px) rotate(180deg); }
+          }
+          
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          
+          .animate-fade-in {
+            animation: fade-in 1s ease-out forwards;
+            opacity: 0;
           }
         `}</style>
       </div>
@@ -913,7 +1014,7 @@ const Index = () => {
           )}
         </div>
 
-        {/* Current Player's Timeline */}
+        {/* Current Player's Timeline - Fixed centering */}
         <PlayerTimeline
           player={currentPlayer}
           isCurrent={true}
@@ -931,37 +1032,18 @@ const Index = () => {
           currentPlayerId={currentPlayer?.id}
           confirmPlacement={confirmPlacement}
           cancelPlacement={cancelPlacement}
+          transitioningTurn={gameState.transitioningTurn}
+          transitionProgress={transitionProgress}
         />
 
-        {/* Other players */}
+        {/* Other players with transition animations */}
         <CircularPlayersLayout 
           players={gameState.players}
           currentPlayerId={currentPlayer?.id}
           isDarkMode={true}
+          transitioningTurn={gameState.transitioningTurn}
+          transitionProgress={transitionProgress}
         />
-
-        {/* Placement Confirmation */}
-        {gameState.confirmingPlacement && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-30">
-            <div className="flex gap-3 bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/20 shadow-2xl">
-              <Button
-                onClick={confirmPlacement}
-                className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-6 py-2 transition-all duration-300 hover:scale-105 shadow-lg"
-              >
-                <Check className="h-4 w-4 mr-2" />
-                Confirm
-              </Button>
-              <Button
-                onClick={cancelPlacement}
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 rounded-xl px-6 py-2 transition-all duration-300 hover:scale-105"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Result Animation */}
         {gameState.cardResult && (
@@ -985,7 +1067,7 @@ const Index = () => {
           </div>
         )}
 
-        <style jsx>{`
+        <style>{`
           @keyframes mysteryFloat {
             0%, 100% { transform: translateY(0px) rotate(0deg); }
             25% { transform: translateY(-10px) rotate(2deg); }
@@ -1014,6 +1096,21 @@ const Index = () => {
               opacity: 1; 
               filter: blur(0px);
             }
+          }
+          
+          @keyframes slideDown {
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+          }
+          
+          @keyframes slideUp {
+            0% { transform: translateY(100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+          }
+          
+          @keyframes scaleIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
           }
         `}</style>
       </div>

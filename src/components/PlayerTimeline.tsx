@@ -27,6 +27,8 @@ interface PlayerTimelineProps {
   currentPlayerId: string;
   confirmPlacement: () => void;
   cancelPlacement: () => void;
+  transitioningTurn?: boolean;
+  transitionProgress?: number;
 }
 
 export default function PlayerTimeline({
@@ -45,7 +47,9 @@ export default function PlayerTimeline({
   setHoveredCard,
   currentPlayerId,
   confirmPlacement,
-  cancelPlacement
+  cancelPlacement,
+  transitioningTurn = false,
+  transitionProgress = 0
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
     const isConfirming = placedCardPosition === index && confirmingPlacement?.position === index;
@@ -60,7 +64,10 @@ export default function PlayerTimeline({
         )}
         style={{
           backgroundColor: song.cardColor,
-          transform: isConfirming ? 'scale(1.1) rotate(2deg)' : 'scale(1)',
+          transform: isConfirming ? 'scale(1.1) rotate(2deg)' : 
+                    transitioningTurn ? `scale(${0.2 + 0.8 * (1 - transitionProgress)}) translateY(${50 * transitionProgress}px)` : 
+                    'scale(1)',
+          opacity: transitioningTurn ? 1 - 0.5 * transitionProgress : 1,
           boxShadow: isConfirming 
             ? '0 10px 30px rgba(147,51,234,0.6)' 
             : '0 4px 12px rgba(0,0,0,0.3)'
@@ -71,11 +78,16 @@ export default function PlayerTimeline({
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
         
         <div className="relative z-10 text-center w-full h-full flex flex-col justify-between">
-          <div className="text-xs opacity-75 truncate w-full leading-tight">
+          {/* Artist name at top */}
+          <div className="text-xs opacity-75 truncate w-full leading-tight font-medium">
             {song.deezer_artist.length > 10 ? song.deezer_artist.substring(0, 10) + '...' : song.deezer_artist}
           </div>
-          <div className="text-lg font-black my-1">{song.release_year}</div>
-          <div className="font-bold text-xs truncate w-full leading-tight">
+          
+          {/* Release year in middle - larger and prominent */}
+          <div className="text-2xl font-black my-1">{song.release_year}</div>
+          
+          {/* Song title at bottom */}
+          <div className="text-xs truncate w-full leading-tight font-semibold">
             {song.deezer_title.length > 12 ? song.deezer_title.substring(0, 12) + '...' : song.deezer_title}
           </div>
         </div>
@@ -128,7 +140,13 @@ export default function PlayerTimeline({
           </div>
         )}
         {!isGhostHere && (
-          <div className="w-2 h-28 bg-white/20 rounded-full transition-all duration-300 hover:bg-purple-400/50 hover:w-3 hover:h-32 hover:scale-110" />
+          <div 
+            className="w-2 h-28 bg-white/20 rounded-full transition-all duration-300 hover:bg-purple-400/50 hover:w-3 hover:h-32 hover:scale-110"
+            style={{
+              opacity: transitioningTurn ? 1 - transitionProgress : 1,
+              transform: transitioningTurn ? `scaleY(${1 - 0.5 * transitionProgress})` : 'scaleY(1)'
+            }}
+          />
         )}
       </div>
     );
@@ -136,17 +154,25 @@ export default function PlayerTimeline({
 
   if (!player) return null;
 
+  // Calculate dynamic timeline width for centering
   const timelineWidth = player.timeline.length * 120 + (player.timeline.length + 1) * 8;
 
   return (
     <div 
       className="absolute bottom-32 left-1/2 z-25"
       style={{
-        transform: `translateX(calc(-50% - ${timelineWidth / 2}px + 50vw)) perspective(1200px) rotateX(-8deg)`,
-        transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        transform: `translateX(-50%) perspective(1200px) rotateX(-8deg)`,
+        transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: transitioningTurn ? 1 - 0.3 * transitionProgress : 1
       }}
     >
-      <div className="flex items-center justify-center gap-4 mb-6">
+      <div 
+        className="flex items-center justify-center gap-4 mb-6"
+        style={{
+          transform: transitioningTurn ? `translateY(${20 * transitionProgress}px) scale(${1 - 0.1 * transitionProgress})` : 'translateY(0) scale(1)',
+          transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
         <div className="bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
           <div className="flex items-center gap-3 text-white">
             <h3 className="text-xl font-bold">{player.name}'s Timeline</h3>
@@ -164,7 +190,13 @@ export default function PlayerTimeline({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 p-6 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl">
+      <div 
+        className="flex items-center gap-4 p-6 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl"
+        style={{
+          transform: transitioningTurn ? `scale(${1 - 0.2 * transitionProgress}) translateY(${30 * transitionProgress}px)` : 'scale(1) translateY(0)',
+          transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
         {renderDropZone(0)}
         
         {player.timeline.map((song, index) => (
