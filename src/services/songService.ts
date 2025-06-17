@@ -85,42 +85,47 @@ class SongService {
 
   private async searchMusicBrainz(artist: string, title: string): Promise<EnhancedMetadata | null> {
     await this.rateLimit();
-    
+  
+    // Proxy base for all MusicBrainz API requests
+    const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
+  
     const query = `"${artist}" AND recording:"${title}"`;
     const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=1`;
-    
+    const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
+  
     try {
-      const response = await fetch(url, {
+      const response = await fetch(proxyUrl, {
         headers: {
           'User-Agent': 'TimelineTunes/1.0 (contact@timelinetunes.com)'
         }
       });
-      
+  
       if (!response.ok) {
         throw new Error(`MusicBrainz API error: ${response.status}`);
       }
-      
+  
       const data = await response.json();
-      
+  
       if (!data.recordings || data.recordings.length === 0) {
         return null;
       }
-      
+  
       const recording = data.recordings[0];
       let releaseYear = null;
-      
-      // Try to get release year from release group
+  
+      // Try to get release year from release group (proxied)
       if (recording['release-group']?.id) {
         const groupUrl = `https://musicbrainz.org/ws/2/release-group/${recording['release-group'].id}?fmt=json`;
+        const proxyGroupUrl = `${PROXY_BASE}${encodeURIComponent(groupUrl)}`;
         await this.rateLimit();
-        
+  
         try {
-          const groupResponse = await fetch(groupUrl, {
+          const groupResponse = await fetch(proxyGroupUrl, {
             headers: {
               'User-Agent': 'TimelineTunes/1.0 (contact@timelinetunes.com)'
             }
           });
-          
+  
           if (groupResponse.ok) {
             const groupData = await groupResponse.json();
             const date = groupData['first-release-date'];
@@ -132,7 +137,7 @@ class SongService {
           console.warn('Error fetching release group:', error);
         }
       }
-      
+  
       // Fallback to individual releases
       if (!releaseYear && recording.releases && recording.releases.length > 0) {
         const date = recording.releases[0].date;
@@ -140,7 +145,7 @@ class SongService {
           releaseYear = date.split('-')[0];
         }
       }
-      
+  
       return {
         artist: recording['artist-credit']?.[0]?.name || artist,
         title: recording.title || title,
