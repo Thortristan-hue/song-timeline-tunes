@@ -1,0 +1,85 @@
+/* Turn transition animations */
+@keyframes playerSwap {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(-30px) scale(1.1);
+    opacity: 0.7;
+  }
+  65% {
+    transform: translateY(20px) scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cardShrink {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8) translateY(30px);
+    opacity: 0;
+  }
+}
+
+@keyframes cardGrow {
+  0% {
+    transform: scale(0.8) translateY(-30px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) translateY(10px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes timelineSlide {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(-20px);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.player-swap {
+  animation: playerSwap 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-shrink {
+  animation: cardShrink 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.card-grow {
+  animation: cardGrow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.timeline-slide {
+  animation: timelineSlide 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth transition base classes */
+.turn-transition {
+  transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quick-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
