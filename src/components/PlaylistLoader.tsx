@@ -7,6 +7,7 @@ import { Music, Loader2 } from 'lucide-react';
 
 interface PlaylistLoaderProps {
   onPlaylistLoaded: (success: boolean) => void;
+  setCustomSongs: (songs: Song[]) => void;
   isDarkMode: boolean;
 }
 
@@ -36,29 +37,23 @@ export default function PlaylistLoader({ onPlaylistLoaded, isDarkMode }: Playlis
     setStatus('Loading playlist...');
 
     try {
-      // Dynamic import to avoid bundling issues
       const { songService } = await import('@/services/songService');
-      
       setStatus('Fetching playlist tracks...');
       setProgress(25);
-      
-      const result = await songService.loadPlaylist(playlistUrl);
-      
-      setStatus('Processing songs and fetching metadata...');
-      setProgress(75);
-      
-      // Give some time for the metadata processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setProgress(100);
+  
+      const songs = await songService.loadPlaylist(playlistUrl);
+  
+      if (!songs.length) {
+        setError('No valid songs found in playlist.');
+        onPlaylistLoaded(false);
+        return;
+      }
+      setCustomSongs(songs); // <-- THIS IS THE KEY LINE
+  
       setStatus('Playlist loaded successfully!');
-      
-      setTimeout(() => {
-        onPlaylistLoaded(true);
-      }, 500);
-      
+      setProgress(100);
+      setTimeout(() => onPlaylistLoaded(true), 500);
     } catch (error) {
-      console.error('Error loading playlist:', error);
       setError(error instanceof Error ? error.message : 'Failed to load playlist');
       onPlaylistLoaded(false);
     } finally {
