@@ -165,6 +165,7 @@ export type { Song, Player };
 import PlayerJoinForm from "@/components/PlayerJoinForm";
 import PlayerTimeline from "@/components/PlayerTimeline";
 import CircularPlayersLayout from "@/components/CircularPlayersLayout";
+import PlaylistLoader from "@/components/PlaylistLoader";
 
 const Index = () => {
   const [gameState, setGameState] = useState<GameState>({
