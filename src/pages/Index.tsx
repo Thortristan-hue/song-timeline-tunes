@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Card } from '@/components/ui/card';
 import VictoryScreen from '@/pages/VictoryScreen';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
+const { useState, useEffect, useRef } = React;
 
 interface Song {
   deezer_artist: string;
