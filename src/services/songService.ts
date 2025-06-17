@@ -23,6 +23,7 @@ interface EnhancedMetadata {
   album?: string;
   release_year?: string;
   source: 'musicbrainz' | 'discogs' | 'deezer_only';
+  error?: string; // Added missing error property
 }
 
 class SongService {
@@ -85,7 +86,6 @@ class SongService {
 
   private async searchMusicBrainz(artist: string, title: string): Promise<EnhancedMetadata | null> {
     await this.rateLimit();
-    const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
     const query = `"${artist}" AND recording:"${title}"`;
     const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=1`;
     const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
@@ -161,12 +161,6 @@ class SongService {
     
     const query = `${artist} ${title}`;
     const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'TimelineTunes/1.0',
-        'Authorization': 'Discogs token=8c454de03e9c40e4926b95160145a221'
-      }
-    });
     
     try {
       const response = await fetch(url, {
@@ -189,11 +183,11 @@ class SongService {
           }
         }
       }
+      return null;
     } catch (error) {
       console.error('Discogs search failed:', error);
+      return null;
     }
-    
-    return null;
   }
 
   private async enhanceTrackMetadata(track: DeezerTrack): Promise<Song | null> {
@@ -268,7 +262,8 @@ class SongService {
       throw error;
     }
   }
-    
+
+  private async loadNextSong(): Promise<void> {
     let attempts = 0;
     const maxAttempts = Math.min(10, this.playlistTracks.length);
     
