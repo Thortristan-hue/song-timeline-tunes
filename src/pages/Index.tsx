@@ -1,27 +1,119 @@
-import * as React from 'react';
-import { Card } from '@/components/ui/card';
-import VictoryScreen from '@/pages/VictoryScreen';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Music, Play, Pause, Clock, Sun, Moon, Trophy, Volume2, VolumeX, Users, Check, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Users, Clock, Trophy, Music, Check, X, Moon, Sun, Palette } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { PlayerTimeline } from '@/components/PlayerTimeline';
+import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
+import { PlaylistLoader } from '@/components/PlaylistLoader';
+import { PlayerJoinForm } from '@/components/PlayerJoinForm';
+import { VictoryScreen } from '@/components/VictoryScreen';
+import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
+import '@/styles/animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
-const { useState, useEffect, useRef } = React;
 
-interface Song {
-  deezer_artist: string;
-  deezer_title: string;
-  deezer_album: string;
-  preview_url: string;
-  release_year: string;
-  genre: string;
-  cardColor?: string;
+// Sound Manager Class
+class SoundManager {
+  private sounds: { [key: string]: HTMLAudioElement } = {};
+  private bgMusic: HTMLAudioElement | null = null;
+  private isMuted: boolean = false;
+  private volume: number = 0.7;
+
+  constructor() {
+    this.initializeSounds();
+  }
+
+  private initializeSounds() {
+    const soundFiles = {
+      cardHover: '/sounds/card-hover.mp3',
+      cardPickup: '/sounds/card-pickup.mp3',
+      cardPlace: '/sounds/card-place.mp3',
+      cardCorrect: '/sounds/card-correct.mp3',
+      cardWrong: '/sounds/card-wrong.mp3',
+      turnChange: '/sounds/turn-change.mp3',
+      victory: '/sounds/victory.mp3',
+      tick: '/sounds/tick.mp3',
+      buttonClick: '/sounds/button-click.mp3',
+      bgMusic: '/sounds/bg-music.mp3'
+    };
+
+    Object.entries(soundFiles).forEach(([key, path]) => {
+      const audio = new Audio(path);
+      if (key === 'bgMusic') {
+        audio.loop = true;
+        this.bgMusic = audio;
+      } else {
+        this.sounds[key] = audio;
+      }
+      audio.volume = this.volume;
+    });
+  }
+
+  playSound(soundName: string, volume?: number) {
+    if (this.isMuted) return;
+    
+    const sound = this.sounds[soundName];
+    if (sound) {
+      sound.currentTime = 0;
+      sound.volume = volume ?? this.volume;
+      sound.play().catch(() => {});
+    }
+  }
+
+  playSoundWithDelay(soundName: string, delay: number) {
+    setTimeout(() => this.playSound(soundName), delay);
+  }
+
+  playBgMusic() {
+    if (this.isMuted || !this.bgMusic) return;
+    this.bgMusic.play().catch(() => {});
+  }
+
+  pauseBgMusic() {
+    if (this.bgMusic) {
+      this.bgMusic.pause();
+    }
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    Object.values(this.sounds).forEach(sound => {
+      sound.muted = this.isMuted;
+    });
+    if (this.bgMusic) {
+      this.bgMusic.muted = this.isMuted;
+    }
+    return this.isMuted;
+  }
+
+  setVolume(value: number) {
+    this.volume = Math.max(0, Math.min(1, value));
+    Object.values(this.sounds).forEach(sound => {
+      sound.volume = this.volume;
+    });
+    if (this.bgMusic) {
+      this.bgMusic.volume = this.volume * 0.5; // Background music slightly quieter
+    }
+  }
 }
 
-interface Player {
+// Types
+export interface Song {
+  id: string;
+  deezer_title: string;
+  deezer_artist: string;
+  deezer_album: string;
+  release_year: string;
+  genre: string;
+  cardColor: string;
+  preview_url?: string;
+}
+
+export interface Player {
   id: string;
   name: string;
   color: string;
@@ -35,60 +127,18 @@ interface GameState {
   players: Player[];
   currentTurn: number;
   currentSong: Song | null;
-  isPlaying: boolean;
   timeLeft: number;
-  hostId: string;
-  winner: Player | null;
-  pendingPlacement: { playerId: string; song: Song; position: number } | null;
+  isPlaying: boolean;
   isDarkMode: boolean;
   throwingCard: { song: Song; playerId: string; position: number } | null;
   confirmingPlacement: { song: Song; position: number } | null;
-  cardResult: { correct: boolean; song: Song } | null;
+  cardResult: { correct: boolean; message: string; song: Song } | null;
   transitioningTurn: boolean;
+  winner: Player | null;
+  isMuted: boolean;
+  hostId: string;
+  pendingPlacement: { playerId: string; song: Song; position: number } | null;
 }
-
-const mockSongs: Song[] = [
-  {
-    deezer_artist: "The Beatles",
-    deezer_title: "Hey Jude",
-    deezer_album: "Hey Jude",
-    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-    release_year: "1968",
-    genre: "Rock"
-  },
-  {
-    deezer_artist: "Queen",
-    deezer_title: "Bohemian Rhapsody",
-    deezer_album: "A Night at the Opera",
-    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-    release_year: "1975",
-    genre: "Rock"
-  },
-  {
-    deezer_artist: "Michael Jackson",
-    deezer_title: "Billie Jean",
-    deezer_album: "Thriller",
-    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-    release_year: "1983",
-    genre: "Pop"
-  },
-  {
-    deezer_artist: "Madonna",
-    deezer_title: "Like a Virgin",
-    deezer_album: "Like a Virgin",
-    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-    release_year: "1984",
-    genre: "Pop"
-  },
-  {
-    deezer_artist: "Nirvana",
-    deezer_title: "Smells Like Teen Spirit",
-    deezer_album: "Nevermind",
-    preview_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-    release_year: "1991",
-    genre: "Grunge"
-  }
-];
 
 const playerColors = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
@@ -123,93 +173,98 @@ const assignCardColor = (song: Song): Song => {
   return song;
 };
 
-// Sound effects utility
-const createSoundEffect = (frequency: number, duration: number, type: 'sine' | 'square' | 'triangle' = 'sine') => {
-  try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-    oscillator.type = type;
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + duration);
-  } catch (e) {
-    console.log("Sound effect failed to play");
-  }
-};
-
-const playSuccessSound = () => {
-  createSoundEffect(523, 0.2); // C note
-  setTimeout(() => createSoundEffect(659, 0.2), 100); // E note
-  setTimeout(() => createSoundEffect(784, 0.3), 200); // G note
-};
-
-const playErrorSound = () => {
-  createSoundEffect(220, 0.3, 'square'); // Low A note with square wave
-};
-
-const playCardPlaceSound = () => {
-  createSoundEffect(440, 0.1, 'triangle'); // A note with triangle wave
-};
-
-const playTurnChangeSound = () => {
-  createSoundEffect(330, 0.15); // E note
-  setTimeout(() => createSoundEffect(440, 0.15), 150); // A note
-};
-
-export type { Song, Player };
-
-import PlayerJoinForm from "@/components/PlayerJoinForm";
-import PlayerTimeline from "@/components/PlayerTimeline";
-import CircularPlayersLayout from "@/components/CircularPlayersLayout";
-import PlaylistLoader from "@/components/PlaylistLoader";
-
 const Index = () => {
+  const { toast } = useToast();
+  const soundManager = useRef<SoundManager>(new SoundManager());
+  
   const [gameState, setGameState] = useState<GameState>({
     phase: 'lobby',
     players: [],
     currentTurn: 0,
     currentSong: null,
-    isPlaying: false,
     timeLeft: 30,
-    hostId: 'host-1',
-    winner: null,
-    pendingPlacement: null,
-    isDarkMode: false,
+    isPlaying: false,
+    isDarkMode: true,
     throwingCard: null,
     confirmingPlacement: null,
     cardResult: null,
-    transitioningTurn: false
+    transitioningTurn: false,
+    winner: null,
+    isMuted: false,
+    hostId: 'host-1',
+    pendingPlacement: null
   });
 
-  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<{ playerId: string; position: number } | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [customSongs, setCustomSongs] = useState<Song[]>(filterValidSongs(mockSongs));
   const [audioRetryCount, setAudioRetryCount] = useState(0);
-  const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
-  const [transitionProgress, setTransitionProgress] = useState(0);
-  const [showPlaylistLoader, setShowPlaylistLoader] = useState(false);
-
+  const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<{
     playerId: string;
     position: number;
     song: Song | null;
   } | null>(null);
+  const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
+  const [transitionProgress, setTransitionProgress] = useState(0);
+  const [showPlaylistLoader, setShowPlaylistLoader] = useState(false);
 
+  // Initialize background music
+  useEffect(() => {
+    if (gameState.phase === 'playing') {
+      soundManager.current.playBgMusic();
+    } else {
+      soundManager.current.pauseBgMusic();
+    }
+  }, [gameState.phase]);
+
+  // Enhanced audio handling for preview
+  useEffect(() => {
+    if (gameState.currentSong?.preview_url && !audio) {
+      const newAudio = new Audio(gameState.currentSong.preview_url);
+      newAudio.addEventListener('ended', () => {
+        setGameState(prev => ({ ...prev, isPlaying: false }));
+      });
+      
+      newAudio.addEventListener('error', () => {
+        if (audioRetryCount < 10) {
+          setAudioRetryCount(prev => prev + 1);
+          setTimeout(() => {
+            newAudio.load();
+            if (gameState.isPlaying) newAudio.play();
+          }, 1000);
+        } else {
+          toast({
+            title: "Audio Error",
+            description: "Failed to load song preview. Please try another song.",
+            variant: "destructive"
+          });
+          setGameState(prev => ({ ...prev, isPlaying: false }));
+        }
+      });
+      
+      setAudio(newAudio);
+    }
+    
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.remove();
+      }
+    };
+  }, [gameState.currentSong?.preview_url]);
+
+  // Timer effect
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (gameState.isPlaying && gameState.timeLeft > 0) {
+    if (gameState.phase === 'playing' && gameState.timeLeft > 0) {
       interval = setInterval(() => {
-        setGameState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
+        setGameState(prev => {
+          if (prev.timeLeft <= 5) {
+            soundManager.current.playSound('tick', 0.4);
+          }
+          return { ...prev, timeLeft: prev.timeLeft - 1 };
+        });
       }, 1000);
     } else if (gameState.timeLeft === 0) {
       setGameState(prev => ({ ...prev, isPlaying: false }));
@@ -218,29 +273,12 @@ const Index = () => {
       }
     }
     return () => clearInterval(interval);
-  }, [gameState.isPlaying, gameState.timeLeft, audio]);
+  }, [gameState.phase, gameState.timeLeft, audio]);
 
-  useEffect(() => {
-    if (gameState.throwingCard) {
-      const timeout = setTimeout(() => {
-        setGameState(prev => ({ ...prev, throwingCard: null }));
-      }, 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, [gameState.throwingCard]);
-
-  // Stop audio when new song is generated
-  useEffect(() => {
-    if (audio && gameState.currentSong) {
-      audio.pause();
-      setGameState(prev => ({ ...prev, isPlaying: false }));
-      setAudioRetryCount(0); // Reset retry count for new song
-    }
-  }, [gameState.currentSong?.deezer_title, gameState.currentSong?.deezer_artist]);
-
-  // Smooth transition progress tracking
+  // Turn transition effect
   useEffect(() => {
     if (gameState.transitioningTurn) {
+      soundManager.current.playSound('turnChange');
       setTransitionProgress(0);
       const startTime = Date.now();
       const duration = 1200;
@@ -248,7 +286,8 @@ const Index = () => {
       const updateProgress = () => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        setTransitionProgress(progress);
+        const easedProgress = easeInOutCubic(progress);
+        setTransitionProgress(easedProgress);
         
         if (progress < 1) {
           requestAnimationFrame(updateProgress);
@@ -259,23 +298,15 @@ const Index = () => {
     }
   }, [gameState.transitioningTurn]);
 
-  // Card result auto-clear with sound effects
+  // Card result auto-clear
   useEffect(() => {
     if (gameState.cardResult) {
-      if (gameState.cardResult.correct) {
-        playSuccessSound();
-      } else {
-        playErrorSound();
-      }
-      
       const timeout = setTimeout(() => {
         setGameState(prev => ({
           ...prev,
           cardResult: null,
           transitioningTurn: true
         }));
-
-        playTurnChangeSound();
 
         setTimeout(() => {
           setGameState(prev => ({
@@ -292,14 +323,127 @@ const Index = () => {
     }
   }, [gameState.cardResult, customSongs]);
 
+  const createBeepSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 1);
+    } catch (e) {
+      console.log("Fallback audio also failed");
+    }
+  };
+
+  const playPreview = async () => {
+    if (!gameState.currentSong?.preview_url) {
+      console.log("No preview URL available for current song");
+      return;
+    }
+    
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
+      const maxRetries = 10;
+      
+      try {
+        const previewUrl = gameState.currentSong.preview_url;
+        const isExternal = previewUrl && !previewUrl.startsWith('blob:');
+        const proxiedUrl = isExternal
+          ? `${PROXY_BASE}${encodeURIComponent(previewUrl)}`
+          : previewUrl;
+
+        const newAudio = new Audio();
+        
+        return new Promise<void>((resolve, reject) => {
+          const handleError = async () => {
+            if (retryCount < maxRetries) {
+              setAudioRetryCount(retryCount + 1);
+              setTimeout(() => {
+                tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
+              }, 2000);
+            } else {
+              createBeepSound();
+              resolve();
+            }
+          };
+
+          const handleLoad = async () => {
+            try {
+              await newAudio.play();
+              setAudio(newAudio);
+              setAudioRetryCount(0);
+              resolve();
+            } catch (playError) {
+              handleError();
+            }
+          };
+
+          newAudio.addEventListener('error', handleError);
+          newAudio.addEventListener('canplaythrough', handleLoad);
+          
+          newAudio.src = proxiedUrl;
+          newAudio.volume = 0.5;
+          newAudio.crossOrigin = "anonymous";
+          newAudio.load();
+        });
+      } catch (error) {
+        if (retryCount < maxRetries) {
+          setTimeout(() => {
+            tryPlayAudio(retryCount + 1);
+          }, 2000);
+        } else {
+          createBeepSound();
+        }
+      }
+    };
+
+    try {
+      await tryPlayAudio(audioRetryCount);
+      setGameState(prev => ({ 
+        ...prev, 
+        isPlaying: true, 
+        timeLeft: 30 
+      }));
+    } catch (error) {
+      setGameState(prev => ({ 
+        ...prev, 
+        isPlaying: true, 
+        timeLeft: 30 
+      }));
+    }
+  };
+
+  const pausePreview = () => {
+    if (audio) {
+      audio.pause();
+    }
+    setGameState(prev => ({ ...prev, isPlaying: false }));
+  };
+
   const toggleDarkMode = () => {
     setGameState(prev => ({ ...prev, isDarkMode: !prev.isDarkMode }));
+  };
+
+  const toggleMute = () => {
+    const isMuted = soundManager.current.toggleMute();
+    setGameState(prev => ({ ...prev, isMuted }));
   };
 
   const joinLobby = (name: string) => {
     if (!name.trim()) return;
     
-    // Enforce 6 player maximum
     if (gameState.players.length >= 6) {
       console.log("Maximum 6 players allowed");
       return;
@@ -324,11 +468,9 @@ const Index = () => {
     if (file && file.type === "application/json") {
       try {
         const songs = await loadSongsFromJson(file);
-        // Filter valid songs and assign colors
         const validSongs = filterValidSongs(songs);
         const songsWithColors = validSongs.map(assignCardColor);
         setCustomSongs(songsWithColors);
-        console.log(`Loaded ${songsWithColors.length} valid songs from JSON file`);
       } catch (error) {
         console.error("Error loading songs:", error);
       }
@@ -357,159 +499,47 @@ const Index = () => {
     }));
   };
 
-  const createBeepSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 1);
-      
-      console.log("Fallback beep sound played");
-    } catch (e) {
-      console.log("Fallback audio also failed");
-    }
-  };
-
-
-const playPreview = async () => {
-  if (!gameState.currentSong?.preview_url) {
-    console.log("No preview URL available for current song");
-    return;
-  }
-  
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
-
-  const tryPlayAudio = async (retryCount: number = 0): Promise<void> => {
-    const maxRetries = 10;
-    
-    try {
-      const previewUrl = gameState.currentSong.preview_url;
-      const isExternal = previewUrl && !previewUrl.startsWith('blob:');
-      const proxiedUrl = isExternal
-        ? `${PROXY_BASE}${encodeURIComponent(previewUrl)}`
-        : previewUrl;
-
-      console.log(`Attempting to play preview (attempt ${retryCount + 1}):`, proxiedUrl);
-      const newAudio = new Audio();
-      
-      return new Promise<void>((resolve, reject) => {
-        const handleError = async () => {
-          console.log(`Audio loading error (attempt ${retryCount + 1}):`, newAudio.error);
-          
-          if (retryCount < maxRetries) {
-            console.log(`Retrying audio load... (${retryCount + 1}/${maxRetries})`);
-            setAudioRetryCount(retryCount + 1);
-            setTimeout(() => {
-              tryPlayAudio(retryCount + 1).then(resolve).catch(reject);
-            }, 2000);
-          } else {
-            console.log("Max retries reached, using fallback beep");
-            createBeepSound();
-            resolve();
-          }
-        };
-
-        const handleLoad = async () => {
-          try {
-            await newAudio.play();
-            setAudio(newAudio);
-            setAudioRetryCount(0);
-            console.log("Audio playing successfully");
-            resolve();
-          } catch (playError) {
-            console.log("Play error:", playError);
-            handleError();
-          }
-        };
-
-        newAudio.addEventListener('error', handleError);
-        newAudio.addEventListener('canplaythrough', handleLoad);
-        
-        newAudio.src = proxiedUrl;
-        newAudio.volume = 0.5;
-        newAudio.crossOrigin = "anonymous";
-        newAudio.load();
-      });
-    } catch (error) {
-      console.error("Error in tryPlayAudio:", error);
-      if (retryCount < maxRetries) {
-        setTimeout(() => {
-          tryPlayAudio(retryCount + 1);
-        }, 2000);
-      } else {
-        createBeepSound();
-      }
-    }
-  };
-
-    try {
-      await tryPlayAudio(audioRetryCount);
-      setGameState(prev => ({ 
-        ...prev, 
-        isPlaying: true, 
-        timeLeft: 30 
-      }));
-    } catch (error) {
-      console.error("Final error playing audio:", error);
-      setGameState(prev => ({ 
-        ...prev, 
-        isPlaying: true, 
-        timeLeft: 30 
-      }));
-    }
-  };
-
-  const pausePreview = () => {
-    if (audio) {
-      audio.pause();
-    }
-    setGameState(prev => ({ ...prev, isPlaying: false }));
-  };
-
   const handleDragStart = (song: Song) => {
     setDraggedSong(song);
-    setActiveDrag(null);
+    soundManager.current.playSound('cardPickup');
   };
 
-  const handleDragOver = (
+  const handleDragOver = useCallback((
     e: React.DragEvent,
     playerId: string,
     position: number
   ) => {
     e.preventDefault();
-    const currentPlayer = getCurrentPlayer();
-    if (!draggedSong || currentPlayer?.id !== playerId) return;
-
-    setDragOverPosition({ playerId, position });
-    setActiveDrag({ playerId, position, song: draggedSong });
-  };
-
-  const handleDragLeave = () => {
-    setDragOverPosition(null);
-    setActiveDrag(null);
-  };
-
-  const handleDrop = (playerId: string, position: number) => {
     if (!draggedSong) return;
 
     const currentPlayer = getCurrentPlayer();
     if (currentPlayer?.id !== playerId) return;
 
-    playCardPlaceSound();
+    if (!activeDrag || 
+        activeDrag.position !== position || 
+        activeDrag.playerId !== playerId) {
+      soundManager.current.playSound('cardHover', 0.3);
+    }
 
-    // First place the card in the timeline
+    setActiveDrag({
+      playerId,
+      position,
+      song: draggedSong
+    });
+  }, [draggedSong, activeDrag]);
+
+  const handleDragLeave = () => {
+    setActiveDrag(null);
+  };
+
+  const handleDrop = useCallback((playerId: string, position: number) => {
+    if (!draggedSong) return;
+
+    const currentPlayer = getCurrentPlayer();
+    if (currentPlayer?.id !== playerId) return;
+
+    soundManager.current.playSound('cardPlace');
+
     const newTimeline = [...currentPlayer.timeline];
     newTimeline.splice(position, 0, draggedSong);
     
@@ -519,79 +549,73 @@ const playPreview = async () => {
         p.id === currentPlayer.id 
           ? { ...p, timeline: newTimeline }
           : p
-      )
-    }));
-
-    // Set the placed card position and show confirmation
-    setPlacedCardPosition(position);
-    setGameState(prev => ({
-      ...prev,
+      ),
       confirmingPlacement: { song: draggedSong, position }
     }));
 
+    setPlacedCardPosition(position);
     setDraggedSong(null);
     setActiveDrag(null);
-  };
+  }, [draggedSong]);
 
-  const confirmPlacement = () => {
+  const confirmPlacement = useCallback(() => {
     if (!gameState.confirmingPlacement) return;
 
     const { song, position } = gameState.confirmingPlacement;
     const currentPlayer = getCurrentPlayer();
     if (!currentPlayer) return;
 
-    const isCorrect = checkPlacementCorrectness(
-      currentPlayer.timeline.filter((_, index) => index !== position), 
-      song, 
-      position
-    );
+    const isCorrect = checkPlacement(song, position, currentPlayer.timeline);
 
-    setGameState(prev => ({
-      ...prev,
-      cardResult: { correct: isCorrect, song },
-      confirmingPlacement: null
-    }));
+    if (isCorrect) {
+      soundManager.current.playSound('cardCorrect');
+      setGameState(prev => ({
+        ...prev,
+        players: prev.players.map(p => 
+          p.id === currentPlayer.id 
+            ? { ...p, score: p.score + 1 }
+            : p
+        ),
+        cardResult: {
+          correct: true,
+          message: "Perfect placement! +1 point",
+          song
+        }
+      }));
+
+      if (currentPlayer.score + 1 >= 10) {
+        soundManager.current.playSound('victory');
+        setGameState(prev => ({
+          ...prev,
+          phase: 'finished',
+          winner: currentPlayer
+        }));
+      }
+    } else {
+      soundManager.current.playSound('cardWrong');
+      setGameState(prev => ({
+        ...prev,
+        players: prev.players.map(p => 
+          p.id === currentPlayer.id 
+            ? { ...p, timeline: p.timeline.filter((_, i) => i !== position) }
+            : p
+        ),
+        cardResult: {
+          correct: false,
+          message: "Wrong placement! Try again",
+          song
+        }
+      }));
+    }
 
     setPlacedCardPosition(null);
-
-    setTimeout(() => {
-      setGameState(prev => {
-        const updatedPlayers = prev.players.map(p => {
-          if (p.id === currentPlayer.id) {
-            if (isCorrect) {
-              return { 
-                ...p, 
-                score: p.score + 1
-              };
-            } else {
-              // Remove the card if incorrect
-              const newTimeline = p.timeline.filter((_, index) => index !== position);
-              return { 
-                ...p, 
-                timeline: newTimeline
-              };
-            }
-          }
-          return p;
-        });
-
-        const winner = updatedPlayers.find(p => p.score >= 10);
-
-        return {
-          ...prev,
-          players: updatedPlayers,
-          phase: winner ? 'finished' : 'playing',
-          winner
-        };
-      });
-    }, 2000);
-  };
+  }, [gameState.confirmingPlacement]);
 
   const cancelPlacement = () => {
     const currentPlayer = getCurrentPlayer();
     if (!currentPlayer || placedCardPosition === null) return;
 
-    // Remove the placed card from timeline
+    soundManager.current.playSound('cardWrong');
     setGameState(prev => ({
       ...prev,
       players: prev.players.map(p => 
@@ -605,16 +629,16 @@ const playPreview = async () => {
     setPlacedCardPosition(null);
   };
 
-  const checkPlacementCorrectness = (timeline: Song[], newSong: Song, position: number): boolean => {
-    const newYear = parseInt(newSong.release_year);
+  const checkPlacement = (song: Song, position: number, timeline: Song[]): boolean => {
+    const newYear = parseInt(song.release_year);
     
     if (position > 0) {
       const prevYear = parseInt(timeline[position - 1].release_year);
       if (newYear < prevYear) return false;
     }
     
-    if (position < timeline.length) {
-      const nextYear = parseInt(timeline[position].release_year);
+    if (position < timeline.length - 1) {
+      const nextYear = parseInt(timeline[position + 1].release_year);
       if (newYear > nextYear) return false;
     }
     
@@ -629,12 +653,26 @@ const playPreview = async () => {
 
   const handlePlaylistLoaded = (success: boolean) => {
     if (success) {
-      console.log("Playlist loaded successfully");
       setShowPlaylistLoader(false);
     } else {
       console.error("Failed to load playlist");
     }
   };
+
+  // Sound toggle button
+  const soundToggleButton = (
+    <Button
+      onClick={toggleMute}
+      variant="outline"
+      size="sm"
+      className="backdrop-blur-sm bg-white/10 border-white/20 hover:bg-white/20 transition-all duration-300"
+    >
+      {gameState.isMuted ? 
+        <VolumeX className="h-4 w-4 text-red-400" /> : 
+        <Volume2 className="h-4 w-4 text-green-400" />
+      }
+    </Button>
+  );
 
   if (gameState.phase === 'lobby') {
     return (
@@ -690,6 +728,7 @@ const playPreview = async () => {
               >
                 {gameState.isDarkMode ? <Sun className="h-4 w-4 text-yellow-400" /> : <Moon className="h-4 w-4 text-purple-400" />}
               </Button>
+              {soundToggleButton}
             </div>
             <p className="text-xl mb-8 text-purple-200/80 font-medium">
               Place songs in chronological order • Feel the rhythm of time ✨
@@ -800,7 +839,6 @@ const playPreview = async () => {
     );
   }
 
-  // Replace the entire victory screen section with this:
   if (gameState.phase === 'finished' && gameState.winner) {
     return (
       <VictoryScreen 
@@ -870,6 +908,7 @@ const playPreview = async () => {
                   </span>
                 </div>
               )}
+              {soundToggleButton}
             </div>
 
             {/* Current Player Info */}
@@ -916,7 +955,7 @@ const playPreview = async () => {
           )}
         </div>
 
-        {/* Current Player's Timeline - Fixed centering */}
+        {/* Current Player's Timeline */}
         <PlayerTimeline
           player={currentPlayer}
           isCurrent={true}
@@ -938,7 +977,7 @@ const playPreview = async () => {
           transitionProgress={transitionProgress}
         />
 
-        {/* Other players with transition animations */}
+        {/* Other players */}
         <CircularPlayersLayout 
           players={gameState.players}
           currentPlayerId={currentPlayer?.id}
@@ -960,7 +999,7 @@ const playPreview = async () => {
                 {gameState.cardResult.correct ? '✓' : '✗'}
               </div>
               <div className="text-5xl font-bold text-white mb-4">
-                {gameState.cardResult.correct ? 'PERFECT!' : 'NOT QUITE!'}
+                {gameState.cardResult.message}
               </div>
               <div className="text-xl text-white/80">
                 {gameState.cardResult.song.deezer_title} • {gameState.cardResult.song.release_year}
