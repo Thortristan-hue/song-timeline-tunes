@@ -31,7 +31,7 @@ interface PlayerTimelineProps {
   transitionProgress?: number;
 }
 
-export default function PlayerTimeline({
+export function PlayerTimeline({
   player,
   isCurrent,
   isDarkMode,
