@@ -1,22 +1,8 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { gameService, GameRoom, DatabasePlayer } from '@/services/gameService';
-import { Song } from '@/services/gameService'; // Import Song from gameService
+import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
-
-// Define Player type that matches your application needs
-interface Player {
-  id: string;
-  roomId: string;
-  sessionId: string;
-  name: string;
-  color: string;
-  timelineColor: string;
-  score: number;
-  timeline: Song[];
-  isHost: boolean;
-  joinedAt: string;
-  lastActive: string;
-}
 
 interface UseGameRoomReturn {
   room: GameRoom | null;
@@ -50,16 +36,6 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName);
       setRoom(newRoom);
-      
-      // Set the current player as the host
-      const hostPlayers = await gameService.getPlayersInRoom(newRoom.id);
-      const hostPlayer = hostPlayers.find(p => p.is_host);
-      if (hostPlayer) {
-        setCurrentPlayer(gameService.convertDatabasePlayerToPlayer({
-          ...hostPlayer,
-          timeline: JSON.stringify(hostPlayer.timeline)
-        } as DatabasePlayer));
-      }
       
       toast({
         title: "Room created!",
@@ -207,12 +183,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
     // Initial load of players
     gameService.getPlayersInRoom(room.id).then(dbPlayers => {
-      const convertedPlayers = dbPlayers.map(player => 
-        gameService.convertDatabasePlayerToPlayer({
-          ...player,
-          timeline: JSON.stringify(player.timeline)
-        } as DatabasePlayer)
-      );
+      const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
       setPlayers(convertedPlayers);
     });
 

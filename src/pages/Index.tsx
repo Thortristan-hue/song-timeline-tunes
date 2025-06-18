@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Music, Play, Pause, Clock, Sun, Moon, Trophy, Volume2, VolumeX, Users, Check, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -155,33 +156,33 @@ const Index = () => {
   });
 
   // Navigation handlers
-  const handleHostGame = useCallback(async () => {
+  const handleHostGame = async () => {
     setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
     // We'll prompt for host name in the lobby component
-  }, []);
+  };
 
-  const handleJoinGame = useCallback(() => {
+  const handleJoinGame = () => {
     setGameState(prev => ({ ...prev, phase: 'mobileJoin' }));
-  }, []);
+  };
 
-  const handleBackToMenu = useCallback(() => {
+  const handleBackToMenu = () => {
     leaveRoom();
     setGameState(prev => ({ ...prev, phase: 'menu' }));
-  }, [leaveRoom]);
+  };
 
   // Lobby handlers
-  const handleJoinLobby = useCallback(async (lobbyCode: string, playerName: string) => {
+  const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
       setGameState(prev => ({ ...prev, phase: 'mobileLobby' }));
     }
-  }, [joinRoom]);
+  };
 
-  const handleUpdatePlayer = useCallback(async (name: string, color: string) => {
+  const handleUpdatePlayer = async (name: string, color: string) => {
     await updatePlayer(name, color);
-  }, [updatePlayer]);
+  };
 
-  const handleStartGame = useCallback(async () => {
+  const handleStartGame = async () => {
     if (players.length === 0 || customSongs.length === 0) {
       toast({
         title: "Cannot start game",
@@ -199,7 +200,7 @@ const Index = () => {
       title: "Game Started!",
       description: "Let the timeline battle begin!",
     });
-  }, [players.length, customSongs, updateRoomSongs, startGame, toast]);
+  };
 
   // Handle room phase changes
   useEffect(() => {
