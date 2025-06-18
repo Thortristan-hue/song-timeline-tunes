@@ -11,7 +11,7 @@ interface PlaylistLoaderProps {
   isDarkMode: boolean;
 }
 
-export default function PlaylistLoader({ onPlaylistLoaded, isDarkMode }: PlaylistLoaderProps) {
+export function PlaylistLoader({ onPlaylistLoaded, isDarkMode }: PlaylistLoaderProps) {
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
