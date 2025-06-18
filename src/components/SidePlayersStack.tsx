@@ -9,7 +9,7 @@ interface SidePlayersStackProps {
   isDarkMode: boolean;
 }
 
-export default function SidePlayersStack({ players, currentId, isDarkMode }: SidePlayersStackProps) {
+export function SidePlayersStack({ players, currentId, isDarkMode }: SidePlayersStackProps) {
   return (
     <div className={cn(
       "flex flex-col justify-center items-center gap-6 h-full w-32 py-4"
