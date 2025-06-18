@@ -1,10 +1,9 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Music, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Song, Player } from "@/pages/Index";
+import { Song, Player } from "@/types/game";
 
 interface PlayerTimelineProps {
   player: Player;

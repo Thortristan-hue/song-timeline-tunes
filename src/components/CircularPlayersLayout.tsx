@@ -1,7 +1,8 @@
+
 import React from "react";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Player } from "@/pages/Index";
+import { Player } from "@/types/game";
 import { Badge } from './ui/badge';
 import '../styles/enhanced-animations.css';
 

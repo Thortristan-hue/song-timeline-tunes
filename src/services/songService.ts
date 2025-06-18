@@ -1,4 +1,4 @@
-import { Song } from "@/pages/Index";
+import { Song } from "@/types/game";
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
 interface DeezerTrack {
@@ -23,7 +23,7 @@ interface EnhancedMetadata {
   album?: string;
   release_year?: string;
   source: 'musicbrainz' | 'discogs' | 'deezer_only';
-  error?: string; // Added missing error property
+  error?: string;
 }
 
 class SongService {
@@ -104,7 +104,10 @@ class SongService {
       const data = await response.json();
   
       if (!data.recordings || data.recordings.length === 0) {
-        return { error: 'No results found on MusicBrainz.' };
+        return { 
+          error: 'No results found on MusicBrainz.',
+          source: 'musicbrainz'
+        };
       }
   
       const recording = data.recordings[0];

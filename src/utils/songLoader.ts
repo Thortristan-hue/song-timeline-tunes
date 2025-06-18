@@ -1,5 +1,4 @@
-
-import { Song } from "@/pages/Index";
+import { Song } from "@/types/game";
 
 export const loadSongsFromJson = async (jsonFile: File): Promise<Song[]> => {
   return new Promise((resolve, reject) => {
