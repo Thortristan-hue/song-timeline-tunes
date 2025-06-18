@@ -18,3 +18,13 @@ export interface Player {
   score: number;
   timeline: Song[];
 }
+
+export interface GameRoom {
+  id: string;
+  hostId: string;
+  players: Player[];
+  phase: 'lobby' | 'playing' | 'finished';
+  songs: Song[];
+  currentTurn: number;
+  currentSong: Song | null;
+}

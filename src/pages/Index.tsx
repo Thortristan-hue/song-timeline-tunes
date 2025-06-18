@@ -9,9 +9,14 @@ import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { PlayerJoinForm } from '@/components/PlayerJoinForm';
 import VictoryScreen from '@/components/VictoryScreen';
+import { MainMenu } from '@/components/MainMenu';
+import { HostLobby } from '@/components/HostLobby';
+import { MobileJoin } from '@/components/MobileJoin';
+import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
+import { Song, Player } from '@/types/game';
 import '@/styles/enhanced-animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
@@ -97,45 +102,6 @@ class SoundManager {
   }
 }
 
-// Types
-export interface Song {
-  id: string;
-  deezer_title: string;
-  deezer_artist: string;
-  deezer_album: string;
-  release_year: string;
-  genre: string;
-  cardColor: string;
-  preview_url?: string;
-}
-
-export interface Player {
-  id: string;
-  name: string;
-  color: string;
-  timelineColor: string;
-  score: number;
-  timeline: Song[];
-}
-
-interface GameState {
-  phase: 'lobby' | 'playing' | 'finished';
-  players: Player[];
-  currentTurn: number;
-  currentSong: Song | null;
-  timeLeft: number;
-  isPlaying: boolean;
-  isDarkMode: boolean;
-  throwingCard: { song: Song; playerId: string; position: number } | null;
-  confirmingPlacement: { song: Song; position: number } | null;
-  cardResult: { correct: boolean; message: string; song: Song } | null;
-  transitioningTurn: boolean;
-  winner: Player | null;
-  isMuted: boolean;
-  hostId: string;
-  pendingPlacement: { playerId: string; song: Song; position: number } | null;
-}
-
 const playerColors = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
   '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
@@ -150,21 +116,30 @@ const getRandomCardColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-const filterValidSongs = (songs: Song[]): Song[] => {
-  return songs.filter(song => 
-    song.release_year && 
-    song.release_year !== "Unknown" && 
-    song.preview_url && 
-    song.preview_url.trim() !== ""
-  );
+const generateLobbyCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
-const assignCardColor = (song: Song): Song => {
-  if (!song.cardColor) {
-    return { ...song, cardColor: getRandomCardColor() };
-  }
-  return song;
-};
+interface GameState {
+  phase: 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
+  players: Player[];
+  currentTurn: number;
+  currentSong: Song | null;
+  timeLeft: number;
+  isPlaying: boolean;
+  isDarkMode: boolean;
+  throwingCard: { song: Song; playerId: string; position: number } | null;
+  confirmingPlacement: { song: Song; position: number } | null;
+  cardResult: { correct: boolean; message: string; song: Song } | null;
+  transitioningTurn: boolean;
+  winner: Player | null;
+  isMuted: boolean;
+  hostId: string;
+  pendingPlacement: { playerId: string; song: Song; position: number } | null;
+  lobbyCode: string;
+  playerRole: 'host' | 'mobile' | null;
+  currentPlayerId: string | null;
+}
 
 const Index = () => {
   const { toast } = useToast();
@@ -172,7 +147,7 @@ const Index = () => {
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   
   const [gameState, setGameState] = useState<GameState>({
-    phase: 'lobby',
+    phase: 'menu',
     players: [],
     currentTurn: 0,
     currentSong: null,
@@ -186,113 +161,169 @@ const Index = () => {
     winner: null,
     isMuted: false,
     hostId: 'host-1',
-    pendingPlacement: null
+    pendingPlacement: null,
+    lobbyCode: '',
+    playerRole: null,
+    currentPlayerId: null
   });
 
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
-  const [audioRetryCount, setAudioRetryCount] = useState(0);
-  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
-  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [activeDrag, setActiveDrag] = useState<{
-    playerId: string;
-    position: number;
-    song: Song | null;
-  } | null>(null);
-  const [placedCardPosition, setPlacedCardPosition] = useState<number | null>(null);
-  const [transitionProgress, setTransitionProgress] = useState(0);
-  const [showPlaylistLoader, setShowPlaylistLoader] = useState(false);
+  // Navigation handlers
+  const handleHostGame = () => {
+    const lobbyCode = generateLobbyCode();
+    setGameState(prev => ({
+      ...prev,
+      phase: 'hostLobby',
+      playerRole: 'host',
+      lobbyCode
+    }));
+  };
 
-  // Initialize background music
-  useEffect(() => {
-    if (gameState.phase === 'playing') {
-      soundManager.current.playBgMusic();
-    } else {
-      soundManager.current.pauseBgMusic();
-    }
-  }, [gameState.phase]);
+  const handleJoinGame = () => {
+    setGameState(prev => ({
+      ...prev,
+      phase: 'mobileJoin',
+      playerRole: 'mobile'
+    }));
+  };
 
-  // Audio handling for preview
-  useEffect(() => {
-    if (gameState.currentSong?.preview_url && !audio) {
-      const newAudio = new Audio(gameState.currentSong.preview_url);
-      newAudio.addEventListener('ended', () => {
-        setGameState(prev => ({ ...prev, isPlaying: false }));
-      });
-      
-      newAudio.addEventListener('error', () => {
-        if (audioRetryCount < 10) {
-          setAudioRetryCount(prev => prev + 1);
-          setTimeout(() => {
-            newAudio.load();
-            if (gameState.isPlaying) newAudio.play();
-          }, 1000);
-        } else {
-          toast({
-            title: "Audio Error",
-            description: "Failed to load song preview. Please try another song.",
-            variant: "destructive"
-          });
-          setGameState(prev => ({ ...prev, isPlaying: false }));
-        }
-      });
-      
-      setAudio(newAudio);
-    }
-    
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.remove();
-      }
+  const handleBackToMenu = () => {
+    setGameState(prev => ({
+      ...prev,
+      phase: 'menu',
+      playerRole: null,
+      players: [],
+      lobbyCode: '',
+      currentPlayerId: null
+    }));
+  };
+
+  // Lobby handlers
+  const handleJoinLobby = (lobbyCode: string, playerName: string) => {
+    // In a real implementation, this would communicate with a server
+    // For now, we'll simulate joining a lobby
+    const newPlayer: Player = {
+      id: `player-${Date.now()}`,
+      name: playerName,
+      color: playerColors[0],
+      timelineColor: playerColors[0],
+      score: 0,
+      timeline: []
     };
-  }, [gameState.currentSong?.preview_url]);
 
-  // Timer effect
-  useEffect(() => {
-    let interval: number;
-    if (gameState.phase === 'playing' && gameState.timeLeft > 0) {
-      interval = window.setInterval(() => {
-        setGameState(prev => {
-          if (prev.timeLeft <= 5) {
-            soundManager.current.playSound('tick', 0.4);
-          }
-          return { ...prev, timeLeft: prev.timeLeft - 1 };
-        });
-      }, 1000);
-    } else if (gameState.timeLeft === 0) {
-      setGameState(prev => ({ ...prev, isPlaying: false }));
-      if (audio) {
-        audio.pause();
-      }
+    setGameState(prev => ({
+      ...prev,
+      phase: 'mobileLobby',
+      currentPlayerId: newPlayer.id,
+      players: [...prev.players, newPlayer]
+    }));
+
+    toast({
+      title: "Joined lobby!",
+      description: `Connected to lobby ${lobbyCode}`,
+    });
+  };
+
+  const handleUpdatePlayer = (name: string, color: string) => {
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(player => 
+        player.id === prev.currentPlayerId 
+          ? { ...player, name, color, timelineColor: color }
+          : player
+      )
+    }));
+  };
+
+  const handleStartGame = () => {
+    if (gameState.players.length === 0 || customSongs.length === 0) return;
+    
+    // Initialize game state for multiplayer
+    setGameState(prev => ({
+      ...prev,
+      phase: 'playing',
+      currentTurn: 0
+    }));
+
+    toast({
+      title: "Game Started!",
+      description: "Let the timeline battle begin!",
+    });
+  };
+
+  // Render based on current phase
+  const renderCurrentPhase = () => {
+    switch (gameState.phase) {
+      case 'menu':
+        return (
+          <MainMenu 
+            onHostGame={handleHostGame}
+            onJoinGame={handleJoinGame}
+          />
+        );
+
+      case 'hostLobby':
+        return (
+          <HostLobby
+            lobbyCode={gameState.lobbyCode}
+            players={gameState.players}
+            onStartGame={handleStartGame}
+            onBackToMenu={handleBackToMenu}
+            setCustomSongs={setCustomSongs}
+          />
+        );
+
+      case 'mobileJoin':
+        return (
+          <MobileJoin
+            onJoinLobby={handleJoinLobby}
+            onBackToMenu={handleBackToMenu}
+          />
+        );
+
+      case 'mobileLobby':
+        const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId);
+        if (!currentPlayer) return null;
+        
+        return (
+          <MobilePlayerLobby
+            player={currentPlayer}
+            lobbyCode={gameState.lobbyCode}
+            onUpdatePlayer={handleUpdatePlayer}
+          />
+        );
+
+      case 'playing':
+        // This will need to be implemented with the actual game logic
+        return (
+          <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-4">
+            <div className="text-center text-white">
+              <h1 className="text-4xl font-bold mb-4">Game In Progress</h1>
+              <p>Game implementation coming next...</p>
+              <Button 
+                onClick={handleBackToMenu}
+                className="mt-4 bg-red-500 hover:bg-red-600"
+              >
+                End Game
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'finished':
+        if (!gameState.winner) return null;
+        return (
+          <VictoryScreen 
+            winner={gameState.winner}
+            players={gameState.players}
+          />
+        );
+
+      default:
+        return null;
     }
-    return () => window.clearInterval(interval);
-  }, [gameState.phase, gameState.timeLeft, audio]);
+  };
 
-  // Rest of your component code...
-  // [Keep all your existing handler functions and JSX as is]
-
-  return (
-    <>
-      {gameState.phase === 'lobby' && (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-          {/* Lobby UI */}
-        </div>
-      )}
-
-      {gameState.phase === 'finished' && gameState.winner && (
-        <VictoryScreen 
-          winner={gameState.winner}
-          players={gameState.players}
-        />
-      )}
-
-      {gameState.phase === 'playing' && (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-          {/* Game UI */}
-        </div>
-      )}
-    </>
-  );
+  return renderCurrentPhase();
 };
 
 export default Index;
