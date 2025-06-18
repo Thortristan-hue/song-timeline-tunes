@@ -13,7 +13,7 @@ interface CircularPlayersLayoutProps {
   transitionProgress?: number;
 }
 
-export default function CircularPlayersLayout({ 
+export function CircularPlayersLayout({ 
   players, 
   currentPlayerId, 
   isDarkMode,
