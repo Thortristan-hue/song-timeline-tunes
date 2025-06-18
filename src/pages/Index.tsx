@@ -15,6 +15,7 @@ import { loadSongsFromJson } from "@/utils/songLoader";
 import '@/styles/enhanced-animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
+const [customSongs, setCustomSongs] = useState<Song[]>([]);
 
 // Sound Manager Class
 class SoundManager {
