@@ -235,6 +235,7 @@ class SongService {
     const cardColor = colors[Math.floor(Math.random() * colors.length)];
     
     return {
+      id: `song-${track.id}-${Date.now()}`, // Generate unique ID using Deezer track ID and timestamp
       deezer_artist: enhanced.artist || artist,
       deezer_title: enhanced.title || title,
       deezer_album: enhanced.album || track.album.title,
