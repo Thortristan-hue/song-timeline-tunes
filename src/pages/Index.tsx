@@ -15,7 +15,6 @@ import { loadSongsFromJson } from "@/utils/songLoader";
 import '@/styles/enhanced-animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
-const [customSongs, setCustomSongs] = useState<Song[]>([]);
 
 // Sound Manager Class
 class SoundManager {
@@ -177,6 +176,7 @@ const assignCardColor = (song: Song): Song => {
 const Index = () => {
   const { toast } = useToast();
   const soundManager = useRef<SoundManager>(new SoundManager());
+  const [customSongs, setCustomSongs] = useState<Song[]>([]);
   
   const [gameState, setGameState] = useState<GameState>({
     phase: 'lobby',
@@ -198,7 +198,6 @@ const Index = () => {
 
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [audioRetryCount, setAudioRetryCount] = useState(0);
-  const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<{
@@ -254,12 +253,12 @@ const Index = () => {
       }
     };
   }, [gameState.currentSong?.preview_url]);
-
+  
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number; // Changed from NodeJS.Timeout
     if (gameState.phase === 'playing' && gameState.timeLeft > 0) {
-      interval = setInterval(() => {
+      interval = window.setInterval(() => { 
         setGameState(prev => {
           if (prev.timeLeft <= 5) {
             soundManager.current.playSound('tick', 0.4);
@@ -267,13 +266,8 @@ const Index = () => {
           return { ...prev, timeLeft: prev.timeLeft - 1 };
         });
       }, 1000);
-    } else if (gameState.timeLeft === 0) {
-      setGameState(prev => ({ ...prev, isPlaying: false }));
-      if (audio) {
-        audio.pause();
-      }
     }
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, [gameState.phase, gameState.timeLeft, audio]);
 
   // Turn transition effect
@@ -1063,3 +1057,4 @@ const Index = () => {
 };
 
 export default Index;
+
