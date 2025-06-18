@@ -44,4 +44,4 @@ const VictoryScreen: React.FC<Props> = ({ winner }) => {
   );
 };
 
-export VictoryScreen;
+export default VictoryScreen;
