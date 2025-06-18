@@ -8,29 +8,24 @@ import { ArrowLeft, Smartphone, Wifi } from 'lucide-react';
 interface MobileJoinProps {
   onJoinLobby: (lobbyCode: string, playerName: string) => void;
   onBackToMenu: () => void;
+  isLoading?: boolean;
 }
 
-export function MobileJoin({ onJoinLobby, onBackToMenu }: MobileJoinProps) {
+export function MobileJoin({ onJoinLobby, onBackToMenu, isLoading = false }: MobileJoinProps) {
   const [lobbyCode, setLobbyCode] = useState('');
   const [playerName, setPlayerName] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lobbyCode.trim() || !playerName.trim()) return;
     
-    setIsConnecting(true);
     setError('');
     
     try {
-      // Add a small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 500));
       onJoinLobby(lobbyCode.trim().toUpperCase(), playerName.trim());
     } catch (err) {
       setError('Failed to join lobby. Please try again.');
-    } finally {
-      setIsConnecting(false);
     }
   };
 
@@ -128,10 +123,10 @@ export function MobileJoin({ onJoinLobby, onBackToMenu }: MobileJoinProps) {
             {/* Join Button with loading state */}
             <Button
               type="submit"
-              disabled={!lobbyCode.trim() || !playerName.trim() || isConnecting}
+              disabled={!lobbyCode.trim() || !playerName.trim() || isLoading}
               className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold h-14 text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isConnecting ? (
+              {isLoading ? (
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Connecting...

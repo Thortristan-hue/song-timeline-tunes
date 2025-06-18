@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Music, Play, Pause, Clock, Sun, Moon, Trophy, Volume2, VolumeX, Users, Check, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { useToast } from '@/components/ui/use-toast';
+import { useGameRoom } from '@/hooks/useGameRoom';
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
 import { Song, Player } from '@/types/game';
@@ -102,27 +104,8 @@ class SoundManager {
   }
 }
 
-const playerColors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
-  '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
-];
-
-const getRandomCardColor = () => {
-  const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', 
-    '#BB8FCE', '#85C1E9', '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C',
-    '#FF9999', '#66CDAA', '#87CEFA', '#DEB887', '#F0A0A0', '#B0E0E6'
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
-const generateLobbyCode = () => {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
-
 interface GameState {
   phase: 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
-  players: Player[];
   currentTurn: number;
   currentSong: Song | null;
   timeLeft: number;
@@ -134,11 +117,7 @@ interface GameState {
   transitioningTurn: boolean;
   winner: Player | null;
   isMuted: boolean;
-  hostId: string;
   pendingPlacement: { playerId: string; song: Song; position: number } | null;
-  lobbyCode: string;
-  playerRole: 'host' | 'mobile' | null;
-  currentPlayerId: string | null;
 }
 
 const Index = () => {
@@ -146,9 +125,22 @@ const Index = () => {
   const soundManager = useRef<SoundManager>(new SoundManager());
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   
+  const {
+    room,
+    players,
+    currentPlayer,
+    isHost,
+    isLoading,
+    createRoom,
+    joinRoom,
+    updatePlayer,
+    updateRoomSongs,
+    startGame,
+    leaveRoom
+  } = useGameRoom();
+  
   const [gameState, setGameState] = useState<GameState>({
     phase: 'menu',
-    players: [],
     currentTurn: 0,
     currentSong: null,
     timeLeft: 30,
@@ -160,95 +152,62 @@ const Index = () => {
     transitioningTurn: false,
     winner: null,
     isMuted: false,
-    hostId: 'host-1',
     pendingPlacement: null,
-    lobbyCode: '',
-    playerRole: null,
-    currentPlayerId: null
   });
 
   // Navigation handlers
-  const handleHostGame = () => {
-    const lobbyCode = generateLobbyCode();
-    setGameState(prev => ({
-      ...prev,
-      phase: 'hostLobby',
-      playerRole: 'host',
-      lobbyCode
-    }));
+  const handleHostGame = async () => {
+    setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+    // We'll prompt for host name in the lobby component
   };
 
   const handleJoinGame = () => {
-    setGameState(prev => ({
-      ...prev,
-      phase: 'mobileJoin',
-      playerRole: 'mobile'
-    }));
+    setGameState(prev => ({ ...prev, phase: 'mobileJoin' }));
   };
 
   const handleBackToMenu = () => {
-    setGameState(prev => ({
-      ...prev,
-      phase: 'menu',
-      playerRole: null,
-      players: [],
-      lobbyCode: '',
-      currentPlayerId: null
-    }));
+    leaveRoom();
+    setGameState(prev => ({ ...prev, phase: 'menu' }));
   };
 
   // Lobby handlers
-  const handleJoinLobby = (lobbyCode: string, playerName: string) => {
-    // In a real implementation, this would communicate with a server
-    // For now, we'll simulate joining a lobby
-    const newPlayer: Player = {
-      id: `player-${Date.now()}`,
-      name: playerName,
-      color: playerColors[0],
-      timelineColor: playerColors[0],
-      score: 0,
-      timeline: []
-    };
-
-    setGameState(prev => ({
-      ...prev,
-      phase: 'mobileLobby',
-      currentPlayerId: newPlayer.id,
-      players: [...prev.players, newPlayer]
-    }));
-
-    toast({
-      title: "Joined lobby!",
-      description: `Connected to lobby ${lobbyCode}`,
-    });
+  const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
+    const success = await joinRoom(lobbyCode, playerName);
+    if (success) {
+      setGameState(prev => ({ ...prev, phase: 'mobileLobby' }));
+    }
   };
 
-  const handleUpdatePlayer = (name: string, color: string) => {
-    setGameState(prev => ({
-      ...prev,
-      players: prev.players.map(player => 
-        player.id === prev.currentPlayerId 
-          ? { ...player, name, color, timelineColor: color }
-          : player
-      )
-    }));
+  const handleUpdatePlayer = async (name: string, color: string) => {
+    await updatePlayer(name, color);
   };
 
-  const handleStartGame = () => {
-    if (gameState.players.length === 0 || customSongs.length === 0) return;
+  const handleStartGame = async () => {
+    if (players.length === 0 || customSongs.length === 0) {
+      toast({
+        title: "Cannot start game",
+        description: "Need players and songs to start the game.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Initialize game state for multiplayer
-    setGameState(prev => ({
-      ...prev,
-      phase: 'playing',
-      currentTurn: 0
-    }));
+    await updateRoomSongs(customSongs);
+    await startGame();
+    setGameState(prev => ({ ...prev, phase: 'playing' }));
 
     toast({
       title: "Game Started!",
       description: "Let the timeline battle begin!",
     });
   };
+
+  // Handle room phase changes
+  useEffect(() => {
+    if (room?.phase === 'playing' && gameState.phase !== 'playing') {
+      setGameState(prev => ({ ...prev, phase: 'playing' }));
+    }
+  }, [room?.phase, gameState.phase]);
 
   // Render based on current phase
   const renderCurrentPhase = () => {
@@ -264,11 +223,13 @@ const Index = () => {
       case 'hostLobby':
         return (
           <HostLobby
-            lobbyCode={gameState.lobbyCode}
-            players={gameState.players}
+            lobbyCode={room?.lobby_code || ''}
+            players={players}
             onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
+            createRoom={createRoom}
+            isLoading={isLoading}
           />
         );
 
@@ -277,27 +238,28 @@ const Index = () => {
           <MobileJoin
             onJoinLobby={handleJoinLobby}
             onBackToMenu={handleBackToMenu}
+            isLoading={isLoading}
           />
         );
 
       case 'mobileLobby':
-        const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId);
-        if (!currentPlayer) return null;
+        if (!currentPlayer || !room) return null;
         
         return (
           <MobilePlayerLobby
             player={currentPlayer}
-            lobbyCode={gameState.lobbyCode}
+            lobbyCode={room.lobby_code}
             onUpdatePlayer={handleUpdatePlayer}
           />
         );
 
       case 'playing':
-        // This will need to be implemented with the actual game logic
         return (
           <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-4">
             <div className="text-center text-white">
               <h1 className="text-4xl font-bold mb-4">Game In Progress</h1>
+              <p className="mb-4">Players: {players.map(p => p.name).join(', ')}</p>
+              <p className="mb-4">Room: {room?.lobby_code}</p>
               <p>Game implementation coming next...</p>
               <Button 
                 onClick={handleBackToMenu}
@@ -314,7 +276,7 @@ const Index = () => {
         return (
           <VictoryScreen 
             winner={gameState.winner}
-            players={gameState.players}
+            players={players}
           />
         );
 

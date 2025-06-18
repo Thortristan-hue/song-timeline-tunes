@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Play, Settings, Users, ArrowLeft } from 'lucide-react';
@@ -14,6 +15,8 @@ interface HostLobbyProps {
   onStartGame: () => void;
   onBackToMenu: () => void;
   setCustomSongs: (songs: any[]) => void;
+  createRoom: (hostName: string) => Promise<string | null>;
+  isLoading: boolean;
 }
 
 export function HostLobby({ 
@@ -21,11 +24,15 @@ export function HostLobby({
   players, 
   onStartGame, 
   onBackToMenu,
-  setCustomSongs 
+  setCustomSongs,
+  createRoom,
+  isLoading
 }: HostLobbyProps) {
   const { toast } = useToast();
   const [showPlaylistLoader, setShowPlaylistLoader] = useState(false);
   const [playlistLoaded, setPlaylistLoaded] = useState(false);
+  const [showNamePrompt, setShowNamePrompt] = useState(!lobbyCode);
+  const [hostName, setHostName] = useState('');
 
   const copyLobbyCode = () => {
     navigator.clipboard.writeText(lobbyCode);
@@ -45,6 +52,63 @@ export function HostLobby({
       });
     }
   };
+
+  const handleCreateRoom = async () => {
+    if (!hostName.trim()) return;
+    
+    const code = await createRoom(hostName.trim());
+    if (code) {
+      setShowNamePrompt(false);
+    }
+  };
+
+  // Show name prompt if no room exists yet
+  if (showNamePrompt) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <Card className="bg-white/10 border-white/20 p-8 w-full max-w-md">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-white mb-2">Create Game Room</h1>
+            <p className="text-purple-200/80">Enter your name to create a lobby</p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="hostName" className="block text-white font-medium mb-2">
+                Your Name
+              </label>
+              <Input
+                id="hostName"
+                value={hostName}
+                onChange={(e) => setHostName(e.target.value)}
+                placeholder="Enter your name"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20"
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateRoom()}
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={onBackToMenu}
+                variant="outline"
+                className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                Back
+              </Button>
+              <Button
+                onClick={handleCreateRoom}
+                disabled={!hostName.trim() || isLoading}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+              >
+                {isLoading ? 'Creating...' : 'Create Room'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-4">
