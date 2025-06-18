@@ -8,11 +8,11 @@ import { PlayerTimeline } from '@/components/PlayerTimeline';
 import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { PlayerJoinForm } from '@/components/PlayerJoinForm';
-import { VictoryScreen } from '@/components/VictoryScreen';
+import VictoryScreen from '@/components/VictoryScreen';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { loadSongsFromJson } from "@/utils/songLoader";
-import '@/styles/animations.css';
+import '@/styles/enhanced-animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
