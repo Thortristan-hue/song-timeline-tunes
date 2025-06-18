@@ -9,7 +9,7 @@ interface PlayerJoinFormProps {
   isDarkMode: boolean;
 }
 
-export default function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormProps) {
+export function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormProps) {
   const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
