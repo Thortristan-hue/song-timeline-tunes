@@ -1,32 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HostDisplay } from '@/components/HostDisplay';
-import { PlayerView } from '@/components/PlayerView';
+import { useGameRoom } from '@/hooks/useGameRoom';
+import { useToast } from '@/components/ui/use-toast';
+import { Player, Song, GameState, GamePhase } from '@/types/game';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
+import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
-import { useGameRoom } from '@/hooks/useGameRoom';
-import { useToast } from '@/components/ui/use-toast';
-import { Song, Player, GamePhase } from '@/types/game';
+import SoundManager from '@/lib/SoundManager';
 import { loadSongsFromJson } from "@/utils/songLoader";
-import '@/styles/enhanced-animations.css';
 
-interface GameState {
-  phase: GamePhase;
-  currentTurn: number;
-  currentSong: Song | null;
-  timeLeft: number;
-  isPlaying: boolean;
-  isDarkMode: boolean;
-  winner: Player | null;
-  isMuted: boolean;
-  currentSongProgress?: number;
-  currentSongDuration?: number;
-}
-
-const Index = () => {
+export default function Index() {
   const { toast } = useToast();
+  const soundManager = useRef<SoundManager>(new SoundManager());
+  const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -42,7 +30,7 @@ const Index = () => {
     startGame,
     leaveRoom
   } = useGameRoom();
-
+  
   const [gameState, setGameState] = useState<GameState>({
     phase: 'menu',
     currentTurn: 0,
@@ -50,78 +38,80 @@ const Index = () => {
     timeLeft: 30,
     isPlaying: false,
     isDarkMode: true,
+    throwingCard: null,
+    confirmingPlacement: null,
+    cardResult: null,
+    transitioningTurn: false,
     winner: null,
     isMuted: false,
+    pendingPlacement: null,
   });
 
-  const [customSongs, setCustomSongs] = useState<Song[]>([]);
-
-  // Initialize game when starting
+  // Initialize game with songs
   useEffect(() => {
-    if (gameState.phase === 'playing' && !gameState.currentSong && customSongs.length > 0) {
+    const loadInitialSongs = async () => {
+      const songs = await loadSongsFromJson();
+      setCustomSongs(songs);
+    };
+    loadInitialSongs();
+  }, []);
+
+  // Handle turn transitions
+  const handleTurnEnd = () => {
+    setGameState(prev => ({
+      ...prev,
+      currentTurn: prev.currentTurn + 1,
+      timeLeft: 30,
+      isPlaying: false,
+      transitioningTurn: true
+    }));
+
+    setTimeout(() => {
       setGameState(prev => ({
         ...prev,
-        currentSong: customSongs[0]
+        transitioningTurn: false,
+        currentSong: customSongs[(prev.currentTurn + 1) % customSongs.length]
       }));
-    }
-  }, [gameState.phase, customSongs]);
+    }, 1000);
+  };
 
-  // Handle timer and audio updates
-  useEffect(() => {
-    const timer = gameState.phase === 'playing' && setInterval(() => {
-      setGameState(prev => ({
-        ...prev,
-        timeLeft: Math.max(0, prev.timeLeft - 1)
-      }));
-    return () => timer && clearInterval(timer);
-  }, [gameState.phase]);
-
+  // Handle audio updates
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setGameState(prev => ({
         ...prev,
-        timeLeft: 30 - Math.floor(audioRef.current?.currentTime || 0),
-        currentSongProgress: audioRef.current.currentTime,
-        currentSongDuration: audioRef.current.duration || 30
+        timeLeft: 30 - Math.floor(audioRef.current?.currentTime || 0)
       }));
     }
   };
 
-  const handlePlayPause = () => {
-    if (!audioRef.current || !gameState.currentSong?.preview_url) return;
-
-    if (gameState.isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(() => {});
-    }
-    
-    setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
-  };
-
+  // Handle card placement
   const handlePlaceCard = async (position: number) => {
     if (!gameState.currentSong || !currentPlayer) return;
 
-    const nextTurn = gameState.currentTurn + 1;
-    const nextSong = customSongs[nextTurn % customSongs.length];
+    const updatedPlayers = players.map(p => {
+      if (p.id === currentPlayer.id) {
+        const newTimeline = [...p.timeline];
+        newTimeline.splice(position, 0, gameState.currentSong!);
+        return {
+          ...p,
+          timeline: newTimeline,
+          score: p.score + 1
+        };
+      }
+      return p;
+    });
 
-    setGameState(prev => ({
-      ...prev,
-      currentTurn: nextTurn,
-      currentSong: nextSong,
-      timeLeft: 30,
-      isPlaying: false
-    }));
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    soundManager.current.playSound('cardCorrect');
+    handleTurnEnd();
   };
 
+  // Navigation handlers
   const handleHostGame = async () => {
-    setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
-    await createRoom();
+    const success = await createRoom();
+    if (success) {
+      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+    }
   };
 
   const handleJoinGame = () => {
@@ -140,6 +130,11 @@ const Index = () => {
     }
   };
 
+  const handleUpdatePlayer = async (name: string, color: string) => {
+    await updatePlayer(name, color);
+  };
+
+  // Game control handlers
   const handleStartGame = async () => {
     if (players.length === 0 || customSongs.length === 0) {
       toast({
@@ -164,13 +159,32 @@ const Index = () => {
     });
   };
 
-  const renderContent = () => {
-    const currentTurnPlayer = players[gameState.currentTurn % players.length];
+  const handleEndGame = (winner: Player) => {
+    setGameState(prev => ({
+      ...prev,
+      phase: 'finished',
+      winner
+    }));
+  };
+
+  const handlePlayPause = () => {
+    if (!audioRef.current) return;
+
+    if (gameState.isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
     
+    setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+  };
+
+  // Phase rendering
+  const renderPhase = () => {
     switch (gameState.phase) {
       case 'menu':
         return (
-          <MainMenu 
+          <MainMenu
             onHostGame={handleHostGame}
             onJoinGame={handleJoinGame}
           />
@@ -184,7 +198,6 @@ const Index = () => {
             onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
-            createRoom={createRoom}
             isLoading={isLoading}
           />
         );
@@ -204,30 +217,20 @@ const Index = () => {
           <MobilePlayerLobby
             player={currentPlayer}
             lobbyCode={room.lobby_code}
-            onUpdatePlayer={updatePlayer}
+            onUpdatePlayer={handleUpdatePlayer}
           />
         );
 
       case 'playing':
-        if (!currentPlayer) {
-          return (
-            <HostDisplay
-              currentTurnPlayer={currentTurnPlayer}
-              players={players}
-              roomCode={room?.lobby_code || ''}
-              currentSongProgress={gameState.currentSongProgress || 0}
-              currentSongDuration={gameState.currentSongDuration || 30}
-              gameState={gameState}
-            />
-          );
-        }
         return (
-          <PlayerView
+          <GamePlay
+            room={room}
+            players={players}
             currentPlayer={currentPlayer}
-            currentTurnPlayer={currentTurnPlayer}
-            roomCode={room?.lobby_code || ''}
-            isMyTurn={currentPlayer.id === currentTurnPlayer.id}
+            isHost={isHost}
+            songs={customSongs}
             gameState={gameState}
+            onEndGame={handleEndGame}
             onPlaceCard={handlePlaceCard}
             onPlayPause={handlePlayPause}
           />
@@ -239,6 +242,7 @@ const Index = () => {
           <VictoryScreen 
             winner={gameState.winner}
             players={players}
+            onBackToMenu={handleBackToMenu}
           />
         );
 
@@ -249,21 +253,15 @@ const Index = () => {
 
   return (
     <>
-      {gameState.phase === 'playing' && !currentPlayer && gameState.currentSong?.preview_url && (
+      {gameState.phase === 'playing' && gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
           src={gameState.currentSong.preview_url}
           onTimeUpdate={handleTimeUpdate}
-          onEnded={() => setGameState(prev => ({
-            ...prev,
-            isPlaying: false,
-            timeLeft: 30
-          }))}
+          onEnded={handleTurnEnd}
         />
       )}
-      {renderContent()}
+      {renderPhase()}
     </>
   );
-};
-
-export default Index;
+}
