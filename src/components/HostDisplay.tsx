@@ -1,90 +1,139 @@
 import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Music, Clock } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Card } from './ui/card';
+import { Progress } from './ui/progress';
+import { Music } from 'lucide-react';
+import { Badge } from './ui/badge';
 import { Song, Player } from '@/types/game';
+import { cn } from '@/lib/utils';
 
 interface HostDisplayProps {
   currentTurnPlayer: Player;
   players: Player[];
-  gameState: {
-    timeLeft: number;
-    currentSong: Song | null;
-    phase: 'playing' | 'finished';
-    transitioningTurn: boolean;
-  };
+  roomCode: string;
+  currentSongDuration: number;
+  currentSongProgress: number;
+  onSongEnd: () => void;
 }
 
-export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDisplayProps) {
-  const [showTurnTransition, setShowTurnTransition] = useState(false);
-  const [previousPlayer, setPreviousPlayer] = useState<Player | null>(null);
+export function HostDisplay({ 
+  currentTurnPlayer, 
+  players, 
+  roomCode,
+  currentSongDuration,
+  currentSongProgress,
+  onSongEnd 
+}: HostDisplayProps) {
+  const [animatingCard, setAnimatingCard] = useState(false);
+  const [cardPlacementPosition, setCardPlacementPosition] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (previousPlayer && previousPlayer.id !== currentTurnPlayer.id) {
-      setShowTurnTransition(true);
-      setTimeout(() => {
-        setShowTurnTransition(false);
-      }, 2000);
-    }
-    setPreviousPlayer(currentTurnPlayer);
-  }, [currentTurnPlayer.id]);
+  // Animation for card placement
+  const animateCardPlacement = (position: number) => {
+    setAnimatingCard(true);
+    setCardPlacementPosition(position);
+    
+    setTimeout(() => {
+      setAnimatingCard(false);
+      setCardPlacementPosition(null);
+      onSongEnd();
+    }, 1000);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900">
+    <div className="fixed inset-0 bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 overflow-hidden">
       {/* Room Code */}
       <div className="absolute top-4 right-4">
-        <Badge variant="outline" className="bg-purple-500/20 text-purple-200 border-purple-400 text-lg px-4 py-2">
-          Room: {currentTurnPlayer?.id}
+        <Badge variant="outline" className="bg-purple-500/20 text-purple-200 border-purple-400 text-lg">
+          Room: {roomCode}
         </Badge>
       </div>
 
-      {/* Current Turn Display */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-        <Card className="bg-white/10 border-white/20 p-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-2">
-            {currentTurnPlayer.name}'s Turn
-          </h2>
-          <div className="flex items-center justify-center gap-2 text-purple-200">
-            <Clock className="h-5 w-5" />
-            <span className="text-xl">{gameState.timeLeft} seconds left</span>
+      {/* Current Turn Player */}
+      <div className="absolute top-4 left-4 right-4">
+        <Card className="bg-white/10 border-white/20 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-8 h-8 rounded-full"
+                style={{ backgroundColor: currentTurnPlayer.color }}
+              />
+              <h2 className="text-3xl font-bold text-white">
+                {currentTurnPlayer.name}'s Turn
+              </h2>
+            </div>
           </div>
         </Card>
       </div>
 
-      {/* Mystery Song Card */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-        <Card className="bg-white/10 border-white/20 p-8 text-center w-96">
-          <Music className="h-16 w-16 text-purple-400 mx-auto mb-4 animate-pulse" />
-          <h3 className="text-2xl font-bold text-white mb-4">Mystery Song</h3>
-          <Progress value={(gameState.timeLeft / 30) * 100} className="w-full" />
+      {/* Song Progress */}
+      <div className="absolute top-28 left-4 right-4">
+        <Card className="bg-white/10 border-white/20 p-4">
+          <Progress 
+            value={(currentSongProgress / currentSongDuration) * 100} 
+            className="h-3"
+          />
         </Card>
       </div>
 
-      {/* Player Timelines */}
-      <div className="absolute bottom-8 left-8 right-8">
-        <div className="grid grid-cols-2 gap-8">
+      {/* Mystery Song Card */}
+      <div className={cn(
+        "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500",
+        animatingCard && "animate-card-throw"
+      )}>
+        <Card className="bg-white/10 border-white/20 p-8 text-center w-64 h-64">
+          <Music className="h-20 w-20 text-purple-400 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-white">Mystery Song</h3>
+        </Card>
+      </div>
+
+      {/* Current Player's Timeline */}
+      <div className="absolute bottom-32 left-4 right-4">
+        <Card className="bg-white/10 border-white/20 p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div 
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: currentTurnPlayer.color }}
+            />
+            <h3 className="text-xl font-bold text-white">Timeline</h3>
+          </div>
+          <div className="flex gap-2 items-center overflow-x-auto pb-2">
+            {currentTurnPlayer.timeline.map((song, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "w-20 h-20 rounded-lg flex items-center justify-center text-white text-sm font-bold flex-shrink-0",
+                  cardPlacementPosition === index && "animate-card-placement"
+                )}
+                style={{ backgroundColor: song.cardColor }}
+              >
+                {song.release_year}
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Player Scores */}
+      <div className="absolute bottom-4 left-4 right-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {players.map((player) => (
             <Card 
               key={player.id}
-              className={`bg-white/10 border-white/20 p-4 transition-all ${
-                currentTurnPlayer.id === player.id ? 'ring-2 ring-purple-400' : ''
-              }`}
+              className="bg-white/10 border-white/20 p-2"
             >
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
                 <div 
-                  className="w-4 h-4 rounded-full"
+                  className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: player.color }}
                 />
-                <h3 className="text-xl font-bold text-white">{player.name}</h3>
-                <span className="text-purple-200 ml-auto">Score: {player.score}/10</span>
+                <span className="text-white font-bold">{player.name}</span>
+                <span className="text-purple-200 ml-auto">{player.score}/10</span>
               </div>
-              
-              <div className="flex gap-2 items-center overflow-x-auto pb-2">
+              {/* Miniature timeline with overlap */}
+              <div className="flex items-center">
                 {player.timeline.map((song, index) => (
                   <div
                     key={index}
-                    className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold -ml-2 first:ml-0"
                     style={{ backgroundColor: song.cardColor }}
                   >
                     {song.release_year}
@@ -95,20 +144,6 @@ export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDispl
           ))}
         </div>
       </div>
-
-      {/* Turn Transition Overlay */}
-      {showTurnTransition && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="text-center animate-fade-in">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              {previousPlayer?.name}'s turn ended
-            </h2>
-            <h3 className="text-2xl text-purple-200">
-              Now it's {currentTurnPlayer.name}'s turn!
-            </h3>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
