@@ -180,76 +180,93 @@ export default function Index() {
   };
 
   // Phase rendering
-  const renderPhase = () => {
-    switch (gameState.phase) {
-      case 'menu':
-        return (
-          <MainMenu
-            onHostGame={handleHostGame}
-            onJoinGame={handleJoinGame}
-          />
-        );
+// ... keep your existing imports and state ...
 
-      case 'hostLobby':
-        return (
-          <HostLobby
-            lobbyCode={room?.lobby_code || ''}
-            players={players}
-            onStartGame={handleStartGame}
-            onBackToMenu={handleBackToMenu}
-            setCustomSongs={setCustomSongs}
-            isLoading={isLoading}
-          />
-        );
+const renderPhase = () => {
+  switch (gameState.phase) {
+    case 'menu':
+      return (
+        <MainMenu
+          onHostGame={handleHostGame}
+          onJoinGame={handleJoinGame}
+        />
+      );
 
-      case 'mobileJoin':
-        return (
-          <MobileJoin
-            onJoinLobby={handleJoinLobby}
-            onBackToMenu={handleBackToMenu}
-            isLoading={isLoading}
-          />
-        );
+    case 'hostLobby':
+      return (
+        <HostLobby
+          lobbyCode={room?.lobby_code || ''}
+          players={players}
+          onStartGame={handleStartGame}
+          onBackToMenu={handleBackToMenu}
+          setCustomSongs={setCustomSongs}
+          isLoading={isLoading}
+        />
+      );
 
-      case 'mobileLobby':
-        if (!currentPlayer || !room) return null;
-        return (
-          <MobilePlayerLobby
-            player={currentPlayer}
-            lobbyCode={room.lobby_code}
-            onUpdatePlayer={handleUpdatePlayer}
-          />
-        );
+    case 'mobileJoin':
+      return (
+        <MobileJoin
+          onJoinLobby={handleJoinLobby}
+          onBackToMenu={handleBackToMenu}
+          isLoading={isLoading}
+        />
+      );
 
-      case 'playing':
-        return (
-          <GamePlay
-            room={room}
-            players={players}
-            currentPlayer={currentPlayer}
-            isHost={isHost}
-            songs={customSongs}
-            gameState={gameState}
-            onEndGame={handleEndGame}
-            onPlaceCard={handlePlaceCard}
-            onPlayPause={handlePlayPause}
-          />
-        );
+    case 'mobileLobby':
+      if (!currentPlayer || !room) return null;
+      return (
+        <MobilePlayerLobby
+          player={currentPlayer}
+          lobbyCode={room.lobby_code}
+          onUpdatePlayer={handleUpdatePlayer}
+        />
+      );
 
-      case 'finished':
-        if (!gameState.winner) return null;
-        return (
-          <VictoryScreen 
-            winner={gameState.winner}
-            players={players}
-            onBackToMenu={handleBackToMenu}
-          />
-        );
+    case 'playing':
+      return (
+        <GamePlay
+          room={room}
+          players={players}
+          currentPlayer={currentPlayer}
+          isHost={isHost}
+          songs={customSongs}
+          gameState={gameState}
+          setGameState={setGameState}
+          onEndGame={handleEndGame}
+          onPlayPause={() => {
+            if (audioRef.current) {
+              if (gameState.isPlaying) {
+                audioRef.current.pause();
+              } else {
+                audioRef.current.play();
+              }
+              setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+            }
+          }}
+          onStartGame={handleStartGame}
+          onBackToMenu={handleBackToMenu}
+          onUpdatePlayer={handleUpdatePlayer}
+          onJoinLobby={handleJoinLobby}
+          onPlaceCard={handlePlaceCard}
+          isLoading={isLoading}
+        />
+      );
 
-      default:
-        return null;
-    }
-  };
+    case 'finished':
+      if (!gameState.winner) return null;
+      return (
+        <VictoryScreen 
+          winner={gameState.winner}
+          players={players}
+          onBackToMenu={handleBackToMenu}
+        />
+      );
+
+    default:
+      return null;
+  }
+};
 
   return (
     <>
