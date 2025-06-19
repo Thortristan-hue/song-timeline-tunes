@@ -16,9 +16,10 @@ interface GamePlayProps {
   isHost: boolean;
   songs: Song[];
   onEndGame: () => void;
+  onKickPlayer: (playerId: string) => void;
 }
 
-export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGame }: GamePlayProps) {
+export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGame, onKickPlayer }: GamePlayProps) {
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement>(null);
   
@@ -37,7 +38,8 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     availableSongs: [...songs],
     usedSongs: [] as Song[],
     transitioningTurn: false,
-    cardResult: null as { correct: boolean; song: Song } | null
+    cardResult: null as { correct: boolean; song: Song } | null,
+    showKickOptions: null as string | null
   });
 
   const [transitionProgress, setTransitionProgress] = useState(0);
@@ -62,27 +64,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
       startNewTurn();
     }
   }, [gameState.availableSongs]);
-
-  // Smooth transition progress tracking
-  useEffect(() => {
-    if (gameState.transitioningTurn) {
-      setTransitionProgress(0);
-      const startTime = Date.now();
-      const duration = 1200;
-      
-      const updateProgress = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        setTransitionProgress(progress);
-        
-        if (progress < 1) {
-          requestAnimationFrame(updateProgress);
-        }
-      };
-      
-      requestAnimationFrame(updateProgress);
-    }
-  }, [gameState.transitioningTurn]);
 
   const startNewTurn = () => {
     if (gameState.availableSongs.length === 0) {
@@ -110,13 +91,15 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
   };
 
   const handleTimeUp = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setGameState(prev => ({ ...prev, isPlaying: false }));
     toast({
       title: "Time's up!",
-      description: "Moving to next player...",
+      description: "Audio stopped, but you can still place the card",
       variant: "destructive",
     });
-    
-    nextTurn();
   };
 
   const nextTurn = () => {
@@ -238,24 +221,16 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
       });
       return;
     }
-  };
 
-  // Auto-clear card result
-  useEffect(() => {
-    if (gameState.cardResult) {
-      const timeout = setTimeout(() => {
-        setGameState(prev => ({ ...prev, cardResult: null }));
-        nextTurn();
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [gameState.cardResult]);
+    nextTurn();
+  };
 
   const cancelPlacement = () => {
     setGameState(prev => ({
       ...prev,
       confirmingPlacement: null,
-      placedCardPosition: null
+      placedCardPosition: null,
+      draggedSong: prev.currentSong
     }));
   };
 
@@ -289,8 +264,12 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     return "bg-red-500";
   };
 
-  const easeInOutCubic = (t: number): number => {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const toggleKickOptions = (playerId: string) => {
+    if (!isHost || playerId === currentPlayer?.id) return;
+    setGameState(prev => ({
+      ...prev,
+      showKickOptions: prev.showKickOptions === playerId ? null : playerId
+    }));
   };
 
   if (gameState.winner) {
@@ -303,10 +282,8 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-      {/* Simplified background */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-purple-900/50 to-indigo-900/30" />
 
-      {/* Audio element */}
       {gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
@@ -317,10 +294,8 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         />
       )}
 
-      {/* Compact Top Bar */}
       <div className="absolute top-4 left-4 right-4 z-40">
         <div className="flex justify-between items-center gap-4">
-          {/* Left side - Timer and controls */}
           <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
             <Clock className="h-4 w-4 text-purple-300" />
             <span className={`font-mono font-bold ${getTimeColor()}`}>
@@ -346,10 +321,9 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
             </Button>
           </div>
 
-          {/* Center - Current player */}
           <div className="flex-1 max-w-md">
             <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 text-center">
-              <div className="flex items-center justify-center gap-2 text-sm">
+              <div className="flex items-center justify-center gap-2 text-sm text-white">
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: currentTurnPlayer?.color }}
@@ -362,7 +336,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
             </div>
           </div>
 
-          {/* Right side - Room info */}
           <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
             <Zap className="h-4 w-4 text-purple-300" />
             <span className="text-sm font-medium">Room: {room?.lobby_code}</span>
@@ -370,7 +343,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         </div>
       </div>
 
-      {/* Compact Mystery Card */}
       {gameState.currentSong && (
         <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-30">
           <div 
@@ -394,7 +366,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
             </div>
           </div>
 
-          {/* Audio Controls Below Card */}
           <div className="mt-3 flex items-center justify-center gap-2">
             <Progress 
               value={(gameState.timeLeft / 30) * 100} 
@@ -409,7 +380,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         </div>
       )}
 
-      {/* Timeline - Moved up with more space */}
       {currentPlayer && (
         <div className="absolute bottom-40 left-0 right-0 z-20 px-4">
           <PlayerTimeline
@@ -417,31 +387,33 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
             isCurrent={isMyTurn}
             isDarkMode={true}
             draggedSong={gameState.draggedSong}
-            activeDrag={gameState.activeDrag}
-            hoveredCard={gameState.hoveredCard}
-            throwingCard={null}
+            hoveredPosition={gameState.placedCardPosition}
             confirmingPlacement={gameState.confirmingPlacement}
-            placedCardPosition={gameState.placedCardPosition}
-            handleDragOver={handleDragOver}
+            handleDragOver={(e, position) => handleDragOver(e, currentPlayer.id, position)}
             handleDragLeave={handleDragLeave}
-            handleDrop={handleDrop}
-            setHoveredCard={(id) => setGameState(prev => ({ ...prev, hoveredCard: id }))}
-            currentPlayerId={currentPlayer.id}
+            handleDrop={(position) => handleDrop(currentPlayer.id, position)}
             confirmPlacement={confirmPlacement}
             cancelPlacement={cancelPlacement}
+            transitioningTurn={gameState.transitioningTurn}
           />
         </div>
       )}
 
-      {/* Other Players - Compact at bottom */}
-      <div className="absolute bottom-4 left-0 right-0 z-10">
-        <div className="flex justify-center items-center gap-4 px-4">
+      <div className="absolute bottom-4 left-0 right-0 z-10 px-4">
+        <div className="flex justify-center items-center gap-4 flex-wrap">
           {players.map((player) => {
             if (player.id === currentPlayer?.id) return null;
             
             return (
-              <div key={player.id} className="text-center">
-                <div className="flex items-center justify-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 mb-2">
+              <div 
+                key={player.id} 
+                className="relative text-center"
+                onMouseEnter={() => isHost && setGameState(prev => ({ ...prev, showKickOptions: null }))}
+              >
+                <div 
+                  className="flex items-center justify-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 mb-2 cursor-pointer"
+                  onClick={() => toggleKickOptions(player.id)}
+                >
                   <div 
                     className="w-3 h-3 rounded-full" 
                     style={{ backgroundColor: player.color }}
@@ -449,6 +421,20 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
                   <span className="text-xs font-medium">{player.name}</span>
                   <span className="text-xs font-bold text-purple-300">{player.score}</span>
                 </div>
+                
+                {isHost && gameState.showKickOptions === player.id && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
+                    <Button
+                      onClick={() => onKickPlayer(player.id)}
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs h-7 px-2"
+                    >
+                      Kick Player
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex justify-center -space-x-2">
                   {player.timeline.slice(0, 4).map((song, i) => (
                     <div
@@ -471,7 +457,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         </div>
       </div>
 
-      {/* Placement Confirmation - Compact */}
       {gameState.confirmingPlacement && (
         <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-30">
           <div className="flex gap-2 bg-black/70 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-lg">
@@ -496,7 +481,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         </div>
       )}
 
-      {/* Result Animation */}
       {gameState.cardResult && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center z-50">
           <div className="text-center">
