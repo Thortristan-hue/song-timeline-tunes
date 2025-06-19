@@ -156,7 +156,7 @@ const Index = () => {
     pendingPlacement: null,
   });
 
-  const handleTurnTransition = async () => {
+  const handleTurnEnd = () => {
     setGameState(prev => ({
       ...prev,
       currentTurn: prev.currentTurn + 1,
@@ -165,19 +165,22 @@ const Index = () => {
       transitioningTurn: true
     }));
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        transitioningTurn: false,
+        currentSong: customSongs[Math.floor(Math.random() * customSongs.length)]
+      }));
+    }, 1000);
+  };
 
-    // Simulate loading next song
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setGameState(prev => ({
-      ...prev,
-      transitioningTurn: false,
-      currentSong: customSongs[Math.floor(Math.random() * customSongs.length)]
-    }));
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setGameState(prev => ({
+        ...prev,
+        timeLeft: 30 - Math.floor(audioRef.current?.currentTime || 0)
+      }));
+    }
   };
 
   const handlePlaceCard = async (position: number) => {
@@ -196,9 +199,8 @@ const Index = () => {
       return p;
     });
 
-    // In a real app, you would update players in your game room state here
     soundManager.current.playSound('cardCorrect');
-    await handleTurnTransition();
+    handleTurnEnd();
   };
 
   const handleHostGame = async () => {
@@ -254,8 +256,14 @@ const Index = () => {
       const newState = { ...prev, isPlaying: !prev.isPlaying };
       if (newState.isPlaying) {
         soundManager.current.playBgMusic();
+        if (audioRef.current) {
+          audioRef.current.play().catch(() => {});
+        }
       } else {
         soundManager.current.pauseBgMusic();
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
       }
       return newState;
     });
@@ -267,40 +275,29 @@ const Index = () => {
     }
   }, [room?.phase, gameState.phase]);
 
-  const renderGameContent = () => {
-    const isHostDisplay = !currentPlayer;
-
-    if (gameState.phase === 'playing') {
-      if (isHostDisplay) {
-        return (
-          <HostDisplay
-            currentTurnPlayer={players[gameState.currentTurn % players.length]}
-            players={players}
-            gameState={gameState}
-          />
-        );
-      }
-
+  const renderContent = () => {
+    if (!currentPlayer) {
       return (
-        <PlayerView
-          currentPlayer={currentPlayer!}
-          isMyTurn={currentPlayer?.id === players[gameState.currentTurn % players.length].id}
+        <HostDisplay
           currentTurnPlayer={players[gameState.currentTurn % players.length]}
-          gameState={gameState}
-          onPlaceCard={handlePlaceCard}
-          onPlayPause={handlePlayPauseAudio}
+          players={players}
+          roomCode={room?.lobby_code || ''}
+          currentSongDuration={30}
+          currentSongProgress={gameState.timeLeft}
+          onSongEnd={handleTurnEnd}
         />
       );
     }
 
     return (
-      <GamePlay
-        room={room}
-        players={players}
+      <PlayerView
         currentPlayer={currentPlayer}
-        isHost={isHost}
-        songs={customSongs}
-        onEndGame={handleBackToMenu}
+        currentTurnPlayer={players[gameState.currentTurn % players.length]}
+        roomCode={room?.lobby_code || ''}
+        isMyTurn={currentPlayer.id === players[gameState.currentTurn % players.length].id}
+        gameState={gameState}
+        onPlaceCard={handlePlaceCard}
+        onPlayPause={handlePlayPauseAudio}
       />
     );
   };
@@ -348,7 +345,7 @@ const Index = () => {
         );
 
       case 'playing':
-        return renderGameContent();
+        return renderContent();
 
       case 'finished':
         if (!gameState.winner) return null;
@@ -366,7 +363,14 @@ const Index = () => {
 
   return (
     <>
-      <audio ref={audioRef} />
+      {!currentPlayer && gameState.currentSong?.preview_url && (
+        <audio
+          ref={audioRef}
+          src={gameState.currentSong.preview_url}
+          onEnded={handleTurnEnd}
+          onTimeUpdate={handleTimeUpdate}
+        />
+      )}
       {renderCurrentPhase()}
     </>
   );
