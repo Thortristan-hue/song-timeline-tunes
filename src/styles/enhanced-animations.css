@@ -27,6 +27,77 @@
   }
 }
 
+/* Card throw animation */
+@keyframes card-throw {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.8) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+/* Card placement animation */
+@keyframes card-placement {
+  0% {
+    transform: scale(0.8) translateY(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Success animation */
+@keyframes card-success {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* Error animation */
+@keyframes card-error {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-5px);
+  }
+  40%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+
+.animate-card-throw {
+  animation: card-throw 0.5s ease-in-out forwards;
+}
+
+.animate-card-placement {
+  animation: card-placement 0.3s ease-out forwards;
+}
+
+.animate-card-success {
+  animation: card-success 1s ease-out forwards;
+}
+
+.animate-card-error {
+  animation: card-error 0.5s ease-in-out forwards;
+}
+
 /* Enhanced glow effect */
 @keyframes glowPulse {
   0% {
