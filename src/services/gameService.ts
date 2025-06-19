@@ -40,6 +40,20 @@ export class GameService {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   }
 
+  private convertJsonToSongs(jsonData: any): Song[] {
+    if (!Array.isArray(jsonData)) return [];
+    return jsonData.map(item => ({
+      id: item.id || '',
+      deezer_title: item.deezer_title || '',
+      deezer_artist: item.deezer_artist || '',
+      deezer_album: item.deezer_album || '',
+      release_year: item.release_year || '',
+      genre: item.genre || '',
+      cardColor: item.cardColor || '#FF6B6B',
+      preview_url: item.preview_url
+    }));
+  }
+
   async createRoom(hostName: string): Promise<{ room: GameRoom; lobbyCode: string }> {
     try {
       // Generate lobby code using the database function
@@ -66,7 +80,7 @@ export class GameService {
       const room: GameRoom = {
         ...roomData,
         phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : []
+        songs: this.convertJsonToSongs(roomData.songs)
       };
 
       // Add host as a player
@@ -115,9 +129,7 @@ export class GameService {
 
         return {
           ...updatedPlayer,
-          timeline: Array.isArray(updatedPlayer.timeline) 
-            ? updatedPlayer.timeline as Song[] 
-            : []
+          timeline: this.convertJsonToSongs(updatedPlayer.timeline)
         };
       }
 
@@ -157,9 +169,7 @@ export class GameService {
 
       return {
         ...player,
-        timeline: Array.isArray(player.timeline) 
-          ? player.timeline as Song[] 
-          : []
+        timeline: this.convertJsonToSongs(player.timeline)
       };
     } catch (error) {
       console.error('Error joining room:', error);
@@ -198,7 +208,7 @@ export class GameService {
       return {
         ...room,
         phase: room.phase as 'lobby' | 'playing' | 'finished',
-        songs: Array.isArray(room.songs) ? room.songs as Song[] : []
+        songs: this.convertJsonToSongs(room.songs)
       };
     } catch (error) {
       console.error('Error getting room:', error);
@@ -218,9 +228,7 @@ export class GameService {
 
       return (players || []).map(player => ({
         ...player,
-        timeline: Array.isArray(player.timeline) 
-          ? player.timeline as Song[] 
-          : []
+        timeline: this.convertJsonToSongs(player.timeline)
       }));
     } catch (error) {
       console.error('Error getting players:', error);
@@ -283,7 +291,7 @@ export class GameService {
           callbacks.onRoomUpdate({
             ...room,
             phase: room.phase as 'lobby' | 'playing' | 'finished',
-            songs: Array.isArray(room.songs) ? room.songs as Song[] : []
+            songs: this.convertJsonToSongs(room.songs)
           });
         }
       })
