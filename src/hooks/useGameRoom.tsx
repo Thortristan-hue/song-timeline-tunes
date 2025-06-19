@@ -27,7 +27,9 @@ export function useGameRoom(): UseGameRoomReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isHost = currentPlayer?.id === room?.host_id || false;
+  const isHost = currentPlayer ? 
+    players.find(p => p.id === currentPlayer.id && room?.host_id === gameService.getSessionId()) !== undefined 
+    : false;
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
     setIsLoading(true);
@@ -36,6 +38,14 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName);
       setRoom(newRoom);
+      
+      // Get the host player that was created
+      const roomPlayers = await gameService.getPlayersInRoom(newRoom.id);
+      const hostPlayer = roomPlayers.find(p => p.player_session_id === gameService.getSessionId());
+      
+      if (hostPlayer) {
+        setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(hostPlayer));
+      }
       
       toast({
         title: "Room created!",

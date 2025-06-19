@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Play, Settings, Users, ArrowLeft } from 'lucide-react';
+import { Copy, Play, Settings, Users, ArrowLeft, FastForward } from 'lucide-react';
 import { Player } from '@/types/game';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,6 +60,47 @@ export function HostLobby({
     if (code) {
       setShowNamePrompt(false);
     }
+  };
+
+  const handleSkipWaiting = () => {
+    // Load default songs for testing
+    const defaultSongs = [
+      {
+        id: '1',
+        deezer_title: 'Bohemian Rhapsody',
+        deezer_artist: 'Queen',
+        deezer_album: 'A Night at the Opera',
+        release_year: '1975',
+        genre: 'Rock',
+        cardColor: '#FF6B6B'
+      },
+      {
+        id: '2',
+        deezer_title: 'Billie Jean',
+        deezer_artist: 'Michael Jackson',
+        deezer_album: 'Thriller',
+        release_year: '1982',
+        genre: 'Pop',
+        cardColor: '#4ECDC4'
+      },
+      {
+        id: '3',
+        deezer_title: 'Smells Like Teen Spirit',
+        deezer_artist: 'Nirvana',
+        deezer_album: 'Nevermind',
+        release_year: '1991',
+        genre: 'Grunge',
+        cardColor: '#45B7D1'
+      }
+    ];
+    
+    setCustomSongs(defaultSongs);
+    setPlaylistLoaded(true);
+    
+    toast({
+      title: "Test mode activated!",
+      description: "Default songs loaded. You can now start the game for testing.",
+    });
   };
 
   // Show name prompt if no room exists yet
@@ -152,25 +193,48 @@ export function HostLobby({
             
             <div className="space-y-3">
               {players.length === 0 ? (
-                <p className="text-purple-200/60 text-center py-8">
-                  Waiting for players to join...
-                </p>
-              ) : (
-                players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="flex items-center gap-3 p-3 bg-white/5 rounded-lg"
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-purple-200/60">
+                    Waiting for players to join...
+                  </p>
+                  <Button
+                    onClick={handleSkipWaiting}
+                    variant="outline"
+                    className="bg-orange-500/20 border-orange-400 text-orange-300 hover:bg-orange-500/30"
                   >
+                    <FastForward className="h-4 w-4 mr-2" />
+                    Skip Waiting (Test Mode)
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {players.map((player) => (
                     <div
-                      className="w-8 h-8 rounded-full"
-                      style={{ backgroundColor: player.color }}
-                    />
-                    <span className="text-white font-medium">{player.name}</span>
-                    <Badge variant="outline" className="ml-auto bg-green-500/20 text-green-300 border-green-400">
-                      Ready
-                    </Badge>
+                      key={player.id}
+                      className="flex items-center gap-3 p-3 bg-white/5 rounded-lg"
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full"
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="text-white font-medium">{player.name}</span>
+                      <Badge variant="outline" className="ml-auto bg-green-500/20 text-green-300 border-green-400">
+                        Ready
+                      </Badge>
+                    </div>
+                  ))}
+                  <div className="pt-2">
+                    <Button
+                      onClick={handleSkipWaiting}
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-orange-500/20 border-orange-400 text-orange-300 hover:bg-orange-500/30"
+                    >
+                      <FastForward className="h-4 w-4 mr-2" />
+                      Load Test Songs
+                    </Button>
                   </div>
-                ))
+                </>
               )}
             </div>
           </Card>
@@ -233,7 +297,7 @@ export function HostLobby({
         <div className="text-center">
           <Button
             onClick={onStartGame}
-            disabled={players.length === 0 || !playlistLoaded}
+            disabled={!playlistLoaded}
             className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-8 rounded-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="h-5 w-5 mr-2" />

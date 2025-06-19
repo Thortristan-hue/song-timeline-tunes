@@ -7,8 +7,8 @@ export interface GameRoom {
   lobby_code: string;
   host_id: string;
   phase: 'lobby' | 'playing' | 'finished';
-  current_turn: number;
-  current_song_index: number;
+  current_turn: number | null;
+  current_song_index: number | null;
   songs: Song[];
   created_at: string;
   updated_at: string;
@@ -21,9 +21,9 @@ export interface DatabasePlayer {
   name: string;
   color: string;
   timeline_color: string;
-  score: number;
+  score: number | null;
   timeline: Song[];
-  is_host: boolean;
+  is_host: boolean | null;
   joined_at: string;
   last_active: string;
 }
@@ -51,7 +51,7 @@ export class GameService {
       const lobbyCode = lobbyCodeData;
 
       // Create the room
-      const { data: room, error: roomError } = await supabase
+      const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
@@ -62,6 +62,12 @@ export class GameService {
         .single();
 
       if (roomError) throw roomError;
+
+      const room: GameRoom = {
+        ...roomData,
+        phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : []
+      };
 
       // Add host as a player
       await this.joinRoom(lobbyCode, hostName, true);
@@ -106,7 +112,13 @@ export class GameService {
           .single();
 
         if (updateError) throw updateError;
-        return updatedPlayer;
+
+        return {
+          ...updatedPlayer,
+          timeline: Array.isArray(updatedPlayer.timeline) 
+            ? updatedPlayer.timeline as Song[] 
+            : []
+        };
       }
 
       // Generate player color
@@ -143,7 +155,12 @@ export class GameService {
 
       if (playerError) throw playerError;
 
-      return player;
+      return {
+        ...player,
+        timeline: Array.isArray(player.timeline) 
+          ? player.timeline as Song[] 
+          : []
+      };
     } catch (error) {
       console.error('Error joining room:', error);
       throw error;
@@ -177,7 +194,12 @@ export class GameService {
         .single();
 
       if (error) throw error;
-      return room;
+
+      return {
+        ...room,
+        phase: room.phase as 'lobby' | 'playing' | 'finished',
+        songs: Array.isArray(room.songs) ? room.songs as Song[] : []
+      };
     } catch (error) {
       console.error('Error getting room:', error);
       return null;
@@ -193,7 +215,13 @@ export class GameService {
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
-      return players || [];
+
+      return (players || []).map(player => ({
+        ...player,
+        timeline: Array.isArray(player.timeline) 
+          ? player.timeline as Song[] 
+          : []
+      }));
     } catch (error) {
       console.error('Error getting players:', error);
       return [];
@@ -205,7 +233,7 @@ export class GameService {
       const { error } = await supabase
         .from('game_rooms')
         .update({ 
-          songs: songs,
+          songs: songs as any,
           updated_at: new Date().toISOString()
         })
         .eq('id', roomId);
@@ -223,6 +251,8 @@ export class GameService {
         .from('game_rooms')
         .update({ 
           phase: 'playing',
+          current_turn: 0,
+          current_song_index: 0,
           updated_at: new Date().toISOString()
         })
         .eq('id', roomId);
@@ -249,7 +279,12 @@ export class GameService {
       }, (payload) => {
         console.log('Room update:', payload);
         if (callbacks.onRoomUpdate && payload.new) {
-          callbacks.onRoomUpdate(payload.new as GameRoom);
+          const room = payload.new as any;
+          callbacks.onRoomUpdate({
+            ...room,
+            phase: room.phase as 'lobby' | 'playing' | 'finished',
+            songs: Array.isArray(room.songs) ? room.songs as Song[] : []
+          });
         }
       })
       .on('postgres_changes', {
@@ -279,7 +314,7 @@ export class GameService {
       name: dbPlayer.name,
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
-      score: dbPlayer.score,
+      score: dbPlayer.score || 0,
       timeline: dbPlayer.timeline || []
     };
   }
