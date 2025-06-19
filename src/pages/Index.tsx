@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Sun, Moon, Trophy, Volume2, VolumeX, Users, Check, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,8 @@ import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
-import { GamePlay } from '@/components/GamePlay';
+import { HostDisplay } from '@/components/HostDisplay';
+import { PlayerView } from '@/components/PlayerView';
 import { useToast } from '@/components/ui/use-toast';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,6 @@ import '@/styles/enhanced-animations.css';
 
 const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
-// Sound Manager Class
 class SoundManager {
   private sounds: { [key: string]: HTMLAudioElement } = {};
   private bgMusic: HTMLAudioElement | null = null;
@@ -155,10 +155,8 @@ const Index = () => {
     pendingPlacement: null,
   });
 
-  // Navigation handlers
   const handleHostGame = async () => {
     setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
-    // We'll prompt for host name in the lobby component
   };
 
   const handleJoinGame = () => {
@@ -170,7 +168,6 @@ const Index = () => {
     setGameState(prev => ({ ...prev, phase: 'menu' }));
   };
 
-  // Lobby handlers
   const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
@@ -202,14 +199,73 @@ const Index = () => {
     });
   };
 
-  // Handle room phase changes
+  const handlePlaceCard = (song: Song, position: number) => {
+    if (!currentPlayer) return;
+    
+    setGameState(prev => ({
+      ...prev,
+      pendingPlacement: { playerId: currentPlayer.id, song, position }
+    }));
+    
+    soundManager.current.playSound('cardPlace');
+  };
+
+  const handlePlayPauseAudio = () => {
+    setGameState(prev => {
+      const newState = { ...prev, isPlaying: !prev.isPlaying };
+      if (newState.isPlaying) {
+        soundManager.current.playBgMusic();
+      } else {
+        soundManager.current.pauseBgMusic();
+      }
+      return newState;
+    });
+  };
+
   useEffect(() => {
     if (room?.phase === 'playing' && gameState.phase !== 'playing') {
       setGameState(prev => ({ ...prev, phase: 'playing' }));
     }
   }, [room?.phase, gameState.phase]);
 
-  // Render based on current phase
+  const renderGameContent = () => {
+    const isHostDisplay = !currentPlayer;
+
+    if (gameState.phase === 'playing') {
+      if (isHostDisplay) {
+        return (
+          <HostDisplay
+            currentTurnPlayer={players[gameState.currentTurn % players.length]}
+            players={players}
+            gameState={gameState}
+          />
+        );
+      }
+
+      return (
+        <PlayerView
+          currentPlayer={currentPlayer!}
+          isMyTurn={currentPlayer?.id === players[gameState.currentTurn % players.length].id}
+          currentTurnPlayer={players[gameState.currentTurn % players.length]}
+          gameState={gameState}
+          onPlaceCard={handlePlaceCard}
+          onPlayPause={handlePlayPauseAudio}
+        />
+      );
+    }
+
+    return (
+      <GamePlay
+        room={room}
+        players={players}
+        currentPlayer={currentPlayer}
+        isHost={isHost}
+        songs={customSongs}
+        onEndGame={handleBackToMenu}
+      />
+    );
+  };
+
   const renderCurrentPhase = () => {
     switch (gameState.phase) {
       case 'menu':
@@ -244,7 +300,6 @@ const Index = () => {
 
       case 'mobileLobby':
         if (!currentPlayer || !room) return null;
-        
         return (
           <MobilePlayerLobby
             player={currentPlayer}
@@ -254,18 +309,7 @@ const Index = () => {
         );
 
       case 'playing':
-        if (!currentPlayer || !room) return null;
-        
-        return (
-          <GamePlay
-            room={room}
-            players={players}
-            currentPlayer={currentPlayer}
-            isHost={isHost}
-            songs={customSongs}
-            onEndGame={handleBackToMenu}
-          />
-        );
+        return renderGameContent();
 
       case 'finished':
         if (!gameState.winner) return null;
