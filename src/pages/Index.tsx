@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Music, Play, Pause, Clock, Sun, Moon, Trophy, Volume2, VolumeX, Users, Check, X, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
+import { GamePlay } from '@/components/GamePlay';
 import { useToast } from '@/components/ui/use-toast';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { cn } from '@/lib/utils';
@@ -254,21 +254,17 @@ const Index = () => {
         );
 
       case 'playing':
+        if (!currentPlayer || !room) return null;
+        
         return (
-          <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-4">
-            <div className="text-center text-white">
-              <h1 className="text-4xl font-bold mb-4">Game In Progress</h1>
-              <p className="mb-4">Players: {players.map(p => p.name).join(', ')}</p>
-              <p className="mb-4">Room: {room?.lobby_code}</p>
-              <p>Game implementation coming next...</p>
-              <Button 
-                onClick={handleBackToMenu}
-                className="mt-4 bg-red-500 hover:bg-red-600"
-              >
-                End Game
-              </Button>
-            </div>
-          </div>
+          <GamePlay
+            room={room}
+            players={players}
+            currentPlayer={currentPlayer}
+            isHost={isHost}
+            songs={customSongs}
+            onEndGame={handleBackToMenu}
+          />
         );
 
       case 'finished':
