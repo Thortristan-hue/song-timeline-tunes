@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Timer } from 'lucide-react';
+import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Timer, Check, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -28,10 +28,11 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     timeLeft: 30,
     isPlaying: false,
     draggedSong: null as Song | null,
-    activeDrag: null as { playerId: string; position: number; song: Song | null } | null,
-    hoveredCard: null as string | null,
+    hoveredPosition: null as number | null,
     confirmingPlacement: null as { song: Song; position: number } | null,
-    placedCardPosition: null as number | null,
+    cardResult: null as { correct: boolean; song: Song } | null,
+    animatingCard: null as { song: Song; fromPos: [number, number]; toPos: [number, number] } | null,
+    transitioningTurn: false,
     winner: null as Player | null,
     isMuted: false,
     availableSongs: [...songs],
@@ -43,22 +44,44 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
 
   // Timer effect
   useEffect(() => {
-    if (gameState.timeLeft > 0 && gameState.currentSong && !gameState.confirmingPlacement) {
-      const timer = setTimeout(() => {
+    let interval: NodeJS.Timeout;
+    if (gameState.isPlaying && gameState.timeLeft > 0) {
+      interval = setInterval(() => {
         setGameState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
       }, 1000);
-      return () => clearTimeout(timer);
-    } else if (gameState.timeLeft === 0) {
-      handleTimeUp();
     }
-  }, [gameState.timeLeft, gameState.currentSong, gameState.confirmingPlacement]);
+    return () => clearInterval(interval);
+  }, [gameState.isPlaying, gameState.timeLeft]);
 
-  // Initialize first song
+  // Card result auto-clear
   useEffect(() => {
-    if (!gameState.currentSong && gameState.availableSongs.length > 0) {
-      startNewTurn();
+    if (gameState.cardResult) {
+      const timeout = setTimeout(() => {
+        setGameState(prev => ({ ...prev, cardResult: null }));
+        nextTurn();
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
-  }, [gameState.availableSongs]);
+  }, [gameState.cardResult]);
+
+  // Smooth transition progress tracking
+  useEffect(() => {
+    if (gameState.transitioningTurn) {
+      const startTime = Date.now();
+      const duration = 1200;
+      
+      const updateProgress = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        if (progress < 1) {
+          requestAnimationFrame(updateProgress);
+        }
+      };
+      
+      requestAnimationFrame(updateProgress);
+    }
+  }, [gameState.transitioningTurn]);
 
   const startNewTurn = () => {
     if (gameState.availableSongs.length === 0) {
@@ -84,27 +107,21 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     });
   };
 
-  const handleTimeUp = () => {
-    toast({
-      title: "Time's up!",
-      description: "Moving to next player...",
-      variant: "destructive",
-    });
-    
-    nextTurn();
-  };
-
   const nextTurn = () => {
     setGameState(prev => ({
       ...prev,
-      currentTurn: prev.currentTurn + 1,
-      confirmingPlacement: null,
-      placedCardPosition: null
+      transitioningTurn: true
     }));
-    
+
     setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        currentTurn: (prev.currentTurn + 1) % prev.players.length,
+        timeLeft: 30,
+        transitioningTurn: false
+      }));
       startNewTurn();
-    }, 1000);
+    }, 1200);
   };
 
   const playPauseAudio = () => {
@@ -131,28 +148,23 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     setGameState(prev => ({ ...prev, draggedSong: song }));
   };
 
-  const handleDragOver = (e: React.DragEvent, playerId: string, position: number) => {
-    if (!isMyTurn || playerId !== currentPlayer?.id) return;
-    
+  const handleDragOver = (e: React.DragEvent, position: number) => {
+    if (!isMyTurn) return;
     e.preventDefault();
-    setGameState(prev => ({
-      ...prev,
-      activeDrag: { playerId, position, song: prev.draggedSong }
-    }));
+    setGameState(prev => ({ ...prev, hoveredPosition: position }));
   };
 
   const handleDragLeave = () => {
-    setGameState(prev => ({ ...prev, activeDrag: null }));
+    setGameState(prev => ({ ...prev, hoveredPosition: null }));
   };
 
-  const handleDrop = (playerId: string, position: number) => {
-    if (!isMyTurn || !gameState.draggedSong || playerId !== currentPlayer?.id) return;
+  const handleDrop = (position: number) => {
+    if (!isMyTurn || !gameState.draggedSong || !currentPlayer) return;
 
     setGameState(prev => ({
       ...prev,
       confirmingPlacement: { song: prev.draggedSong!, position },
-      placedCardPosition: position,
-      activeDrag: null,
+      hoveredPosition: null,
       draggedSong: null
     }));
   };
@@ -164,13 +176,11 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     const player = players.find(p => p.id === currentPlayer.id);
     if (!player) return;
 
-    // Check if placement is correct
     const newTimeline = [...player.timeline];
     newTimeline.splice(position, 0, song);
     
     const isCorrect = checkTimelineOrder(newTimeline);
     
-    // Update player's timeline and score
     const updatedPlayers = players.map(p => {
       if (p.id === currentPlayer.id) {
         return {
@@ -182,45 +192,24 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
       return p;
     });
 
-    // Remove song from available songs
     setGameState(prev => ({
       ...prev,
       availableSongs: prev.availableSongs.filter(s => s.id !== song.id),
       usedSongs: [...prev.usedSongs, song],
       confirmingPlacement: null,
-      placedCardPosition: null
+      cardResult: { correct: isCorrect, song }
     }));
 
-    toast({
-      title: isCorrect ? "Correct!" : "Incorrect!",
-      description: isCorrect ? 
-        `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) placed correctly!` :
-        `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) - wrong position!`,
-      variant: isCorrect ? "default" : "destructive",
-    });
-
-    // Check for winner
     const winner = updatedPlayers.find(p => p.score >= 10);
     if (winner) {
       setGameState(prev => ({ ...prev, winner }));
-      toast({
-        title: "Game Over!",
-        description: `${winner.name} wins with ${winner.score} points!`,
-      });
-      return;
     }
-
-    // Continue to next turn
-    setTimeout(() => {
-      nextTurn();
-    }, 2000);
   };
 
   const cancelPlacement = () => {
     setGameState(prev => ({
       ...prev,
-      confirmingPlacement: null,
-      placedCardPosition: null
+      confirmingPlacement: null
     }));
   };
 
@@ -234,10 +223,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
   };
 
   const endGame = () => {
-    toast({
-      title: "Game Finished!",
-      description: "Thanks for playing!",
-    });
     onEndGame();
   };
 
@@ -254,10 +239,13 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
     return "bg-gradient-to-r from-red-500 to-rose-500";
   };
 
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+
   if (gameState.winner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black flex items-center justify-center relative overflow-hidden">
-        {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -265,7 +253,6 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         </div>
         
         <Card className="relative bg-gradient-to-br from-white/10 via-white/5 to-transparent border-2 border-white/30 p-12 text-center backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden">
-          {/* Celebration effects */}
           <div className="absolute inset-0">
             <div className="absolute top-4 left-4 w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
             <div className="absolute top-8 right-8 w-2 h-2 bg-pink-400 rounded-full animate-ping delay-300" />
@@ -305,13 +292,36 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
-      {/* Enhanced animated background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-900/30 via-transparent to-cyan-900/30" />
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-500" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+      {/* 3D Environmental Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-3/4 opacity-20"
+          style={{
+            background: `
+              radial-gradient(ellipse at center bottom, rgba(147,51,234,0.4) 0%, transparent 70%),
+              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: '80px 80px',
+            transform: 'perspective(1000px) rotateX(60deg)',
+            transformOrigin: 'bottom',
+            transition: 'transform 1.2s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        />
+        
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-purple-300 rounded-full opacity-30"
+            style={{
+              left: `${20 + (i * 7)}%`,
+              top: `${30 + Math.sin(i) * 20}%`,
+              animation: `float ${3 + (i % 3)}s ease-in-out infinite`,
+              animationDelay: `${i * 0.5}s`
+            }}
+          />
+        ))}
       </div>
 
       {/* Audio element */}
@@ -325,126 +335,87 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
         />
       )}
 
-      {/* Enhanced Header */}
-      <div className="absolute top-4 left-4 right-4 z-50">
-        <div className="flex items-center justify-between">
+      {/* Game HUD */}
+      <div className="absolute top-6 left-6 right-6 z-40">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+              <div className="flex items-center gap-3 text-white">
+                <Clock className="h-4 w-4" />
+                <span className={`font-mono text-lg font-bold ${getTimeColor()}`}>{gameState.timeLeft}s</span>
+              </div>
+            </div>
+            
+            <Button
+              onClick={playPauseAudio}
+              className="rounded-full bg-purple-600 hover:bg-purple-700 w-12 h-12 shadow-lg transition-all duration-300 hover:scale-110"
+              disabled={!gameState.currentSong?.preview_url}
+            >
+              {gameState.isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </Button>
+            
+            <Button
+              onClick={toggleMute}
+              variant="outline"
+              className="rounded-full border-white/20 text-white hover:bg-white/10 w-12 h-12"
+            >
+              {gameState.isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          <div className="bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
+            <div className="flex items-center gap-3 text-white">
+              <div 
+                className="w-4 h-4 rounded-full ring-2 ring-white/50" 
+                style={{ backgroundColor: currentTurnPlayer?.color }}
+              />
+              <span className="font-semibold">{currentTurnPlayer?.name}'s Turn</span>
+              <Badge className="bg-purple-600 text-white">
+                {currentTurnPlayer?.score}/10
+              </Badge>
+            </div>
+          </div>
+          
           <Button
             onClick={onEndGame}
             variant="outline"
-            className="bg-gradient-to-r from-black/60 to-black/40 border-white/30 text-white hover:bg-black/70 backdrop-blur-xl rounded-xl px-6 py-3 shadow-2xl transition-all duration-300 hover:scale-105"
+            className="bg-black/40 backdrop-blur-md border-white/20 text-white hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             End Game
           </Button>
-          
-          <div className="flex items-center gap-4">
-            <Badge 
-              variant="outline" 
-              className="bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-purple-200 border-purple-400/50 backdrop-blur-xl px-4 py-2 font-bold shadow-lg"
-            >
-              <Zap className="h-3 w-3 mr-1" />
-              Room: {room?.lobby_code}
-            </Badge>
-            <Button
-              onClick={toggleMute}
-              variant="outline"
-              size="sm"
-              className="bg-gradient-to-r from-black/60 to-black/40 border-white/30 text-white hover:bg-black/70 backdrop-blur-xl rounded-xl shadow-2xl transition-all duration-300 hover:scale-105"
-            >
-              {gameState.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-          </div>
         </div>
       </div>
 
-      {/* Enhanced Current Song Card */}
+      {/* Mystery Card */}
       {gameState.currentSong && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40">
-          <Card className="relative bg-gradient-to-br from-white/10 via-white/5 to-transparent border-2 border-white/30 p-8 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden">
-            {/* Animated background pattern */}
-            <div className="absolute inset-0">
-              <div className="absolute top-4 right-4 w-2 h-2 bg-purple-400 rounded-full animate-ping" />
-              <div className="absolute bottom-4 left-4 w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping delay-500" />
-              <div className="absolute top-1/2 left-6 w-1 h-1 bg-pink-400 rounded-full animate-ping delay-1000" />
+        <div 
+          className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30"
+          style={{
+            opacity: gameState.transitioningTurn ? 0.7 : 1,
+            filter: gameState.transitioningTurn ? 'blur(2px)' : 'blur(0px)',
+            transition: 'all 0.5s ease'
+          }}
+        >
+          <div 
+            className="w-40 h-40 rounded-xl shadow-2xl cursor-move flex flex-col items-center justify-center p-4 text-white relative transition-all duration-500 group"
+            style={{
+              backgroundColor: gameState.currentSong.cardColor || '#6366f1',
+              transform: gameState.draggedSong ? 'scale(0.8) rotate(5deg)' : 'scale(1) rotate(0deg)',
+              animation: 'mysteryFloat 4s ease-in-out infinite'
+            }}
+            draggable={isMyTurn}
+            onDragStart={() => handleDragStart(gameState.currentSong!)}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl" />
+            <Music className="h-16 w-16 mb-3 opacity-80" />
+            <div className="text-center">
+              <div className="text-sm font-bold opacity-90 mb-1">Mystery Song</div>
+              <div className="text-5xl font-black mb-2">?</div>
+              <div className="text-xs italic opacity-75">{isMyTurn ? "Drag to timeline" : "Wait for your turn"}</div>
             </div>
-            
-            <div className="relative text-center">
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <div className="relative">
-                  <Music className="h-10 w-10 text-purple-400 animate-pulse" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent">
-                    Mystery Song
-                  </h3>
-                  <p className="text-purple-200 font-medium">
-                    Drag to <span className="text-cyan-300 font-bold">{currentTurnPlayer?.name}'s</span> timeline
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative group mb-6">
-                <div
-                  className="w-40 h-40 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-6 text-white text-lg cursor-grab active:cursor-grabbing mx-auto transition-all duration-500 hover:scale-110 hover:rotate-3 overflow-hidden"
-                  style={{ backgroundColor: gameState.currentSong.cardColor }}
-                  draggable={isMyTurn}
-                  onDragStart={() => handleDragStart(gameState.currentSong!)}
-                >
-                  {/* Card background effects */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/20" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                  
-                  <div className="relative z-10 text-center">
-                    <div className="text-4xl font-black mb-2 bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
-                      {gameState.currentSong.release_year}
-                    </div>
-                    <div className="text-sm font-bold bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1">
-                      Drag & Drop!
-                    </div>
-                  </div>
-                  
-                  {/* Hover glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-3xl" />
-                </div>
-                
-                {/* Drag indicator */}
-                {isMyTurn && (
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-3 py-1 rounded-full font-bold animate-bounce">
-                    Drag Me!
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-center gap-6 mb-6">
-                <Button
-                  onClick={playPauseAudio}
-                  disabled={!gameState.currentSong.preview_url}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-4 rounded-2xl shadow-2xl border-2 border-white/20 transition-all duration-300 hover:scale-110"
-                >
-                  {gameState.isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                </Button>
-                
-                <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/20">
-                  <Timer className="h-5 w-5 text-cyan-400" />
-                  <span className={cn("font-black text-2xl transition-colors duration-300", getTimeColor())}>
-                    {gameState.timeLeft}s
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative">
-                <Progress 
-                  value={(gameState.timeLeft / 30) * 100} 
-                  className="w-80 h-3 bg-black/30 rounded-full overflow-hidden border border-white/20"
-                />
-                <div 
-                  className={cn("absolute top-0 left-0 h-full rounded-full transition-all duration-1000", getProgressColor())}
-                  style={{ width: `${(gameState.timeLeft / 30) * 100}%` }}
-                />
-              </div>
-            </div>
-          </Card>
+            <div className="absolute -inset-2 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </div>
         </div>
       )}
 
@@ -455,76 +426,136 @@ export function GamePlay({ room, players, currentPlayer, isHost, songs, onEndGam
           isCurrent={isMyTurn}
           isDarkMode={true}
           draggedSong={gameState.draggedSong}
-          activeDrag={gameState.activeDrag}
-          hoveredCard={gameState.hoveredCard}
-          throwingCard={null}
+          hoveredPosition={gameState.hoveredPosition}
           confirmingPlacement={gameState.confirmingPlacement}
-          placedCardPosition={gameState.placedCardPosition}
           handleDragOver={handleDragOver}
           handleDragLeave={handleDragLeave}
           handleDrop={handleDrop}
-          setHoveredCard={(id) => setGameState(prev => ({ ...prev, hoveredCard: id }))}
-          currentPlayerId={currentPlayer.id}
           confirmPlacement={confirmPlacement}
           cancelPlacement={cancelPlacement}
+          transitioningTurn={gameState.transitioningTurn}
         />
       )}
 
-      {/* Enhanced Players Scores */}
-      <div className="absolute top-20 right-4 space-y-3 z-40">
-        {players.map((player, index) => (
-          <Card
-            key={player.id}
-            className={cn(
-              "relative bg-gradient-to-r from-white/10 to-white/5 border border-white/30 p-4 backdrop-blur-xl rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden",
-              currentTurnPlayer?.id === player.id && "ring-2 ring-purple-400 shadow-purple-400/30"
-            )}
-          >
-            {currentTurnPlayer?.id === player.id && (
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 animate-pulse rounded-2xl" />
-            )}
+      {/* Other Players Display */}
+      <div className="absolute bottom-4 left-0 right-0 z-20">
+        <div className="flex justify-center items-center gap-8 px-8">
+          {players.map((player, index) => {
+            if (player.id === currentPlayer?.id) return null;
             
-            <div className="relative flex items-center gap-4">
+            const slideOffset = gameState.transitioningTurn 
+              ? Math.sin(easeInOutCubic(transitionProgress) * 20 
+              : 0;
+            
+            return (
               <div
-                className="w-5 h-5 rounded-full shadow-lg border-2 border-white/30"
-                style={{ backgroundColor: player.color }}
-              />
-              <div className="flex-1">
-                <div className="text-white font-bold text-lg">{player.name}</div>
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-yellow-400" />
-                  <span className="text-purple-200 font-medium">
-                    {player.score}/10 points
-                  </span>
+                key={player.id}
+                className="transition-all duration-1200 ease-out"
+                style={{
+                  transform: `translateY(${slideOffset}px) scale(${gameState.transitioningTurn ? 0.95 : 1})`,
+                  opacity: gameState.transitioningTurn ? 0.7 : 1
+                }}
+              >
+                <div className="text-center">
+                  <div className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 mb-3 shadow-xl">
+                    <div className="flex items-center gap-3 text-white text-base">
+                      <div 
+                        className="w-4 h-4 rounded-full ring-2 ring-white/50" 
+                        style={{ backgroundColor: player.color }}
+                      />
+                      <span className="font-semibold">{player.name}</span>
+                      <Badge className="bg-purple-600 text-white text-sm">
+                        {player.score}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-center" style={{ gap: '-8px' }}>
+                    {player.timeline.slice(0, 5).map((song, songIndex) => (
+                      <div
+                        key={songIndex}
+                        className="w-7 h-7 rounded text-xs flex items-center justify-center text-white font-bold shadow-lg border border-white/20 transition-all duration-300 hover:scale-110"
+                        style={{ 
+                          backgroundColor: song.cardColor,
+                          marginLeft: songIndex > 0 ? '-4px' : '0',
+                          zIndex: player.timeline.length - songIndex
+                        }}
+                      >
+                        {song.release_year.slice(-2)}
+                      </div>
+                    ))}
+                    {player.timeline.length > 5 && (
+                      <div 
+                        className="w-7 h-7 rounded bg-white/30 text-xs flex items-center justify-center text-white font-bold border border-white/20"
+                        style={{ 
+                          marginLeft: '-4px',
+                          zIndex: 1
+                        }}
+                      >
+                        +{player.timeline.length - 5}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-              {currentTurnPlayer?.id === player.id && (
-                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 animate-pulse">
-                  <Zap className="h-3 w-3 mr-1" />
-                  Turn
-                </Badge>
-              )}
-            </div>
-          </Card>
-        ))}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Enhanced Turn indicator */}
-      {!isMyTurn && (
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-40">
-          <Card className="bg-gradient-to-r from-white/10 to-white/5 border-2 border-white/30 p-6 backdrop-blur-2xl rounded-2xl shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Clock className="h-6 w-6 text-purple-400 animate-spin" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-ping" />
-              </div>
-              <p className="text-white text-lg font-medium">
-                <span className="font-bold text-purple-300 text-xl">{currentTurnPlayer?.name}</span> is placing their song...
-              </p>
+      {/* Result Animation */}
+      {gameState.cardResult && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-lg flex items-center justify-center z-50">
+          <div 
+            className="text-center transform transition-all duration-1000"
+            style={{
+              animation: 'resultPop 2s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}
+          >
+            <div className={`text-9xl mb-6 ${gameState.cardResult.correct ? 'text-green-400' : 'text-red-400'}`}>
+              {gameState.cardResult.correct ? '✓' : '✗'}
             </div>
-          </Card>
+            <div className="text-5xl font-bold text-white mb-4">
+              {gameState.cardResult.correct ? 'PERFECT!' : 'NOT QUITE!'}
+            </div>
+            <div className="text-xl text-white/80">
+              {gameState.cardResult.song.deezer_title} • {gameState.cardResult.song.release_year}
+            </div>
+          </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes mysteryFloat {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-10px) rotate(2deg); }
+          50% { transform: translateY(-5px) rotate(-1deg); }
+          75% { transform: translateY(-15px) rotate(1deg); }
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+        
+        @keyframes resultPop {
+          0% { 
+            transform: scale(0) rotate(180deg); 
+            opacity: 0; 
+            filter: blur(10px);
+          }
+          50% { 
+            transform: scale(1.2) rotate(0deg); 
+            opacity: 1; 
+            filter: blur(2px);
+          }
+          100% { 
+            transform: scale(1) rotate(0deg); 
+            opacity: 1; 
+            filter: blur(0px);
+          }
+        }
+      `}</style>
     </div>
   );
 }
