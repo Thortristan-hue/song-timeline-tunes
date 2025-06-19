@@ -1,4 +1,3 @@
-
 export interface Song {
   id: string;
   deezer_title: string;
@@ -19,12 +18,12 @@ export interface Player {
   timeline: Song[];
 }
 
-export interface GameRoom {
-  id: string;
-  hostId: string;
-  players: Player[];
-  phase: 'lobby' | 'playing' | 'finished';
-  songs: Song[];
+export interface GameState {
+  phase: 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
   currentTurn: number;
   currentSong: Song | null;
+  timeLeft: number;
+  isPlaying: boolean;
+  winner: Player | null;
+  isMuted: boolean;
 }
