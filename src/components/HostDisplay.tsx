@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card } from './ui/card';
-import { Progress } from './ui/progress';
+import React, { useEffect, useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { Music, Clock } from 'lucide-react';
-import { Badge } from './ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Song, Player } from '@/types/game';
 
 interface HostDisplayProps {
@@ -12,10 +12,24 @@ interface HostDisplayProps {
     timeLeft: number;
     currentSong: Song | null;
     phase: 'playing' | 'finished';
+    transitioningTurn: boolean;
   };
 }
 
 export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDisplayProps) {
+  const [showTurnTransition, setShowTurnTransition] = useState(false);
+  const [previousPlayer, setPreviousPlayer] = useState<Player | null>(null);
+
+  useEffect(() => {
+    if (previousPlayer && previousPlayer.id !== currentTurnPlayer.id) {
+      setShowTurnTransition(true);
+      setTimeout(() => {
+        setShowTurnTransition(false);
+      }, 2000);
+    }
+    setPreviousPlayer(currentTurnPlayer);
+  }, [currentTurnPlayer.id]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900">
       {/* Room Code */}
@@ -38,7 +52,7 @@ export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDispl
         </Card>
       </div>
 
-      {/* Mystery Song Card (without revealing details) */}
+      {/* Mystery Song Card */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
         <Card className="bg-white/10 border-white/20 p-8 text-center w-96">
           <Music className="h-16 w-16 text-purple-400 mx-auto mb-4 animate-pulse" />
@@ -53,7 +67,7 @@ export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDispl
           {players.map((player) => (
             <Card 
               key={player.id}
-              className={`bg-white/10 border-white/20 p-4 ${
+              className={`bg-white/10 border-white/20 p-4 transition-all ${
                 currentTurnPlayer.id === player.id ? 'ring-2 ring-purple-400' : ''
               }`}
             >
@@ -66,7 +80,6 @@ export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDispl
                 <span className="text-purple-200 ml-auto">Score: {player.score}/10</span>
               </div>
               
-              {/* Timeline visualization */}
               <div className="flex gap-2 items-center overflow-x-auto pb-2">
                 {player.timeline.map((song, index) => (
                   <div
@@ -82,6 +95,20 @@ export function HostDisplay({ currentTurnPlayer, players, gameState }: HostDispl
           ))}
         </div>
       </div>
+
+      {/* Turn Transition Overlay */}
+      {showTurnTransition && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="text-center animate-fade-in">
+            <h2 className="text-4xl font-bold text-white mb-4">
+              {previousPlayer?.name}'s turn ended
+            </h2>
+            <h3 className="text-2xl text-purple-200">
+              Now it's {currentTurnPlayer.name}'s turn!
+            </h3>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
