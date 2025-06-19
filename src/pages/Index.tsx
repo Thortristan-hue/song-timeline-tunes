@@ -124,6 +124,7 @@ const Index = () => {
   const { toast } = useToast();
   const soundManager = useRef<SoundManager>(new SoundManager());
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
     room,
@@ -154,6 +155,51 @@ const Index = () => {
     isMuted: false,
     pendingPlacement: null,
   });
+
+  const handleTurnTransition = async () => {
+    setGameState(prev => ({
+      ...prev,
+      currentTurn: prev.currentTurn + 1,
+      timeLeft: 30,
+      isPlaying: false,
+      transitioningTurn: true
+    }));
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    // Simulate loading next song
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setGameState(prev => ({
+      ...prev,
+      transitioningTurn: false,
+      currentSong: customSongs[Math.floor(Math.random() * customSongs.length)]
+    }));
+  };
+
+  const handlePlaceCard = async (position: number) => {
+    if (!gameState.currentSong || !currentPlayer) return;
+
+    const updatedPlayers = players.map(p => {
+      if (p.id === currentPlayer.id) {
+        const newTimeline = [...p.timeline];
+        newTimeline.splice(position, 0, gameState.currentSong!);
+        return {
+          ...p,
+          timeline: newTimeline,
+          score: p.score + 1
+        };
+      }
+      return p;
+    });
+
+    // In a real app, you would update players in your game room state here
+    soundManager.current.playSound('cardCorrect');
+    await handleTurnTransition();
+  };
 
   const handleHostGame = async () => {
     setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
@@ -191,23 +237,16 @@ const Index = () => {
     
     await updateRoomSongs(customSongs);
     await startGame();
-    setGameState(prev => ({ ...prev, phase: 'playing' }));
+    setGameState(prev => ({
+      ...prev,
+      phase: 'playing',
+      currentSong: customSongs[0]
+    }));
 
     toast({
       title: "Game Started!",
       description: "Let the timeline battle begin!",
     });
-  };
-
-  const handlePlaceCard = (song: Song, position: number) => {
-    if (!currentPlayer) return;
-    
-    setGameState(prev => ({
-      ...prev,
-      pendingPlacement: { playerId: currentPlayer.id, song, position }
-    }));
-    
-    soundManager.current.playSound('cardPlace');
   };
 
   const handlePlayPauseAudio = () => {
@@ -325,7 +364,12 @@ const Index = () => {
     }
   };
 
-  return renderCurrentPhase();
+  return (
+    <>
+      <audio ref={audioRef} />
+      {renderCurrentPhase()}
+    </>
+  );
 };
 
 export default Index;
