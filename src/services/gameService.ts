@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 
@@ -54,28 +53,124 @@ export class GameService {
     }));
   }
 
+  // Enhanced method to extract playlist ID from various Deezer URL formats
+  private extractDeezerPlaylistId(url: string): string | null {
+    try {
+      // Handle various Deezer URL formats:
+      // https://www.deezer.com/playlist/1234567890
+      // https://deezer.com/playlist/1234567890
+      // https://www.deezer.com/en/playlist/1234567890
+      // https://deezer.com/us/playlist/1234567890
+      const patterns = [
+        /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/i,
+        /deezer\.page\.link\/.*playlist[/=](\d+)/i,
+        /^(\d+)$/ // Just the ID itself
+      ];
+
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error extracting playlist ID:', error);
+      return null;
+    }
+  }
+
+  // Enhanced method to load songs from Deezer playlist
+  async loadSongsFromDeezerPlaylist(playlistUrl: string): Promise<Song[]> {
+    try {
+      const playlistId = this.extractDeezerPlaylistId(playlistUrl);
+      if (!playlistId) {
+        throw new Error('Invalid Deezer playlist URL format');
+      }
+
+      console.log('Loading playlist with ID:', playlistId);
+
+      // Use CORS proxy for Deezer API requests
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const deezerApiUrl = `https://api.deezer.com/playlist/${playlistId}`;
+      const proxiedUrl = corsProxy + encodeURIComponent(deezerApiUrl);
+
+      const response = await fetch(proxiedUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch playlist: ${response.status}`);
+      }
+
+      const playlistData = await response.json();
+      
+      if (!playlistData.tracks || !playlistData.tracks.data) {
+        throw new Error('No tracks found in playlist');
+      }
+
+      const songs: Song[] = playlistData.tracks.data.map((track: any, index: number) => {
+        // Generate a color for each song
+        const colors = [
+          '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
+          '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+          '#F8C471', '#82E0AA', '#AED6F1', '#E8DAEF'
+        ];
+        
+        return {
+          id: track.id?.toString() || `track_${index}`,
+          deezer_title: track.title || 'Unknown Title',
+          deezer_artist: track.artist?.name || 'Unknown Artist',
+          deezer_album: track.album?.title || 'Unknown Album',
+          release_year: track.album?.release_date ? 
+            new Date(track.album.release_date).getFullYear().toString() : 
+            'Unknown',
+          genre: 'Unknown', // Deezer API doesn't always provide genre in playlist endpoint
+          cardColor: colors[index % colors.length],
+          preview_url: track.preview || undefined
+        };
+      });
+
+      console.log(`Loaded ${songs.length} songs from Deezer playlist`);
+      return songs;
+
+    } catch (error) {
+      console.error('Error loading Deezer playlist:', error);
+      throw new Error(`Failed to load playlist: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async createRoom(hostName: string): Promise<{ room: GameRoom; lobbyCode: string }> {
     try {
+      console.log('Creating room with host:', hostName, 'Session ID:', this.sessionId);
+      
       // Generate lobby code using the database function
       const { data: lobbyCodeData, error: codeError } = await supabase
         .rpc('generate_lobby_code');
 
-      if (codeError) throw codeError;
+      if (codeError) {
+        console.error('Error generating lobby code:', codeError);
+        throw codeError;
+      }
 
       const lobbyCode = lobbyCodeData;
+      console.log('Generated lobby code:', lobbyCode);
 
       // Create the room
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
-          host_id: this.sessionId,
+          host_id: this.sessionId, // Now using text session ID
           phase: 'lobby'
         })
         .select()
         .single();
 
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error('Error creating room:', roomError);
+        throw roomError;
+      }
+
+      console.log('Room created successfully:', roomData);
 
       const room: GameRoom = {
         ...roomData,
@@ -84,6 +179,7 @@ export class GameService {
       };
 
       // Add host as a player
+      console.log('Adding host as player...');
       await this.joinRoom(lobbyCode, hostName, true);
 
       return { room, lobbyCode };
@@ -95,6 +191,8 @@ export class GameService {
 
   async joinRoom(lobbyCode: string, playerName: string, isHost: boolean = false): Promise<DatabasePlayer> {
     try {
+      console.log('Joining room:', lobbyCode, 'as:', playerName, 'isHost:', isHost);
+      
       // Find the room
       const { data: room, error: roomError } = await supabase
         .from('game_rooms')
@@ -102,8 +200,13 @@ export class GameService {
         .eq('lobby_code', lobbyCode.toUpperCase())
         .single();
 
-      if (roomError) throw roomError;
+      if (roomError) {
+        console.error('Room lookup error:', roomError);
+        throw roomError;
+      }
       if (!room) throw new Error('Room not found');
+
+      console.log('Found room:', room.id);
 
       // Check if player already exists in this room
       const { data: existingPlayer } = await supabase
@@ -114,6 +217,7 @@ export class GameService {
         .single();
 
       if (existingPlayer) {
+        console.log('Player already exists, updating...');
         // Update existing player's activity
         const { data: updatedPlayer, error: updateError } = await supabase
           .from('players')
@@ -149,6 +253,8 @@ export class GameService {
       const availableColors = playerColors.filter(color => !usedColors.includes(color));
       const playerColor = availableColors[0] || playerColors[0];
 
+      console.log('Creating new player with color:', playerColor);
+
       // Create new player
       const { data: player, error: playerError } = await supabase
         .from('players')
@@ -165,7 +271,12 @@ export class GameService {
         .select()
         .single();
 
-      if (playerError) throw playerError;
+      if (playerError) {
+        console.error('Player creation error:', playerError);
+        throw playerError;
+      }
+
+      console.log('Player created successfully:', player);
 
       return {
         ...player,
