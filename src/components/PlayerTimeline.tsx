@@ -126,9 +126,6 @@ export function PlayerTimeline({
         {player.timeline.length === 0 && (
           <div className="text-center py-8 px-16">
             <Music className="h-16 w-16 text-purple-300 mx-auto mb-4 opacity-60" />
-            <p className="text-purple-200 text-xl font-bold mb-2">
-              Your Musical Journey Starts Here!
-            </p>
             <p className="text-purple-400 text-sm font-medium">
               Drag the mystery song to build your chronological timeline
             </p>
