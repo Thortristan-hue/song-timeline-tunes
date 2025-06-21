@@ -187,5 +187,3 @@ export function VictoryScreen({ winner, players, onBackToMenu }: VictoryScreenPr
     </div>
   );
 }
-
-export { VictoryScreen };
