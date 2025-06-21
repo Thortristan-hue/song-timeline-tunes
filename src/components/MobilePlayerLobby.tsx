@@ -153,7 +153,7 @@ export function MobilePlayerLobby({
                     }`}
                     style={{ backgroundColor: color }}
                   >
-                    {selectedColor ===  && (
+                    {selectedColor === color && (
                       <div className="w-full h-full rounded-full flex items-center justify-center">
                         <div className="w-3 h-3 bg-white rounded-full"></div>
                       </div>
