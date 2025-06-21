@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -231,7 +230,11 @@ export function HostLobby({
           </h2>
           
           <PlaylistLoader 
-            onSongsLoaded={setCustomSongs}
+            onPlaylistLoaded={(success: boolean) => {
+              // Handle playlist load success/failure if needed
+            }}
+            setCustomSongs={setCustomSongs}
+            isDarkMode={true}
             className="mb-6"
           />
         </Card>

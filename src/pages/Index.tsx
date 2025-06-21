@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -272,7 +271,10 @@ export default function Index() {
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
-            createRoom={createRoom}
+            createRoom={async (hostName: string) => {
+              const success = await createRoom(hostName);
+              return success;
+            }}
             currentHostName={currentPlayer?.name || ''}
           />
         );
