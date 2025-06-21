@@ -235,7 +235,6 @@ export function HostLobby({
             }}
             setCustomSongs={setCustomSongs}
             isDarkMode={true}
-            className="mb-6"
           />
         </Card>
 

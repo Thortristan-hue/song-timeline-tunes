@@ -66,7 +66,7 @@ export default function Index() {
   useEffect(() => {
     const loadInitialSongs = async () => {
       try {
-        const songs = await loadSongsFromJson();
+        const songs = await loadSongsFromJson('./songs.json');
         setCustomSongs(songs);
       } catch (error) {
         console.error('Failed to load songs:', error);
@@ -308,21 +308,16 @@ export default function Index() {
             currentPlayer={currentPlayer}
             isHost={isHost}
             songs={customSongs}
-            gameState={gameState}
-            setGameState={setGameState}
             onEndGame={() => {
               const winner = players.reduce((prev, current) => 
                 (prev.score > current.score) ? prev : current
               );
               handleEndGame(winner);
             }}
-            onPlayPause={handlePlayPause}
-            onStartGame={handleStartGame}
-            onBackToMenu={handleBackToMenu}
-            onUpdatePlayer={handleUpdatePlayer}
-            onJoinLobby={handleJoinLobby}
-            onPlaceCard={handlePlaceCard}
-            isLoading={isLoading}
+            onKickPlayer={(playerId: string) => {
+              // Handle player kicking
+              console.log('Kicking player:', playerId);
+            }}
           />
         );
 
