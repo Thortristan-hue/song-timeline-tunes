@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
+import { useGameCleanup } from '@/hooks/useGameCleanup';
 import { useToast } from '@/components/ui/use-toast';
 import { Player, Song, GameState, GamePhase } from '@/types/game';
 import { MainMenu } from '@/components/MainMenu';
@@ -45,6 +47,20 @@ export default function Index() {
     winner: null,
     isMuted: false,
     pendingPlacement: null,
+  });
+
+  // Setup game cleanup for idle rooms
+  useGameCleanup({
+    roomId: room?.id,
+    isHost,
+    onRoomClosed: () => {
+      toast({
+        title: "Room closed",
+        description: "The room was closed due to inactivity.",
+        variant: "destructive",
+      });
+      handleBackToMenu();
+    }
   });
 
   // Initialize game with songs
@@ -108,9 +124,20 @@ export default function Index() {
 
   // Navigation handlers
   const handleHostGame = async () => {
-    const success = await createRoom();
-    if (success) {
-      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+    if (!currentPlayer?.name) {
+      // Prompt for host name if not provided
+      const hostName = prompt('Enter your name:');
+      if (!hostName?.trim()) return;
+      
+      const success = await createRoom(hostName.trim());
+      if (success) {
+        setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+      }
+    } else {
+      const success = await createRoom(currentPlayer.name);
+      if (success) {
+        setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+      }
     }
   };
 
@@ -120,7 +147,20 @@ export default function Index() {
 
   const handleBackToMenu = () => {
     leaveRoom();
-    setGameState(prev => ({ ...prev, phase: 'menu' }));
+    setGameState(prev => ({ 
+      ...prev, 
+      phase: 'menu',
+      currentTurn: 0,
+      currentSong: null,
+      timeLeft: 30,
+      isPlaying: false,
+      throwingCard: null,
+      confirmingPlacement: null,
+      cardResult: null,
+      transitioningTurn: false,
+      winner: null,
+      pendingPlacement: null,
+    }));
   };
 
   const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
@@ -154,7 +194,7 @@ export default function Index() {
     }));
 
     toast({
-      title: "Game Started!",
+      title: "🎵 Game Started!",
       description: "Let the timeline battle begin!",
     });
   };
@@ -165,6 +205,9 @@ export default function Index() {
       phase: 'finished',
       winner
     }));
+    
+    // Play victory sound
+    soundManager.current.playSound('victory');
   };
 
   const handlePlayPause = () => {
@@ -179,94 +222,83 @@ export default function Index() {
     setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
   };
 
-  // Phase rendering
-// ... keep your existing imports and state ...
+  // Phase rendering with enhanced components
+  const renderPhase = () => {
+    switch (gameState.phase) {
+      case 'menu':
+        return (
+          <MainMenu
+            onHostGame={handleHostGame}
+            onJoinGame={handleJoinGame}
+          />
+        );
 
-const renderPhase = () => {
-  switch (gameState.phase) {
-    case 'menu':
-      return (
-        <MainMenu
-          onHostGame={handleHostGame}
-          onJoinGame={handleJoinGame}
-        />
-      );
+      case 'hostLobby':
+        return (
+          <HostLobby
+            lobbyCode={room?.lobby_code || ''}
+            players={players}
+            onStartGame={handleStartGame}
+            onBackToMenu={handleBackToMenu}
+            setCustomSongs={setCustomSongs}
+            isLoading={isLoading}
+          />
+        );
 
-    case 'hostLobby':
-      return (
-        <HostLobby
-          lobbyCode={room?.lobby_code || ''}
-          players={players}
-          onStartGame={handleStartGame}
-          onBackToMenu={handleBackToMenu}
-          setCustomSongs={setCustomSongs}
-          isLoading={isLoading}
-        />
-      );
+      case 'mobileJoin':
+        return (
+          <MobileJoin
+            onJoinLobby={handleJoinLobby}
+            onBackToMenu={handleBackToMenu}
+            isLoading={isLoading}
+          />
+        );
 
-    case 'mobileJoin':
-      return (
-        <MobileJoin
-          onJoinLobby={handleJoinLobby}
-          onBackToMenu={handleBackToMenu}
-          isLoading={isLoading}
-        />
-      );
+      case 'mobileLobby':
+        if (!currentPlayer || !room) return null;
+        return (
+          <MobilePlayerLobby
+            player={currentPlayer}
+            lobbyCode={room.lobby_code}
+            onUpdatePlayer={handleUpdatePlayer}
+          />
+        );
 
-    case 'mobileLobby':
-      if (!currentPlayer || !room) return null;
-      return (
-        <MobilePlayerLobby
-          player={currentPlayer}
-          lobbyCode={room.lobby_code}
-          onUpdatePlayer={handleUpdatePlayer}
-        />
-      );
+      case 'playing':
+        return (
+          <GamePlay
+            room={room}
+            players={players}
+            currentPlayer={currentPlayer}
+            isHost={isHost}
+            songs={customSongs}
+            gameState={gameState}
+            setGameState={setGameState}
+            onEndGame={handleEndGame}
+            onPlayPause={handlePlayPause}
+            onStartGame={handleStartGame}
+            onBackToMenu={handleBackToMenu}
+            onUpdatePlayer={handleUpdatePlayer}
+            onJoinLobby={handleJoinLobby}
+            onPlaceCard={handlePlaceCard}
+            isLoading={isLoading}
+          />
+        );
 
-    case 'playing':
-      return (
-        <GamePlay
-          room={room}
-          players={players}
-          currentPlayer={currentPlayer}
-          isHost={isHost}
-          songs={customSongs}
-          gameState={gameState}
-          setGameState={setGameState}
-          onEndGame={handleEndGame}
-          onPlayPause={() => {
-            if (audioRef.current) {
-              if (gameState.isPlaying) {
-                audioRef.current.pause();
-              } else {
-                audioRef.current.play();
-              }
-              setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
-            }
-          }}
-          onStartGame={handleStartGame}
-          onBackToMenu={handleBackToMenu}
-          onUpdatePlayer={handleUpdatePlayer}
-          onJoinLobby={handleJoinLobby}
-          onPlaceCard={handlePlaceCard}
-          isLoading={isLoading}
-        />
-      );
+      case 'finished':
+        if (!gameState.winner) return null;
+        return (
+          <VictoryScreen 
+            winner={gameState.winner}
+            players={players}
+            onBackToMenu={handleBackToMenu}
+          />
+        );
 
-    case 'finished':
-      if (!gameState.winner) return null;
-      return (
-        <VictoryScreen 
-          winner={gameState.winner}
-          players={players}
-          onBackToMenu={handleBackToMenu}
-        />
-      );
-
-    default:
-      return null;
-  }
-};
+      default:
+        return null;
+    }
+  };
 
   return (
     <>

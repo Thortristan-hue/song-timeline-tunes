@@ -31,7 +31,6 @@ export class GameService {
   private sessionId: string;
 
   constructor() {
-    // Generate a unique session ID for this browser session
     this.sessionId = this.generateSessionId();
   }
 
@@ -53,14 +52,8 @@ export class GameService {
     }));
   }
 
-  // Enhanced method to extract playlist ID from various Deezer URL formats
   private extractDeezerPlaylistId(url: string): string | null {
     try {
-      // Handle various Deezer URL formats:
-      // https://www.deezer.com/playlist/1234567890
-      // https://deezer.com/playlist/1234567890
-      // https://www.deezer.com/en/playlist/1234567890
-      // https://deezer.com/us/playlist/1234567890
       const patterns = [
         /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/i,
         /deezer\.page\.link\/.*playlist[/=](\d+)/i,
@@ -80,7 +73,6 @@ export class GameService {
     }
   }
 
-  // Enhanced method to load songs from Deezer playlist
   async loadSongsFromDeezerPlaylist(playlistUrl: string): Promise<Song[]> {
     try {
       const playlistId = this.extractDeezerPlaylistId(playlistUrl);
@@ -90,7 +82,6 @@ export class GameService {
 
       console.log('Loading playlist with ID:', playlistId);
 
-      // Use CORS proxy for Deezer API requests
       const corsProxy = 'https://api.allorigins.win/raw?url=';
       const deezerApiUrl = `https://api.deezer.com/playlist/${playlistId}`;
       const proxiedUrl = corsProxy + encodeURIComponent(deezerApiUrl);
@@ -108,7 +99,6 @@ export class GameService {
       }
 
       const songs: Song[] = playlistData.tracks.data.map((track: any, index: number) => {
-        // Generate a color for each song
         const colors = [
           '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
           '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
@@ -123,7 +113,7 @@ export class GameService {
           release_year: track.album?.release_date ? 
             new Date(track.album.release_date).getFullYear().toString() : 
             'Unknown',
-          genre: 'Unknown', // Deezer API doesn't always provide genre in playlist endpoint
+          genre: 'Unknown',
           cardColor: colors[index % colors.length],
           preview_url: track.preview || undefined
         };
@@ -142,7 +132,6 @@ export class GameService {
     try {
       console.log('Creating room with host:', hostName, 'Session ID:', this.sessionId);
       
-      // Generate lobby code using the database function
       const { data: lobbyCodeData, error: codeError } = await supabase
         .rpc('generate_lobby_code');
 
@@ -154,7 +143,6 @@ export class GameService {
       const lobbyCode = lobbyCodeData;
       console.log('Generated lobby code:', lobbyCode);
 
-      // Create the room
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
@@ -178,8 +166,6 @@ export class GameService {
         songs: this.convertJsonToSongs(roomData.songs)
       };
 
-      // Add host as a player
-      console.log('Adding host as player...');
       await this.joinRoom(lobbyCode, hostName, true);
 
       return { room, lobbyCode };
@@ -193,7 +179,6 @@ export class GameService {
     try {
       console.log('Joining room:', lobbyCode, 'as:', playerName, 'isHost:', isHost);
       
-      // Find the room
       const { data: room, error: roomError } = await supabase
         .from('game_rooms')
         .select('id')
@@ -208,7 +193,6 @@ export class GameService {
 
       console.log('Found room:', room.id);
 
-      // Check if player already exists in this room
       const { data: existingPlayer } = await supabase
         .from('players')
         .select('*')
@@ -218,7 +202,6 @@ export class GameService {
 
       if (existingPlayer) {
         console.log('Player already exists, updating...');
-        // Update existing player's activity
         const { data: updatedPlayer, error: updateError } = await supabase
           .from('players')
           .update({ 
@@ -237,13 +220,11 @@ export class GameService {
         };
       }
 
-      // Generate player color
       const playerColors = [
         '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
         '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
       ];
 
-      // Get existing players to avoid color conflicts
       const { data: existingPlayers } = await supabase
         .from('players')
         .select('color')
@@ -255,7 +236,6 @@ export class GameService {
 
       console.log('Creating new player with color:', playerColor);
 
-      // Create new player
       const { data: player, error: playerError } = await supabase
         .from('players')
         .insert({
@@ -383,7 +363,46 @@ export class GameService {
     }
   }
 
-  // Real-time subscriptions
+  async cleanupRoom(roomId: string): Promise<void> {
+    try {
+      await supabase
+        .from('players')
+        .delete()
+        .eq('room_id', roomId);
+
+      await supabase
+        .from('game_rooms')
+        .delete()
+        .eq('id', roomId);
+
+      console.log(`Room ${roomId} cleaned up successfully`);
+    } catch (error) {
+      console.error('Error cleaning up room:', error);
+      throw error;
+    }
+  }
+
+  async cleanupInactiveRooms(): Promise<void> {
+    try {
+      const sevenMinutesAgo = new Date(Date.now() - 7 * 60 * 1000).toISOString();
+      
+      const { data: inactiveRooms, error } = await supabase
+        .from('game_rooms')
+        .select('id')
+        .lt('updated_at', sevenMinutesAgo);
+
+      if (error) throw error;
+
+      for (const room of inactiveRooms || []) {
+        await this.cleanupRoom(room.id);
+      }
+
+      console.log(`Cleaned up ${inactiveRooms?.length || 0} inactive rooms`);
+    } catch (error) {
+      console.error('Error cleaning up inactive rooms:', error);
+    }
+  }
+
   subscribeToRoom(roomId: string, callbacks: {
     onRoomUpdate?: (room: GameRoom) => void;
     onPlayersUpdate?: (players: DatabasePlayer[]) => void;
