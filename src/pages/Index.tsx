@@ -10,7 +10,6 @@ import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import SoundManager from '@/lib/SoundManager';
-import { loadSongsFromJson } from "@/utils/songLoader";
 
 export default function Index() {
   const { toast } = useToast();
@@ -62,25 +61,8 @@ export default function Index() {
     }
   });
 
-  // Initialize game with songs
-  useEffect(() => {
-    const loadInitialSongs = async () => {
-      try {
-        const songs = await loadSongsFromJson('./songs.json');
-        setCustomSongs(songs);
-      } catch (error) {
-        console.error('Failed to load songs:', error);
-        // Fallback to empty array
-        setCustomSongs([]);
-        toast({
-          title: "Failed to load songs",
-          description: "Please try refreshing the page or upload your own songs.",
-          variant: "destructive",
-        });
-      }
-    };
-    loadInitialSongs();
-  }, []);
+  // Remove initial song loading since there's no default songs.json file
+  // Songs will be loaded through the PlaylistLoader component
 
   // Handle turn transitions
   const handleTurnEnd = () => {
@@ -162,8 +144,8 @@ export default function Index() {
       return;
     }
     
-    const success = await createRoom(currentPlayer.name);
-    if (success) {
+    const roomId = await createRoom(currentPlayer.name);
+    if (roomId) {
       setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
     }
   };
@@ -272,8 +254,8 @@ export default function Index() {
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
             createRoom={async (hostName: string) => {
-              const success = await createRoom(hostName);
-              return success;
+              const roomId = await createRoom(hostName);
+              return !!roomId; // Convert string to boolean
             }}
             currentHostName={currentPlayer?.name || ''}
           />
