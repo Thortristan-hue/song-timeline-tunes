@@ -66,8 +66,19 @@ export default function Index() {
   // Initialize game with songs
   useEffect(() => {
     const loadInitialSongs = async () => {
-      const songs = await loadSongsFromJson();
-      setCustomSongs(songs);
+      try {
+        const songs = await loadSongsFromJson();
+        setCustomSongs(songs);
+      } catch (error) {
+        console.error('Failed to load songs:', error);
+        // Fallback to empty array
+        setCustomSongs([]);
+        toast({
+          title: "Failed to load songs",
+          description: "Please try refreshing the page or upload your own songs.",
+          variant: "destructive",
+        });
+      }
     };
     loadInitialSongs();
   }, []);
@@ -79,16 +90,19 @@ export default function Index() {
       currentTurn: prev.currentTurn + 1,
       timeLeft: 30,
       isPlaying: false,
-      transitioningTurn: true
+      transitioningTurn: true,
+      cardResult: null
     }));
 
+    // Clear card result after showing it briefly
     setTimeout(() => {
       setGameState(prev => ({
         ...prev,
         transitioningTurn: false,
-        currentSong: customSongs[(prev.currentTurn + 1) % customSongs.length]
+        currentSong: customSongs[(prev.currentTurn + 1) % customSongs.length],
+        cardResult: null
       }));
-    }, 1000);
+    }, 2000);
   };
 
   // Handle audio updates
@@ -118,26 +132,40 @@ export default function Index() {
       return p;
     });
 
+    // Show result briefly before continuing
+    setGameState(prev => ({
+      ...prev,
+      cardResult: { correct: true, song: gameState.currentSong! }
+    }));
+
     soundManager.current.playSound('cardCorrect');
-    handleTurnEnd();
+    
+    // Check for winner
+    const winner = updatedPlayers.find(p => p.score >= 10);
+    if (winner) {
+      setTimeout(() => {
+        setGameState(prev => ({ ...prev, phase: 'finished', winner }));
+      }, 2000);
+      return;
+    }
+
+    // Continue to next turn
+    setTimeout(() => {
+      handleTurnEnd();
+    }, 2000);
   };
 
   // Navigation handlers
   const handleHostGame = async () => {
     if (!currentPlayer?.name) {
-      // Prompt for host name if not provided
-      const hostName = prompt('Enter your name:');
-      if (!hostName?.trim()) return;
-      
-      const success = await createRoom(hostName.trim());
-      if (success) {
-        setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
-      }
-    } else {
-      const success = await createRoom(currentPlayer.name);
-      if (success) {
-        setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
-      }
+      // Instead of prompt, navigate to host lobby where they can enter name
+      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+      return;
+    }
+    
+    const success = await createRoom(currentPlayer.name);
+    if (success) {
+      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
     }
   };
 
@@ -187,6 +215,8 @@ export default function Index() {
     
     await updateRoomSongs(customSongs);
     await startGame();
+    
+    // Transition ALL players to playing phase
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
@@ -242,6 +272,8 @@ export default function Index() {
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
+            createRoom={createRoom}
+            currentHostName={currentPlayer?.name || ''}
           />
         );
 
@@ -261,6 +293,8 @@ export default function Index() {
             player={currentPlayer}
             lobbyCode={room.lobby_code}
             onUpdatePlayer={handleUpdatePlayer}
+            gamePhase={room.phase}
+            onGameStart={() => setGameState(prev => ({ ...prev, phase: 'playing' }))}
           />
         );
 
@@ -274,7 +308,12 @@ export default function Index() {
             songs={customSongs}
             gameState={gameState}
             setGameState={setGameState}
-            onEndGame={handleEndGame}
+            onEndGame={() => {
+              const winner = players.reduce((prev, current) => 
+                (prev.score > current.score) ? prev : current
+              );
+              handleEndGame(winner);
+            }}
             onPlayPause={handlePlayPause}
             onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
