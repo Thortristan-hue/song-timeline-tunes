@@ -18,6 +18,7 @@ export default function Index() {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  const [validatedSongs, setValidatedSongs] = useState<Song[]>([]);
   const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
   const [retryingSong, setRetryingSong] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -59,10 +60,11 @@ export default function Index() {
   const [currentSongProgress, setCurrentSongProgress] = useState(0);
   const [currentSongDuration, setCurrentSongDuration] = useState(30);
 
-  // Setup game cleanup for idle rooms
+  // Setup game cleanup for idle rooms - extended to 15 minutes
   useGameCleanup({
     roomId: room?.id,
     isHost,
+    timeout: 15 * 60 * 1000, // 15 minutes
     onRoomClosed: () => {
       toast({
         title: "Room closed",
@@ -97,15 +99,67 @@ export default function Index() {
     }
   }, [gameState.currentSong]);
 
+  // New effect to validate and sync songs whenever customSongs changes
+  useEffect(() => {
+    const validateAndSyncSongs = async () => {
+      if (customSongs.length === 0) {
+        setValidatedSongs([]);
+        return;
+      }
+
+      console.log('=== VALIDATING CUSTOM SONGS ===');
+      console.log(`Input: ${customSongs.length} custom songs to validate`);
+
+      try {
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        const filteredSongs = defaultPlaylistService.filterValidSongs(customSongs);
+        
+        console.log(`✅ Validation complete: ${filteredSongs.length} valid songs`);
+        setValidatedSongs(filteredSongs);
+
+        // If we have a room and are the host, update room songs
+        if (room?.id && isHost && filteredSongs.length > 0) {
+          console.log('🔄 Syncing validated songs to room...');
+          await updateRoomSongs(filteredSongs);
+          console.log('✅ Songs synced to room successfully');
+        }
+      } catch (error) {
+        console.error('❌ Song validation failed:', error);
+        setValidatedSongs([]);
+      }
+    };
+
+    validateAndSyncSongs();
+  }, [customSongs, room?.id, isHost, updateRoomSongs]);
+
+  // Enhanced function to get available songs for gameplay
+  const getAvailableSongs = (): Song[] => {
+    // Priority: room songs (if available), then validated songs, then custom songs
+    if (room?.songs && room.songs.length > 0) {
+      console.log(`📂 Using room songs: ${room.songs.length}`);
+      return room.songs;
+    }
+    if (validatedSongs.length > 0) {
+      console.log(`📂 Using validated songs: ${validatedSongs.length}`);
+      return validatedSongs;
+    }
+    if (customSongs.length > 0) {
+      console.log(`📂 Using custom songs (fallback): ${customSongs.length}`);
+      return customSongs;
+    }
+    console.log('📂 No songs available');
+    return [];
+  };
+
   // Enhanced function to get a random song with proper validation and retry logic
   const getRandomSongForTurn = async (maxRetries: number = 10): Promise<Song | null> => {
     console.log('=== MYSTERY SONG SELECTION START ===');
     
-    // First check if we have any songs available
-    const availableSongs = room?.songs || customSongs;
+    // Get available songs for this turn
+    const availableSongs = getAvailableSongs();
     
     if (!availableSongs || availableSongs.length === 0) {
-      console.error('❌ NO SONGS AVAILABLE - room songs:', room?.songs?.length, 'custom songs:', customSongs.length);
+      console.error('❌ NO SONGS AVAILABLE for turn');
       setSongLoadingError('No songs available. Please add songs to continue.');
       return null;
     }
@@ -240,9 +294,10 @@ export default function Index() {
     setRetryingSong(false);
     
     // Verify we have songs available before starting
-    const availableSongs = room?.songs || customSongs;
-    console.log('📊 Available songs check:', {
+    const availableSongs = getAvailableSongs();
+    console.log('📊 Available songs check for turn:', {
       roomSongs: room?.songs?.length || 0,
+      validatedSongs: validatedSongs.length,
       customSongs: customSongs.length,
       totalAvailable: availableSongs.length
     });
@@ -348,10 +403,17 @@ export default function Index() {
       return;
     }
     
-    // Use room songs if available, otherwise use custom songs
-    const songsToUse = room?.songs && room.songs.length > 0 ? room.songs : customSongs;
+    // Get the best available songs
+    const availableSongs = getAvailableSongs();
     
-    if (songsToUse.length === 0) {
+    console.log('🎮 Game start validation:', {
+      roomSongs: room?.songs?.length || 0,
+      validatedSongs: validatedSongs.length,
+      customSongs: customSongs.length,
+      availableSongs: availableSongs.length
+    });
+    
+    if (availableSongs.length === 0) {
       soundEffects.playCardError();
       toast({
         title: "Cannot start game",
@@ -363,7 +425,7 @@ export default function Index() {
 
     // Validate playlist before starting game
     const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-    const validationResult = defaultPlaylistService.validatePlaylistForGameplay(songsToUse, 5);
+    const validationResult = defaultPlaylistService.validatePlaylistForGameplay(availableSongs, 5);
     
     if (!validationResult.isValid) {
       soundEffects.playCardError();
@@ -377,14 +439,15 @@ export default function Index() {
 
     console.log(`🎮 Starting game with ${validationResult.validCount} valid songs`);
     
-    // Only update room songs if we're using custom songs
-    if (room?.songs !== songsToUse) {
-      await updateRoomSongs(songsToUse);
+    // Ensure room has the validated songs
+    if (room?.id && (!room.songs || room.songs.length !== availableSongs.length)) {
+      console.log('🔄 Updating room songs before game start...');
+      await updateRoomSongs(availableSongs);
     }
     
     // Assign starting cards to all players
     if (room?.id) {
-      await gameService.assignStartingCards(room.id, songsToUse);
+      await gameService.assignStartingCards(room.id, availableSongs);
     }
     
     await startGame();
@@ -501,12 +564,12 @@ export default function Index() {
     }
   };
 
-  // Effect to monitor room changes and update songs
+  // Effect to monitor room changes
   useEffect(() => {
-    if (room?.songs && room.songs.length > 0 && customSongs.length === 0) {
-      setCustomSongs(room.songs);
+    if (room?.songs && room.songs.length > 0) {
+      console.log('🔄 Room songs updated:', room.songs.length);
     }
-  }, [room?.songs, customSongs.length]);
+  }, [room?.songs]);
 
   // Phase rendering with enhanced components
   const renderPhase = () => {

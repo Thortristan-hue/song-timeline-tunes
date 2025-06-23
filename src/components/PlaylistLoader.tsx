@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Music, Loader2 } from 'lucide-react';
 import { Song } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
+import { deezerLoader } from '@/utils/deezerLoader';
 
 interface PlaylistLoaderProps {
   onPlaylistLoaded: (success: boolean) => void;
@@ -64,8 +65,9 @@ export function PlaylistLoader({
       return;
     }
 
-    if (!playlistUrl.includes('deezer.com/playlist/')) {
-      setError('Please enter a valid Deezer playlist URL');
+    // Use the improved validation from deezerLoader
+    if (!deezerLoader.isValidDeezerUrl(playlistUrl.trim())) {
+      setError('Please enter a valid Deezer playlist URL. Supported formats: deezer.com/playlist/ID or just the playlist ID number');
       return;
     }
 
@@ -75,11 +77,26 @@ export function PlaylistLoader({
     setStatus('Loading playlist...');
 
     try {
-      const { songService } = await import('@/services/songService');
       setStatus('Fetching playlist tracks...');
       setProgress(25);
-  
-      const songs = await songService.loadPlaylist(playlistUrl);
+      
+      // Try to load directly from Deezer first
+      let songs: Song[] = [];
+      
+      try {
+        songs = await deezerLoader.loadPlaylist(playlistUrl.trim());
+        setProgress(75);
+        setStatus('Processing songs...');
+      } catch (deezerError) {
+        console.log('Direct Deezer load failed, trying song service:', deezerError);
+        // Fallback to songService if direct Deezer fails
+        const { songService } = await import('@/services/songService');
+        setStatus('Fetching playlist tracks via fallback...');
+        setProgress(50);
+        songs = await songService.loadPlaylist(playlistUrl.trim());
+        setProgress(75);
+        setStatus('Processing songs...');
+      }
   
       if (!songs?.length) {
         setError('No valid songs found in playlist.');
@@ -147,8 +164,8 @@ export function PlaylistLoader({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Input
-            type="url"
-            placeholder="https://www.deezer.com/playlist/123456789"
+            type="text"
+            placeholder="https://www.deezer.com/playlist/123456789 or just 123456789"
             value={playlistUrl}
             onChange={(e) => setPlaylistUrl(e.target.value)}
             disabled={loading}
@@ -186,9 +203,9 @@ export function PlaylistLoader({
       </form>
 
       <div className={`text-xs space-y-1 ${isDarkMode ? 'text-purple-200/60' : 'text-gray-500'}`}>
-        <p>• Default playlist includes 10 classic songs with fresh preview URLs</p>
-        <p>• Custom playlists will be enhanced with release dates from MusicBrainz and Discogs</p>
-        <p>• Only songs with valid metadata and preview will be included</p>
+        <p>• Default playlist includes curated songs with fresh preview URLs</p>
+        <p>• Custom playlists accept: deezer.com/playlist/ID or just the playlist ID number</p>
+        <p>• Only songs with valid metadata and release dates will be included</p>
       </div>
     </div>
   );

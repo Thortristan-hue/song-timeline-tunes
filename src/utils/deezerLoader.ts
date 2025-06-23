@@ -112,10 +112,10 @@ export class DeezerLoader {
     return 'Unknown';
   }
 
-  // Validate if a URL looks like a Deezer playlist URL
+  // More permissive validation for Deezer URLs
   isValidDeezerUrl(url: string): boolean {
     const patterns = [
-      /deezer\.com\/.*playlist/i,
+      /deezer\.com.*playlist/i,
       /deezer\.page\.link/i,
       /dzr\.lnk\.to/i,
       /^\d+$/ // Just numbers (playlist ID)
