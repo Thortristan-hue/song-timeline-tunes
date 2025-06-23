@@ -11,7 +11,7 @@ interface UseGameRoomReturn {
   isHost: boolean;
   isLoading: boolean;
   error: string | null;
-  createRoom: (hostName: string) => Promise<string | null>;
+  createRoom: (hostName?: string) => Promise<string | null>;
   joinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
   updatePlayer: (name: string, color: string) => Promise<void>;
   updateRoomSongs: (songs: Song[]) => Promise<void>;
@@ -27,29 +27,20 @@ export function useGameRoom(): UseGameRoomReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isHost = currentPlayer ? 
-    players.find(p => p.id === currentPlayer.id && room?.host_id === gameService.getSessionId()) !== undefined 
-    : false;
+  const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
-  const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
+  const createRoom = useCallback(async (hostName?: string): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName);
+      // Create room without adding host as a player
+      const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName || 'Host');
       setRoom(newRoom);
-      
-      // Get the host player that was created
-      const roomPlayers = await gameService.getPlayersInRoom(newRoom.id);
-      const hostPlayer = roomPlayers.find(p => p.player_session_id === gameService.getSessionId());
-      
-      if (hostPlayer) {
-        setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(hostPlayer));
-      }
       
       toast({
         title: "Room created!",
-        description: `Lobby code: ${lobbyCode}`,
+        description: `Lobby code: ${lobbyCode}. Share this with players to join.`,
       });
       
       return lobbyCode;

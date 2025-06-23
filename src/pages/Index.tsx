@@ -11,6 +11,7 @@ import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
+import { HostDisplay } from '@/components/HostDisplay';
 
 export default function Index() {
   const { toast } = useToast();
@@ -48,6 +49,9 @@ export default function Index() {
     pendingPlacement: null,
   });
 
+  const [currentSongProgress, setCurrentSongProgress] = useState(0);
+  const [currentSongDuration, setCurrentSongDuration] = useState(30);
+
   // Setup game cleanup for idle rooms
   useGameCleanup({
     roomId: room?.id,
@@ -62,91 +66,36 @@ export default function Index() {
     }
   });
 
-  // Handle turn transitions with sound effects
-  const handleTurnEnd = () => {
-    soundEffects.playTurnTransition();
-    
-    setGameState(prev => ({
-      ...prev,
-      currentTurn: prev.currentTurn + 1,
-      timeLeft: 30,
-      isPlaying: false,
-      transitioningTurn: true,
-      cardResult: null
-    }));
-
-    // Clear card result after showing it briefly
-    setTimeout(() => {
-      setGameState(prev => ({
-        ...prev,
-        transitioningTurn: false,
-        currentSong: customSongs[(prev.currentTurn + 1) % customSongs.length],
-        cardResult: null
-      }));
-    }, 2000);
-  };
-
-  // Handle audio updates
-  const handleTimeUpdate = () => {
+  // Audio progress tracking
+  useEffect(() => {
     if (audioRef.current) {
-      setGameState(prev => ({
-        ...prev,
-        timeLeft: 30 - Math.floor(audioRef.current?.currentTime || 0)
-      }));
+      const audio = audioRef.current;
+      
+      const updateProgress = () => {
+        setCurrentSongProgress(audio.currentTime || 0);
+        setCurrentSongDuration(audio.duration || 30);
+      };
+      
+      const handleLoadedMetadata = () => {
+        setCurrentSongDuration(audio.duration || 30);
+      };
+      
+      audio.addEventListener('timeupdate', updateProgress);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      
+      return () => {
+        audio.removeEventListener('timeupdate', updateProgress);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      };
     }
-  };
-
-  // Handle card placement with sound effects
-  const handlePlaceCard = async (position: number) => {
-    if (!gameState.currentSong || !currentPlayer) return;
-
-    const updatedPlayers = players.map(p => {
-      if (p.id === currentPlayer.id) {
-        const newTimeline = [...p.timeline];
-        newTimeline.splice(position, 0, gameState.currentSong!);
-        return {
-          ...p,
-          timeline: newTimeline,
-          score: p.score + 1
-        };
-      }
-      return p;
-    });
-
-    // Show result briefly before continuing
-    setGameState(prev => ({
-      ...prev,
-      cardResult: { correct: true, song: gameState.currentSong! }
-    }));
-
-    soundEffects.playCardSuccess();
-    
-    // Check for winner
-    const winner = updatedPlayers.find(p => p.score >= 10);
-    if (winner) {
-      setTimeout(() => {
-        soundEffects.playGameVictory();
-        setGameState(prev => ({ ...prev, phase: 'finished', winner }));
-      }, 2000);
-      return;
-    }
-
-    // Continue to next turn
-    setTimeout(() => {
-      handleTurnEnd();
-    }, 2000);
-  };
+  }, [gameState.currentSong]);
 
   // Navigation handlers with sound effects
   const handleHostGame = async () => {
     soundEffects.playPlayerAction();
     
-    if (!currentPlayer?.name) {
-      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
-      return;
-    }
-    
-    const roomId = await createRoom(currentPlayer.name);
+    // Host doesn't need to enter name - go straight to lobby
+    const roomId = await createRoom();
     if (roomId) {
       setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
     }
@@ -191,11 +140,21 @@ export default function Index() {
 
   // Game control handlers with sound effects
   const handleStartGame = async () => {
-    if (players.length === 0 || customSongs.length === 0) {
+    if (players.length < 2) {
       soundEffects.playCardError();
       toast({
         title: "Cannot start game",
-        description: "Need players and songs to start the game.",
+        description: "Need at least 2 players to start the game.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (customSongs.length === 0) {
+      soundEffects.playCardError();
+      toast({
+        title: "Cannot start game",
+        description: "Need songs to start the game.",
         variant: "destructive",
       });
       return;
@@ -210,7 +169,8 @@ export default function Index() {
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
-      currentSong: customSongs[0]
+      currentSong: customSongs[0],
+      currentTurn: 0
     }));
 
     toast({
@@ -229,18 +189,9 @@ export default function Index() {
     soundEffects.playGameVictory();
   };
 
-  const handlePlayPause = () => {
-    if (!audioRef.current) return;
-
-    soundEffects.playPlayerAction();
-
-    if (gameState.isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(() => {});
-    }
-    
-    setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+  const getCurrentTurnPlayer = () => {
+    if (players.length === 0) return null;
+    return players[gameState.currentTurn % players.length];
   };
 
   // Phase rendering with enhanced components
@@ -263,11 +214,8 @@ export default function Index() {
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
-            createRoom={async (hostName: string) => {
-              const roomId = await createRoom(hostName);
-              return !!roomId;
-            }}
-            currentHostName={currentPlayer?.name || ''}
+            createRoom={async () => true} // Host already created room
+            currentHostName="" // Host doesn't have a name
           />
         );
 
@@ -293,24 +241,46 @@ export default function Index() {
         );
 
       case 'playing':
-        return (
-          <GamePlay
-            room={room}
-            players={players}
-            currentPlayer={currentPlayer}
-            isHost={isHost}
-            songs={customSongs}
-            onEndGame={() => {
-              const winner = players.reduce((prev, current) => 
-                (prev.score > current.score) ? prev : current
-              );
-              handleEndGame(winner);
-            }}
-            onKickPlayer={(playerId: string) => {
-              console.log('Kicking player:', playerId);
-            }}
-          />
-        );
+        if (isHost) {
+          // Host sees the host display
+          const currentTurnPlayer = getCurrentTurnPlayer();
+          if (!currentTurnPlayer) return null;
+          
+          return (
+            <HostDisplay
+              currentTurnPlayer={currentTurnPlayer}
+              players={players}
+              roomCode={room?.lobby_code || ''}
+              currentSongProgress={currentSongProgress}
+              currentSongDuration={currentSongDuration}
+              gameState={{
+                currentSong: gameState.currentSong
+              }}
+            />
+          );
+        } else {
+          // Players see the game play interface
+          return (
+            <GamePlay
+              room={room}
+              players={players}
+              currentPlayer={currentPlayer}
+              isHost={isHost}
+              songs={customSongs}
+              gameState={gameState}
+              setGameState={setGameState}
+              onEndGame={() => {
+                const winner = players.reduce((prev, current) => 
+                  (prev.score > current.score) ? prev : current
+                );
+                handleEndGame(winner);
+              }}
+              onKickPlayer={(playerId: string) => {
+                console.log('Kicking player:', playerId);
+              }}
+            />
+          );
+        }
 
       case 'finished':
         if (!gameState.winner) return null;
@@ -329,12 +299,19 @@ export default function Index() {
 
   return (
     <>
-      {gameState.phase === 'playing' && gameState.currentSong?.preview_url && (
+      {/* Audio element for song playback - only for host */}
+      {isHost && gameState.phase === 'playing' && gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
           src={gameState.currentSong.preview_url}
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={handleTurnEnd}
+          crossOrigin="anonymous"
+          preload="auto"
+          onError={(e) => {
+            console.error('Audio error:', e);
+            console.log('Failed to load:', gameState.currentSong?.preview_url);
+          }}
+          onLoadStart={() => console.log('Audio load start')}
+          onCanPlay={() => console.log('Audio can play')}
         />
       )}
       {renderPhase()}
