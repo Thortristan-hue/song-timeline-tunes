@@ -1,3 +1,4 @@
+
 export type GamePhase = 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
 
 export interface GameState {
@@ -34,4 +35,15 @@ export interface Player {
   timelineColor: string;
   score: number;
   timeline: Song[];
+}
+
+export interface GameRoom {
+  id: string;
+  lobby_code: string;
+  host_id: string;
+  host_name: string;
+  phase: 'lobby' | 'playing' | 'finished';
+  songs: Song[];
+  created_at: string;
+  updated_at: string;
 }

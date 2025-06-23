@@ -1,9 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
 
 export type DatabasePlayer = Database['public']['Tables']['players']['Row'];
-export type DatabaseRoom = Database['public']['Tables']['rooms']['Row'];
+export type DatabaseRoom = Database['public']['Tables']['game_rooms']['Row'];
 
 class GameService {
   private sessionId: string;
@@ -26,8 +27,8 @@ class GameService {
     
     try {
       const urlObj = new URL(url);
-      // Accept any HTTPS URL or data URL
-      return urlObj.protocol === 'https:' || urlObj.protocol === 'data:';
+      // Accept any HTTPS URL, HTTP URL, or data URL
+      return urlObj.protocol === 'https:' || urlObj.protocol === 'http:' || urlObj.protocol === 'data:';
     } catch {
       return false;
     }
@@ -37,11 +38,10 @@ class GameService {
     const lobbyCode = Math.random().toString(36).substr(2, 6).toUpperCase();
     
     const { data: room, error } = await supabase
-      .from('rooms')
+      .from('game_rooms')
       .insert({
         lobby_code: lobbyCode,
         host_id: this.sessionId,
-        host_name: hostName,
         phase: 'lobby',
         songs: []
       })
@@ -59,7 +59,7 @@ class GameService {
   async joinRoom(lobbyCode: string, playerName: string): Promise<DatabasePlayer> {
     // Check if room exists
     const { data: room, error: roomError } = await supabase
-      .from('rooms')
+      .from('game_rooms')
       .select('*')
       .eq('lobby_code', lobbyCode)
       .single();
@@ -74,7 +74,7 @@ class GameService {
       .insert({
         name: playerName,
         room_id: room.id,
-        session_id: this.sessionId,
+        player_session_id: this.sessionId,
         color: this.generateRandomColor(),
         timeline_color: this.generateRandomColor(),
         score: 0,
@@ -102,7 +102,7 @@ class GameService {
       name: dbPlayer.name,
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
-      score: dbPlayer.score,
+      score: dbPlayer.score || 0,
       timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : []
     };
   }
@@ -112,7 +112,7 @@ class GameService {
       id: dbRoom.id,
       lobby_code: dbRoom.lobby_code,
       host_id: dbRoom.host_id,
-      host_name: dbRoom.host_name || 'Host',
+      host_name: 'Host',
       phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
       songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
       created_at: dbRoom.created_at,
@@ -121,9 +121,16 @@ class GameService {
   }
 
   async updatePlayer(playerId: string, updates: Partial<{ name: string; color: string; timeline_color: string; score: number; timeline: Song[] }>): Promise<void> {
+    const dbUpdates: any = { ...updates };
+    
+    // Convert timeline to JSON if it exists
+    if (updates.timeline) {
+      dbUpdates.timeline = updates.timeline as any;
+    }
+
     const { error } = await supabase
       .from('players')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', playerId);
 
     if (error) throw error;
@@ -140,8 +147,8 @@ class GameService {
     });
 
     const { error } = await supabase
-      .from('rooms')
-      .update({ songs: validSongs })
+      .from('game_rooms')
+      .update({ songs: validSongs as any })
       .eq('id', roomId);
 
     if (error) throw error;
@@ -149,7 +156,7 @@ class GameService {
 
   async startGame(roomId: string): Promise<void> {
     const { error } = await supabase
-      .from('rooms')
+      .from('game_rooms')
       .update({ phase: 'playing' })
       .eq('id', roomId);
 
@@ -158,7 +165,7 @@ class GameService {
 
   async getRoomByCode(lobbyCode: string): Promise<GameRoom | null> {
     const { data: room, error } = await supabase
-      .from('rooms')
+      .from('game_rooms')
       .select('*')
       .eq('lobby_code', lobbyCode)
       .single();
@@ -172,10 +179,26 @@ class GameService {
       .from('players')
       .select('*')
       .eq('room_id', roomId)
-      .order('created_at');
+      .order('joined_at');
 
     if (error) throw error;
     return players || [];
+  }
+
+  async cleanupRoom(roomId: string): Promise<void> {
+    // Delete all players in the room first
+    await supabase
+      .from('players')
+      .delete()
+      .eq('room_id', roomId);
+
+    // Then delete the room
+    const { error } = await supabase
+      .from('game_rooms')
+      .delete()
+      .eq('id', roomId);
+
+    if (error) throw error;
   }
 
   subscribeToRoom(roomId: string, callbacks: {
@@ -189,7 +212,7 @@ class GameService {
         {
           event: '*',
           schema: 'public',
-          table: 'rooms',
+          table: 'game_rooms',
           filter: `id=eq.${roomId}`
         },
         (payload) => {
