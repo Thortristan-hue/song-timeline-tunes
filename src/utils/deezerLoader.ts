@@ -8,8 +8,10 @@ export class DeezerLoader {
   extractPlaylistId(url: string): string | null {
     try {
       const patterns = [
-        // Standard formats including the new one
+        // Standard formats including the new one you specified
         /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/i,
+        // Handle URLs with trailing periods or other characters
+        /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)[\.\?]/i,
         // Mobile/share links
         /deezer\.page\.link\/.*playlist[/=](\d+)/i,
         // Short links
@@ -18,8 +20,11 @@ export class DeezerLoader {
         /^(\d+)$/
       ];
 
+      // Clean the URL by removing trailing periods and other characters
+      const cleanUrl = url.trim().replace(/\.$/, '');
+
       for (const pattern of patterns) {
-        const match = url.match(pattern);
+        const match = cleanUrl.match(pattern);
         if (match && match[1]) {
           return match[1];
         }
