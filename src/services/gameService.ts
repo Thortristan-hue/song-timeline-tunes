@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -87,6 +86,27 @@ class GameService {
     if (playerError) throw playerError;
     
     return player;
+  }
+
+  async reconnectPlayer(playerId: string): Promise<DatabasePlayer> {
+    const sessionId = this.getSessionId();
+    
+    const { data, error } = await supabase
+      .from('players')
+      .update({
+        player_session_id: sessionId,
+        last_active: new Date().toISOString()
+      })
+      .eq('id', playerId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error reconnecting player:', error);
+      throw new Error('Failed to reconnect to game');
+    }
+
+    return data;
   }
 
   private generateRandomColor(): string {

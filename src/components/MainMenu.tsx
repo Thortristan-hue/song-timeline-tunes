@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,9 +28,6 @@ export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
               Timeliner
             </h1>
           </div>
-          <p className="text-lg sm:text-xl lg:text-2xl text-purple-200 font-medium mb-2">
-            The Ultimate Music Timeline Game
-          </p>
           <p className="text-sm sm:text-base text-purple-300 max-w-md mx-auto">
             Challenge your friends! Listen to mystery songs and place them in chronological order on your timeline.
           </p>
@@ -64,14 +60,14 @@ export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
           </Card>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-md">
+        {/* Action Buttons - Made larger */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-lg">
           <Button
             onClick={onHostGame}
             size="lg"
-            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg border-0 h-12 sm:h-14 text-base sm:text-lg font-bold transition-all transform hover:scale-105"
+            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg border-0 h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"
           >
-            <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+            <Play className="h-6 w-6 sm:h-7 sm:w-7 mr-2" />
             Host Game
           </Button>
           
@@ -79,9 +75,9 @@ export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
             onClick={onJoinGame}
             size="lg"
             variant="outline"
-            className="flex-1 bg-white/10 border-white/30 text-white hover:bg-white/20 shadow-lg h-12 sm:h-14 text-base sm:text-lg font-bold transition-all transform hover:scale-105"
+            className="flex-1 bg-white/10 border-white/30 text-white hover:bg-white/20 shadow-lg h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"
           >
-            <Smartphone className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+            <Smartphone className="h-6 w-6 sm:h-7 sm:w-7 mr-2" />
             Join Game
           </Button>
         </div>

@@ -63,20 +63,35 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
     
     try {
-      const player = await gameService.joinRoom(lobbyCode, playerName);
+      // First check if there's an existing player with this name in the room
       const roomData = await gameService.getRoomByCode(lobbyCode);
-      
       if (!roomData) {
         throw new Error('Room not found');
+      }
+
+      const existingPlayers = await gameService.getPlayersInRoom(roomData.id);
+      const existingPlayer = existingPlayers.find(p => p.name === playerName);
+
+      let player: DatabasePlayer;
+
+      if (existingPlayer) {
+        // Reconnect existing player
+        player = await gameService.reconnectPlayer(existingPlayer.id);
+        toast({
+          title: "Reconnected!",
+          description: `Welcome back, ${playerName}!`,
+        });
+      } else {
+        // Create new player
+        player = await gameService.joinRoom(lobbyCode, playerName);
+        toast({
+          title: "Joined room!",
+          description: `Welcome to lobby ${lobbyCode}`,
+        });
       }
       
       setRoom(roomData);
       setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(player));
-      
-      toast({
-        title: "Joined room!",
-        description: `Welcome to lobby ${lobbyCode}`,
-      });
       
       return true;
     } catch (err) {

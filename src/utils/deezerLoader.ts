@@ -8,8 +8,10 @@ export class DeezerLoader {
   extractPlaylistId(url: string): string | null {
     try {
       const patterns = [
-        // Standard formats including the new one you specified
-        /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/i,
+        // Handle URLs with language codes like /en/, /fr/, etc.
+        /deezer\.com\/[a-z]{2}\/playlist\/(\d+)/i,
+        // Standard format without language code
+        /deezer\.com\/playlist\/(\d+)/i,
         // Handle URLs with trailing periods or other characters
         /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)[\.\?]/i,
         // Mobile/share links
@@ -26,9 +28,11 @@ export class DeezerLoader {
       for (const pattern of patterns) {
         const match = cleanUrl.match(pattern);
         if (match && match[1]) {
+          console.log(`Matched pattern: ${pattern}, extracted ID: ${match[1]}`);
           return match[1];
         }
       }
+      console.log('No pattern matched for URL:', cleanUrl);
       return null;
     } catch (error) {
       console.error('Error extracting playlist ID:', error);
