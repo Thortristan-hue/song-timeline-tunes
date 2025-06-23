@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Music, Crown, Users, Timer, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Music, Crown, Users, Timer, Star, Loader2 } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from './MysteryCard';
 
