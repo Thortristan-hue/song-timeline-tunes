@@ -3,10 +3,12 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Music, Plus, Timer } from 'lucide-react';
+import { Play, Pause, Music, Timer } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
+import { MysteryCard } from './MysteryCard';
+import { PlacementConfirmationDialog } from './PlacementConfirmationDialog';
 
 interface PlayerViewProps {
   currentPlayer: Player;
@@ -17,6 +19,9 @@ interface PlayerViewProps {
     currentSong: Song | null;
     isPlaying: boolean;
     timeLeft: number;
+    cardPlacementPending?: boolean;
+    mysteryCardRevealed?: boolean;
+    cardPlacementCorrect?: boolean | null;
   };
   onPlaceCard: (position: number) => void;
   onPlayPause: () => void;
@@ -33,7 +38,9 @@ export function PlayerView({
 }: PlayerViewProps) {
   const [playingTimelineCard, setPlayingTimelineCard] = useState<string | null>(null);
   const [audioRefs, setAudioRefs] = useState<{ [key: string]: HTMLAudioElement }>({});
-  const [showPositionSelector, setShowPositionSelector] = useState(false);
+  const [draggedPosition, setDraggedPosition] = useState<number | null>(null);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [pendingPosition, setPendingPosition] = useState<number | null>(null);
 
   // Debug logging to help identify issues
   useEffect(() => {
@@ -43,7 +50,9 @@ export function PlayerView({
     console.log('PlayerView Debug - currentPlayer:', currentPlayer.name);
     console.log('PlayerView Debug - currentTurnPlayer:', currentTurnPlayer.name);
     console.log('PlayerView Debug - Should show mystery card:', isMyTurn && gameState.currentSong);
-  }, [isMyTurn, gameState.currentSong, gameState.timeLeft, currentPlayer.name, currentTurnPlayer.name]);
+    console.log('PlayerView Debug - Card placement pending:', gameState.cardPlacementPending);
+    console.log('PlayerView Debug - Mystery card revealed:', gameState.mysteryCardRevealed);
+  }, [isMyTurn, gameState.currentSong, gameState.timeLeft, currentPlayer.name, currentTurnPlayer.name, gameState.cardPlacementPending, gameState.mysteryCardRevealed]);
 
   const playTimelineCard = (song: Song) => {
     if (!song.preview_url) return;
@@ -76,9 +85,40 @@ export function PlayerView({
     }
   };
 
-  const handlePlaceCard = (position: number) => {
-    onPlaceCard(position);
-    setShowPositionSelector(false);
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', 'mystery-card');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDropZone = (e: React.DragEvent, position: number) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('text/plain');
+    if (data === 'mystery-card') {
+      setPendingPosition(position);
+      setShowConfirmationDialog(true);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleConfirmPlacement = () => {
+    if (pendingPosition !== null) {
+      onPlaceCard(pendingPosition);
+      setShowConfirmationDialog(false);
+      setPendingPosition(null);
+    }
+  };
+
+  const handleCancelPlacement = () => {
+    setShowConfirmationDialog(false);
+    setPendingPosition(null);
   };
 
   const renderTimelineCard = (song: Song, index: number) => (
@@ -116,6 +156,19 @@ export function PlayerView({
     </div>
   );
 
+  const renderDropZone = (position: number, label: string) => (
+    <div
+      className="min-h-[100px] border-2 border-dashed border-green-400/50 bg-green-500/10 rounded-lg flex items-center justify-center transition-all hover:border-green-400 hover:bg-green-500/20"
+      onDrop={(e) => handleDropZone(e, position)}
+      onDragOver={handleDragOver}
+    >
+      <div className="text-green-300 text-sm font-medium text-center px-4">
+        Drop mystery card here<br />
+        <span className="text-xs opacity-75">{label}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex flex-col">
       {/* Compact Header */}
@@ -134,7 +187,7 @@ export function PlayerView({
         </Badge>
       </div>
 
-      {/* Mystery Card Section */}
+      {/* Mystery Card Section - Only for current player */}
       {isMyTurn && gameState.currentSong ? (
         <div className="px-4 py-3">
           <Card className="bg-white/10 border-white/20 p-4">
@@ -158,12 +211,18 @@ export function PlayerView({
                   </div>
                 </div>
               </div>
-              <Button
-                onClick={() => setShowPositionSelector(!showPositionSelector)}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-4 py-2"
-              >
-                Place Card
-              </Button>
+              
+              {/* Draggable Mystery Card */}
+              <div className="flex items-center gap-4">
+                <MysteryCard
+                  song={gameState.currentSong}
+                  isRevealed={gameState.mysteryCardRevealed || false}
+                  isInteractive={!gameState.cardPlacementPending}
+                  isDestroyed={gameState.cardPlacementCorrect === false}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                />
+              </div>
             </div>
             <Progress 
               value={(gameState.timeLeft / 30) * 100} 
@@ -194,13 +253,13 @@ export function PlayerView({
           <h2 className="text-xl font-bold text-white mb-1">Your Timeline</h2>
           <p className="text-sm text-purple-200">
             {currentPlayer.timeline.length === 0 
-              ? "Empty timeline - place your first song!" 
+              ? isMyTurn ? "Drag the mystery card to a drop zone below!" : "Empty timeline - place your first song!" 
               : `${currentPlayer.timeline.length} songs placed`
             }
           </p>
         </div>
         
-        {/* Centered Timeline Display */}
+        {/* Timeline with Drop Zones - Only show drop zones during my turn */}
         <div className="flex-1 flex items-center justify-center">
           <Card className="bg-slate-800/60 backdrop-blur-md border-slate-600/30 p-6 w-full max-w-full">
             <div className="flex items-center gap-3 mb-4">
@@ -213,70 +272,53 @@ export function PlayerView({
               </h3>
             </div>
             
-            {/* Scrollable Timeline Container - Centered */}
-            <div className="overflow-x-auto">
-              <div className="flex gap-2 items-center justify-center min-h-[120px] px-4">
-                {currentPlayer.timeline.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Music className="h-16 w-16 text-purple-300 mx-auto mb-3 opacity-60" />
-                    <p className="text-purple-200 text-base mb-2">Your timeline is empty</p>
-                    {isMyTurn && gameState.currentSong && (
-                      <p className="text-purple-300 text-sm">Tap the mystery card to hear it, then place it!</p>
-                    )}
-                  </div>
-                ) : (
-                  currentPlayer.timeline.map((song, index) => renderTimelineCard(song, index))
-                )}
-              </div>
+            <div className="space-y-4">
+              {currentPlayer.timeline.length === 0 ? (
+                <div className="text-center py-8">
+                  {isMyTurn && gameState.currentSong ? (
+                    renderDropZone(0, "Place as your first song")
+                  ) : (
+                    <>
+                      <Music className="h-16 w-16 text-purple-300 mx-auto mb-3 opacity-60" />
+                      <p className="text-purple-200 text-base mb-2">Your timeline is empty</p>
+                      {isMyTurn && (
+                        <p className="text-purple-300 text-sm">Tap the mystery card to hear it, then drag it to a drop zone!</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Drop zone before first card */}
+                  {isMyTurn && gameState.currentSong && !gameState.cardPlacementPending && (
+                    renderDropZone(0, `Before ${currentPlayer.timeline[0]?.release_year}`)
+                  )}
+                  
+                  {/* Timeline cards with drop zones between them */}
+                  {currentPlayer.timeline.map((song, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex justify-center">
+                        {renderTimelineCard(song, index)}
+                      </div>
+                      
+                      {/* Drop zone after each card */}
+                      {isMyTurn && gameState.currentSong && !gameState.cardPlacementPending && (
+                        index < currentPlayer.timeline.length - 1 ? (
+                          renderDropZone(
+                            index + 1, 
+                            `Between ${song.release_year} and ${currentPlayer.timeline[index + 1]?.release_year}`
+                          )
+                        ) : (
+                          renderDropZone(index + 1, `After ${song.release_year} (at end)`)
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
         </div>
-
-        {/* Position Selector */}
-        {isMyTurn && gameState.currentSong && showPositionSelector && (
-          <Card className="bg-white/10 border-white/20 p-4 mt-4">
-            <div className="text-center mb-4">
-              <p className="text-white text-base font-medium">Where should the mystery song go?</p>
-            </div>
-            
-            <div className="space-y-3 max-h-48 overflow-y-auto">
-              {/* Before first card or as first card */}
-              <Button
-                onClick={() => handlePlaceCard(0)}
-                className="w-full justify-center py-3 text-sm font-medium bg-green-500/20 border-green-400 text-green-200 hover:bg-green-500/30 border"
-                variant="outline"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {currentPlayer.timeline.length > 0 
-                  ? `At beginning (before ${currentPlayer.timeline[0]?.release_year})` 
-                  : 'As first song'}
-              </Button>
-
-              {/* Between cards and at end */}
-              {currentPlayer.timeline.map((song, index) => (
-                <Button
-                  key={index + 1}
-                  onClick={() => handlePlaceCard(index + 1)}
-                  className="w-full justify-center py-3 text-sm font-medium bg-green-500/20 border-green-400 text-green-200 hover:bg-green-500/30 border"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  {index + 1 < currentPlayer.timeline.length
-                    ? `After ${song.release_year} (before ${currentPlayer.timeline[index + 1]?.release_year})`
-                    : `After ${song.release_year} (at end)`}
-                </Button>
-              ))}
-            </div>
-            
-            <Button
-              onClick={() => setShowPositionSelector(false)}
-              variant="outline"
-              className="w-full mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              Cancel
-            </Button>
-          </Card>
-        )}
       </div>
 
       {/* Turn info for non-turn players */}
@@ -287,6 +329,16 @@ export function PlayerView({
           </div>
         </div>
       )}
+
+      {/* Placement Confirmation Dialog */}
+      <PlacementConfirmationDialog
+        isOpen={showConfirmationDialog}
+        song={gameState.currentSong}
+        position={pendingPosition || 0}
+        timeline={currentPlayer.timeline}
+        onConfirm={handleConfirmPlacement}
+        onCancel={handleCancelPlacement}
+      />
     </div>
   );
 }

@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Music, Crown, Users, Timer, Star } from 'lucide-react';
 import { Song, Player } from '@/types/game';
+import { MysteryCard } from './MysteryCard';
 
 interface HostDisplayProps {
   currentTurnPlayer: Player;
@@ -14,6 +14,8 @@ interface HostDisplayProps {
   currentSongDuration: number;
   gameState: {
     currentSong: Song | null;
+    mysteryCardRevealed?: boolean;
+    cardPlacementCorrect?: boolean | null;
   };
 }
 
@@ -109,19 +111,28 @@ export function HostDisplay({
         </Card>
       </div>
 
-      {/* Mystery card display */}
+      {/* Mystery card display - Static for host */}
       <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
           
-          <Card className="relative w-48 h-60 bg-gradient-to-br from-purple-600/80 to-indigo-600/80 backdrop-blur-md border-purple-400/30 flex flex-col items-center justify-center text-white shadow-2xl">
-            <Music className="h-16 w-16 mb-4 text-purple-200" />
-            <h3 className="text-2xl font-bold mb-2">Mystery Song</h3>
-            <div className="text-6xl font-black mb-2">?</div>
-            <div className="text-sm text-purple-200 text-center px-4">
-              {currentTurnPlayer.name} is thinking...
-            </div>
-          </Card>
+          <div className="relative">
+            <MysteryCard
+              song={gameState.currentSong}
+              isRevealed={gameState.mysteryCardRevealed || false}
+              isInteractive={false}
+              isDestroyed={gameState.cardPlacementCorrect === false}
+              className="w-48 h-60"
+            />
+            
+            {!gameState.mysteryCardRevealed && gameState.currentSong && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+                <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
+                  {currentTurnPlayer.name} is thinking...
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

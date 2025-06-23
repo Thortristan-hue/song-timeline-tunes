@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -49,6 +48,10 @@ export default function Index() {
     winner: null,
     isMuted: false,
     pendingPlacement: null,
+    cardPlacementPending: false,
+    cardPlacementConfirmed: false,
+    cardPlacementCorrect: null,
+    mysteryCardRevealed: false,
   });
 
   const [currentSongProgress, setCurrentSongProgress] = useState(0);
@@ -109,7 +112,11 @@ export default function Index() {
       currentTurn: turnIndex,
       currentSong: newSong,
       timeLeft: 30,
-      isPlaying: false
+      isPlaying: false,
+      cardPlacementPending: false,
+      cardPlacementConfirmed: false,
+      cardPlacementCorrect: null,
+      mysteryCardRevealed: false
     }));
   };
 
@@ -146,6 +153,10 @@ export default function Index() {
       transitioningTurn: false,
       winner: null,
       pendingPlacement: null,
+      cardPlacementPending: false,
+      cardPlacementConfirmed: false,
+      cardPlacementCorrect: null,
+      mysteryCardRevealed: false,
     }));
   };
 
@@ -205,7 +216,11 @@ export default function Index() {
       currentSong: firstSong,
       currentTurn: 0,
       timeLeft: 30,
-      isPlaying: false
+      isPlaying: false,
+      cardPlacementPending: false,
+      cardPlacementConfirmed: false,
+      cardPlacementCorrect: null,
+      mysteryCardRevealed: false
     }));
 
     toast({
@@ -234,16 +249,56 @@ export default function Index() {
     
     if (!gameState.currentSong || !currentPlayer) return;
     
-    // Add the song to the player's timeline at the specified position
-    const newTimeline = [...currentPlayer.timeline];
-    newTimeline.splice(position, 0, gameState.currentSong);
+    // Set card placement as pending
+    setGameState(prev => ({
+      ...prev,
+      cardPlacementPending: true,
+      cardPlacementConfirmed: true
+    }));
+
+    // Simulate placement logic (you would implement actual placement validation here)
+    const isCorrect = Math.random() > 0.3; // 70% chance of being correct for demo
     
-    // Update the player's timeline
-    updatePlayer(currentPlayer.name, currentPlayer.color).then(() => {
-      // Move to next turn
-      const nextTurn = (gameState.currentTurn + 1) % players.length;
-      startNewTurn(nextTurn);
-    });
+    setTimeout(() => {
+      if (isCorrect) {
+        // Add the song to the player's timeline at the specified position
+        const newTimeline = [...currentPlayer.timeline];
+        newTimeline.splice(position, 0, gameState.currentSong!);
+        
+        // Update the player's timeline in the backend
+        updatePlayer(currentPlayer.name, currentPlayer.color);
+        
+        setGameState(prev => ({
+          ...prev,
+          cardPlacementCorrect: true,
+          mysteryCardRevealed: true
+        }));
+        
+        soundEffects.playSound('correct');
+        
+        // Move to next turn after a delay
+        setTimeout(() => {
+          const nextTurn = (gameState.currentTurn + 1) % players.length;
+          startNewTurn(nextTurn);
+        }, 2000);
+        
+      } else {
+        // Incorrect placement
+        setGameState(prev => ({
+          ...prev,
+          cardPlacementCorrect: false,
+          mysteryCardRevealed: true
+        }));
+        
+        soundEffects.playSound('incorrect');
+        
+        // Move to next turn after showing the result
+        setTimeout(() => {
+          const nextTurn = (gameState.currentTurn + 1) % players.length;
+          startNewTurn(nextTurn);
+        }, 2000);
+      }
+    }, 1000); // Simulate processing time
   };
 
   const handlePlayPause = () => {
@@ -329,7 +384,9 @@ export default function Index() {
               currentSongProgress={currentSongProgress}
               currentSongDuration={currentSongDuration}
               gameState={{
-                currentSong: gameState.currentSong
+                currentSong: gameState.currentSong,
+                mysteryCardRevealed: gameState.mysteryCardRevealed,
+                cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
             />
           );
@@ -347,7 +404,10 @@ export default function Index() {
               gameState={{
                 currentSong: gameState.currentSong,
                 isPlaying: gameState.isPlaying,
-                timeLeft: gameState.timeLeft
+                timeLeft: gameState.timeLeft,
+                cardPlacementPending: gameState.cardPlacementPending,
+                mysteryCardRevealed: gameState.mysteryCardRevealed,
+                cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
               onPlaceCard={handlePlaceCard}
               onPlayPause={handlePlayPause}

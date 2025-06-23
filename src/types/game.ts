@@ -15,6 +15,10 @@ export interface GameState {
   winner: Player | null;
   isMuted: boolean;
   pendingPlacement: null | { song: Song; position: number };
+  cardPlacementPending: boolean;
+  cardPlacementConfirmed: boolean;
+  cardPlacementCorrect: boolean | null;
+  mysteryCardRevealed: boolean;
 }
 
 export interface Song {
