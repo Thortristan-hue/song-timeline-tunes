@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Music } from 'lucide-react';
+import { Play, Pause, Music, Check, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,8 @@ export function PlayerView({
   const timelineRef = useRef<HTMLDivElement>(null);
   const [playingTimelineCard, setPlayingTimelineCard] = useState<string | null>(null);
   const [audioRefs, setAudioRefs] = useState<{ [key: string]: HTMLAudioElement }>({});
+  const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
+  const [showPlacementConfirm, setShowPlacementConfirm] = useState<boolean>(false);
 
   const playTimelineCard = (song: Song) => {
     if (!song.preview_url) return;
@@ -66,10 +68,28 @@ export function PlayerView({
     }
   };
 
+  const handlePositionSelect = (position: number) => {
+    setSelectedPosition(position);
+    setShowPlacementConfirm(true);
+  };
+
+  const confirmPlacement = () => {
+    if (selectedPosition !== null) {
+      onPlaceCard(selectedPosition);
+      setSelectedPosition(null);
+      setShowPlacementConfirm(false);
+    }
+  };
+
+  const cancelPlacement = () => {
+    setSelectedPosition(null);
+    setShowPlacementConfirm(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 flex flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center p-4 z-10">
         <Badge variant="outline" className="bg-purple-500/20 text-purple-200 border-purple-400">
           Room: {roomCode}
         </Badge>
@@ -84,24 +104,24 @@ export function PlayerView({
         </Badge>
       </div>
 
-      {/* Mystery Card - Only shown on player's turn */}
+      {/* Mystery Card Section - Only when it's player's turn */}
       {isMyTurn && gameState.currentSong && (
-        <div className="mb-6">
-          <Card className="bg-white/10 border-white/20 p-6">
+        <div className="px-4 mb-4">
+          <Card className="bg-white/10 border-white/20 p-4">
             <div className="text-center mb-4">
-              <Music className="h-12 w-12 mx-auto text-purple-300 mb-2" />
-              <div className="text-2xl font-bold text-white mb-2">Mystery Song</div>
+              <Music className="h-8 w-8 mx-auto text-purple-300 mb-2" />
+              <div className="text-lg font-bold text-white mb-1">Mystery Song</div>
               <div className="text-purple-200 text-sm">Listen and place it on your timeline!</div>
             </div>
             
             <Button
               onClick={onPlayPause}
-              className="w-full mb-4 bg-gradient-to-r from-green-500 to-emerald-500"
+              className="w-full mb-3 bg-gradient-to-r from-green-500 to-emerald-500"
             >
               {gameState.isPlaying ? (
-                <Pause className="h-6 w-6 mr-2" />
+                <Pause className="h-5 w-5 mr-2" />
               ) : (
-                <Play className="h-6 w-6 mr-2" />
+                <Play className="h-5 w-5 mr-2" />
               )}
               {gameState.isPlaying ? 'Pause' : 'Play'} Mystery Song
             </Button>
@@ -117,99 +137,126 @@ export function PlayerView({
         </div>
       )}
 
-      {/* Timeline View */}
-      <div className="relative">
+      {/* Timeline Section */}
+      <div className="flex-1 flex flex-col justify-center px-4">
         <div className="text-xl font-bold text-white mb-4 text-center">
           Your Timeline
         </div>
         
-        <div 
-          ref={timelineRef}
-          className="overflow-x-auto touch-pan-x pb-8"
-          style={{ 
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
-          {/* Placement button at start */}
-          {isMyTurn && gameState.currentSong && (
-            <Button
-              onClick={() => onPlaceCard(0)}
-              className="w-full mb-4 bg-green-500 hover:bg-green-600 text-white font-bold py-3"
-            >
-              Place Mystery Song Here (Start)
-            </Button>
-          )}
-          
-          <div className="flex gap-4 px-4">
+        {/* Timeline Cards - Centered */}
+        <div className="flex justify-center items-center min-h-[200px]">
+          <div className="flex items-center gap-2 overflow-x-auto pb-4 max-w-full">
+            {/* Placement button at start */}
+            {isMyTurn && gameState.currentSong && (
+              <Button
+                onClick={() => handlePositionSelect(0)}
+                size="sm"
+                className={cn(
+                  "bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap flex-shrink-0",
+                  selectedPosition === 0 && "ring-2 ring-green-300"
+                )}
+              >
+                Place Here
+              </Button>
+            )}
+            
             {currentPlayer.timeline.map((song, index) => (
               <React.Fragment key={index}>
-                <div className="flex-shrink-0 w-[280px] scroll-snap-align-center">
-                  <Card className="bg-white/10 border-white/20 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-3xl font-bold text-white">
-                        {song.release_year}
-                      </div>
-                      <Button
-                        onClick={() => playTimelineCard(song)}
-                        size="sm"
-                        variant="outline"
-                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                        disabled={!song.preview_url}
-                      >
-                        {playingTimelineCard === song.id ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                      </Button>
+                <Card className="bg-white/10 border-white/20 p-3 flex-shrink-0 w-32">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-lg font-bold text-white">
+                      '{song.release_year.slice(-2)}
                     </div>
-                    
-                    <div className="text-lg font-semibold text-purple-200 mb-2">
-                      {song.deezer_title}
-                    </div>
-                    <div className="text-purple-200/60">
-                      {song.deezer_artist}
-                    </div>
-                    <div className="text-purple-200/40 text-sm mt-2">
-                      {song.deezer_album}
-                    </div>
-                  </Card>
-                </div>
+                    <Button
+                      onClick={() => playTimelineCard(song)}
+                      size="sm"
+                      variant="outline"
+                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-6 w-6 p-0"
+                      disabled={!song.preview_url}
+                    >
+                      {playingTimelineCard === song.id ? (
+                        <Pause className="h-3 w-3" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="text-sm font-semibold text-purple-200 mb-1 line-clamp-2">
+                    {song.deezer_title}
+                  </div>
+                  <div className="text-purple-200/60 text-xs line-clamp-1">
+                    {song.deezer_artist}
+                  </div>
+                </Card>
                 
                 {/* Placement button between cards */}
                 {isMyTurn && gameState.currentSong && (
-                  <div className="flex-shrink-0 flex items-center">
-                    <Button
-                      onClick={() => onPlaceCard(index + 1)}
-                      className="bg-green-500 hover:bg-green-600 text-white font-bold py-8 px-6 rounded-lg transform rotate-90 whitespace-nowrap"
-                      style={{ writingMode: 'vertical-rl' }}
-                    >
-                      Place Here
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => handlePositionSelect(index + 1)}
+                    size="sm"
+                    className={cn(
+                      "bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg whitespace-nowrap flex-shrink-0",
+                      selectedPosition === index + 1 && "ring-2 ring-green-300"
+                    )}
+                  >
+                    Place Here
+                  </Button>
                 )}
               </React.Fragment>
             ))}
             
-            {/* Placement button at end if timeline is empty or no cards placed yet */}
+            {/* Placement button at end if timeline is empty */}
             {isMyTurn && gameState.currentSong && currentPlayer.timeline.length === 0 && (
-              <div className="flex-shrink-0 w-[280px] flex items-center justify-center">
-                <Button
-                  onClick={() => onPlaceCard(0)}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-8 px-8 rounded-lg"
-                >
-                  Place First Song Here
-                </Button>
-              </div>
+              <Button
+                onClick={() => handlePositionSelect(0)}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg"
+              >
+                Place First Song Here
+              </Button>
             )}
           </div>
         </div>
       </div>
 
+      {/* Placement Confirmation */}
+      {showPlacementConfirm && selectedPosition !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="bg-white/90 p-6 max-w-sm w-full">
+            <div className="text-center mb-4">
+              <Music className="h-12 w-12 mx-auto text-purple-600 mb-2" />
+              <div className="text-lg font-bold text-gray-900 mb-2">
+                Place Mystery Song?
+              </div>
+              <div className="text-gray-600 text-sm">
+                Position {selectedPosition + 1} in your timeline
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={confirmPlacement}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Confirm
+              </Button>
+              <Button
+                onClick={cancelPlacement}
+                variant="outline"
+                className="flex-1"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Turn info */}
       {!isMyTurn && (
-        <div className="fixed bottom-4 left-4 right-4">
+        <div className="p-4">
           <Card className="bg-white/10 border-white/20 p-4">
             <div className="text-center text-purple-200">
               Waiting for {currentTurnPlayer.name} to place their card...
