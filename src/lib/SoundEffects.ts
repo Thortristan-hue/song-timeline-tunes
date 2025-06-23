@@ -92,6 +92,11 @@ export class SoundEffectsManager {
         const audio = new Audio(`/sounds/${soundName}.mp3`);
         audio.preload = 'auto';
         
+        // Handle load errors gracefully
+        audio.addEventListener('error', () => {
+          console.warn(`Sound file not found: ${soundName}.mp3`);
+        });
+        
         // Set default configuration
         const config = SOUND_EFFECTS[soundName as SoundEffect];
         audio.volume = (config.volume || SOUND_PRESETS.NORMAL) * this.masterVolume;
@@ -144,6 +149,7 @@ export class SoundEffectsManager {
       }
 
     } catch (error) {
+      // Silently fail if sound can't be played
       console.warn(`Could not play sound: ${soundName}`, error);
     }
   }

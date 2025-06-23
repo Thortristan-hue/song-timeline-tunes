@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Music, Loader2 } from 'lucide-react';
 import { Song } from '@/types/game';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 
 interface PlaylistLoaderProps {
   onPlaylistLoaded: (success: boolean) => void;
@@ -30,7 +31,6 @@ export function PlaylistLoader({
     setStatus('Loading default playlist...');
 
     try {
-      const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
       setProgress(25);
       setStatus('Fetching fresh preview URLs...');
       
