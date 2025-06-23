@@ -1,3 +1,4 @@
+
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 
@@ -27,16 +28,14 @@ class DefaultPlaylistService {
         release_year: song.release_year?.toString() || song.year?.toString(),
         genre: song.genre || 'Unknown',
         cardColor: colors[index % colors.length],
-        // Don't include preview_url - will be fetched when needed
       }))
-      .filter(song => this.isValidSong(song)); // Filter out invalid songs
+      .filter(song => this.isValidSong(song));
 
     console.log(`Base playlist loaded: ${this.basePlaylist.length} valid songs`);
   }
 
-  // Public method to validate a single song
+  // Validate a single song
   isValidSong(song: Song): boolean {
-    // Check for valid release year - must be a valid number
     const releaseYearStr = song.release_year?.toString().trim();
     const hasValidReleaseYear = releaseYearStr && 
                                releaseYearStr !== 'undefined' && 
@@ -50,27 +49,12 @@ class DefaultPlaylistService {
     const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
     const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
     
-    const isValid = hasValidReleaseYear && hasTitle && hasArtist;
-    
-    if (!isValid) {
-      console.warn('Invalid song filtered out:', {
-        title: song.deezer_title,
-        artist: song.deezer_artist,
-        release_year: song.release_year,
-        hasValidReleaseYear,
-        hasTitle,
-        hasArtist,
-        parsedYear: Number(releaseYearStr),
-        yearValid: !isNaN(Number(releaseYearStr)) && isFinite(Number(releaseYearStr))
-      });
-    }
-    
-    return isValid;
+    return hasValidReleaseYear && hasTitle && hasArtist;
   }
 
-  // Enhanced method to filter and validate an entire playlist
+  // Filter an entire playlist ONCE - this should only be called when playlist changes
   filterValidSongs(songs: Song[]): Song[] {
-    console.log(`=== FILTERING PLAYLIST (ONE TIME) ===`);
+    console.log(`=== FILTERING PLAYLIST (ONE TIME FILTER) ===`);
     console.log(`Input: ${songs.length} songs to filter`);
     
     const validSongs = songs.filter((song, index) => {
@@ -81,14 +65,14 @@ class DefaultPlaylistService {
       return isValid;
     });
     
-    console.log(`=== FILTERING RESULT ===`);
+    console.log(`=== FILTERING COMPLETE ===`);
     console.log(`Output: ${validSongs.length} valid songs out of ${songs.length}`);
-    console.log('Valid songs list:', validSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
+    console.log('Valid songs:', validSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
     
     if (validSongs.length === 0) {
       console.error('❌ NO VALID SONGS FOUND AFTER FILTERING!');
     } else {
-      console.log(`✅ Found ${validSongs.length} valid songs for gameplay`);
+      console.log(`✅ ${validSongs.length} valid songs ready for gameplay`);
     }
     
     return validSongs;
@@ -98,45 +82,15 @@ class DefaultPlaylistService {
     return [...this.basePlaylist];
   }
 
-  // Enhanced method to get a random valid song with better error handling
-  getRandomValidSong(availableSongs?: Song[]): Song | null {
-    const songsToCheck = availableSongs || this.basePlaylist;
-    console.log(`=== GETTING RANDOM VALID SONG ===`);
-    console.log(`Input songs to check: ${songsToCheck.length}`);
-    
-    const validSongs = this.filterValidSongs(songsToCheck);
-    
-    if (validSongs.length === 0) {
-      console.error('❌ NO VALID SONGS AVAILABLE in the provided playlist');
-      return null;
-    }
-    
-    const randomIndex = Math.floor(Math.random() * validSongs.length);
-    const selectedSong = validSongs[randomIndex];
-    
-    console.log('✅ Selected valid song for mystery card:', {
-      title: selectedSong.deezer_title,
-      artist: selectedSong.deezer_artist,
-      release_year: selectedSong.release_year,
-      id: selectedSong.id,
-      selectedIndex: randomIndex,
-      totalValidSongs: validSongs.length
-    });
-    
-    return selectedSong;
-  }
-
-  // Enhanced method to fetch preview URL for a specific song with enhanced error handling
+  // Fetch preview URL for a specific song
   async fetchPreviewUrl(song: Song): Promise<Song> {
     console.log(`Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
     
-    // Validate song before attempting to fetch preview
     if (!this.isValidSong(song)) {
       throw new Error(`Song validation failed: missing required data for ${song.deezer_title}`);
     }
     
     try {
-      // Use Deezer API to search for the song and get preview URL
       const searchQuery = encodeURIComponent(`${song.deezer_artist} ${song.deezer_title}`);
       const corsProxy = 'https://api.allorigins.win/raw?url=';
       const deezerApiUrl = `https://api.deezer.com/search?q=${searchQuery}&limit=1`;
@@ -147,8 +101,7 @@ class DefaultPlaylistService {
         headers: {
           'Accept': 'application/json',
         },
-        // Add timeout for mobile reliability
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(10000)
       });
       
       if (!response.ok) {
@@ -168,18 +121,15 @@ class DefaultPlaylistService {
         return updatedSong;
       } else {
         console.warn(`No search results found for: ${song.deezer_artist} - ${song.deezer_title}`);
-        return song; // Return original song without preview_url
+        return song;
       }
     } catch (error) {
       console.error(`Failed to fetch preview URL for ${song.deezer_artist} - ${song.deezer_title}:`, error);
-      
-      // For mobile reliability, still return the song even if preview fails
-      // The game can continue without audio preview
       return song;
     }
   }
 
-  // New method to validate if a playlist has enough valid songs for gameplay
+  // Validate if a playlist has enough valid songs for gameplay
   validatePlaylistForGameplay(songs: Song[], minRequired: number = 10): { isValid: boolean; validCount: number; errorMessage?: string } {
     const validSongs = this.filterValidSongs(songs);
     const validCount = validSongs.length;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -18,9 +19,9 @@ export default function Index() {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
-  const [validatedSongs, setValidatedSongs] = useState<Song[]>([]);
+  const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
   const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
-  const [retryingSong, setRetryingSong] = useState(false);
+  const [isLoadingSong, setIsLoadingSong] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -99,164 +100,161 @@ export default function Index() {
     }
   }, [gameState.currentSong]);
 
-  // Filter and validate songs only when customSongs changes
+  // Filter songs ONLY ONCE when customSongs changes
   useEffect(() => {
-    const validateAndSyncSongs = async () => {
+    const filterSongsOnce = async () => {
       if (customSongs.length === 0) {
-        console.log('🔄 No custom songs to validate');
-        setValidatedSongs([]);
+        console.log('🔄 No custom songs to filter');
+        setFilteredSongs([]);
         return;
       }
 
-      console.log('=== FILTERING SONGS (ONE TIME) ===');
-      console.log(`Input: ${customSongs.length} custom songs to validate`);
+      console.log('=== FILTERING SONGS ONCE (ON PLAYLIST CHANGE) ===');
+      console.log(`Input: ${customSongs.length} songs to filter`);
 
       try {
         const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-        const filteredSongs = defaultPlaylistService.filterValidSongs(customSongs);
+        const validSongs = defaultPlaylistService.filterValidSongs(customSongs);
         
-        console.log(`✅ One-time filtering complete: ${filteredSongs.length} valid songs stored`);
-        console.log('Valid songs stored:', filteredSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
-        setValidatedSongs(filteredSongs);
+        console.log(`✅ Playlist filtered once: ${validSongs.length} valid songs`);
+        console.log('Valid songs:', validSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
+        
+        setFilteredSongs(validSongs);
 
-        // If we have a room and are the host, update room songs
-        if (room?.id && isHost && filteredSongs.length > 0) {
-          console.log('🔄 Syncing validated songs to room...');
-          await updateRoomSongs(filteredSongs);
-          console.log('✅ Songs synced to room successfully');
+        // Sync to room if we're the host
+        if (room?.id && isHost && validSongs.length > 0) {
+          console.log('🔄 Syncing filtered songs to room...');
+          await updateRoomSongs(validSongs);
+          console.log('✅ Filtered songs synced to room');
         }
       } catch (error) {
-        console.error('❌ Song validation failed:', error);
-        setValidatedSongs([]);
+        console.error('❌ Song filtering failed:', error);
+        setFilteredSongs([]);
       }
     };
 
-    validateAndSyncSongs();
+    filterSongsOnce();
   }, [customSongs, room?.id, isHost, updateRoomSongs]);
 
-  // Get available songs for gameplay (no filtering, just return what's already filtered)
-  const getAvailableSongs = (): Song[] => {
+  // Get the current valid song list (no more filtering)
+  const getValidSongs = (): Song[] => {
     if (room?.songs && room.songs.length > 0) {
       console.log(`📂 Using room songs: ${room.songs.length}`);
       return room.songs;
     }
-    if (validatedSongs.length > 0) {
-      console.log(`📂 Using validated songs: ${validatedSongs.length}`);
-      return validatedSongs;
+    if (filteredSongs.length > 0) {
+      console.log(`📂 Using filtered songs: ${filteredSongs.length}`);
+      return filteredSongs;
     }
-    console.log('📂 No filtered songs available');
+    console.log('📂 No valid songs available');
     return [];
   };
 
-  // Simplified function to pick a random song from the pre-filtered list
-  const pickRandomSongForTurn = async (): Promise<Song | null> => {
-    console.log('=== PICKING RANDOM SONG FOR TURN ===');
+  // Simplified song picker - just pick from pre-filtered list
+  const pickRandomValidSong = async (): Promise<Song | null> => {
+    const validSongs = getValidSongs();
     
-    const availableSongs = getAvailableSongs();
-    
-    if (!availableSongs || availableSongs.length === 0) {
-      console.error('❌ NO FILTERED SONGS AVAILABLE for turn');
-      setSongLoadingError('No songs available. Please add songs to continue.');
+    if (validSongs.length === 0) {
+      console.error('❌ No valid songs available for turn');
       return null;
     }
     
-    console.log(`🎯 Picking from ${availableSongs.length} pre-filtered songs`);
+    console.log(`🎯 Picking random song from ${validSongs.length} valid songs`);
     
-    // Pick a random song from the already-filtered list
-    const randomIndex = Math.floor(Math.random() * availableSongs.length);
-    const selectedSong = availableSongs[randomIndex];
+    const randomIndex = Math.floor(Math.random() * validSongs.length);
+    const selectedSong = validSongs[randomIndex];
     
-    console.log(`🎵 Selected song:`, {
-      title: selectedSong.deezer_title,
-      artist: selectedSong.deezer_artist,
-      release_year: selectedSong.release_year,
-      id: selectedSong.id,
-      index: randomIndex
-    });
-    
-    // Double-check the song is valid (should always be true since it's pre-filtered)
-    const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-    if (!defaultPlaylistService.isValidSong(selectedSong)) {
-      console.error('❌ Selected song failed validation check - this should not happen!');
-      // Try another song
-      const backupIndex = (randomIndex + 1) % availableSongs.length;
-      return availableSongs[backupIndex];
-    }
+    console.log(`🎵 Selected song: "${selectedSong.deezer_title}" by ${selectedSong.deezer_artist} (${selectedSong.release_year})`);
     
     // Fetch preview URL if needed
     if (!selectedSong.preview_url) {
-      console.log('🔄 Fetching preview URL for selected song...');
-      setRetryingSong(true);
-      
+      console.log('🔄 Fetching preview URL...');
       try {
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
         const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
-        console.log('✅ Song with preview URL ready');
-        setRetryingSong(false);
+        console.log('✅ Preview URL fetched');
         return songWithPreview;
       } catch (error) {
         console.error('❌ Preview fetch failed:', error);
-        setRetryingSong(false);
         // Return song without preview - game can continue
         return selectedSong;
       }
     }
     
-    console.log('✅ Song ready for turn');
     return selectedSong;
   };
 
-  // Simplified function to start a new turn
+  // Simplified turn start function
   const startNewTurn = async (turnIndex: number) => {
     console.log('🚀 Starting new turn:', turnIndex);
     setSongLoadingError(null);
-    setRetryingSong(false);
+    setIsLoadingSong(true);
     
-    // Verify we have pre-filtered songs available
-    const availableSongs = getAvailableSongs();
-    if (!availableSongs || availableSongs.length === 0) {
-      console.error('❌ Cannot start turn - no filtered songs available');
-      setSongLoadingError('No songs available. Please add songs to continue.');
+    const validSongs = getValidSongs();
+    if (validSongs.length === 0) {
+      console.error('❌ Cannot start turn - no valid songs');
+      setSongLoadingError('No valid songs available. Please add songs to continue.');
+      setIsLoadingSong(false);
       return;
     }
     
-    // Reset card states and show loading
+    // Reset game state for new turn
     setGameState(prev => ({
       ...prev,
       currentTurn: turnIndex,
-      currentSong: null, // Clear current song first
       timeLeft: 30,
       isPlaying: false,
       cardPlacementPending: false,
       cardPlacementConfirmed: false,
       cardPlacementCorrect: null,
-      mysteryCardRevealed: false
+      mysteryCardRevealed: false,
+      currentSong: null // Clear current song while loading
     }));
     
     // Pick and load the song
-    const newSong = await pickRandomSongForTurn();
-    if (newSong) {
-      setGameState(prev => ({
-        ...prev,
-        currentSong: newSong
-      }));
-      setSongLoadingError(null);
-      console.log('✅ New turn started successfully with song:', newSong.deezer_title);
-    } else {
-      setSongLoadingError('Failed to load a valid song for this turn. Please retry.');
-      console.error('❌ Failed to start new turn - could not pick valid song');
+    try {
+      const selectedSong = await pickRandomValidSong();
+      
+      if (selectedSong) {
+        console.log('✅ Song loaded successfully, updating game state');
+        setGameState(prev => ({
+          ...prev,
+          currentSong: selectedSong
+        }));
+        setSongLoadingError(null);
+      } else {
+        console.error('❌ Failed to pick valid song');
+        setSongLoadingError('Failed to load a song for this turn. Please retry.');
+      }
+    } catch (error) {
+      console.error('❌ Error in song selection:', error);
+      setSongLoadingError('Error loading song. Please retry.');
+    } finally {
+      setIsLoadingSong(false);
     }
   };
 
-  // Enhanced function to retry fetching song
   const retrySongFetch = async () => {
-    console.log('🔄 Retrying song fetch...');
-    const newSong = await pickRandomSongForTurn();
-    if (newSong) {
-      setGameState(prev => ({
-        ...prev,
-        currentSong: newSong
-      }));
-      setSongLoadingError(null);
+    console.log('🔄 Retrying song selection...');
+    setIsLoadingSong(true);
+    setSongLoadingError(null);
+    
+    try {
+      const newSong = await pickRandomValidSong();
+      if (newSong) {
+        setGameState(prev => ({
+          ...prev,
+          currentSong: newSong
+        }));
+        setSongLoadingError(null);
+      } else {
+        setSongLoadingError('Failed to load a song. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Retry failed:', error);
+      setSongLoadingError('Error loading song. Please try again.');
+    } finally {
+      setIsLoadingSong(false);
     }
   };
 
@@ -264,7 +262,6 @@ export default function Index() {
   const handleHostGame = async () => {
     soundEffects.playPlayerAction();
     
-    // Host doesn't need to enter name - go straight to lobby
     const roomId = await createRoom();
     if (roomId) {
       setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
@@ -324,54 +321,51 @@ export default function Index() {
       return;
     }
     
-    // Get the pre-filtered songs
-    const availableSongs = getAvailableSongs();
+    const validSongs = getValidSongs();
     
-    console.log('🎮 Game start with pre-filtered songs:', {
+    console.log('🎮 Starting game with songs:', {
       roomSongs: room?.songs?.length || 0,
-      validatedSongs: validatedSongs.length,
-      availableSongs: availableSongs.length
+      filteredSongs: filteredSongs.length,
+      validSongs: validSongs.length
     });
     
-    if (availableSongs.length === 0) {
+    if (validSongs.length === 0) {
       soundEffects.playCardError();
       toast({
         title: "Cannot start game",
-        description: "Need songs to start the game.",
+        description: "No valid songs available. Please add songs to continue.",
         variant: "destructive",
       });
       return;
     }
 
-    // Basic validation check
-    if (availableSongs.length < 5) {
+    if (validSongs.length < 5) {
       soundEffects.playCardError();
       toast({
         title: "Cannot start game",
-        description: `Only ${availableSongs.length} valid songs found. Need at least 5 songs for optimal gameplay.`,
+        description: `Only ${validSongs.length} valid songs found. Need at least 5 songs for optimal gameplay.`,
         variant: "destructive",
       });
       return;
     }
 
-    console.log(`🎮 Starting game with ${availableSongs.length} pre-filtered songs`);
+    console.log(`🎮 Starting game with ${validSongs.length} valid songs`);
     
     // Ensure room has the validated songs
-    if (room?.id && (!room.songs || room.songs.length !== availableSongs.length)) {
+    if (room?.id && (!room.songs || room.songs.length !== validSongs.length)) {
       console.log('🔄 Updating room songs before game start...');
-      await updateRoomSongs(availableSongs);
+      await updateRoomSongs(validSongs);
     }
     
     // Assign starting cards to all players
     if (room?.id) {
-      await gameService.assignStartingCards(room.id, availableSongs);
+      await gameService.assignStartingCards(room.id, validSongs);
     }
     
     await startGame();
     
     soundEffects.playSound('game-start');
     
-    // Transition ALL players to playing phase
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
@@ -389,7 +383,7 @@ export default function Index() {
 
     toast({
       title: "🎵 Game Started!",
-      description: `Each player has received a starting card. Playing with ${availableSongs.length} valid songs!`,
+      description: `Each player has received a starting card. Playing with ${validSongs.length} valid songs!`,
     });
   };
 
@@ -413,23 +407,19 @@ export default function Index() {
     
     if (!gameState.currentSong || !currentPlayer) return;
     
-    // Set card placement as pending
     setGameState(prev => ({
       ...prev,
       cardPlacementPending: true,
       cardPlacementConfirmed: true
     }));
 
-    // Simulate placement logic (you would implement actual placement validation here)
-    const isCorrect = Math.random() > 0.3; // 70% chance of being correct for demo
+    const isCorrect = Math.random() > 0.3;
     
     setTimeout(() => {
       if (isCorrect) {
-        // Add the song to the player's timeline at the specified position
         const newTimeline = [...currentPlayer.timeline];
         newTimeline.splice(position, 0, gameState.currentSong!);
         
-        // Update the player's timeline in the backend
         updatePlayer(currentPlayer.name, currentPlayer.color);
         
         setGameState(prev => ({
@@ -440,14 +430,12 @@ export default function Index() {
         
         soundEffects.playSound('correct');
         
-        // Move to next turn after a delay
         setTimeout(async () => {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
           await startNewTurn(nextTurn);
         }, 2000);
         
       } else {
-        // Incorrect placement
         setGameState(prev => ({
           ...prev,
           cardPlacementCorrect: false,
@@ -456,19 +444,17 @@ export default function Index() {
         
         soundEffects.playSound('incorrect');
         
-        // Move to next turn after showing the result
         setTimeout(async () => {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
           await startNewTurn(nextTurn);
         }, 2000);
       }
-    }, 1000); // Simulate processing time
+    }, 1000);
   };
 
   const handlePlayPause = () => {
     console.log('Play/pause mystery song from player');
     
-    // If this is called from a player's device, control the host's audio
     if (audioRef.current && gameState.currentSong) {
       if (gameState.isPlaying) {
         audioRef.current.pause();
@@ -481,14 +467,7 @@ export default function Index() {
     }
   };
 
-  // Effect to monitor room changes
-  useEffect(() => {
-    if (room?.songs && room.songs.length > 0) {
-      console.log('🔄 Room songs updated:', room.songs.length);
-    }
-  }, [room?.songs]);
-
-  // Phase rendering with enhanced components
+  // Phase rendering
   const renderPhase = () => {
     switch (gameState.phase) {
       case 'menu':
@@ -508,8 +487,8 @@ export default function Index() {
             onBackToMenu={handleBackToMenu}
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
-            createRoom={async () => true} // Host already created room
-            currentHostName="" // Host doesn't have a name
+            createRoom={async () => true}
+            currentHostName=""
           />
         );
 
@@ -536,7 +515,6 @@ export default function Index() {
 
       case 'playing':
         if (isHost) {
-          // Host sees the host display
           const currentTurnPlayer = getCurrentTurnPlayer();
           if (!currentTurnPlayer) return null;
           
@@ -553,12 +531,11 @@ export default function Index() {
                 cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
               songLoadingError={songLoadingError}
-              retryingSong={retryingSong}
+              retryingSong={isLoadingSong}
               onRetrySong={retrySongFetch}
             />
           );
         } else {
-          // Players see their mobile view
           const currentTurnPlayer = getCurrentTurnPlayer();
           if (!currentPlayer || !currentTurnPlayer) return null;
           
@@ -599,7 +576,6 @@ export default function Index() {
 
   return (
     <>
-      {/* Audio element for song playback - only for host */}
       {isHost && gameState.phase === 'playing' && gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
