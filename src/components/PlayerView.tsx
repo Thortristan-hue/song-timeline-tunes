@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,16 @@ export function PlayerView({
   const [playingTimelineCard, setPlayingTimelineCard] = useState<string | null>(null);
   const [audioRefs, setAudioRefs] = useState<{ [key: string]: HTMLAudioElement }>({});
   const [showPositionSelector, setShowPositionSelector] = useState(false);
+
+  // Debug logging to help identify issues
+  useEffect(() => {
+    console.log('PlayerView Debug - isMyTurn:', isMyTurn);
+    console.log('PlayerView Debug - gameState.currentSong:', gameState.currentSong);
+    console.log('PlayerView Debug - gameState.timeLeft:', gameState.timeLeft);
+    console.log('PlayerView Debug - currentPlayer:', currentPlayer.name);
+    console.log('PlayerView Debug - currentTurnPlayer:', currentTurnPlayer.name);
+    console.log('PlayerView Debug - Should show mystery card:', isMyTurn && gameState.currentSong);
+  }, [isMyTurn, gameState.currentSong, gameState.timeLeft, currentPlayer.name, currentTurnPlayer.name]);
 
   const playTimelineCard = (song: Song) => {
     if (!song.preview_url) return;
@@ -124,8 +134,8 @@ export function PlayerView({
         </Badge>
       </div>
 
-      {/* Mystery Card Section - Only show when it's the player's turn */}
-      {isMyTurn && gameState.currentSong && (
+      {/* Mystery Card Section - Show debug info if not visible */}
+      {isMyTurn && gameState.currentSong ? (
         <div className="px-4 py-3">
           <Card className="bg-white/10 border-white/20 p-4">
             <div className="flex items-center justify-between mb-3">
@@ -155,6 +165,20 @@ export function PlayerView({
               value={(gameState.timeLeft / 30) * 100} 
               className="h-2"
             />
+          </Card>
+        </div>
+      ) : (
+        /* Debug section - remove this after fixing the issue */
+        <div className="px-4 py-3">
+          <Card className="bg-red-900/20 border-red-400/30 p-4">
+            <div className="text-white text-sm">
+              <div className="font-bold mb-2">Debug Info - Mystery Card Not Showing:</div>
+              <div>• Is My Turn: {isMyTurn ? 'YES' : 'NO'}</div>
+              <div>• Current Song: {gameState.currentSong ? 'EXISTS' : 'NULL'}</div>
+              <div>• Time Left: {gameState.timeLeft}s</div>
+              <div>• Current Player: {currentPlayer.name}</div>
+              <div>• Turn Player: {currentTurnPlayer.name}</div>
+            </div>
           </Card>
         </div>
       )}
