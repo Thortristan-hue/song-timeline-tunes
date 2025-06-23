@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Music, Loader2 } from 'lucide-react';
-import { Song } from '@/types/game'; // Import the Song type
+import { Song } from '@/types/game';
 
 interface PlaylistLoaderProps {
   onPlaylistLoaded: (success: boolean) => void;
@@ -21,6 +22,39 @@ export function PlaylistLoader({
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+
+  const handleLoadDefault = async () => {
+    setLoading(true);
+    setError('');
+    setProgress(0);
+    setStatus('Loading default playlist...');
+
+    try {
+      const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+      setProgress(25);
+      setStatus('Fetching fresh preview URLs...');
+      
+      const songs = await defaultPlaylistService.loadDefaultPlaylist();
+      
+      if (!songs?.length) {
+        setError('No valid songs found in default playlist.');
+        onPlaylistLoaded(false);
+        return;
+      }
+
+      setCustomSongs(songs);
+      setStatus('Default playlist loaded successfully!');
+      setProgress(100);
+      onPlaylistLoaded(true);
+    } catch (error) {
+      console.error('Default playlist load error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load default playlist');
+      onPlaylistLoaded(false);
+      setProgress(0);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +87,6 @@ export function PlaylistLoader({
         return;
       }
 
-      // Validate songs structure before setting
       if (songs.every(song => song.id && song.deezer_title)) {
         setCustomSongs(songs);
         setStatus('Playlist loaded successfully!');
@@ -77,11 +110,38 @@ export function PlaylistLoader({
       <div className="text-center">
         <Music className="h-12 w-12 text-purple-400 mx-auto mb-4" />
         <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          Load Deezer Playlist
+          Load Music Playlist
         </h3>
         <p className={isDarkMode ? 'text-purple-200/80' : 'text-gray-600'}>
-          Enter a Deezer playlist URL to automatically fetch songs with enhanced metadata
+          Use the default playlist or enter a Deezer playlist URL
         </p>
+      </div>
+
+      {/* Default Playlist Button */}
+      <Button
+        onClick={handleLoadDefault}
+        disabled={loading}
+        className="w-full bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white py-3"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading Default Playlist...
+          </>
+        ) : (
+          'Use Default Playlist (Fast)'
+        )}
+      </Button>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-white/20" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className={`px-2 ${isDarkMode ? 'bg-slate-900 text-purple-200/60' : 'bg-white text-gray-500'}`}>
+            Or load custom playlist
+          </span>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,18 +177,18 @@ export function PlaylistLoader({
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading Playlist...
+              Loading Custom Playlist...
             </>
           ) : (
-            'Load Playlist'
+            'Load Custom Playlist'
           )}
         </Button>
       </form>
 
       <div className={`text-xs space-y-1 ${isDarkMode ? 'text-purple-200/60' : 'text-gray-500'}`}>
-        <p>• Songs will be enhanced with release dates from MusicBrainz and Discogs</p>
+        <p>• Default playlist includes 10 classic songs with fresh preview URLs</p>
+        <p>• Custom playlists will be enhanced with release dates from MusicBrainz and Discogs</p>
         <p>• Only songs with valid metadata and preview will be included</p>
-        <p>• This process may take a few moments due to API rate limits</p>
       </div>
     </div>
   );
