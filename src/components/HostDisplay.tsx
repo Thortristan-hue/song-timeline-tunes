@@ -119,11 +119,13 @@ export function HostDisplay({
         </Card>
       </div>
 
-      {/* Song Loading Error Display */}
+      {/* Enhanced Song Loading Error Display */}
       {songLoadingError && (
-        <div className="absolute top-72 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="absolute top-72 left-1/2 transform -translate-x-1/2 z-30 w-96">
           <Card className="bg-red-800/60 backdrop-blur-md border-red-600/30 p-4 text-center">
-            <div className="text-red-200 mb-3">{songLoadingError}</div>
+            <div className="text-red-200 mb-3 text-sm leading-relaxed">
+              {songLoadingError}
+            </div>
             {onRetrySong && (
               <Button
                 onClick={onRetrySong}
@@ -136,7 +138,7 @@ export function HostDisplay({
                     Retrying...
                   </>
                 ) : (
-                  'Retry'
+                  'Retry Loading Song'
                 )}
               </Button>
             )}
@@ -144,7 +146,7 @@ export function HostDisplay({
         </div>
       )}
 
-      {/* Mystery card display - Static for host */}
+      {/* Mystery card display - Static for host with enhanced validation */}
       <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
@@ -157,17 +159,20 @@ export function HostDisplay({
                 isInteractive={false}
                 isDestroyed={gameState.cardPlacementCorrect === false}
                 className="w-48 h-60"
+                loadingError={songLoadingError}
               />
             ) : (
               <Card className="w-48 h-60 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
                 <Music className="h-12 w-12 mb-4 opacity-50" />
                 <div className="text-lg text-center px-4 opacity-50">
-                  {retryingSong ? 'Fetching song...' : 'Loading mystery song...'}
+                  {retryingSong ? 'Fetching song...' : 
+                   songLoadingError ? 'Failed to load song' : 
+                   'Loading mystery song...'}
                 </div>
               </Card>
             )}
             
-            {!gameState.mysteryCardRevealed && gameState.currentSong && (
+            {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
                 <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
                   {currentTurnPlayer.name} is thinking...

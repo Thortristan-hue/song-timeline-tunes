@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { Music, HelpCircle } from 'lucide-react';
+import { Music, HelpCircle, AlertTriangle } from 'lucide-react';
 import { Song } from '@/types/game';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ interface MysteryCardProps {
   className?: string;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  loadingError?: string | null;
 }
 
 export function MysteryCard({
@@ -22,8 +23,24 @@ export function MysteryCard({
   isDestroyed = false,
   className,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  loadingError
 }: MysteryCardProps) {
+  // Show error state if there's a loading error
+  if (loadingError) {
+    return (
+      <Card className={cn(
+        "w-32 h-40 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white",
+        className
+      )}>
+        <AlertTriangle className="h-8 w-8 mb-2 text-red-400" />
+        <div className="text-xs text-center px-2 text-red-200 leading-tight">
+          {loadingError}
+        </div>
+      </Card>
+    );
+  }
+
   if (isDestroyed) {
     return (
       <Card className={cn(
@@ -48,17 +65,46 @@ export function MysteryCard({
     );
   }
 
+  // Validate song data before rendering
+  const isValidSong = song.release_year && 
+                     song.release_year !== 'undefined' && 
+                     song.release_year !== 'null' && 
+                     song.release_year.trim() !== '' &&
+                     song.deezer_title &&
+                     song.deezer_artist;
+
+  if (!isValidSong && isRevealed) {
+    return (
+      <Card className={cn(
+        "w-32 h-40 bg-yellow-500/20 border-yellow-400/50 flex flex-col items-center justify-center text-white",
+        className
+      )}>
+        <AlertTriangle className="h-8 w-8 mb-2 text-yellow-400" />
+        <div className="text-xs text-center px-2 text-yellow-200 leading-tight">
+          Invalid song data
+        </div>
+      </Card>
+    );
+  }
+
   if (!isRevealed) {
     return (
       <Card
         className={cn(
           "w-32 h-40 bg-gradient-to-br from-purple-600 to-indigo-600 border-purple-400/50 flex flex-col items-center justify-center text-white shadow-lg transition-all",
-          isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95",
+          isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95 touch-manipulation select-none",
           className
         )}
         draggable={isInteractive}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        // Enhanced touch support for mobile
+        style={{
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+          touchAction: isInteractive ? 'none' : 'auto'
+        }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
         <HelpCircle className="h-12 w-12 mb-2 relative z-10" />
@@ -72,10 +118,16 @@ export function MysteryCard({
     <Card
       className={cn(
         "w-32 h-40 flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transition-all",
-        isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95",
+        isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95 touch-manipulation select-none",
         className
       )}
-      style={{ backgroundColor: song.cardColor }}
+      style={{ 
+        backgroundColor: song.cardColor,
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
+        WebkitTouchCallout: 'none',
+        touchAction: isInteractive ? 'none' : 'auto'
+      }}
       draggable={isInteractive}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

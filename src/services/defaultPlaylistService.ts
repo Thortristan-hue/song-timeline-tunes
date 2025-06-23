@@ -19,27 +19,82 @@ class DefaultPlaylistService {
       '#D7BDE2', '#A9DFBF', '#F9E79F', '#FAD7A0'
     ];
 
-    this.basePlaylist = defaultPlaylist.map((song: any, index: number) => ({
-      id: song.id || `default_${index}`,
-      deezer_title: song.deezer_title || song.title,
-      deezer_artist: song.deezer_artist || song.artist,
-      deezer_album: song.deezer_album || song.album,
-      release_year: song.release_year?.toString() || song.year?.toString(),
-      genre: song.genre || 'Unknown',
-      cardColor: colors[index % colors.length],
-      // Don't include preview_url - will be fetched when needed
-    }));
+    this.basePlaylist = defaultPlaylist
+      .map((song: any, index: number) => ({
+        id: song.id || `default_${index}`,
+        deezer_title: song.deezer_title || song.title,
+        deezer_artist: song.deezer_artist || song.artist,
+        deezer_album: song.deezer_album || song.album,
+        release_year: song.release_year?.toString() || song.year?.toString(),
+        genre: song.genre || 'Unknown',
+        cardColor: colors[index % colors.length],
+        // Don't include preview_url - will be fetched when needed
+      }))
+      .filter(song => this.isValidSong(song)); // Filter out invalid songs
 
-    console.log(`Base playlist loaded: ${this.basePlaylist.length} songs`);
+    console.log(`Base playlist loaded: ${this.basePlaylist.length} valid songs`);
+  }
+
+  private isValidSong(song: Song): boolean {
+    const hasReleaseYear = song.release_year && 
+                          song.release_year !== 'undefined' && 
+                          song.release_year !== 'null' && 
+                          song.release_year.trim() !== '' &&
+                          !isNaN(parseInt(song.release_year));
+    
+    const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
+    const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
+    
+    const isValid = hasReleaseYear && hasTitle && hasArtist;
+    
+    if (!isValid) {
+      console.warn('Invalid song filtered out:', {
+        title: song.deezer_title,
+        artist: song.deezer_artist,
+        release_year: song.release_year,
+        hasReleaseYear,
+        hasTitle,
+        hasArtist
+      });
+    }
+    
+    return isValid;
   }
 
   async loadDefaultPlaylist(): Promise<Song[]> {
     return [...this.basePlaylist];
   }
 
-  // New method to fetch preview URL for a specific song
+  // Get a random valid song from the playlist
+  getRandomValidSong(): Song | null {
+    const validSongs = this.basePlaylist.filter(song => this.isValidSong(song));
+    
+    if (validSongs.length === 0) {
+      console.error('No valid songs available in playlist');
+      return null;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * validSongs.length);
+    const selectedSong = validSongs[randomIndex];
+    
+    console.log('Selected valid song for mystery card:', {
+      title: selectedSong.deezer_title,
+      artist: selectedSong.deezer_artist,
+      release_year: selectedSong.release_year,
+      id: selectedSong.id
+    });
+    
+    return selectedSong;
+  }
+
+  // New method to fetch preview URL for a specific song with enhanced error handling
   async fetchPreviewUrl(song: Song): Promise<Song> {
     console.log(`Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
+    
+    // Validate song before attempting to fetch preview
+    if (!this.isValidSong(song)) {
+      throw new Error(`Song validation failed: missing required data for ${song.deezer_title}`);
+    }
     
     try {
       // Use Deezer API to search for the song and get preview URL
@@ -48,9 +103,17 @@ class DefaultPlaylistService {
       const deezerApiUrl = `https://api.deezer.com/search?q=${searchQuery}&limit=1`;
       const proxiedUrl = corsProxy + encodeURIComponent(deezerApiUrl);
 
-      const response = await fetch(proxiedUrl);
+      const response = await fetch(proxiedUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        // Add timeout for mobile reliability
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
+      
       if (!response.ok) {
-        throw new Error(`Deezer API error: ${response.status}`);
+        throw new Error(`Deezer API error: ${response.status} ${response.statusText}`);
       }
 
       const searchData = await response.json();
@@ -70,7 +133,10 @@ class DefaultPlaylistService {
       }
     } catch (error) {
       console.error(`Failed to fetch preview URL for ${song.deezer_artist} - ${song.deezer_title}:`, error);
-      return song; // Return original song without preview_url
+      
+      // For mobile reliability, still return the song even if preview fails
+      // The game can continue without audio preview
+      return song;
     }
   }
 }

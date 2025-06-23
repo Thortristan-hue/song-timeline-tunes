@@ -97,78 +97,143 @@ export default function Index() {
     }
   }, [gameState.currentSong]);
 
-  // Function to get a random song and fetch its preview URL
-  const getRandomSongForTurn = async (): Promise<Song | null> => {
-    if (!room?.songs || room.songs.length === 0) return null;
-    
-    const randomIndex = Math.floor(Math.random() * room.songs.length);
-    const baseSong = room.songs[randomIndex];
+  // Enhanced function to get a random song with proper validation and retry logic
+  const getRandomSongForTurn = async (maxRetries: number = 3): Promise<Song | null> => {
+    if (!room?.songs || room.songs.length === 0) {
+      console.error('No songs available in room');
+      return null;
+    }
     
     console.log('=== MYSTERY SONG DEBUG ===');
-    console.log('Selected song for turn:', {
-      title: baseSong.deezer_title,
-      artist: baseSong.deezer_artist,
-      release_year: baseSong.release_year,
-      id: baseSong.id
-    });
     
-    // Fetch preview URL if not already available
-    if (!baseSong.preview_url) {
-      console.log('Fetching preview URL for mystery song...');
-      setSongLoadingError(null);
-      setRetryingSong(true);
-      
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-        const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(baseSong);
+        console.log(`Song selection attempt ${attempt + 1}/${maxRetries}`);
         
-        console.log('Mystery song with preview URL:', {
-          title: songWithPreview.deezer_title,
-          artist: songWithPreview.deezer_artist,
-          release_year: songWithPreview.release_year,
-          preview_url: songWithPreview.preview_url,
-          id: songWithPreview.id
+        // Get a random song and validate it has required data
+        const validSongs = room.songs.filter(song => {
+          const hasReleaseYear = song.release_year && 
+                                song.release_year !== 'undefined' && 
+                                song.release_year !== 'null' && 
+                                song.release_year.trim() !== '' &&
+                                !isNaN(parseInt(song.release_year));
+          
+          const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
+          const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
+          
+          return hasReleaseYear && hasTitle && hasArtist;
         });
-        console.log('=== END MYSTERY SONG DEBUG ===');
         
-        setRetryingSong(false);
-        return songWithPreview;
-      } catch (error) {
-        console.error('Failed to fetch preview URL:', error);
-        setSongLoadingError('Failed to fetch song preview. Retrying...');
-        setRetryingSong(false);
+        if (validSongs.length === 0) {
+          throw new Error('No valid songs with release dates found in playlist');
+        }
         
-        // Return the song without preview URL for now
-        console.log('Returning song without preview URL due to error');
+        const randomIndex = Math.floor(Math.random() * validSongs.length);
+        const baseSong = validSongs[randomIndex];
+        
+        console.log('Selected song for turn:', {
+          title: baseSong.deezer_title,
+          artist: baseSong.deezer_artist,
+          release_year: baseSong.release_year,
+          id: baseSong.id,
+          attempt: attempt + 1
+        });
+        
+        // Fetch preview URL if not already available
+        if (!baseSong.preview_url) {
+          console.log('Fetching preview URL for mystery song...');
+          setSongLoadingError(null);
+          setRetryingSong(true);
+          
+          try {
+            const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+            const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(baseSong);
+            
+            console.log('Mystery song with preview URL:', {
+              title: songWithPreview.deezer_title,
+              artist: songWithPreview.deezer_artist,
+              release_year: songWithPreview.release_year,
+              preview_url: songWithPreview.preview_url,
+              id: songWithPreview.id
+            });
+            console.log('=== END MYSTERY SONG DEBUG ===');
+            
+            setRetryingSong(false);
+            return songWithPreview;
+          } catch (error) {
+            console.error(`Preview fetch failed on attempt ${attempt + 1}:`, error);
+            
+            if (attempt === maxRetries - 1) {
+              // Last attempt - return song without preview if validation passes
+              console.log('Returning song without preview URL after all attempts failed');
+              setRetryingSong(false);
+              return baseSong;
+            }
+            
+            // Continue to next attempt
+            continue;
+          }
+        }
+        
+        console.log('Using existing preview URL:', baseSong.preview_url);
         console.log('=== END MYSTERY SONG DEBUG ===');
         return baseSong;
+        
+      } catch (error) {
+        console.error(`Song selection attempt ${attempt + 1} failed:`, error);
+        
+        if (attempt === maxRetries - 1) {
+          setSongLoadingError(`Failed to load a valid song after ${maxRetries} attempts. ${error instanceof Error ? error.message : 'Unknown error'}`);
+          setRetryingSong(false);
+          return null;
+        }
+        
+        // Brief delay before retry for mobile reliability
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
     
-    console.log('Using existing preview URL:', baseSong.preview_url);
     console.log('=== END MYSTERY SONG DEBUG ===');
-    return baseSong;
+    return null;
   };
 
-  // Function to retry fetching song with preview URL
+  // Enhanced function to retry fetching song with better error handling
   const retrySongFetch = async () => {
-    if (!gameState.currentSong) return;
-    
-    console.log('Retrying song fetch...');
-    const songWithPreview = await getRandomSongForTurn();
-    if (songWithPreview) {
-      setGameState(prev => ({
-        ...prev,
-        currentSong: songWithPreview
-      }));
-      setSongLoadingError(null);
+    if (!gameState.currentSong) {
+      console.log('Retrying song selection with new random song...');
+      const newSong = await getRandomSongForTurn();
+      if (newSong) {
+        setGameState(prev => ({
+          ...prev,
+          currentSong: newSong
+        }));
+        setSongLoadingError(null);
+      }
+    } else {
+      console.log('Retrying preview URL fetch for current song...');
+      try {
+        setRetryingSong(true);
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(gameState.currentSong);
+        setGameState(prev => ({
+          ...prev,
+          currentSong: songWithPreview
+        }));
+        setSongLoadingError(null);
+      } catch (error) {
+        console.error('Retry failed:', error);
+        setSongLoadingError('Still unable to load song preview. The game can continue without audio.');
+      } finally {
+        setRetryingSong(false);
+      }
     }
   };
 
-  // Function to start a new turn
+  // Enhanced function to start a new turn with better error handling and validation
   const startNewTurn = async (turnIndex: number) => {
     console.log('Starting new turn:', turnIndex);
     setSongLoadingError(null);
+    setRetryingSong(false);
     
     // Reset card states
     setGameState(prev => ({
@@ -183,15 +248,19 @@ export default function Index() {
       mysteryCardRevealed: false
     }));
     
-    // Fetch new song with preview URL
+    // Show loading feedback
+    setSongLoadingError('Loading new song...');
+    
+    // Fetch new song with enhanced validation and retry logic
     const newSong = await getRandomSongForTurn();
     if (newSong) {
       setGameState(prev => ({
         ...prev,
         currentSong: newSong
       }));
+      setSongLoadingError(null);
     } else {
-      setSongLoadingError('Failed to load a song for this turn.');
+      setSongLoadingError('Failed to load a valid song for this turn. Please retry.');
     }
   };
 
