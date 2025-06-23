@@ -8,7 +8,7 @@ export class DeezerLoader {
   extractPlaylistId(url: string): string | null {
     try {
       const patterns = [
-        // Standard formats
+        // Standard formats including the new one
         /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)/i,
         // Mobile/share links
         /deezer\.page\.link\/.*playlist[/=](\d+)/i,
