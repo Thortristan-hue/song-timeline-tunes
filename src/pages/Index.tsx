@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -208,8 +207,19 @@ export default function Index() {
   };
 
   const handlePlayPause = () => {
-    console.log('Play/pause mystery song');
-    // This will be handled by the GamePlay component
+    console.log('Play/pause mystery song from player');
+    
+    // If this is called from a player's device, control the host's audio
+    if (audioRef.current) {
+      if (gameState.isPlaying) {
+        audioRef.current.pause();
+        setGameState(prev => ({ ...prev, isPlaying: false }));
+      } else {
+        audioRef.current.play().then(() => {
+          setGameState(prev => ({ ...prev, isPlaying: true }));
+        }).catch(console.error);
+      }
+    }
   };
 
   // Phase rendering with enhanced components

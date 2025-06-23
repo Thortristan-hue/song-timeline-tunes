@@ -2,7 +2,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Music, Users, Smartphone, Play, Headphones, Trophy, Clock, Star } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Music, Users, Trophy, Zap, Play, Smartphone } from 'lucide-react';
 
 interface MainMenuProps {
   onHostGame: () => void;
@@ -12,208 +13,107 @@ interface MainMenuProps {
 export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
-      {/* Animated background particles */}
-      <div className="absolute inset-0">
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse opacity-10"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`
-            }}
+      {/* Animated background elements */}
+      <div className="absolute top-10 left-10 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-20 right-10 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
+      <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-400/8 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}} />
+      
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+        {/* Header Section */}
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Music className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white">
+              Timeliner
+            </h1>
+          </div>
+          <p className="text-lg sm:text-xl lg:text-2xl text-purple-200 font-medium mb-2">
+            The Ultimate Music Timeline Game
+          </p>
+          <p className="text-sm sm:text-base text-purple-300 max-w-md mx-auto">
+            Challenge your friends! Listen to mystery songs and place them in chronological order on your timeline.
+          </p>
+        </div>
+
+        {/* Game Features */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-12 w-full max-w-4xl">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Multiplayer</div>
+            <div className="text-xs sm:text-sm text-blue-200">2-8 Players</div>
+          </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Music className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Any Genre</div>
+            <div className="text-xs sm:text-sm text-purple-200">Your Playlists</div>
+          </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Fast Paced</div>
+            <div className="text-xs sm:text-sm text-yellow-200">30s Rounds</div>
+          </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Compete</div>
+            <div className="text-xs sm:text-sm text-green-200">First to 10</div>
+          </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-md">
+          <Button
+            onClick={onHostGame}
+            size="lg"
+            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg border-0 h-12 sm:h-14 text-base sm:text-lg font-bold transition-all transform hover:scale-105"
           >
-            <Music className={`h-${2 + Math.floor(Math.random() * 4)} w-${2 + Math.floor(Math.random() * 4)} text-purple-300 transform rotate-${Math.floor(Math.random() * 12) * 30}`} />
-          </div>
-        ))}
-      </div>
+            <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+            Host Game
+          </Button>
+          
+          <Button
+            onClick={onJoinGame}
+            size="lg"
+            variant="outline"
+            className="flex-1 bg-white/10 border-white/30 text-white hover:bg-white/20 shadow-lg h-12 sm:h-14 text-base sm:text-lg font-bold transition-all transform hover:scale-105"
+          >
+            <Smartphone className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+            Join Game
+          </Button>
+        </div>
 
-      {/* Hero Section */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6">
-        <div className="text-center space-y-8 max-w-6xl mx-auto">
-          {/* Game Logo & Title */}
-          <div className="space-y-6">
-            <div className="relative">
-              <div className="absolute -inset-8 bg-gradient-to-r from-purple-600/30 to-pink-600/30 blur-3xl rounded-full animate-pulse"></div>
-              <div className="relative bg-gradient-to-br from-purple-500 to-indigo-600 p-8 rounded-full shadow-2xl">
-                <Music className="h-20 w-20 text-white mx-auto" />
-              </div>
+        {/* How to Play */}
+        <Card className="bg-white/10 backdrop-blur-md border-white/20 p-4 sm:p-6 mt-8 sm:mt-12 w-full max-w-2xl">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4 text-center">How to Play</h3>
+          <div className="space-y-2 sm:space-y-3 text-sm sm:text-base text-purple-200">
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">1</Badge>
+              <p>Host creates a room and loads a Deezer playlist</p>
             </div>
-            
-            <div className="space-y-4">
-              <h1 className="text-7xl md:text-8xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
-                TIMELINER
-              </h1>
-              <div className="text-2xl md:text-3xl text-purple-200 font-semibold">
-                The Ultimate Music Timeline Battle
-              </div>
-              <p className="text-lg text-purple-300/80 max-w-3xl mx-auto leading-relaxed">
-                Test your music knowledge! Listen to mystery songs and place them chronologically on your timeline. 
-                First player to reach 10 songs wins the ultimate bragging rights.
-              </p>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">2</Badge>
+              <p>Players join using the room code on their phones</p>
             </div>
-          </div>
-
-          {/* Game Features */}
-          <div className="grid md:grid-cols-3 gap-6 my-12">
-            <div className="bg-gradient-to-br from-purple-600/20 to-indigo-600/20 backdrop-blur-md rounded-2xl p-6 border border-purple-400/20">
-              <Clock className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Quick Rounds</h3>
-              <p className="text-purple-200/80">30-second song previews keep the game fast-paced and exciting</p>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">3</Badge>
+              <p>Listen to mystery songs and place them chronologically in your timeline</p>
             </div>
-            
-            <div className="bg-gradient-to-br from-pink-600/20 to-purple-600/20 backdrop-blur-md rounded-2xl p-6 border border-pink-400/20">
-              <Users className="h-12 w-12 text-pink-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Multiplayer Fun</h3>
-              <p className="text-purple-200/80">Compete with friends using any device - perfect for parties!</p>
-            </div>
-            
-            <div className="bg-gradient-to-br from-indigo-600/20 to-blue-600/20 backdrop-blur-md rounded-2xl p-6 border border-indigo-400/20">
-              <Trophy className="h-12 w-12 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Music Master</h3>
-              <p className="text-purple-200/80">Prove your music knowledge across decades and genres</p>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">4</Badge>
+              <p>First player to get 10 correct placements wins!</p>
             </div>
           </div>
+        </Card>
 
-          {/* Main Action Cards */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {/* Host Game Card */}
-            <Card className="relative group overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/30 to-green-600/30 group-hover:from-emerald-500/40 group-hover:to-green-500/40 transition-all duration-500"></div>
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-md"></div>
-              
-              <div className="relative z-10 p-8 text-center space-y-6">
-                <div className="relative">
-                  <div className="absolute -inset-4 bg-emerald-400/30 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500"></div>
-                  <div className="relative bg-gradient-to-br from-emerald-500 to-green-600 p-6 rounded-full">
-                    <Users className="h-16 w-16 text-white mx-auto" />
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-bold text-white">Host a Game</h2>
-                  <p className="text-emerald-200/90 text-lg leading-relaxed">
-                    Create a room, load your favorite playlists, and invite friends to join the musical showdown
-                  </p>
-                </div>
-
-                <div className="space-y-3 text-emerald-300/80">
-                  <div className="flex items-center justify-center gap-3">
-                    <Play className="h-5 w-5" />
-                    <span>Upload Spotify or Deezer playlists</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <Headphones className="h-5 w-5" />
-                    <span>Control the game flow</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <Star className="h-5 w-5" />
-                    <span>Watch the competition unfold</span>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={onHostGame}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold py-4 px-8 text-xl rounded-xl shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-emerald-500/30"
-                >
-                  <Users className="h-6 w-6 mr-3" />
-                  Start Hosting
-                </Button>
-              </div>
-            </Card>
-
-            {/* Join Game Card */}
-            <Card className="relative group overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 to-indigo-600/30 group-hover:from-blue-500/40 group-hover:to-indigo-500/40 transition-all duration-500"></div>
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-md"></div>
-              
-              <div className="relative z-10 p-8 text-center space-y-6">
-                <div className="relative">
-                  <div className="absolute -inset-4 bg-blue-400/30 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500"></div>
-                  <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-full">
-                    <Smartphone className="h-16 w-16 text-white mx-auto" />
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-bold text-white">Join a Game</h2>
-                  <p className="text-blue-200/90 text-lg leading-relaxed">
-                    Enter a room code and jump into an existing musical battle using your mobile device
-                  </p>
-                </div>
-
-                <div className="space-y-3 text-blue-300/80">
-                  <div className="flex items-center justify-center gap-3">
-                    <Smartphone className="h-5 w-5" />
-                    <span>Mobile-optimized gameplay</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <Music className="h-5 w-5" />
-                    <span>Listen and compete instantly</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <Trophy className="h-5 w-5" />
-                    <span>Climb the leaderboard</span>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={onJoinGame}
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-4 px-8 text-xl rounded-xl shadow-2xl transform transition-all duration-300 hover:scale-105 hover:shadow-blue-500/30"
-                >
-                  <Smartphone className="h-6 w-6 mr-3" />
-                  Join Battle
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          {/* How to Play */}
-          <div className="mt-16 bg-gradient-to-br from-slate-800/40 to-purple-800/40 backdrop-blur-md rounded-3xl p-8 border border-purple-400/20">
-            <h3 className="text-3xl font-bold text-white mb-6">How to Play</h3>
-            <div className="grid md:grid-cols-4 gap-6 text-center">
-              <div className="space-y-3">
-                <div className="bg-purple-500/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                  <span className="text-2xl font-bold text-purple-300">1</span>
-                </div>
-                <h4 className="font-semibold text-white">Listen</h4>
-                <p className="text-purple-200/80 text-sm">Hear a 30-second mystery song preview</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="bg-purple-500/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                  <span className="text-2xl font-bold text-purple-300">2</span>
-                </div>
-                <h4 className="font-semibold text-white">Think</h4>
-                <p className="text-purple-200/80 text-sm">Guess when the song was released</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="bg-purple-500/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                  <span className="text-2xl font-bold text-purple-300">3</span>
-                </div>
-                <h4 className="font-semibold text-white">Place</h4>
-                <p className="text-purple-200/80 text-sm">Add it to your chronological timeline</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="bg-purple-500/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
-                  <span className="text-2xl font-bold text-purple-300">4</span>
-                </div>
-                <h4 className="font-semibold text-white">Win</h4>
-                <p className="text-purple-200/80 text-sm">First to 10 correct placements wins!</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center pt-8">
-            <p className="text-purple-400/60 text-sm">
-              Powered by Deezer & Spotify • Perfect for game nights, parties, and music lovers
-            </p>
-          </div>
+        {/* Footer */}
+        <div className="mt-8 sm:mt-12 text-center">
+          <p className="text-xs sm:text-sm text-purple-300">
+            Powered by Deezer • Works on any device
+          </p>
         </div>
       </div>
     </div>
