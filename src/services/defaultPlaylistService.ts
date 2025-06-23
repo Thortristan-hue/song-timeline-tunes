@@ -10,7 +10,7 @@ class DefaultPlaylistService {
   }
 
   private loadBasePlaylist() {
-    console.log('Loading base playlist without preview URLs...');
+    console.log('📀 Loading base playlist...');
     
     const colors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
@@ -31,7 +31,7 @@ class DefaultPlaylistService {
       }))
       .filter(song => this.isValidSong(song));
 
-    console.log(`Base playlist loaded: ${this.basePlaylist.length} valid songs`);
+    console.log(`📀 Base playlist loaded: ${this.basePlaylist.length} valid songs`);
   }
 
   // Validate a single song
@@ -54,37 +54,33 @@ class DefaultPlaylistService {
 
   // Filter an entire playlist ONCE - this should only be called when playlist changes
   filterValidSongs(songs: Song[]): Song[] {
-    console.log(`=== FILTERING PLAYLIST (ONE TIME FILTER) ===`);
-    console.log(`Input: ${songs.length} songs to filter`);
+    console.log(`🔍 FILTERING ${songs.length} SONGS (ONE-TIME OPERATION)`);
     
     const validSongs = songs.filter((song, index) => {
       const isValid = this.isValidSong(song);
       if (!isValid) {
-        console.log(`Song ${index + 1}: "${song.deezer_title}" by ${song.deezer_artist} (${song.release_year}) -> INVALID`);
+        console.log(`❌ Song ${index + 1}: "${song.deezer_title}" by ${song.deezer_artist} (${song.release_year}) -> INVALID`);
       }
       return isValid;
     });
     
-    console.log(`=== FILTERING COMPLETE ===`);
-    console.log(`Output: ${validSongs.length} valid songs out of ${songs.length}`);
-    console.log('Valid songs:', validSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
+    console.log(`✅ FILTERING COMPLETE: ${validSongs.length}/${songs.length} songs are valid`);
     
     if (validSongs.length === 0) {
-      console.error('❌ NO VALID SONGS FOUND AFTER FILTERING!');
-    } else {
-      console.log(`✅ ${validSongs.length} valid songs ready for gameplay`);
+      console.error('⚠️ NO VALID SONGS FOUND AFTER FILTERING!');
     }
     
     return validSongs;
   }
 
   async loadDefaultPlaylist(): Promise<Song[]> {
+    console.log('📀 Returning pre-loaded default playlist');
     return [...this.basePlaylist];
   }
 
   // Fetch preview URL for a specific song
   async fetchPreviewUrl(song: Song): Promise<Song> {
-    console.log(`Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
+    console.log(`🔄 Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
     
     if (!this.isValidSong(song)) {
       throw new Error(`Song validation failed: missing required data for ${song.deezer_title}`);
@@ -117,14 +113,14 @@ class DefaultPlaylistService {
           preview_url: track.preview || undefined
         };
         
-        console.log(`Preview URL fetched successfully: ${updatedSong.preview_url}`);
+        console.log(`✅ Preview URL fetched successfully`);
         return updatedSong;
       } else {
-        console.warn(`No search results found for: ${song.deezer_artist} - ${song.deezer_title}`);
+        console.warn(`⚠️ No search results found for: ${song.deezer_artist} - ${song.deezer_title}`);
         return song;
       }
     } catch (error) {
-      console.error(`Failed to fetch preview URL for ${song.deezer_artist} - ${song.deezer_title}:`, error);
+      console.error(`❌ Failed to fetch preview URL for ${song.deezer_artist} - ${song.deezer_title}:`, error);
       return song;
     }
   }
