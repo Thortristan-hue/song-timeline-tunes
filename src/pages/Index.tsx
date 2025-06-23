@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
 import { useToast } from '@/components/ui/use-toast';
+import { useSoundEffects } from '@/lib/SoundEffects';
 import { Player, Song, GameState, GamePhase } from '@/types/game';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -9,11 +11,10 @@ import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
-import SoundManager from '@/lib/SoundManager';
 
 export default function Index() {
   const { toast } = useToast();
-  const soundManager = useRef<SoundManager>(new SoundManager());
+  const soundEffects = useSoundEffects();
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   
@@ -61,11 +62,10 @@ export default function Index() {
     }
   });
 
-  // Remove initial song loading since there's no default songs.json file
-  // Songs will be loaded through the PlaylistLoader component
-
-  // Handle turn transitions
+  // Handle turn transitions with sound effects
   const handleTurnEnd = () => {
+    soundEffects.playTurnTransition();
+    
     setGameState(prev => ({
       ...prev,
       currentTurn: prev.currentTurn + 1,
@@ -96,7 +96,7 @@ export default function Index() {
     }
   };
 
-  // Handle card placement
+  // Handle card placement with sound effects
   const handlePlaceCard = async (position: number) => {
     if (!gameState.currentSong || !currentPlayer) return;
 
@@ -119,12 +119,13 @@ export default function Index() {
       cardResult: { correct: true, song: gameState.currentSong! }
     }));
 
-    soundManager.current.playSound('cardCorrect');
+    soundEffects.playCardSuccess();
     
     // Check for winner
     const winner = updatedPlayers.find(p => p.score >= 10);
     if (winner) {
       setTimeout(() => {
+        soundEffects.playGameVictory();
         setGameState(prev => ({ ...prev, phase: 'finished', winner }));
       }, 2000);
       return;
@@ -136,10 +137,11 @@ export default function Index() {
     }, 2000);
   };
 
-  // Navigation handlers
+  // Navigation handlers with sound effects
   const handleHostGame = async () => {
+    soundEffects.playPlayerAction();
+    
     if (!currentPlayer?.name) {
-      // Instead of prompt, navigate to host lobby where they can enter name
       setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
       return;
     }
@@ -151,10 +153,13 @@ export default function Index() {
   };
 
   const handleJoinGame = () => {
+    soundEffects.playPlayerAction();
     setGameState(prev => ({ ...prev, phase: 'mobileJoin' }));
   };
 
   const handleBackToMenu = () => {
+    soundEffects.playPlayerAction();
+    soundEffects.stopAllSounds();
     leaveRoom();
     setGameState(prev => ({ 
       ...prev, 
@@ -175,6 +180,7 @@ export default function Index() {
   const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
+      soundEffects.playSound('player-join');
       setGameState(prev => ({ ...prev, phase: 'mobileLobby' }));
     }
   };
@@ -183,9 +189,10 @@ export default function Index() {
     await updatePlayer(name, color);
   };
 
-  // Game control handlers
+  // Game control handlers with sound effects
   const handleStartGame = async () => {
     if (players.length === 0 || customSongs.length === 0) {
+      soundEffects.playCardError();
       toast({
         title: "Cannot start game",
         description: "Need players and songs to start the game.",
@@ -196,6 +203,8 @@ export default function Index() {
     
     await updateRoomSongs(customSongs);
     await startGame();
+    
+    soundEffects.playSound('game-start');
     
     // Transition ALL players to playing phase
     setGameState(prev => ({
@@ -217,12 +226,13 @@ export default function Index() {
       winner
     }));
     
-    // Play victory sound
-    soundManager.current.playSound('victory');
+    soundEffects.playGameVictory();
   };
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
+
+    soundEffects.playPlayerAction();
 
     if (gameState.isPlaying) {
       audioRef.current.pause();
@@ -255,7 +265,7 @@ export default function Index() {
             isLoading={isLoading}
             createRoom={async (hostName: string) => {
               const roomId = await createRoom(hostName);
-              return !!roomId; // Convert string to boolean
+              return !!roomId;
             }}
             currentHostName={currentPlayer?.name || ''}
           />
@@ -297,7 +307,6 @@ export default function Index() {
               handleEndGame(winner);
             }}
             onKickPlayer={(playerId: string) => {
-              // Handle player kicking
               console.log('Kicking player:', playerId);
             }}
           />

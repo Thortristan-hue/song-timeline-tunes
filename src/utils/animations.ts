@@ -1,12 +1,19 @@
+
+// Timeliner - Animation Utilities
+// This file now uses the centralized animation system
+
+import { ANIMATIONS, AnimationManager } from '@/lib/animations';
+
 export const cardAnimations = {
-  // Duration in milliseconds
-  throwDuration: 500,
-  placementDuration: 300,
-  // CSS classes for animations
-  throw: 'animate-card-throw',
-  placement: 'animate-card-placement',
-  success: 'animate-card-success',
-  error: 'animate-card-error'
+  // Duration in milliseconds - now using centralized values
+  throwDuration: ANIMATIONS.CARD_THROW.duration,
+  placementDuration: ANIMATIONS.CARD_PLACEMENT.duration,
+  
+  // CSS classes for animations - now using centralized system
+  throw: 'timeliner-card-throw',
+  placement: 'timeliner-card-placement',
+  success: 'timeliner-success-pulse',
+  error: 'timeliner-error-shake'
 };
 
 export const calculateThrowPath = (
@@ -21,3 +28,6 @@ export const calculateThrowPath = (
 
   return `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
 };
+
+// Re-export the animation manager for backwards compatibility
+export { AnimationManager, ANIMATIONS };

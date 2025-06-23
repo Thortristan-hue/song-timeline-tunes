@@ -1,4 +1,5 @@
 
+import '@/styles/design-system.css';
 import '@/styles/enhanced-animations.css';
 import '@/styles/game-transitions.css';
 import { Toaster } from "@/components/ui/toaster";

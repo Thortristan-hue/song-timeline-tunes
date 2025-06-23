@@ -1,0 +1,223 @@
+
+/* Timeliner - Centralized Visual Design System */
+
+/* CSS Custom Properties for consistent design */
+:root {
+  /* Color Palette */
+  --timeliner-primary: #8b5cf6;
+  --timeliner-secondary: #ec4899;
+  --timeliner-accent: #06b6d4;
+  --timeliner-success: #10b981;
+  --timeliner-warning: #f59e0b;
+  --timeliner-error: #ef4444;
+  
+  /* Gradients */
+  --timeliner-bg-gradient: linear-gradient(135deg, #0f172a 0%, #581c87 25%, #312e81 50%, #7c3aed 100%);
+  --timeliner-card-gradient: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+  --timeliner-button-gradient: linear-gradient(135deg, var(--timeliner-primary) 0%, var(--timeliner-secondary) 100%);
+  
+  /* Shadows */
+  --timeliner-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --timeliner-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --timeliner-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --timeliner-shadow-glow: 0 0 20px rgba(139, 92, 246, 0.3);
+  
+  /* Spacing */
+  --timeliner-space-xs: 0.25rem;
+  --timeliner-space-sm: 0.5rem;
+  --timeliner-space-md: 1rem;
+  --timeliner-space-lg: 1.5rem;
+  --timeliner-space-xl: 2rem;
+  --timeliner-space-2xl: 3rem;
+  
+  /* Border Radius */
+  --timeliner-radius-sm: 0.375rem;
+  --timeliner-radius-md: 0.5rem;
+  --timeliner-radius-lg: 0.75rem;
+  --timeliner-radius-xl: 1rem;
+  --timeliner-radius-2xl: 1.5rem;
+  
+  /* Typography */
+  --timeliner-font-size-xs: 0.75rem;
+  --timeliner-font-size-sm: 0.875rem;
+  --timeliner-font-size-base: 1rem;
+  --timeliner-font-size-lg: 1.125rem;
+  --timeliner-font-size-xl: 1.25rem;
+  --timeliner-font-size-2xl: 1.5rem;
+  --timeliner-font-size-3xl: 1.875rem;
+  --timeliner-font-size-4xl: 2.25rem;
+  --timeliner-font-size-5xl: 3rem;
+  --timeliner-font-size-6xl: 3.75rem;
+  --timeliner-font-size-7xl: 4.5rem;
+  --timeliner-font-size-8xl: 6rem;
+}
+
+/* Base Design Classes */
+.timeliner-bg {
+  background: var(--timeliner-bg-gradient);
+}
+
+.timeliner-card {
+  background: var(--timeliner-card-gradient);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--timeliner-radius-lg);
+  box-shadow: var(--timeliner-shadow-lg);
+}
+
+.timeliner-button {
+  background: var(--timeliner-button-gradient);
+  border: none;
+  border-radius: var(--timeliner-radius-md);
+  color: white;
+  font-weight: 600;
+  padding: var(--timeliner-space-md) var(--timeliner-space-lg);
+  box-shadow: var(--timeliner-shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeliner-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-button:active {
+  transform: translateY(0);
+}
+
+.timeliner-text-gradient {
+  background: linear-gradient(135deg, var(--timeliner-primary), var(--timeliner-secondary), var(--timeliner-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.timeliner-glow {
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Component-specific styles */
+.timeliner-menu-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-xl);
+  padding: var(--timeliner-space-2xl);
+  backdrop-filter: blur(15px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeliner-menu-card:hover {
+  transform: scale(1.05);
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-player-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-lg);
+  padding: var(--timeliner-space-lg);
+  backdrop-filter: blur(10px);
+}
+
+.timeliner-song-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-md);
+  padding: var(--timeliner-space-md);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.timeliner-song-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Status indicators */
+.timeliner-status-success {
+  background: linear-gradient(135deg, var(--timeliner-success), #34d399);
+  color: white;
+}
+
+.timeliner-status-error {
+  background: linear-gradient(135deg, var(--timeliner-error), #f87171);
+  color: white;
+}
+
+.timeliner-status-warning {
+  background: linear-gradient(135deg, var(--timeliner-warning), #fbbf24);
+  color: white;
+}
+
+/* Responsive typography */
+.timeliner-title {
+  font-size: var(--timeliner-font-size-8xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.timeliner-subtitle {
+  font-size: var(--timeliner-font-size-3xl);
+  font-weight: 500;
+}
+
+.timeliner-heading {
+  font-size: var(--timeliner-font-size-2xl);
+  font-weight: 600;
+}
+
+.timeliner-body {
+  font-size: var(--timeliner-font-size-base);
+  font-weight: 400;
+}
+
+.timeliner-caption {
+  font-size: var(--timeliner-font-size-sm);
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .timeliner-title {
+    font-size: var(--timeliner-font-size-6xl);
+  }
+  
+  .timeliner-subtitle {
+    font-size: var(--timeliner-font-size-2xl);
+  }
+  
+  .timeliner-menu-card {
+    padding: var(--timeliner-space-lg);
+  }
+}
+
+/* Background effects */
+.timeliner-floating-elements {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.timeliner-floating-elements::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+  animation: float 20s linear infinite;
+}
+
+@keyframes float {
+  0% { transform: rotate(0deg) translate(-50%, -50%); }
+  100% { transform: rotate(360deg) translate(-50%, -50%); }
+}

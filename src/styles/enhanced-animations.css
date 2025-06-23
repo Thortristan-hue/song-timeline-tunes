@@ -1,124 +1,59 @@
-/* Enhanced transitions for player swapping */
-@keyframes playerElevate {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-25px) scale(1.1);
-  }
-  100% {
-    transform: translateY(0) scale(1);
-  }
-}
 
-/* Timeline card expansion */
-@keyframes timelineExpand {
-  0% {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.15) translateY(-15px);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
+/* Timeliner - Enhanced Animations */
+/* Now uses centralized design system */
 
-/* Card throw animation */
-@keyframes card-throw {
-  0% {
-    transform: scale(1) rotate(0deg);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(0.8) rotate(180deg);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1) rotate(360deg);
-    opacity: 1;
-  }
-}
+@import url('./design-system.css');
 
-/* Card placement animation */
-@keyframes card-placement {
-  0% {
-    transform: scale(0.8) translateY(-20px);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Success animation */
-@keyframes card-success {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-  }
-}
-
-/* Error animation */
-@keyframes card-error {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  20%, 60% {
-    transform: translateX(-5px);
-  }
-  40%, 80% {
-    transform: translateX(5px);
-  }
-}
-
-
+/* All animations now use design system variables */
 .animate-card-throw {
-  animation: card-throw 0.5s ease-in-out forwards;
+  animation: card-throw 0.5s var(--timeliner-ease-out) forwards;
 }
 
 .animate-card-placement {
-  animation: card-placement 0.3s ease-out forwards;
+  animation: card-placement 0.3s var(--timeliner-ease-out) forwards;
 }
 
 .animate-card-success {
-  animation: card-success 1s ease-out forwards;
+  animation: card-success 1s var(--timeliner-ease-out) forwards;
 }
 
 .animate-card-error {
-  animation: card-error 0.5s ease-in-out forwards;
-}
-
-/* Enhanced glow effect */
-@keyframes glowPulse {
-  0% {
-    box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(78, 205, 196, 0.5);
-  }
-  100% {
-    box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
-  }
+  animation: card-error 0.5s var(--timeliner-ease-out) forwards;
 }
 
 .player-elevate {
-  animation: playerElevate 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: playerElevate 1.2s var(--timeliner-ease-out);
 }
 
 .timeline-expand {
-  animation: timelineExpand 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: timelineExpand 1.2s var(--timeliner-ease-out);
 }
 
 .glow-pulse {
   animation: glowPulse 2s infinite;
+}
+
+/* Use design system colors for keyframes */
+@keyframes card-success {
+  0% {
+    box-shadow: 0 0 0 0 var(--timeliner-success);
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes glowPulse {
+  0% {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
 }
