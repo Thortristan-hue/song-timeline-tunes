@@ -1,4 +1,3 @@
-
 /**
  * Timeliner - Centralized Sound Effects System
  * Manages all audio effects, background music, and sound interactions
@@ -27,17 +26,17 @@ export interface SoundConfig {
 
 export const SOUND_PRESETS = {
   // Volume presets
-  SILENT: 0,
-  QUIET: 0.2,
-  NORMAL: 0.5,
-  LOUD: 0.8,
-  MAX: 1.0,
+  SILENT: 0 as number,
+  QUIET: 0.2 as number,
+  NORMAL: 0.5 as number,
+  LOUD: 0.8 as number,
+  MAX: 1.0 as number,
 
   // Playback rate presets
-  SLOW: 0.75,
-  NORMAL_RATE: 1.0,
-  FAST: 1.25,
-  VERY_FAST: 1.5,
+  SLOW: 0.75 as number,
+  NORMAL_RATE: 1.0 as number,
+  FAST: 1.25 as number,
+  VERY_FAST: 1.5 as number,
 } as const;
 
 export const SOUND_EFFECTS: Record<SoundEffect, Partial<SoundConfig>> = {
