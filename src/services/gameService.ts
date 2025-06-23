@@ -27,10 +27,11 @@ class GameService {
     
     try {
       const urlObj = new URL(url);
-      // Accept any HTTPS URL, HTTP URL, or data URL
-      return urlObj.protocol === 'https:' || urlObj.protocol === 'http:' || urlObj.protocol === 'data:';
+      // Accept any valid URL protocol including file://, blob://, data:// etc.
+      return ['https:', 'http:', 'data:', 'blob:', 'file:'].includes(urlObj.protocol);
     } catch {
-      return false;
+      // If URL constructor fails, check if it's a relative path
+      return url.startsWith('/') || url.startsWith('./') || url.startsWith('../');
     }
   }
 
@@ -103,7 +104,7 @@ class GameService {
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
-      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : []
+      timeline: Array.isArray(dbPlayer.timeline) ? (dbPlayer.timeline as unknown as Song[]) : []
     };
   }
 
@@ -114,7 +115,7 @@ class GameService {
       host_id: dbRoom.host_id,
       host_name: 'Host',
       phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
-      songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
+      songs: Array.isArray(dbRoom.songs) ? (dbRoom.songs as unknown as Song[]) : [],
       created_at: dbRoom.created_at,
       updated_at: dbRoom.updated_at
     };
