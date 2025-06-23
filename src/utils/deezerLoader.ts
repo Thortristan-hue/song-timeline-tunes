@@ -13,17 +13,21 @@ export class DeezerLoader {
         // Standard format without language code
         /deezer\.com\/playlist\/(\d+)/i,
         // Handle URLs with trailing periods or other characters
-        /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)[\.\?]/i,
+        /deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d+)[\.\?#]/i,
         // Mobile/share links
         /deezer\.page\.link\/.*playlist[/=](\d+)/i,
         // Short links
         /dzr\.lnk\.to\/.*playlist[/=](\d+)/i,
         // Just the ID
-        /^(\d+)$/
+        /^(\d+)$/,
+        // More flexible pattern for any format
+        /\/playlist\/(\d+)/i
       ];
 
       // Clean the URL by removing trailing periods and other characters
-      const cleanUrl = url.trim().replace(/\.$/, '');
+      const cleanUrl = url.trim().replace(/[\.\?#].*$/, '');
+      
+      console.log('Attempting to parse URL:', cleanUrl);
 
       for (const pattern of patterns) {
         const match = cleanUrl.match(pattern);
@@ -125,6 +129,7 @@ export class DeezerLoader {
     return `Supported Deezer playlist URL formats:
 • https://www.deezer.com/playlist/1234567890
 • https://www.deezer.com/en/playlist/1234567890
+• https://www.deezer.com/fr/playlist/1234567890
 • https://deezer.page.link/...
 • Just the playlist ID: 1234567890`;
   }

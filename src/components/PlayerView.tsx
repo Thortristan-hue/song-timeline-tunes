@@ -134,7 +134,7 @@ export function PlayerView({
         </Badge>
       </div>
 
-      {/* Mystery Card Section - Show debug info if not visible */}
+      {/* Mystery Card Section */}
       {isMyTurn && gameState.currentSong ? (
         <div className="px-4 py-3">
           <Card className="bg-white/10 border-white/20 p-4">
@@ -144,7 +144,11 @@ export function PlayerView({
                   className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center cursor-pointer transform transition-all hover:scale-105 shadow-lg"
                   onClick={onPlayPause}
                 >
-                  <Music className="h-8 w-8 text-white" />
+                  {gameState.isPlaying ? (
+                    <Pause className="h-8 w-8 text-white" />
+                  ) : (
+                    <Play className="h-8 w-8 text-white" />
+                  )}
                 </div>
                 <div>
                   <div className="text-lg font-bold text-white">Mystery Song</div>
@@ -167,21 +171,22 @@ export function PlayerView({
             />
           </Card>
         </div>
-      ) : (
-        /* Debug section - remove this after fixing the issue */
+      ) : isMyTurn ? (
+        /* Loading state when it's my turn but no song yet */
         <div className="px-4 py-3">
-          <Card className="bg-red-900/20 border-red-400/30 p-4">
-            <div className="text-white text-sm">
-              <div className="font-bold mb-2">Debug Info - Mystery Card Not Showing:</div>
-              <div>• Is My Turn: {isMyTurn ? 'YES' : 'NO'}</div>
-              <div>• Current Song: {gameState.currentSong ? 'EXISTS' : 'NULL'}</div>
-              <div>• Time Left: {gameState.timeLeft}s</div>
-              <div>• Current Player: {currentPlayer.name}</div>
-              <div>• Turn Player: {currentTurnPlayer.name}</div>
+          <Card className="bg-white/10 border-white/20 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center animate-pulse">
+                <Music className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <div className="text-lg font-bold text-white">Loading Mystery Song...</div>
+                <div className="text-sm text-purple-200">Preparing your next challenge</div>
+              </div>
             </div>
           </Card>
         </div>
-      )}
+      ) : null}
 
       {/* Main Timeline Section */}
       <div className="flex-1 p-4 flex flex-col">

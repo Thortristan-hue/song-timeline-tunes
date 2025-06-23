@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -91,6 +92,27 @@ export default function Index() {
     }
   }, [gameState.currentSong]);
 
+  // Function to get a random song for the current turn
+  const getRandomSongForTurn = () => {
+    if (!room?.songs || room.songs.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * room.songs.length);
+    return room.songs[randomIndex];
+  };
+
+  // Function to start a new turn
+  const startNewTurn = (turnIndex: number) => {
+    const newSong = getRandomSongForTurn();
+    console.log('Starting new turn:', turnIndex, 'with song:', newSong);
+    
+    setGameState(prev => ({
+      ...prev,
+      currentTurn: turnIndex,
+      currentSong: newSong,
+      timeLeft: 30,
+      isPlaying: false
+    }));
+  };
+
   // Navigation handlers with sound effects
   const handleHostGame = async () => {
     soundEffects.playPlayerAction();
@@ -172,12 +194,18 @@ export default function Index() {
     
     soundEffects.playSound('game-start');
     
-    // Transition ALL players to playing phase
+    // Start the first turn with a random song
+    const firstSong = getRandomSongForTurn();
+    console.log('Game started, first song:', firstSong);
+    
+    // Transition ALL players to playing phase with the first song
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
-      currentSong: customSongs[0],
-      currentTurn: 0
+      currentSong: firstSong,
+      currentTurn: 0,
+      timeLeft: 30,
+      isPlaying: false
     }));
 
     toast({
@@ -203,14 +231,26 @@ export default function Index() {
 
   const handlePlaceCard = (position: number) => {
     console.log(`Placing card at position ${position}`);
-    // This will be handled by the GamePlay component
+    
+    if (!gameState.currentSong || !currentPlayer) return;
+    
+    // Add the song to the player's timeline at the specified position
+    const newTimeline = [...currentPlayer.timeline];
+    newTimeline.splice(position, 0, gameState.currentSong);
+    
+    // Update the player's timeline
+    updatePlayer(currentPlayer.name, currentPlayer.color).then(() => {
+      // Move to next turn
+      const nextTurn = (gameState.currentTurn + 1) % players.length;
+      startNewTurn(nextTurn);
+    });
   };
 
   const handlePlayPause = () => {
     console.log('Play/pause mystery song from player');
     
     // If this is called from a player's device, control the host's audio
-    if (audioRef.current) {
+    if (audioRef.current && gameState.currentSong) {
       if (gameState.isPlaying) {
         audioRef.current.pause();
         setGameState(prev => ({ ...prev, isPlaying: false }));
@@ -221,6 +261,13 @@ export default function Index() {
       }
     }
   };
+
+  // Effect to monitor room changes and update songs
+  useEffect(() => {
+    if (room?.songs && room.songs.length > 0 && customSongs.length === 0) {
+      setCustomSongs(room.songs);
+    }
+  }, [room?.songs, customSongs.length]);
 
   // Phase rendering with enhanced components
   const renderPhase = () => {
