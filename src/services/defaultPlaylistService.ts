@@ -1,4 +1,3 @@
-
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 
@@ -35,7 +34,8 @@ class DefaultPlaylistService {
     console.log(`Base playlist loaded: ${this.basePlaylist.length} valid songs`);
   }
 
-  private isValidSong(song: Song): boolean {
+  // Public method to validate a single song
+  isValidSong(song: Song): boolean {
     // Check for valid release year - must be a valid number
     const releaseYearStr = song.release_year?.toString().trim();
     const hasValidReleaseYear = releaseYearStr && 
@@ -70,12 +70,14 @@ class DefaultPlaylistService {
 
   // Enhanced method to filter and validate an entire playlist
   filterValidSongs(songs: Song[]): Song[] {
-    console.log(`=== FILTERING PLAYLIST ===`);
+    console.log(`=== FILTERING PLAYLIST (ONE TIME) ===`);
     console.log(`Input: ${songs.length} songs to filter`);
     
     const validSongs = songs.filter((song, index) => {
       const isValid = this.isValidSong(song);
-      console.log(`Song ${index + 1}: "${song.deezer_title}" by ${song.deezer_artist} (${song.release_year}) -> ${isValid ? 'VALID' : 'INVALID'}`);
+      if (!isValid) {
+        console.log(`Song ${index + 1}: "${song.deezer_title}" by ${song.deezer_artist} (${song.release_year}) -> INVALID`);
+      }
       return isValid;
     });
     
