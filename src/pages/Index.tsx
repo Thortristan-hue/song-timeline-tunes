@@ -5,11 +5,13 @@ import { useGameCleanup } from '@/hooks/useGameCleanup';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/lib/SoundEffects';
 import { Player, Song, GameState, GamePhase } from '@/types/game';
+import { gameService } from '@/services/gameService';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
+import { PlayerView } from '@/components/PlayerView';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { HostDisplay } from '@/components/HostDisplay';
 
@@ -161,6 +163,12 @@ export default function Index() {
     }
     
     await updateRoomSongs(customSongs);
+    
+    // Assign starting cards to all players
+    if (room?.id) {
+      await gameService.assignStartingCards(room.id, customSongs);
+    }
+    
     await startGame();
     
     soundEffects.playSound('game-start');
@@ -175,7 +183,7 @@ export default function Index() {
 
     toast({
       title: "🎵 Game Started!",
-      description: "Let the timeline battle begin!",
+      description: "Each player has received a starting card. Let the timeline battle begin!",
     });
   };
 
@@ -192,6 +200,16 @@ export default function Index() {
   const getCurrentTurnPlayer = () => {
     if (players.length === 0) return null;
     return players[gameState.currentTurn % players.length];
+  };
+
+  const handlePlaceCard = (position: number) => {
+    console.log(`Placing card at position ${position}`);
+    // This will be handled by the GamePlay component
+  };
+
+  const handlePlayPause = () => {
+    console.log('Play/pause mystery song');
+    // This will be handled by the GamePlay component
   };
 
   // Phase rendering with enhanced components
@@ -259,25 +277,23 @@ export default function Index() {
             />
           );
         } else {
-          // Players see the game play interface
+          // Players see their mobile view
+          const currentTurnPlayer = getCurrentTurnPlayer();
+          if (!currentPlayer || !currentTurnPlayer) return null;
+          
           return (
-            <GamePlay
-              room={room}
-              players={players}
+            <PlayerView
               currentPlayer={currentPlayer}
-              isHost={isHost}
-              songs={customSongs}
-              gameState={gameState}
-              setGameState={setGameState}
-              onEndGame={() => {
-                const winner = players.reduce((prev, current) => 
-                  (prev.score > current.score) ? prev : current
-                );
-                handleEndGame(winner);
+              currentTurnPlayer={currentTurnPlayer}
+              roomCode={room?.lobby_code || ''}
+              isMyTurn={currentPlayer.id === currentTurnPlayer.id}
+              gameState={{
+                currentSong: gameState.currentSong,
+                isPlaying: gameState.isPlaying,
+                timeLeft: gameState.timeLeft
               }}
-              onKickPlayer={(playerId: string) => {
-                console.log('Kicking player:', playerId);
-              }}
+              onPlaceCard={handlePlaceCard}
+              onPlayPause={handlePlayPause}
             />
           );
         }

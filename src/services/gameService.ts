@@ -164,6 +164,26 @@ class GameService {
     if (error) throw error;
   }
 
+  async assignStartingCards(roomId: string, songs: Song[]): Promise<void> {
+    // Get all players in the room
+    const { data: players, error: playersError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', roomId);
+
+    if (playersError || !players) throw playersError;
+
+    // Assign each player a random starting card
+    for (const player of players) {
+      if (songs.length > 0) {
+        const randomSong = songs[Math.floor(Math.random() * songs.length)];
+        await this.updatePlayer(player.id, {
+          timeline: [randomSong]
+        });
+      }
+    }
+  }
+
   async getRoomByCode(lobbyCode: string): Promise<GameRoom | null> {
     const { data: room, error } = await supabase
       .from('game_rooms')
