@@ -18,6 +18,8 @@ export default function Index() {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
+  const [retryingSong, setRetryingSong] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -95,22 +97,84 @@ export default function Index() {
     }
   }, [gameState.currentSong]);
 
-  // Function to get a random song for the current turn
-  const getRandomSongForTurn = () => {
+  // Function to get a random song and fetch its preview URL
+  const getRandomSongForTurn = async (): Promise<Song | null> => {
     if (!room?.songs || room.songs.length === 0) return null;
+    
     const randomIndex = Math.floor(Math.random() * room.songs.length);
-    return room.songs[randomIndex];
+    const baseSong = room.songs[randomIndex];
+    
+    console.log('=== MYSTERY SONG DEBUG ===');
+    console.log('Selected song for turn:', {
+      title: baseSong.deezer_title,
+      artist: baseSong.deezer_artist,
+      release_year: baseSong.release_year,
+      id: baseSong.id
+    });
+    
+    // Fetch preview URL if not already available
+    if (!baseSong.preview_url) {
+      console.log('Fetching preview URL for mystery song...');
+      setSongLoadingError(null);
+      setRetryingSong(true);
+      
+      try {
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(baseSong);
+        
+        console.log('Mystery song with preview URL:', {
+          title: songWithPreview.deezer_title,
+          artist: songWithPreview.deezer_artist,
+          release_year: songWithPreview.release_year,
+          preview_url: songWithPreview.preview_url,
+          id: songWithPreview.id
+        });
+        console.log('=== END MYSTERY SONG DEBUG ===');
+        
+        setRetryingSong(false);
+        return songWithPreview;
+      } catch (error) {
+        console.error('Failed to fetch preview URL:', error);
+        setSongLoadingError('Failed to fetch song preview. Retrying...');
+        setRetryingSong(false);
+        
+        // Return the song without preview URL for now
+        console.log('Returning song without preview URL due to error');
+        console.log('=== END MYSTERY SONG DEBUG ===');
+        return baseSong;
+      }
+    }
+    
+    console.log('Using existing preview URL:', baseSong.preview_url);
+    console.log('=== END MYSTERY SONG DEBUG ===');
+    return baseSong;
+  };
+
+  // Function to retry fetching song with preview URL
+  const retrySongFetch = async () => {
+    if (!gameState.currentSong) return;
+    
+    console.log('Retrying song fetch...');
+    const songWithPreview = await getRandomSongForTurn();
+    if (songWithPreview) {
+      setGameState(prev => ({
+        ...prev,
+        currentSong: songWithPreview
+      }));
+      setSongLoadingError(null);
+    }
   };
 
   // Function to start a new turn
-  const startNewTurn = (turnIndex: number) => {
-    const newSong = getRandomSongForTurn();
-    console.log('Starting new turn:', turnIndex, 'with song:', newSong);
+  const startNewTurn = async (turnIndex: number) => {
+    console.log('Starting new turn:', turnIndex);
+    setSongLoadingError(null);
     
+    // Reset card states
     setGameState(prev => ({
       ...prev,
       currentTurn: turnIndex,
-      currentSong: newSong,
+      currentSong: null, // Clear current song first
       timeLeft: 30,
       isPlaying: false,
       cardPlacementPending: false,
@@ -118,6 +182,17 @@ export default function Index() {
       cardPlacementCorrect: null,
       mysteryCardRevealed: false
     }));
+    
+    // Fetch new song with preview URL
+    const newSong = await getRandomSongForTurn();
+    if (newSong) {
+      setGameState(prev => ({
+        ...prev,
+        currentSong: newSong
+      }));
+    } else {
+      setSongLoadingError('Failed to load a song for this turn.');
+    }
   };
 
   // Navigation handlers with sound effects
@@ -205,15 +280,10 @@ export default function Index() {
     
     soundEffects.playSound('game-start');
     
-    // Start the first turn with a random song
-    const firstSong = getRandomSongForTurn();
-    console.log('Game started, first song:', firstSong);
-    
-    // Transition ALL players to playing phase with the first song
+    // Transition ALL players to playing phase
     setGameState(prev => ({
       ...prev,
       phase: 'playing',
-      currentSong: firstSong,
       currentTurn: 0,
       timeLeft: 30,
       isPlaying: false,
@@ -222,6 +292,9 @@ export default function Index() {
       cardPlacementCorrect: null,
       mysteryCardRevealed: false
     }));
+
+    // Start the first turn (will fetch song with preview URL)
+    await startNewTurn(0);
 
     toast({
       title: "🎵 Game Started!",
@@ -277,9 +350,9 @@ export default function Index() {
         soundEffects.playSound('correct');
         
         // Move to next turn after a delay
-        setTimeout(() => {
+        setTimeout(async () => {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
-          startNewTurn(nextTurn);
+          await startNewTurn(nextTurn);
         }, 2000);
         
       } else {
@@ -293,9 +366,9 @@ export default function Index() {
         soundEffects.playSound('incorrect');
         
         // Move to next turn after showing the result
-        setTimeout(() => {
+        setTimeout(async () => {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
-          startNewTurn(nextTurn);
+          await startNewTurn(nextTurn);
         }, 2000);
       }
     }, 1000); // Simulate processing time
@@ -388,6 +461,9 @@ export default function Index() {
                 mysteryCardRevealed: gameState.mysteryCardRevealed,
                 cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
+              songLoadingError={songLoadingError}
+              retryingSong={retryingSong}
+              onRetrySong={retrySongFetch}
             />
           );
         } else {

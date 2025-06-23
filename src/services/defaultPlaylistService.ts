@@ -1,79 +1,77 @@
 
 import { Song } from '@/types/game';
-import defaultPlaylistData from '@/data/defaultPlaylist.json';
-
-const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
-
-interface DefaultPlaylistTrack {
-  deezer_artist: string;
-  deezer_title: string;
-  deezer_album: string;
-  deezer_duration: number;
-  preview_url: string;
-  deezer_url: string;
-  enhanced_artist: string;
-  enhanced_title: string;
-  enhanced_album: string;
-  release_year: string;
-  genre: string;
-  metadata_source: string;
-}
+import defaultPlaylist from '@/data/defaultPlaylist.json';
 
 class DefaultPlaylistService {
-  private colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
-    '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-    '#F8C471', '#82E0AA', '#AED6F1', '#E8DAEF',
-    '#D7BDE2', '#A9DFBF', '#F9E79F', '#FAD7A0'
-  ];
+  private basePlaylist: Song[] = [];
 
-  private async fetchFreshPreviewUrl(deezerUrl: string): Promise<string | undefined> {
-    try {
-      // Extract track ID from Deezer URL
-      const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
-      if (!trackId) return undefined;
+  constructor() {
+    this.loadBasePlaylist();
+  }
 
-      const apiUrl = `https://api.deezer.com/track/${trackId}`;
-      const proxiedUrl = PROXY_BASE + encodeURIComponent(apiUrl);
-      
-      const response = await fetch(proxiedUrl);
-      if (!response.ok) return undefined;
-      
-      const data = await response.json();
-      return data.preview || undefined;
-    } catch (error) {
-      console.error('Error fetching fresh preview URL:', error);
-      return undefined;
-    }
+  private loadBasePlaylist() {
+    console.log('Loading base playlist without preview URLs...');
+    
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
+      '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+      '#F8C471', '#82E0AA', '#AED6F1', '#E8DAEF',
+      '#D7BDE2', '#A9DFBF', '#F9E79F', '#FAD7A0'
+    ];
+
+    this.basePlaylist = defaultPlaylist.map((song: any, index: number) => ({
+      id: song.id || `default_${index}`,
+      deezer_title: song.deezer_title || song.title,
+      deezer_artist: song.deezer_artist || song.artist,
+      deezer_album: song.deezer_album || song.album,
+      release_year: song.release_year?.toString() || song.year?.toString(),
+      genre: song.genre || 'Unknown',
+      cardColor: colors[index % colors.length],
+      // Don't include preview_url - will be fetched when needed
+    }));
+
+    console.log(`Base playlist loaded: ${this.basePlaylist.length} songs`);
   }
 
   async loadDefaultPlaylist(): Promise<Song[]> {
-    console.log('Loading default playlist...');
+    return [...this.basePlaylist];
+  }
+
+  // New method to fetch preview URL for a specific song
+  async fetchPreviewUrl(song: Song): Promise<Song> {
+    console.log(`Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
     
-    const songs: Song[] = [];
-    
-    for (let i = 0; i < defaultPlaylistData.length; i++) {
-      const track = defaultPlaylistData[i] as DefaultPlaylistTrack;
+    try {
+      // Use Deezer API to search for the song and get preview URL
+      const searchQuery = encodeURIComponent(`${song.deezer_artist} ${song.deezer_title}`);
+      const corsProxy = 'https://api.allorigins.win/raw?url=';
+      const deezerApiUrl = `https://api.deezer.com/search?q=${searchQuery}&limit=1`;
+      const proxiedUrl = corsProxy + encodeURIComponent(deezerApiUrl);
+
+      const response = await fetch(proxiedUrl);
+      if (!response.ok) {
+        throw new Error(`Deezer API error: ${response.status}`);
+      }
+
+      const searchData = await response.json();
       
-      // Fetch fresh preview URL
-      const freshPreviewUrl = await this.fetchFreshPreviewUrl(track.deezer_url);
-      
-      const song: Song = {
-        id: `default-song-${i}-${Date.now()}`,
-        deezer_title: track.enhanced_title || track.deezer_title,
-        deezer_artist: track.enhanced_artist || track.deezer_artist,
-        deezer_album: track.enhanced_album || track.deezer_album,
-        release_year: track.release_year,
-        genre: track.genre || 'Unknown',
-        cardColor: this.colors[i % this.colors.length],
-        preview_url: freshPreviewUrl
-      };
-      
-      songs.push(song);
+      if (searchData.data && searchData.data.length > 0) {
+        const track = searchData.data[0];
+        const updatedSong = {
+          ...song,
+          preview_url: track.preview || undefined
+        };
+        
+        console.log(`Preview URL fetched successfully: ${updatedSong.preview_url}`);
+        return updatedSong;
+      } else {
+        console.warn(`No search results found for: ${song.deezer_artist} - ${song.deezer_title}`);
+        return song; // Return original song without preview_url
+      }
+    } catch (error) {
+      console.error(`Failed to fetch preview URL for ${song.deezer_artist} - ${song.deezer_title}:`, error);
+      return song; // Return original song without preview_url
     }
-    
-    console.log(`Successfully loaded ${songs.length} songs from default playlist`);
-    return songs;
   }
 }
 

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -57,6 +56,7 @@ export function PlacementConfirmationDialog({
         </DialogHeader>
         
         <div className="flex justify-center py-4">
+          {/* Always show as hidden in confirmation dialog */}
           <MysteryCard song={song} isRevealed={false} />
         </div>
         

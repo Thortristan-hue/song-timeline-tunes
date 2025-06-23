@@ -17,6 +17,9 @@ interface HostDisplayProps {
     mysteryCardRevealed?: boolean;
     cardPlacementCorrect?: boolean | null;
   };
+  songLoadingError?: string | null;
+  retryingSong?: boolean;
+  onRetrySong?: () => void;
 }
 
 export function HostDisplay({
@@ -25,7 +28,10 @@ export function HostDisplay({
   roomCode,
   currentSongProgress,
   currentSongDuration,
-  gameState
+  gameState,
+  songLoadingError,
+  retryingSong,
+  onRetrySong
 }: HostDisplayProps) {
   const progressPercentage = currentSongDuration > 0 ? (currentSongProgress / currentSongDuration) * 100 : 0;
 
@@ -111,19 +117,53 @@ export function HostDisplay({
         </Card>
       </div>
 
+      {/* Song Loading Error Display */}
+      {songLoadingError && (
+        <div className="absolute top-72 left-1/2 transform -translate-x-1/2 z-30">
+          <Card className="bg-red-800/60 backdrop-blur-md border-red-600/30 p-4 text-center">
+            <div className="text-red-200 mb-3">{songLoadingError}</div>
+            {onRetrySong && (
+              <Button
+                onClick={onRetrySong}
+                disabled={retryingSong}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {retryingSong ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  'Retry'
+                )}
+              </Button>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Mystery card display - Static for host */}
       <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
           
           <div className="relative">
-            <MysteryCard
-              song={gameState.currentSong}
-              isRevealed={gameState.mysteryCardRevealed || false}
-              isInteractive={false}
-              isDestroyed={gameState.cardPlacementCorrect === false}
-              className="w-48 h-60"
-            />
+            {gameState.currentSong ? (
+              <MysteryCard
+                song={gameState.currentSong}
+                isRevealed={gameState.mysteryCardRevealed || false}
+                isInteractive={false}
+                isDestroyed={gameState.cardPlacementCorrect === false}
+                className="w-48 h-60"
+              />
+            ) : (
+              <Card className="w-48 h-60 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
+                <Music className="h-12 w-12 mb-4 opacity-50" />
+                <div className="text-lg text-center px-4 opacity-50">
+                  {retryingSong ? 'Fetching song...' : 'Loading mystery song...'}
+                </div>
+              </Card>
+            )}
             
             {!gameState.mysteryCardRevealed && gameState.currentSong && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">

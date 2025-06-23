@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -212,11 +211,11 @@ export function PlayerView({
                 </div>
               </div>
               
-              {/* Draggable Mystery Card */}
+              {/* Draggable Mystery Card - Always hidden until placement confirmed */}
               <div className="flex items-center gap-4">
                 <MysteryCard
                   song={gameState.currentSong}
-                  isRevealed={gameState.mysteryCardRevealed || false}
+                  isRevealed={false} // Always hidden for player until placement confirmed
                   isInteractive={!gameState.cardPlacementPending}
                   isDestroyed={gameState.cardPlacementCorrect === false}
                   onDragStart={handleDragStart}
@@ -246,6 +245,30 @@ export function PlayerView({
           </Card>
         </div>
       ) : null}
+
+      {/* Result display - Show revealed card after placement */}
+      {isMyTurn && gameState.mysteryCardRevealed && gameState.currentSong && (
+        <div className="px-4 py-2">
+          <Card className="bg-white/10 border-white/20 p-4">
+            <div className="flex items-center justify-center gap-4">
+              <div className="text-center">
+                <div className={`text-lg font-bold mb-2 ${
+                  gameState.cardPlacementCorrect ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {gameState.cardPlacementCorrect ? '✅ Correct!' : '❌ Incorrect!'}
+                </div>
+                <MysteryCard
+                  song={gameState.currentSong}
+                  isRevealed={true} // Now show the revealed card
+                  isInteractive={false}
+                  isDestroyed={gameState.cardPlacementCorrect === false}
+                  className="w-32 h-40"
+                />
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Main Timeline Section */}
       <div className="flex-1 p-4 flex flex-col">
@@ -330,7 +353,7 @@ export function PlayerView({
         </div>
       )}
 
-      {/* Placement Confirmation Dialog */}
+      {/* Placement Confirmation Dialog - Only show mystery card as hidden */}
       <PlacementConfirmationDialog
         isOpen={showConfirmationDialog}
         song={gameState.currentSong}
