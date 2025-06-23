@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,9 @@ export function GamePlay({
     showKickOptions: null as string | null
   });
 
-  const currentTurnPlayer = players[gameState.currentTurn % players.length];
+  // Filter out host from players when determining current turn
+  const activePlayers = players.filter(player => player.id !== room?.host_id);
+  const currentTurnPlayer = activePlayers.length > 0 ? activePlayers[gameState.currentTurn % activePlayers.length] : null;
   const isMyTurn = currentPlayer?.id === currentTurnPlayer?.id;
 
   // Timer effect
@@ -68,14 +69,23 @@ export function GamePlay({
 
   // Initialize first song
   useEffect(() => {
-    if (!gameState.currentSong && localGameState.availableSongs.length > 0) {
+    if (!gameState.currentSong && localGameState.availableSongs.length > 0 && activePlayers.length > 0) {
       startNewTurn();
     }
-  }, [localGameState.availableSongs]);
+  }, [localGameState.availableSongs, activePlayers.length]);
 
   const startNewTurn = () => {
     if (localGameState.availableSongs.length === 0) {
       endGame();
+      return;
+    }
+
+    if (activePlayers.length === 0) {
+      toast({
+        title: "No active players",
+        description: "Waiting for players to join...",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -124,7 +134,7 @@ export function GamePlay({
     setTimeout(() => {
       setGameState(prev => ({
         ...prev,
-        currentTurn: prev.currentTurn + 1,
+        currentTurn: (prev.currentTurn + 1) % activePlayers.length,
         transitioningTurn: false
       }));
       
@@ -142,25 +152,46 @@ export function GamePlay({
   };
 
   const playPauseAudio = () => {
-    if (!audioRef.current || !gameState.currentSong?.preview_url) return;
+    if (!audioRef.current || !gameState.currentSong?.preview_url) {
+      toast({
+        title: "Audio Error",
+        description: "No audio available for this song",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       if (gameState.isPlaying) {
         audioRef.current.pause();
+        setGameState(prev => ({ ...prev, isPlaying: false }));
       } else {
-        audioRef.current.play().catch(error => {
-          console.error('Error playing audio:', error);
-          toast({
-            title: "Audio Error",
-            description: "Could not play the song preview",
-            variant: "destructive",
-          });
-        });
+        // Ensure the audio element is ready
+        audioRef.current.currentTime = 0;
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setGameState(prev => ({ ...prev, isPlaying: true }));
+            })
+            .catch(error => {
+              console.error('Error playing audio:', error);
+              toast({
+                title: "Audio Error",
+                description: "Could not play the song preview. Try a different browser or check your audio settings.",
+                variant: "destructive",
+              });
+            });
+        }
       }
-      
-      setGameState(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
     } catch (error) {
       console.error('Audio playback error:', error);
+      toast({
+        title: "Audio Error",
+        description: "Failed to control audio playback",
+        variant: "destructive",
+      });
     }
   };
 
@@ -206,7 +237,7 @@ export function GamePlay({
     if (!localGameState.confirmingPlacement || !currentPlayer) return;
 
     const { song, position } = localGameState.confirmingPlacement;
-    const player = players.find(p => p.id === currentPlayer.id);
+    const player = activePlayers.find(p => p.id === currentPlayer.id);
     if (!player) return;
 
     const newTimeline = [...player.timeline];
@@ -214,7 +245,7 @@ export function GamePlay({
     
     const isCorrect = checkTimelineOrder(newTimeline);
     
-    // Update the player in the players array (this would normally be done via the game service)
+    // Update the player's data
     const updatedPlayers = players.map(p => {
       if (p.id === currentPlayer.id) {
         return {
@@ -390,28 +421,34 @@ export function GamePlay({
       <div className="absolute bottom-32 right-16 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
       <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-400/8 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}} />
       
-      {/* Audio element for players */}
+      {/* Audio element - with better error handling */}
       {gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
           src={gameState.currentSong.preview_url}
           crossOrigin="anonymous"
-          preload="auto"
+          preload="metadata"
           onError={(e) => {
             console.error('Audio error:', e);
             console.log('Failed to load:', gameState.currentSong?.preview_url);
+            toast({
+              title: "Audio Error", 
+              description: "Could not load song preview",
+              variant: "destructive"
+            });
           }}
           onEnded={() => setGameState(prev => ({ ...prev, isPlaying: false }))}
           onPlay={() => setGameState(prev => ({ ...prev, isPlaying: true }))}
           onPause={() => setGameState(prev => ({ ...prev, isPlaying: false }))}
+          onCanPlay={() => console.log('Audio ready to play')}
         />
       )}
 
-      {/* Header with asymmetric design */}
+      {/* Header with better contrast */}
       <div className="absolute top-6 left-4 right-4 z-40">
         <div className="flex justify-between items-start gap-6">
           {/* Timer section - left aligned, slightly tilted */}
-          <div className="flex items-center gap-4 bg-slate-800/70 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/30 shadow-lg transform -rotate-1">
+          <div className="flex items-center gap-4 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg transform -rotate-1">
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Clock className="h-5 w-5 text-blue-300" />
@@ -423,7 +460,7 @@ export function GamePlay({
               </div>
             </div>
             
-            <div className="w-px h-6 bg-slate-600" />
+            <div className="w-px h-6 bg-slate-500" />
             
             <div className="flex gap-2">
               <Button
@@ -439,7 +476,7 @@ export function GamePlay({
                 onClick={toggleMute}
                 size="sm"
                 variant="outline"
-                className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/50 hover:bg-slate-600/50 transform transition-all hover:scale-110"
+                className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 transform transition-all hover:scale-110"
                 disabled={!isMyTurn}
               >
                 {localGameState.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -447,9 +484,9 @@ export function GamePlay({
             </div>
           </div>
 
-          {/* Current player section - center, slight tilt opposite direction */}
+          {/* Current player section - better contrast */}
           <div className="flex-1 max-w-sm transform rotate-1">
-            <div className="bg-gradient-to-r from-slate-800/60 to-indigo-800/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-indigo-400/20 shadow-lg">
+            <div className="bg-gradient-to-r from-slate-800/80 to-indigo-800/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-indigo-400/30 shadow-lg">
               <div className="flex items-center justify-center gap-3 text-white">
                 <div className="relative">
                   <div 
@@ -459,7 +496,7 @@ export function GamePlay({
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
                 </div>
                 <div className="text-center">
-                  <div className="font-bold text-lg">{currentTurnPlayer?.name}</div>
+                  <div className="font-bold text-lg text-white">{currentTurnPlayer?.name}</div>
                   <div className="text-xs text-indigo-200 -mt-1">now playing</div>
                 </div>
                 <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-slate-900 px-3 py-1 rounded-full text-sm font-black">
@@ -470,7 +507,7 @@ export function GamePlay({
           </div>
 
           {/* Room code - right aligned, no tilt for balance */}
-          <div className="flex items-center gap-3 bg-slate-800/70 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/30 shadow-lg">
+          <div className="flex items-center gap-3 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg">
             <div className="relative">
               <Zap className="h-5 w-5 text-yellow-400" />
               <div className="absolute -inset-1 bg-yellow-400/20 rounded-full blur animate-pulse" />
@@ -571,10 +608,10 @@ export function GamePlay({
         </div>
       )}
 
-      {/* Other players - more scattered, natural layout */}
+      {/* Other players - better contrast */}
       <div className="absolute bottom-4 left-0 right-0 z-10 px-6">
         <div className="flex justify-center items-end gap-6 flex-wrap">
-          {players.map((player, index) => {
+          {activePlayers.map((player, index) => {
             if (player.id === currentPlayer?.id) return null;
             
             const rotations = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'];
@@ -587,7 +624,7 @@ export function GamePlay({
                 onMouseEnter={() => isHost && setLocalGameState(prev => ({ ...prev, showKickOptions: null }))}
               >
                 <div 
-                  className="flex items-center justify-center gap-3 bg-slate-800/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-600/30 mb-3 cursor-pointer shadow-lg transform transition-all hover:bg-slate-700/60"
+                  className="flex items-center justify-center gap-3 bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-600/50 mb-3 cursor-pointer shadow-lg transform transition-all hover:bg-slate-700/80"
                   onClick={() => toggleKickOptions(player.id)}
                 >
                   <div className="relative">
