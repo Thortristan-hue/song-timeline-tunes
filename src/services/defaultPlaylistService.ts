@@ -37,13 +37,15 @@ class DefaultPlaylistService {
 
   private isValidSong(song: Song): boolean {
     // Check for valid release year - must be a valid number
-    const hasValidReleaseYear = song.release_year && 
-                               song.release_year !== 'undefined' && 
-                               song.release_year !== 'null' && 
-                               song.release_year.trim() !== '' &&
-                               !isNaN(parseInt(song.release_year)) &&
-                               parseInt(song.release_year) > 1900 && 
-                               parseInt(song.release_year) <= new Date().getFullYear() + 1;
+    const releaseYearStr = song.release_year?.toString().trim();
+    const hasValidReleaseYear = releaseYearStr && 
+                               releaseYearStr !== 'undefined' && 
+                               releaseYearStr !== 'null' && 
+                               releaseYearStr !== '' &&
+                               !isNaN(Number(releaseYearStr)) &&
+                               Number(releaseYearStr) > 1900 && 
+                               Number(releaseYearStr) <= new Date().getFullYear() + 1 &&
+                               isFinite(Number(releaseYearStr));
     
     const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
     const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
@@ -58,8 +60,8 @@ class DefaultPlaylistService {
         hasValidReleaseYear,
         hasTitle,
         hasArtist,
-        parsedYear: parseInt(song.release_year || ''),
-        yearValid: !isNaN(parseInt(song.release_year || ''))
+        parsedYear: Number(releaseYearStr),
+        yearValid: !isNaN(Number(releaseYearStr)) && isFinite(Number(releaseYearStr))
       });
     }
     
@@ -68,14 +70,23 @@ class DefaultPlaylistService {
 
   // Enhanced method to filter and validate an entire playlist
   filterValidSongs(songs: Song[]): Song[] {
-    console.log(`Filtering ${songs.length} songs for valid data...`);
+    console.log(`=== FILTERING PLAYLIST ===`);
+    console.log(`Input: ${songs.length} songs to filter`);
     
-    const validSongs = songs.filter(song => this.isValidSong(song));
+    const validSongs = songs.filter((song, index) => {
+      const isValid = this.isValidSong(song);
+      console.log(`Song ${index + 1}: "${song.deezer_title}" by ${song.deezer_artist} (${song.release_year}) -> ${isValid ? 'VALID' : 'INVALID'}`);
+      return isValid;
+    });
     
-    console.log(`Filtered result: ${validSongs.length} valid songs out of ${songs.length}`);
+    console.log(`=== FILTERING RESULT ===`);
+    console.log(`Output: ${validSongs.length} valid songs out of ${songs.length}`);
+    console.log('Valid songs list:', validSongs.map(s => `"${s.deezer_title}" (${s.release_year})`));
     
     if (validSongs.length === 0) {
-      console.error('No valid songs found after filtering!');
+      console.error('❌ NO VALID SONGS FOUND AFTER FILTERING!');
+    } else {
+      console.log(`✅ Found ${validSongs.length} valid songs for gameplay`);
     }
     
     return validSongs;
@@ -88,21 +99,25 @@ class DefaultPlaylistService {
   // Enhanced method to get a random valid song with better error handling
   getRandomValidSong(availableSongs?: Song[]): Song | null {
     const songsToCheck = availableSongs || this.basePlaylist;
+    console.log(`=== GETTING RANDOM VALID SONG ===`);
+    console.log(`Input songs to check: ${songsToCheck.length}`);
+    
     const validSongs = this.filterValidSongs(songsToCheck);
     
     if (validSongs.length === 0) {
-      console.error('No valid songs available in the provided playlist');
+      console.error('❌ NO VALID SONGS AVAILABLE in the provided playlist');
       return null;
     }
     
     const randomIndex = Math.floor(Math.random() * validSongs.length);
     const selectedSong = validSongs[randomIndex];
     
-    console.log('Selected valid song for mystery card:', {
+    console.log('✅ Selected valid song for mystery card:', {
       title: selectedSong.deezer_title,
       artist: selectedSong.deezer_artist,
       release_year: selectedSong.release_year,
       id: selectedSong.id,
+      selectedIndex: randomIndex,
       totalValidSongs: validSongs.length
     });
     
