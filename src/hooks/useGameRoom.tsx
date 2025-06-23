@@ -34,7 +34,6 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
     
     try {
-      // Create room without adding host as a player
       const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName || 'Host');
       setRoom(newRoom);
       
@@ -63,7 +62,6 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
     
     try {
-      // First check if there's an existing player with this name in the room
       const roomData = await gameService.getRoomByCode(lobbyCode);
       if (!roomData) {
         throw new Error('Room not found');
@@ -75,14 +73,12 @@ export function useGameRoom(): UseGameRoomReturn {
       let player: DatabasePlayer;
 
       if (existingPlayer) {
-        // Reconnect existing player
         player = await gameService.reconnectPlayer(existingPlayer.id);
         toast({
           title: "Reconnected!",
           description: `Welcome back, ${playerName}!`,
         });
       } else {
-        // Create new player
         player = await gameService.joinRoom(lobbyCode, playerName);
         toast({
           title: "Joined room!",
@@ -175,19 +171,14 @@ export function useGameRoom(): UseGameRoomReturn {
   useEffect(() => {
     if (!room) return;
 
-    console.log('Setting up subscriptions for room:', room.id);
-
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
-        console.log('Room updated:', updatedRoom);
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
-        console.log('Players updated:', dbPlayers);
         const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
         setPlayers(convertedPlayers);
         
-        // Update current player if it exists in the list
         if (currentPlayer) {
           const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
           if (updatedCurrentPlayer) {
@@ -197,14 +188,12 @@ export function useGameRoom(): UseGameRoomReturn {
       }
     });
 
-    // Initial load of players
     gameService.getPlayersInRoom(room.id).then(dbPlayers => {
       const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
       setPlayers(convertedPlayers);
     });
 
     return () => {
-      console.log('Cleaning up subscriptions');
       channel.unsubscribe();
     };
   }, [room?.id, currentPlayer?.id]);
