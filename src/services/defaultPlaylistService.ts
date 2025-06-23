@@ -36,41 +36,62 @@ class DefaultPlaylistService {
   }
 
   private isValidSong(song: Song): boolean {
-    const hasReleaseYear = song.release_year && 
-                          song.release_year !== 'undefined' && 
-                          song.release_year !== 'null' && 
-                          song.release_year.trim() !== '' &&
-                          !isNaN(parseInt(song.release_year));
+    // Check for valid release year - must be a valid number
+    const hasValidReleaseYear = song.release_year && 
+                               song.release_year !== 'undefined' && 
+                               song.release_year !== 'null' && 
+                               song.release_year.trim() !== '' &&
+                               !isNaN(parseInt(song.release_year)) &&
+                               parseInt(song.release_year) > 1900 && 
+                               parseInt(song.release_year) <= new Date().getFullYear() + 1;
     
     const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
     const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
     
-    const isValid = hasReleaseYear && hasTitle && hasArtist;
+    const isValid = hasValidReleaseYear && hasTitle && hasArtist;
     
     if (!isValid) {
       console.warn('Invalid song filtered out:', {
         title: song.deezer_title,
         artist: song.deezer_artist,
         release_year: song.release_year,
-        hasReleaseYear,
+        hasValidReleaseYear,
         hasTitle,
-        hasArtist
+        hasArtist,
+        parsedYear: parseInt(song.release_year || ''),
+        yearValid: !isNaN(parseInt(song.release_year || ''))
       });
     }
     
     return isValid;
   }
 
+  // Enhanced method to filter and validate an entire playlist
+  filterValidSongs(songs: Song[]): Song[] {
+    console.log(`Filtering ${songs.length} songs for valid data...`);
+    
+    const validSongs = songs.filter(song => this.isValidSong(song));
+    
+    console.log(`Filtered result: ${validSongs.length} valid songs out of ${songs.length}`);
+    
+    if (validSongs.length === 0) {
+      console.error('No valid songs found after filtering!');
+    }
+    
+    return validSongs;
+  }
+
   async loadDefaultPlaylist(): Promise<Song[]> {
     return [...this.basePlaylist];
   }
 
-  // Get a random valid song from the playlist
-  getRandomValidSong(): Song | null {
-    const validSongs = this.basePlaylist.filter(song => this.isValidSong(song));
+  // Enhanced method to get a random valid song with better error handling
+  getRandomValidSong(availableSongs?: Song[]): Song | null {
+    const songsToCheck = availableSongs || this.basePlaylist;
+    const validSongs = this.filterValidSongs(songsToCheck);
     
     if (validSongs.length === 0) {
-      console.error('No valid songs available in playlist');
+      console.error('No valid songs available in the provided playlist');
       return null;
     }
     
@@ -81,13 +102,14 @@ class DefaultPlaylistService {
       title: selectedSong.deezer_title,
       artist: selectedSong.deezer_artist,
       release_year: selectedSong.release_year,
-      id: selectedSong.id
+      id: selectedSong.id,
+      totalValidSongs: validSongs.length
     });
     
     return selectedSong;
   }
 
-  // New method to fetch preview URL for a specific song with enhanced error handling
+  // Enhanced method to fetch preview URL for a specific song with enhanced error handling
   async fetchPreviewUrl(song: Song): Promise<Song> {
     console.log(`Fetching preview URL for: ${song.deezer_artist} - ${song.deezer_title}`);
     
@@ -138,6 +160,33 @@ class DefaultPlaylistService {
       // The game can continue without audio preview
       return song;
     }
+  }
+
+  // New method to validate if a playlist has enough valid songs for gameplay
+  validatePlaylistForGameplay(songs: Song[], minRequired: number = 10): { isValid: boolean; validCount: number; errorMessage?: string } {
+    const validSongs = this.filterValidSongs(songs);
+    const validCount = validSongs.length;
+    
+    if (validCount === 0) {
+      return {
+        isValid: false,
+        validCount: 0,
+        errorMessage: "No valid songs available. Please add more songs or check your playlist source."
+      };
+    }
+    
+    if (validCount < minRequired) {
+      return {
+        isValid: false,
+        validCount,
+        errorMessage: `Only ${validCount} valid songs found. Need at least ${minRequired} songs for optimal gameplay.`
+      };
+    }
+    
+    return {
+      isValid: true,
+      validCount
+    };
   }
 }
 

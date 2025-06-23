@@ -98,56 +98,55 @@ export default function Index() {
   }, [gameState.currentSong]);
 
   // Enhanced function to get a random song with proper validation and retry logic
-  const getRandomSongForTurn = async (maxRetries: number = 3): Promise<Song | null> => {
+  const getRandomSongForTurn = async (maxRetries: number = 10): Promise<Song | null> => {
     if (!room?.songs || room.songs.length === 0) {
       console.error('No songs available in room');
+      setSongLoadingError('No songs available. Please add songs to continue.');
       return null;
     }
     
-    console.log('=== MYSTERY SONG DEBUG ===');
+    console.log('=== MYSTERY SONG SELECTION DEBUG ===');
+    console.log(`Starting song selection with ${room.songs.length} songs in room`);
+    
+    // First, validate the entire playlist
+    const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+    const validationResult = defaultPlaylistService.validatePlaylistForGameplay(room.songs, 1);
+    
+    if (!validationResult.isValid) {
+      console.error('Playlist validation failed:', validationResult.errorMessage);
+      setSongLoadingError(validationResult.errorMessage || 'No valid songs available');
+      return null;
+    }
+    
+    console.log(`Playlist validation passed: ${validationResult.validCount} valid songs available`);
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         console.log(`Song selection attempt ${attempt + 1}/${maxRetries}`);
         
-        // Get a random song and validate it has required data
-        const validSongs = room.songs.filter(song => {
-          const hasReleaseYear = song.release_year && 
-                                song.release_year !== 'undefined' && 
-                                song.release_year !== 'null' && 
-                                song.release_year.trim() !== '' &&
-                                !isNaN(parseInt(song.release_year));
-          
-          const hasTitle = song.deezer_title && song.deezer_title.trim() !== '';
-          const hasArtist = song.deezer_artist && song.deezer_artist.trim() !== '';
-          
-          return hasReleaseYear && hasTitle && hasArtist;
-        });
+        // Get a random valid song from the room's songs
+        const selectedSong = defaultPlaylistService.getRandomValidSong(room.songs);
         
-        if (validSongs.length === 0) {
-          throw new Error('No valid songs with release dates found in playlist');
+        if (!selectedSong) {
+          throw new Error('No valid songs found in room playlist');
         }
         
-        const randomIndex = Math.floor(Math.random() * validSongs.length);
-        const baseSong = validSongs[randomIndex];
-        
         console.log('Selected song for turn:', {
-          title: baseSong.deezer_title,
-          artist: baseSong.deezer_artist,
-          release_year: baseSong.release_year,
-          id: baseSong.id,
+          title: selectedSong.deezer_title,
+          artist: selectedSong.deezer_artist,
+          release_year: selectedSong.release_year,
+          id: selectedSong.id,
           attempt: attempt + 1
         });
         
         // Fetch preview URL if not already available
-        if (!baseSong.preview_url) {
+        if (!selectedSong.preview_url) {
           console.log('Fetching preview URL for mystery song...');
           setSongLoadingError(null);
           setRetryingSong(true);
           
           try {
-            const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-            const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(baseSong);
+            const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
             
             console.log('Mystery song with preview URL:', {
               title: songWithPreview.deezer_title,
@@ -156,7 +155,7 @@ export default function Index() {
               preview_url: songWithPreview.preview_url,
               id: songWithPreview.id
             });
-            console.log('=== END MYSTERY SONG DEBUG ===');
+            console.log('=== END MYSTERY SONG SELECTION DEBUG ===');
             
             setRetryingSong(false);
             return songWithPreview;
@@ -165,9 +164,9 @@ export default function Index() {
             
             if (attempt === maxRetries - 1) {
               // Last attempt - return song without preview if validation passes
-              console.log('Returning song without preview URL after all attempts failed');
+              console.log('Returning song without preview URL after all preview fetch attempts failed');
               setRetryingSong(false);
-              return baseSong;
+              return selectedSong;
             }
             
             // Continue to next attempt
@@ -175,9 +174,9 @@ export default function Index() {
           }
         }
         
-        console.log('Using existing preview URL:', baseSong.preview_url);
-        console.log('=== END MYSTERY SONG DEBUG ===');
-        return baseSong;
+        console.log('Using existing preview URL:', selectedSong.preview_url);
+        console.log('=== END MYSTERY SONG SELECTION DEBUG ===');
+        return selectedSong;
         
       } catch (error) {
         console.error(`Song selection attempt ${attempt + 1} failed:`, error);
@@ -193,7 +192,7 @@ export default function Index() {
       }
     }
     
-    console.log('=== END MYSTERY SONG DEBUG ===');
+    console.log('=== END MYSTERY SONG SELECTION DEBUG ===');
     return null;
   };
 
@@ -337,6 +336,22 @@ export default function Index() {
       });
       return;
     }
+
+    // Validate playlist before starting game
+    const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+    const validationResult = defaultPlaylistService.validatePlaylistForGameplay(customSongs, 5);
+    
+    if (!validationResult.isValid) {
+      soundEffects.playCardError();
+      toast({
+        title: "Cannot start game",
+        description: validationResult.errorMessage,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log(`Starting game with ${validationResult.validCount} valid songs`);
     
     await updateRoomSongs(customSongs);
     
@@ -367,7 +382,7 @@ export default function Index() {
 
     toast({
       title: "🎵 Game Started!",
-      description: "Each player has received a starting card. Let the timeline battle begin!",
+      description: `Each player has received a starting card. Playing with ${validationResult.validCount} valid songs!`,
     });
   };
 
