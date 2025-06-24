@@ -7,7 +7,7 @@ import { Song } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { songService } from '@/services/songService';
 import { cn } from '@/lib/utils';
-import { useSoundEffects } from '@/lib/SoundEffects';
+import { soundEffects } from '@/lib/SoundEffects';
 
 interface PlaylistLoaderProps {
   onPlaylistLoaded: (success: boolean, count?: number) => void;
@@ -16,48 +16,41 @@ interface PlaylistLoaderProps {
   minSongsRequired?: number;
 }
 
-type LoaderState = {
-  playlistUrl: string;
+type LoadState = {
   loading: boolean;
   progress: number;
   status: string;
-  error: string;
+  error: string | null;
   success: boolean;
-  audioInitialized: boolean;
 };
 
-export function PlaylistLoader({ 
-  onPlaylistLoaded, 
+export function PlaylistLoader({
+  onPlaylistLoaded,
   setCustomSongs,
   isDarkMode,
   minSongsRequired = 10
 }: PlaylistLoaderProps) {
-  const soundEffects = useSoundEffects();
-  const [state, setState] = useState<LoaderState>({
-    playlistUrl: '',
+  const [playlistUrl, setPlaylistUrl] = useState('');
+  const [state, setState] = useState<LoadState>({
     loading: false,
     progress: 0,
     status: '',
-    error: '',
-    success: false,
-    audioInitialized: false
+    error: null,
+    success: false
   });
 
-  // Initialize audio context on first interaction
+  // Initialize audio on first interaction
   useEffect(() => {
-    const initAudio = () => {
-      if (!state.audioInitialized) {
-        soundEffects.init();
-        setState(prev => ({ ...prev, audioInitialized: true }));
-        document.removeEventListener('click', initAudio);
-      }
+    const handleFirstInteraction = () => {
+      soundEffects.init();
+      document.removeEventListener('click', handleFirstInteraction);
     };
 
-    document.addEventListener('click', initAudio);
-    return () => document.removeEventListener('click', initAudio);
-  }, [soundEffects, state.audioInitialized]);
+    document.addEventListener('click', handleFirstInteraction);
+    return () => document.removeEventListener('click', handleFirstInteraction);
+  }, []);
 
-  const updateState = (updates: Partial<LoaderState>) => {
+  const updateState = (updates: Partial<LoadState>) => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
@@ -65,22 +58,15 @@ export function PlaylistLoader({
     updateState({
       progress: 0,
       status: '',
-      error: '',
+      error: null,
       success: false
     });
   };
 
-  const updateProgress = (value: number, message: string) => {
-    updateState({
-      progress: value,
-      status: message
-    });
-  };
-
-  const validatePlaylist = (songs: Song[]): { valid: boolean; count: number } => {
+  const validatePlaylist = (songs: Song[]): { isValid: boolean; count: number } => {
     const validSongs = defaultPlaylistService.filterValidSongs(songs);
     return {
-      valid: validSongs.length >= minSongsRequired,
+      isValid: validSongs.length >= minSongsRequired,
       count: validSongs.length
     };
   };
@@ -90,26 +76,30 @@ export function PlaylistLoader({
     updateState({ loading: true });
     
     try {
-      updateProgress(20, 'Loading default playlist...');
+      updateState({ progress: 20, status: 'Loading default playlist...' });
       await soundEffects.playSound('button-click');
-      
-      const songs = await defaultPlaylistService.loadDefaultPlaylist();
-      updateProgress(60, 'Validating songs...');
 
-      const { valid, count } = validatePlaylist(songs);
-      if (!valid) {
+      const songs = await defaultPlaylistService.loadDefaultPlaylist();
+      updateState({ progress: 60, status: 'Validating songs...' });
+
+      const { isValid, count } = validatePlaylist(songs);
+      if (!isValid) {
         throw new Error(`Only ${count} valid songs found (minimum ${minSongsRequired} required)`);
       }
 
       setCustomSongs(songs);
-      updateProgress(100, 'Default playlist loaded!');
-      updateState({ success: true });
+      updateState({ 
+        progress: 100,
+        status: 'Default playlist loaded successfully!',
+        success: true
+      });
       await soundEffects.playSound('success');
       onPlaylistLoaded(true, count);
     } catch (error) {
       console.error('Default playlist error:', error);
       updateState({
-        error: error instanceof Error ? error.message : 'Failed to load default playlist'
+        error: error instanceof Error ? error.message : 'Failed to load default playlist',
+        progress: 0
       });
       await soundEffects.playSound('error');
       onPlaylistLoaded(false);
@@ -120,11 +110,11 @@ export function PlaylistLoader({
 
   const attemptDeezerLoad = async (url: string): Promise<Song[]> => {
     try {
-      updateProgress(30, 'Connecting to Deezer...');
+      updateState({ progress: 30, status: 'Connecting to Deezer...' });
       const songs = await songService.loadPlaylist(url);
       
       if (songs.length > 0) {
-        updateProgress(60, `Found ${songs.length} songs`);
+        updateState({ progress: 60, status: `Found ${songs.length} songs` });
         return songs;
       }
       
@@ -139,7 +129,7 @@ export function PlaylistLoader({
     e.preventDefault();
     resetState();
     
-    if (!state.playlistUrl.trim()) {
+    if (!playlistUrl.trim()) {
       updateState({ error: 'Please enter a playlist URL' });
       return;
     }
@@ -149,23 +139,26 @@ export function PlaylistLoader({
 
     try {
       // Attempt 1: Try direct Deezer load
-      let songs = await attemptDeezerLoad(state.playlistUrl.trim());
+      let songs = await attemptDeezerLoad(playlistUrl.trim());
       
       // Attempt 2: Fallback to default if Deezer fails
       if (songs.length === 0) {
-        updateProgress(70, 'Loading default playlist as fallback...');
+        updateState({ progress: 70, status: 'Loading default playlist as fallback...' });
         songs = await defaultPlaylistService.loadDefaultPlaylist();
       }
 
-      updateProgress(80, 'Validating songs...');
-      const { valid, count } = validatePlaylist(songs);
-      if (!valid) {
+      updateState({ progress: 80, status: 'Validating songs...' });
+      const { isValid, count } = validatePlaylist(songs);
+      if (!isValid) {
         throw new Error(`Only ${count} valid songs found (minimum ${minSongsRequired} required)`);
       }
 
       setCustomSongs(songs);
-      updateProgress(100, 'Playlist loaded successfully!');
-      updateState({ success: true });
+      updateState({ 
+        progress: 100,
+        status: 'Playlist loaded successfully!',
+        success: true
+      });
       await soundEffects.playSound('success');
       onPlaylistLoaded(true, count);
     } catch (error) {
@@ -249,8 +242,8 @@ export function PlaylistLoader({
           <Input
             type="text"
             placeholder="https://deezer.com/playlist/123456789 or just 123456789"
-            value={state.playlistUrl}
-            onChange={(e) => updateState({ playlistUrl: e.target.value })}
+            value={playlistUrl}
+            onChange={(e) => setPlaylistUrl(e.target.value)}
             disabled={state.loading}
             className={cn(
               "placeholder-gray-400",
@@ -294,7 +287,7 @@ export function PlaylistLoader({
 
         <Button
           type="submit"
-          disabled={state.loading || !state.playlistUrl.trim()}
+          disabled={state.loading || !playlistUrl.trim()}
           className={cn(
             "w-full transition-all",
             state.loading ? "bg-gray-500" : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
