@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -7,6 +6,8 @@ import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { Button } from '@/components/ui/button';
 import { Player, Song, GameState, GamePhase } from '@/types/game';
 import { gameService } from '@/services/gameService';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { AudioPlayer } from '@/components/AudioPlayer';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
@@ -28,6 +29,7 @@ export default function Index() {
   const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
   const [gameError, setGameError] = useState<string | null>(null);
   const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -79,7 +81,7 @@ export default function Index() {
     }
   });
 
-  // Audio progress tracking with error handling
+  // Audio progress tracking with enhanced error handling
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
@@ -92,31 +94,46 @@ export default function Index() {
       const handleLoadedMetadata = () => {
         setCurrentSongDuration(audio.duration || 30);
         setAudioPlaybackError(null);
+        console.log('🎵 Audio metadata loaded successfully');
       };
 
       const handleAudioError = (e: Event) => {
-        console.error('Audio playback error:', e);
-        setAudioPlaybackError('Unable to play this song preview. Click to try again or skip to next song.');
+        console.error('🎵 Audio playback error:', e);
+        const errorMsg = 'Unable to play this song preview. This may be due to network issues or browser restrictions.';
+        setAudioPlaybackError(errorMsg);
         setGameState(prev => ({ ...prev, isPlaying: false }));
+        
+        toast({
+          title: "Audio Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
       };
 
       const handleAudioEnded = () => {
         setGameState(prev => ({ ...prev, isPlaying: false }));
+      };
+
+      const handleCanPlay = () => {
+        console.log('🎵 Audio ready to play');
+        setAudioPlaybackError(null);
       };
       
       audio.addEventListener('timeupdate', updateProgress);
       audio.addEventListener('loadedmetadata', handleLoadedMetadata);
       audio.addEventListener('error', handleAudioError);
       audio.addEventListener('ended', handleAudioEnded);
+      audio.addEventListener('canplay', handleCanPlay);
       
       return () => {
         audio.removeEventListener('timeupdate', updateProgress);
         audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
         audio.removeEventListener('error', handleAudioError);
         audio.removeEventListener('ended', handleAudioEnded);
+        audio.removeEventListener('canplay', handleCanPlay);
       };
     }
-  }, [gameState.currentSong]);
+  }, [gameState.currentSong, toast]);
 
   // Filter songs only when customSongs changes
   useEffect(() => {
@@ -137,13 +154,20 @@ export default function Index() {
         }
       } catch (error) {
         console.error('❌ Song filtering failed:', error);
-        setGameError('Failed to process songs. Please try a different playlist.');
+        const errorMsg = 'Failed to process songs. Please try a different playlist or refresh the page.';
+        setGameError(errorMsg);
         setValidGameSongs([]);
+        
+        toast({
+          title: "Song Processing Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
       }
     };
 
     filterSongsOnce();
-  }, [customSongs, room?.id, isHost, updateRoomSongs]);
+  }, [customSongs, room?.id, isHost, updateRoomSongs, toast]);
 
   // Get the current valid song list
   const getValidGameSongs = (): Song[] => {
@@ -156,14 +180,21 @@ export default function Index() {
     return [];
   };
 
-  // Pick and prepare a song for the turn with better error handling
+  // Pick and prepare a song for the turn with comprehensive error handling
   const pickAndPrepareSong = async (): Promise<Song | null> => {
     const songs = getValidGameSongs();
     
     if (songs.length === 0) {
       console.error('❌ No songs available for turn');
-      setSongLoadingError('No valid songs available. Please load a playlist first.');
-      setGameError('No songs loaded. Please go back and load a playlist.');
+      const errorMsg = 'No valid songs available. Please load a playlist first.';
+      setSongLoadingError(errorMsg);
+      setGameError(errorMsg);
+      
+      toast({
+        title: "No Songs Available",
+        description: errorMsg,
+        variant: "destructive",
+      });
       return null;
     }
     
@@ -181,6 +212,13 @@ export default function Index() {
           console.log('🔄 Fetching preview URL for song...');
           const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
           const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
+          
+          if (!songWithPreview.preview_url) {
+            console.warn('⚠️ No preview URL available for this song, trying another...');
+            attempts++;
+            continue;
+          }
+          
           console.log('✅ SONG READY WITH PREVIEW');
           setSongLoadingError(null);
           setGameError(null);
@@ -196,8 +234,15 @@ export default function Index() {
         attempts++;
         
         if (attempts >= maxAttempts) {
-          setSongLoadingError('Failed to load song preview. Please try again or use a different playlist.');
-          setGameError('Unable to load songs. There may be an issue with the playlist or network connection.');
+          const errorMsg = 'Failed to load song preview after multiple attempts. This may be due to network issues.';
+          setSongLoadingError(errorMsg);
+          setGameError(errorMsg);
+          
+          toast({
+            title: "Song Loading Failed",
+            description: errorMsg,
+            variant: "destructive",
+          });
           return null;
         }
       }
@@ -206,15 +251,22 @@ export default function Index() {
     return null;
   };
 
-  // Start a new turn with proper error handling
+  // Start a new turn with enhanced error handling and recovery
   const startNewTurn = async (turnIndex: number) => {
     console.log('🚀 STARTING TURN', turnIndex, 'for player:', players[turnIndex % players.length]?.name);
     
     const songs = getValidGameSongs();
     if (songs.length === 0) {
       console.error('❌ Cannot start turn - no valid songs available');
-      setGameError('No songs available for gameplay. Please load a playlist first.');
-      setSongLoadingError('No valid songs available for gameplay');
+      const errorMsg = 'No songs available for gameplay. Please load a playlist first.';
+      setGameError(errorMsg);
+      setSongLoadingError(errorMsg);
+      
+      toast({
+        title: "Cannot Start Turn",
+        description: errorMsg,
+        variant: "destructive",
+      });
       return;
     }
     
@@ -242,24 +294,40 @@ export default function Index() {
           currentSong: selectedSong
         }));
 
-        // Update database if host
+        // Update database if host with better error handling
         if (room?.id && isHost) {
-          await gameService.updateGameState(room.id, {
-            currentTurn: turnIndex,
-            currentSong: selectedSong
-          });
+          try {
+            await gameService.updateGameState(room.id, {
+              currentTurn: turnIndex,
+              currentSong: selectedSong
+            });
+            console.log('✅ Game state updated in database');
+          } catch (dbError) {
+            console.error('❌ Database update failed:', dbError);
+            // Don't fail the turn start, just log the error
+            toast({
+              title: "Database Warning",
+              description: "Game continues locally. Some features may be limited.",
+            });
+          }
         }
         
         console.log('✅ TURN READY - Mystery card should now be visible');
+        setRetryCount(0); // Reset retry count on success
       } else {
-        console.error('❌ Failed to prepare song for turn');
-        setSongLoadingError('Failed to load a song for this turn. Please try again.');
-        setGameError('Unable to start the game. Please check your playlist or try again.');
+        throw new Error('Failed to prepare song for turn');
       }
     } catch (error) {
       console.error('❌ Turn start error:', error);
-      setSongLoadingError('Error starting the turn. Please try again.');
-      setGameError('Game error occurred. Please refresh and try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Error starting the turn';
+      setSongLoadingError(errorMsg);
+      setGameError(errorMsg);
+      
+      toast({
+        title: "Turn Start Failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
     } finally {
       setIsLoadingSong(false);
     }
@@ -267,11 +335,21 @@ export default function Index() {
 
   // Navigation handlers with sound effects
   const handleHostGame = async () => {
-    soundEffects.playPlayerAction();
-    
-    const roomId = await createRoom();
-    if (roomId) {
-      setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+    try {
+      soundEffects.playPlayerAction();
+      
+      const roomId = await createRoom();
+      if (roomId) {
+        setGameState(prev => ({ ...prev, phase: 'hostLobby' }));
+        setGameError(null); // Clear any previous errors
+      }
+    } catch (error) {
+      console.error('❌ Failed to create room:', error);
+      toast({
+        title: "Room Creation Failed",
+        description: "Unable to create game room. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -303,21 +381,44 @@ export default function Index() {
       mysteryCardRevealed: false,
     }));
     setValidGameSongs([]);
+    setGameError(null);
+    setSongLoadingError(null);
+    setAudioPlaybackError(null);
+    setRetryCount(0);
   };
 
   const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
-    const success = await joinRoom(lobbyCode, playerName);
-    if (success) {
-      soundEffects.playSound('player-join');
-      setGameState(prev => ({ ...prev, phase: 'mobileLobby' }));
+    try {
+      const success = await joinRoom(lobbyCode, playerName);
+      if (success) {
+        soundEffects.playSound('player-join');
+        setGameState(prev => ({ ...prev, phase: 'mobileLobby' }));
+        setGameError(null); // Clear any previous errors
+      }
+    } catch (error) {
+      console.error('❌ Failed to join lobby:', error);
+      toast({
+        title: "Join Failed",
+        description: "Unable to join game lobby. Please check the code and try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleUpdatePlayer = async (name: string, color: string) => {
-    await updatePlayer(name, color);
+    try {
+      await updatePlayer(name, color);
+    } catch (error) {
+      console.error('❌ Failed to update player:', error);
+      toast({
+        title: "Update Failed",
+        description: "Unable to update player information.",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Game control handlers with sound effects
+  // Game control handlers with enhanced error handling
   const handleStartGame = async () => {
     if (players.length < 2) {
       soundEffects.playCardError();
@@ -351,36 +452,46 @@ export default function Index() {
       return;
     }
 
-    if (room?.id && (!room.songs || room.songs.length !== songs.length)) {
-      await updateRoomSongs(songs);
-    }
-    
-    if (room?.id) {
-      await gameService.assignStartingCards(room.id, songs);
-    }
-    
-    await startGame();
-    
-    soundEffects.playSound('game-start');
-    
-    setGameState(prev => ({
-      ...prev,
-      phase: 'playing',
-      currentTurn: 0,
-      timeLeft: 30,
-      isPlaying: false,
-      cardPlacementPending: false,
-      cardPlacementConfirmed: false,
-      cardPlacementCorrect: null,
-      mysteryCardRevealed: false
-    }));
+    try {
+      if (room?.id && (!room.songs || room.songs.length !== songs.length)) {
+        await updateRoomSongs(songs);
+      }
+      
+      if (room?.id) {
+        await gameService.assignStartingCards(room.id, songs);
+      }
+      
+      await startGame();
+      
+      soundEffects.playSound('game-start');
+      
+      setGameState(prev => ({
+        ...prev,
+        phase: 'playing',
+        currentTurn: 0,
+        timeLeft: 30,
+        isPlaying: false,
+        cardPlacementPending: false,
+        cardPlacementConfirmed: false,
+        cardPlacementCorrect: null,
+        mysteryCardRevealed: false
+      }));
 
-    await startNewTurn(0);
+      await startNewTurn(0);
 
-    toast({
-      title: "🎵 Game Started!",
-      description: `Playing with ${songs.length} valid songs!`,
-    });
+      toast({
+        title: "🎵 Game Started!",
+        description: `Playing with ${songs.length} valid songs!`,
+      });
+    } catch (error) {
+      console.error('❌ Failed to start game:', error);
+      soundEffects.playCardError();
+      toast({
+        title: "Game Start Failed",
+        description: "Unable to start the game. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEndGame = (winner: Player) => {
@@ -454,7 +565,15 @@ export default function Index() {
       }
     } catch (error) {
       console.error('❌ Card placement error:', error);
-      setSongLoadingError('Failed to place card');
+      const errorMsg = 'Failed to place card. Please try again.';
+      setSongLoadingError(errorMsg);
+      
+      toast({
+        title: "Card Placement Failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      
       return { success: false };
     }
   };
@@ -471,7 +590,14 @@ export default function Index() {
 
   const handlePlayPause = async () => {
     if (!audioRef.current || !gameState.currentSong?.preview_url) {
-      setAudioPlaybackError('No audio available for this song');
+      const errorMsg = 'No audio available for this song';
+      setAudioPlaybackError(errorMsg);
+      
+      toast({
+        title: "Audio Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -493,9 +619,16 @@ export default function Index() {
         }
       }
     } catch (error) {
-      console.error('Audio playback failed:', error);
-      setAudioPlaybackError('Unable to play audio. Click to try again or check your browser settings.');
+      console.error('🎵 Audio playback failed:', error);
+      const errorMsg = 'Unable to play audio. This may be due to browser restrictions or network issues.';
+      setAudioPlaybackError(errorMsg);
       setGameState(prev => ({ ...prev, isPlaying: false }));
+      
+      toast({
+        title: "Playback Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
     }
   };
 
@@ -508,10 +641,32 @@ export default function Index() {
     if (isHost && gameState.phase === 'playing') {
       const nextTurn = (gameState.currentTurn + 1) % players.length;
       await startNewTurn(nextTurn);
+      
+      toast({
+        title: "Song Skipped",
+        description: "Moving to next song...",
+      });
     }
   };
 
-  // Phase rendering with error handling
+  const handleRetryGame = async () => {
+    if (retryCount >= 3) {
+      toast({
+        title: "Too Many Retries",
+        description: "Please refresh the page to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setRetryCount(prev => prev + 1);
+    
+    if (gameState.phase === 'playing' && players.length > 0) {
+      await startNewTurn(gameState.currentTurn);
+    }
+  };
+
+  // Phase rendering with comprehensive error handling
   const renderPhase = () => {
     // Show game error overlay if there's a critical error
     if (gameError && gameState.phase === 'playing') {
@@ -523,16 +678,11 @@ export default function Index() {
             <p className="text-red-200 mb-6">{gameError}</p>
             <div className="space-y-3">
               <Button
-                onClick={() => {
-                  setGameError(null);
-                  setSongLoadingError(null);
-                  if (gameState.phase === 'playing' && players.length > 0) {
-                    startNewTurn(gameState.currentTurn);
-                  }
-                }}
+                onClick={handleRetryGame}
+                disabled={retryCount >= 3}
                 className="w-full bg-red-600 hover:bg-red-700"
               >
-                Try Again
+                Try Again ({retryCount}/3)
               </Button>
               <Button
                 onClick={handleBackToMenu}
@@ -540,6 +690,13 @@ export default function Index() {
                 className="w-full border-red-400 text-red-200 hover:bg-red-800"
               >
                 Back to Menu
+              </Button>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                className="w-full border-red-400 text-red-200 hover:bg-red-800"
+              >
+                Reload Page
               </Button>
             </div>
           </div>
@@ -623,9 +780,7 @@ export default function Index() {
               }}
               songLoadingError={songLoadingError}
               retryingSong={isLoadingSong}
-              onRetrySong={async () => {
-                await startNewTurn(gameState.currentTurn);
-              }}
+              onRetrySong={handleRetryGame}
               audioPlaybackError={audioPlaybackError}
               onRetryAudio={handleRetryAudio}
               onSkipSong={handleSkipSong}
@@ -707,20 +862,16 @@ export default function Index() {
   };
 
   return (
-    <>
+    <ErrorBoundary onReset={handleBackToMenu}>
       {isHost && gameState.phase === 'playing' && gameState.currentSong?.preview_url && (
         <audio
           ref={audioRef}
           src={gameState.currentSong.preview_url}
           crossOrigin="anonymous"
           preload="metadata"
-          onError={(e) => {
-            console.error('Audio element error:', e);
-            setAudioPlaybackError('Audio failed to load. This may be due to browser restrictions or the audio file being unavailable.');
-          }}
         />
       )}
       {renderPhase()}
-    </>
+    </ErrorBoundary>
   );
 }
