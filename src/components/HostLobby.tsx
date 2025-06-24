@@ -157,16 +157,17 @@ export function HostLobby({
                   </div>
                 </div>
                 
-                <PlaylistLoader
-                  onPlaylistLoaded={(success, count) => {
-                    if (success) {
-                      console.log(`Playlist loaded with ${count} songs`);
-                    }
-                  }}
-                  setCustomSongs={setCustomSongs}
-                  isDarkMode={true}
-                  className="mt-4 opacity-50"
-                />
+                <div className="mt-4 opacity-50">
+                  <PlaylistLoader
+                    onPlaylistLoaded={(success, count) => {
+                      if (success) {
+                        console.log(`Playlist loaded with ${count} songs`);
+                      }
+                    }}
+                    setCustomSongs={setCustomSongs}
+                    isDarkMode={true}
+                  />
+                </div>
                 <p className="text-xs text-slate-500 mt-2">
                   Custom playlists coming soon
                 </p>
