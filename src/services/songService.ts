@@ -16,7 +16,12 @@ export const songService = {
         return [];
       }
 
-      return (data?.songs as Song[]) || [];
+      // Properly validate and cast the JSON data
+      if (!data?.songs || !Array.isArray(data.songs)) {
+        return [];
+      }
+
+      return data.songs as Song[];
     } catch (error) {
       console.error("Error fetching songs:", error);
       return [];
