@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { PlayerTimeline } from '@/components/PlayerTimeline';
+import { MysteryCard } from '@/components/MysteryCard';
 import { useToast } from '@/components/ui/use-toast';
 import { Song, Player, GameState } from '@/types/game';
 import { cn } from '@/lib/utils';
