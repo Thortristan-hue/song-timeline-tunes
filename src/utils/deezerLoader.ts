@@ -1,9 +1,7 @@
-
 import { Song } from '@/types/game';
+import { CorsProxyService } from '@/services/corsProxyService';
 
 export class DeezerLoader {
-  private corsProxy = 'https://api.allorigins.win/raw?url=';
-
   // Extract playlist ID from various Deezer URL formats
   extractPlaylistId(url: string): string | null {
     try {
@@ -55,18 +53,13 @@ export class DeezerLoader {
       console.log('Loading Deezer playlist with ID:', playlistId);
 
       const deezerApiUrl = `https://api.deezer.com/playlist/${playlistId}`;
-      const proxiedUrl = this.corsProxy + encodeURIComponent(deezerApiUrl);
-
-      const response = await fetch(proxiedUrl);
       
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Playlist not found. Please check if the playlist is public and the URL is correct.');
-        }
-        throw new Error(`Failed to load playlist: ${response.status}`);
+      // Validate URL is supported by proxy
+      if (!CorsProxyService.isSupportedUrl(deezerApiUrl)) {
+        throw new Error('Deezer API is not supported by the proxy service');
       }
 
-      const playlistData = await response.json();
+      const playlistData = await CorsProxyService.fetchJson<any>(deezerApiUrl);
       
       if (!playlistData.tracks || !playlistData.tracks.data || playlistData.tracks.data.length === 0) {
         throw new Error('No tracks found in this playlist. The playlist might be empty or private.');

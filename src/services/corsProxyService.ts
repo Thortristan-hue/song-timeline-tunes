@@ -1,84 +1,45 @@
 
-// CORS Proxy Service for fetching external resources
-// Uses multiple fallback proxies for reliability
-
-interface ProxyConfig {
-  name: string;
-  baseUrl: string;
-  urlParam: string;
-}
-
-const CORS_PROXIES: ProxyConfig[] = [
-  {
-    name: 'cors-anywhere-heroku',
-    baseUrl: 'https://cors-anywhere.herokuapp.com/',
-    urlParam: ''
-  },
-  {
-    name: 'thingproxy',
-    baseUrl: 'https://thingproxy.freeboard.io/fetch/',
-    urlParam: ''
-  },
-  {
-    name: 'yacdn',
-    baseUrl: 'https://yacdn.org/proxy/',
-    urlParam: ''
-  }
-];
+// CORS Proxy Service using custom Cloudflare Worker proxy
+// Uses the timeliner-proxy for reliable external API access
 
 export class CorsProxyService {
-  private static currentProxyIndex = 0;
+  private static readonly PROXY_BASE_URL = 'https://timeliner-proxy.thortristanjd.workers.dev/';
 
   static async fetchWithProxy(url: string, options: RequestInit = {}): Promise<Response> {
-    const errors: Error[] = [];
-    
-    // Try each proxy in sequence
-    for (let i = 0; i < CORS_PROXIES.length; i++) {
-      const proxyIndex = (this.currentProxyIndex + i) % CORS_PROXIES.length;
-      const proxy = CORS_PROXIES[proxyIndex];
-      
-      try {
-        const proxyUrl = `${proxy.baseUrl}${url}`;
-        console.log(`🔄 Trying CORS proxy: ${proxy.name} for ${url}`);
-        
-        const response = await fetch(proxyUrl, {
-          ...options,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            ...options.headers
-          }
-        });
-
-        if (response.ok) {
-          console.log(`✅ Successfully fetched via ${proxy.name}`);
-          this.currentProxyIndex = proxyIndex; // Remember working proxy
-          return response;
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      } catch (error) {
-        console.warn(`❌ Proxy ${proxy.name} failed:`, error);
-        errors.push(error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-
-    // If all proxies fail, try direct fetch as last resort
     try {
-      console.log('🔄 Trying direct fetch as fallback...');
-      const response = await fetch(url, options);
-      if (response.ok) {
-        console.log('✅ Direct fetch succeeded');
-        return response;
-      }
-      throw new Error(`Direct fetch failed: HTTP ${response.status}`);
-    } catch (error) {
-      errors.push(error instanceof Error ? error : new Error(String(error)));
-    }
+      // Construct proxy URL with the target URL as a parameter
+      const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(url)}`;
+      
+      console.log(`🔄 Fetching via custom proxy: ${url}`);
+      
+      const response = await fetch(proxyUrl, {
+        method: 'GET', // Proxy only supports GET requests
+        headers: {
+          'Accept': 'application/json',
+          ...options.headers
+        }
+      });
 
-    // All methods failed
-    const errorMessage = `All CORS proxies failed. Errors: ${errors.map(e => e.message).join(', ')}`;
-    console.error('❌ Complete fetch failure:', errorMessage);
-    throw new Error(errorMessage);
+      if (!response.ok) {
+        // Try to get error details from proxy response
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If we can't parse error JSON, use the status text
+        }
+        throw new Error(errorMessage);
+      }
+
+      console.log(`✅ Successfully fetched via custom proxy: ${url}`);
+      return response;
+    } catch (error) {
+      console.error(`❌ Proxy fetch failed for ${url}:`, error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
 
   static async fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -89,5 +50,20 @@ export class CorsProxyService {
   static async fetchText(url: string, options: RequestInit = {}): Promise<string> {
     const response = await this.fetchWithProxy(url, options);
     return response.text();
+  }
+
+  // Helper method to check if a URL is supported by the proxy
+  static isSupportedUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      const supportedDomains = [
+        'api.deezer.com',
+        'musicbrainz.org',
+        'api.discogs.com'
+      ];
+      return supportedDomains.some(domain => parsed.hostname.endsWith(domain));
+    } catch {
+      return false;
+    }
   }
 }
