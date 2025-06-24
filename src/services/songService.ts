@@ -35,6 +35,8 @@ export class SongService {
   private static readonly DEEZER_BASE = 'https://api.deezer.com';
   private static readonly MUSICBRAINZ_BASE = 'https://musicbrainz.org';
   private static readonly DISCOGS_BASE = 'https://api.discogs.com';
+  private static readonly API_TIMEOUT = 8000;
+  private static readonly MAX_RETRIES = 3;
 
   private requestQueue: Promise<void> = Promise.resolve();
   private lastRequestTime: number = 0;
@@ -51,45 +53,61 @@ export class SongService {
     this.lastRequestTime = Date.now();
   }
 
-  // Main method to load a playlist
+  // Main method to load a playlist with retry logic
   public async loadPlaylist(playlistUrl: string): Promise<Song[]> {
-    try {
-      const playlistId = this.extractPlaylistId(playlistUrl);
-      const tracks = await this.fetchPlaylistTracks(playlistId);
-      
-      // Process tracks in parallel with concurrency control
-      const songPromises = tracks.map(track => 
-        this.processTrackWithFallback(track)
-      );
-      
-      const songs = await Promise.all(songPromises);
-      return songs.filter(song => song !== null) as Song[];
-    } catch (error) {
-      console.error('Failed to load playlist:', error);
-      throw new Error(`Playlist load failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const playlistId = this.extractPlaylistId(playlistUrl);
+    
+    for (let attempt = 1; attempt <= SongService.MAX_RETRIES; attempt++) {
+      try {
+        const tracks = await this.fetchPlaylistTracksWithRetry(playlistId);
+        const songPromises = tracks.map(track => 
+          this.processTrackWithFallback(track)
+        );
+        
+        const songs = await Promise.all(songPromises);
+        return songs.filter(song => song !== null) as Song[];
+      } catch (error) {
+        if (attempt === SongService.MAX_RETRIES) {
+          console.error(`Failed after ${SongService.MAX_RETRIES} attempts:`, error);
+          throw error;
+        }
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
+
+    return [];
+  }
+
+  private async fetchPlaylistTracksWithRetry(playlistId: string): Promise<DeezerTrack[]> {
+    for (let attempt = 1; attempt <= SongService.MAX_RETRIES; attempt++) {
+      try {
+        return await this.fetchPlaylistTracks(playlistId);
+      } catch (error) {
+        if (attempt === SongService.MAX_RETRIES) {
+          throw error;
+        }
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+    return [];
   }
 
   private async processTrackWithFallback(track: DeezerTrack): Promise<Song | null> {
     try {
-      // Skip if no preview available
       if (!track.preview) {
         console.warn(`Skipping track without preview: ${track.title}`);
         return null;
       }
 
-      // Try to get year from Deezer first
       let year = this.extractYearFromDeezer(track);
       
-      // Fallback to MusicBrainz if year is missing
       if (!year) {
         year = await this.fetchYearFromMusicBrainz(track.artist.name, track.title);
       }
       
-      // Final fallback if still no year
       if (!year) {
         console.warn(`Could not determine year for: ${track.title}`);
-        return null;
+        year = '2000'; // Default fallback
       }
 
       return {
@@ -146,12 +164,10 @@ export class SongService {
       if (data.recordings?.[0]) {
         const recording = data.recordings[0];
         
-        // Try release group first
         if (recording['release-group']?.['first-release-date']) {
           return recording['release-group']['first-release-date'].split('-')[0];
         }
         
-        // Fallback to individual releases
         if (recording.releases?.[0]?.date) {
           return recording.releases[0].date.split('-')[0];
         }
@@ -165,7 +181,6 @@ export class SongService {
   }
 
   private extractPlaylistId(url: string): string {
-    // Handle both full URLs and just IDs
     const match = url.match(/(?:playlist\/)?(\d+)/);
     if (!match?.[1]) {
       throw new Error('Invalid Deezer playlist URL or ID');
@@ -174,12 +189,10 @@ export class SongService {
   }
 
   private extractYearFromDeezer(track: DeezerTrack): string | null {
-    // Try track release date first
     if (track.release_date) {
       return track.release_date.split('-')[0];
     }
     
-    // Fallback to album release date
     if (track.album?.release_date) {
       return track.album.release_date.split('-')[0];
     }
@@ -196,7 +209,7 @@ export class SongService {
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
-  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 8000): Promise<Response> {
+  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeout = SongService.API_TIMEOUT): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
