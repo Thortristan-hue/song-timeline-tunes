@@ -1,287 +1,239 @@
-/**
- * Timeliner - Centralized Sound Effects System
- * Manages all audio effects, background music, and sound interactions
- */
+// src/lib/SoundEffects.ts
+type SoundName = 
+  | 'button-click' 
+  | 'success' 
+  | 'error' 
+  | 'game-start' 
+  | 'card-place' 
+  | 'card-success' 
+  | 'card-error' 
+  | 'game-victory';
 
-export type SoundEffect = 
-  | 'button-click'
-  | 'card-place'
-  | 'card-woosh'
-  | 'correct'
-  | 'incorrect'
-  | 'victory'
-  | 'card-throw'
-  | 'player-join'
-  | 'game-start'
-  | 'turn-transition'
-  | 'timeline-complete';
-
-export interface SoundConfig {
-  volume: number;
-  playbackRate: number;
-  loop: boolean;
-  fadeIn?: number;
-  fadeOut?: number;
-}
-
-export const SOUND_PRESETS = {
-  // Volume presets
-  SILENT: 0 as number,
-  QUIET: 0.2 as number,
-  NORMAL: 0.5 as number,
-  LOUD: 0.8 as number,
-  MAX: 1.0 as number,
-
-  // Playback rate presets
-  SLOW: 0.75 as number,
-  NORMAL_RATE: 1.0 as number,
-  FAST: 1.25 as number,
-  VERY_FAST: 1.5 as number,
-} as const;
-
-export const SOUND_EFFECTS: Record<SoundEffect, Partial<SoundConfig>> = {
-  'button-click': { volume: SOUND_PRESETS.NORMAL, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'card-place': { volume: SOUND_PRESETS.NORMAL, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'card-woosh': { volume: SOUND_PRESETS.QUIET, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'correct': { volume: SOUND_PRESETS.LOUD, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'incorrect': { volume: SOUND_PRESETS.LOUD, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'victory': { volume: SOUND_PRESETS.MAX, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'card-throw': { volume: SOUND_PRESETS.NORMAL, playbackRate: SOUND_PRESETS.FAST },
-  'player-join': { volume: SOUND_PRESETS.QUIET, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'game-start': { volume: SOUND_PRESETS.LOUD, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'turn-transition': { volume: SOUND_PRESETS.QUIET, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-  'timeline-complete': { volume: SOUND_PRESETS.LOUD, playbackRate: SOUND_PRESETS.NORMAL_RATE },
-};
-
-export class SoundEffectsManager {
-  private static instance: SoundEffectsManager;
+export class SoundEffects {
   private audioContext: AudioContext | null = null;
-  private sounds = new Map<SoundEffect, HTMLAudioElement>();
-  private masterVolume = SOUND_PRESETS.NORMAL;
-  private isMuted = false;
-  private isEnabled = true;
+  private sounds: Map<SoundName, AudioBuffer> = new Map();
+  private initialized = false;
+  private static instance: SoundEffects;
 
-  static getInstance(): SoundEffectsManager {
-    if (!SoundEffectsManager.instance) {
-      SoundEffectsManager.instance = new SoundEffectsManager();
+  private constructor() {
+    // Private constructor for singleton pattern
+    this.init();
+  }
+
+  public static getInstance(): SoundEffects {
+    if (!SoundEffects.instance) {
+      SoundEffects.instance = new SoundEffects();
     }
-    return SoundEffectsManager.instance;
+    return SoundEffects.instance;
   }
 
-  constructor() {
-    this.initializeAudioContext();
-    this.preloadSounds();
-  }
+  public init(): void {
+    if (this.initialized || typeof window === 'undefined') return;
 
-  private initializeAudioContext(): void {
     try {
-      if (typeof window !== 'undefined' && 'AudioContext' in window) {
-        this.audioContext = new AudioContext();
-      }
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.initialized = true;
+      console.log('AudioContext initialized successfully');
+      
+      // Preload essential sounds
+      this.preloadSounds();
     } catch (error) {
-      console.warn('AudioContext not available:', error);
-      this.isEnabled = false;
+      console.error('AudioContext initialization failed:', error);
     }
   }
 
-  private preloadSounds(): void {
-    if (!this.isEnabled) return;
+  private async preloadSounds(): Promise<void> {
+    const soundManifest: Record<SoundName, string> = {
+      'button-click': '/sounds/click.mp3',
+      'success': '/sounds/success.mp3',
+      'error': '/sounds/error.mp3',
+      'game-start': '/sounds/game-start.mp3',
+      'card-place': '/sounds/card-place.mp3',
+      'card-success': '/sounds/card-success.mp3',
+      'card-error': '/sounds/card-error.mp3',
+      'game-victory': '/sounds/victory.mp3'
+    };
 
-    Object.keys(SOUND_EFFECTS).forEach((soundName) => {
+    try {
+      await Promise.all(
+        Object.entries(soundManifest).map(([name, url]) => 
+          this.loadSound(name as SoundName, url)
+        )
+      );
+      console.log('All sounds preloaded successfully');
+    } catch (error) {
+      console.error('Error preloading sounds:', error);
+    }
+  }
+
+  public async loadSound(name: SoundName, url: string): Promise<void> {
+    if (!this.audioContext) {
+      console.warn('AudioContext not initialized - cannot load sound');
+      return;
+    }
+
+    try {
+      const response = await fetch(url, { 
+        credentials: 'omit',
+        cache: 'force-cache'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.sounds.set(name, audioBuffer);
+    } catch (error) {
+      console.error(`Error loading sound ${name}:`, error);
+      throw error;
+    }
+  }
+
+  public async playSound(name: SoundName): Promise<void> {
+    if (!this.initialized || !this.audioContext) {
+      console.warn(`Sound system not initialized - cannot play ${name}`);
+      return this.playFallback(name);
+    }
+
+    // Resume context if suspended (required for mobile browsers)
+    if (this.audioContext.state === 'suspended') {
       try {
-        const audio = new Audio(`/sounds/${soundName}.mp3`);
-        audio.preload = 'auto';
-        
-        // Handle load errors gracefully
-        audio.addEventListener('error', () => {
-          console.warn(`Sound file not found: ${soundName}.mp3`);
-        });
-        
-        // Set default configuration
-        const config = SOUND_EFFECTS[soundName as SoundEffect];
-        audio.volume = (config.volume || SOUND_PRESETS.NORMAL) * this.masterVolume;
-        audio.playbackRate = config.playbackRate || SOUND_PRESETS.NORMAL_RATE;
-        audio.loop = config.loop || false;
-
-        this.sounds.set(soundName as SoundEffect, audio);
+        await this.audioContext.resume();
       } catch (error) {
-        console.warn(`Could not preload sound: ${soundName}`, error);
+        console.error('Error resuming audio context:', error);
+        return this.playFallback(name);
       }
-    });
-  }
+    }
 
-  async playSound(
-    soundName: SoundEffect, 
-    customConfig?: Partial<SoundConfig>
-  ): Promise<void> {
-    if (!this.isEnabled || this.isMuted) return;
+    const sound = this.sounds.get(name);
+    if (!sound) {
+      console.warn(`Sound not found: ${name}`);
+      return this.playFallback(name);
+    }
 
     try {
-      const audio = this.sounds.get(soundName);
-      if (!audio) {
-        console.warn(`Sound not found: ${soundName}`);
-        return;
-      }
-
-      // Apply custom configuration
-      const baseConfig = SOUND_EFFECTS[soundName];
-      const finalConfig = { ...baseConfig, ...customConfig };
-
-      audio.currentTime = 0;
-      audio.volume = (finalConfig.volume || SOUND_PRESETS.NORMAL) * this.masterVolume;
-      audio.playbackRate = finalConfig.playbackRate || SOUND_PRESETS.NORMAL_RATE;
-      audio.loop = finalConfig.loop || false;
-
-      // Handle fade in
-      if (finalConfig.fadeIn) {
-        audio.volume = 0;
-        await audio.play();
-        this.fadeIn(audio, (finalConfig.volume || SOUND_PRESETS.NORMAL) * this.masterVolume, finalConfig.fadeIn);
-      } else {
-        await audio.play();
-      }
-
-      // Handle fade out
-      if (finalConfig.fadeOut && !finalConfig.loop) {
-        setTimeout(() => {
-          this.fadeOut(audio, finalConfig.fadeOut!);
-        }, Math.max(0, (audio.duration * 1000) - finalConfig.fadeOut));
-      }
-
+      const source = this.audioContext.createBufferSource();
+      const gainNode = this.audioContext.createGain();
+      
+      source.buffer = sound;
+      source.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      // Set volume based on sound type
+      gainNode.gain.value = this.getVolumeForSound(name);
+      
+      source.start(0);
+      
+      // Clean up after playback
+      source.addEventListener('ended', () => {
+        source.disconnect();
+        gainNode.disconnect();
+      });
     } catch (error) {
-      // Silently fail if sound can't be played
-      console.warn(`Could not play sound: ${soundName}`, error);
+      console.error(`Error playing sound ${name}:`, error);
+      this.playFallback(name);
     }
   }
 
-  private fadeIn(audio: HTMLAudioElement, targetVolume: number, duration: number): void {
-    const steps = 20;
-    const stepDuration = duration / steps;
-    const volumeStep = targetVolume / steps;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      audio.volume = Math.min(volumeStep * currentStep, targetVolume);
-      
-      if (currentStep >= steps) {
-        clearInterval(fadeInterval);
-      }
-    }, stepDuration);
-  }
-
-  private fadeOut(audio: HTMLAudioElement, duration: number): void {
-    const initialVolume = audio.volume;
-    const steps = 20;
-    const stepDuration = duration / steps;
-    const volumeStep = initialVolume / steps;
-    let currentStep = 0;
-
-    const fadeInterval = setInterval(() => {
-      currentStep++;
-      audio.volume = Math.max(initialVolume - (volumeStep * currentStep), 0);
-      
-      if (currentStep >= steps) {
-        clearInterval(fadeInterval);
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    }, stepDuration);
-  }
-
-  stopSound(soundName: SoundEffect): void {
-    const audio = this.sounds.get(soundName);
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-    }
-  }
-
-  stopAllSounds(): void {
-    this.sounds.forEach(audio => {
-      audio.pause();
-      audio.currentTime = 0;
+  public stopAllSounds(): void {
+    if (!this.audioContext) return;
+    
+    // This will stop all ongoing sounds by suspending the context
+    this.audioContext.suspend().catch(error => {
+      console.error('Error stopping sounds:', error);
     });
   }
 
-  setMasterVolume(volume: number): void {
-    this.masterVolume = Math.max(0, Math.min(1, volume));
-    this.sounds.forEach((audio, soundName) => {
-      const config = SOUND_EFFECTS[soundName];
-      audio.volume = (config.volume || SOUND_PRESETS.NORMAL) * this.masterVolume;
-    });
+  private getVolumeForSound(name: SoundName): number {
+    const volumes: Record<SoundName, number> = {
+      'button-click': 0.3,
+      'success': 0.4,
+      'error': 0.4,
+      'game-start': 0.5,
+      'card-place': 0.3,
+      'card-success': 0.5,
+      'card-error': 0.5,
+      'game-victory': 0.6
+    };
+    return volumes[name] || 0.5;
   }
 
-  getMasterVolume(): number {
-    return this.masterVolume;
-  }
+  private async playFallback(name: SoundName): Promise<void> {
+    console.warn(`Playing fallback for ${name}`);
+    if (!this.audioContext) return;
 
-  setMuted(muted: boolean): void {
-    this.isMuted = muted;
-    if (muted) {
-      this.stopAllSounds();
+    try {
+      const oscillator = this.audioContext.createOscillator();
+      const gain = this.audioContext.createGain();
+      
+      // Different fallback tones for different sound types
+      switch (name) {
+        case 'error':
+        case 'card-error':
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.value = 300;
+          break;
+        case 'success':
+        case 'card-success':
+          oscillator.type = 'triangle';
+          oscillator.frequency.value = 800;
+          break;
+        case 'game-victory':
+          this.playFallbackSequence();
+          return;
+        default:
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 500;
+      }
+      
+      gain.gain.value = 0.1;
+      oscillator.connect(gain);
+      gain.connect(this.audioContext.destination);
+      
+      oscillator.start();
+      oscillator.stop(this.audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.error('Fallback sound failed:', error);
     }
   }
 
-  isSoundMuted(): boolean {
-    return this.isMuted;
-  }
+  private playFallbackSequence(): void {
+    if (!this.audioContext) return;
 
-  isAudioEnabled(): boolean {
-    return this.isEnabled;
-  }
-
-  // Game-specific sound combinations
-  async playCardSuccess(): Promise<void> {
-    await this.playSound('correct');
-    setTimeout(() => this.playSound('card-place'), 200);
-  }
-
-  async playCardError(): Promise<void> {
-    await this.playSound('incorrect');
-  }
-
-  async playTurnTransition(): Promise<void> {
-    await this.playSound('turn-transition', { fadeIn: 300, fadeOut: 300 });
-  }
-
-  async playGameVictory(): Promise<void> {
-    await this.playSound('victory');
-    setTimeout(() => this.playSound('timeline-complete'), 1000);
-  }
-
-  async playPlayerAction(): Promise<void> {
-    await this.playSound('button-click');
-  }
-
-  async playCardThrow(): Promise<void> {
-    await this.playSound('card-woosh');
-    setTimeout(() => this.playSound('card-throw'), 100);
+    try {
+      const now = this.audioContext.currentTime;
+      const oscillator = this.audioContext.createOscillator();
+      const gain = this.audioContext.createGain();
+      
+      oscillator.type = 'sine';
+      gain.gain.value = 0.1;
+      
+      // Create a simple victory melody
+      oscillator.frequency.setValueAtTime(523.25, now); // C5
+      oscillator.frequency.setValueAtTime(659.25, now + 0.2); // E5
+      oscillator.frequency.setValueAtTime(783.99, now + 0.4); // G5
+      
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+      gain.gain.linearRampToValueAtTime(0, now + 0.5);
+      
+      oscillator.connect(gain);
+      gain.connect(this.audioContext.destination);
+      
+      oscillator.start();
+      oscillator.stop(now + 0.5);
+    } catch (error) {
+      console.error('Fallback sequence failed:', error);
+    }
   }
 }
 
-// React hook for sound effects
-export const useSoundEffects = () => {
-  const soundManager = SoundEffectsManager.getInstance();
+// Singleton instance
+export const soundEffects = SoundEffects.getInstance();
 
-  return {
-    playSound: (soundName: SoundEffect, config?: Partial<SoundConfig>) => 
-      soundManager.playSound(soundName, config),
-    stopSound: (soundName: SoundEffect) => soundManager.stopSound(soundName),
-    stopAllSounds: () => soundManager.stopAllSounds(),
-    setMasterVolume: (volume: number) => soundManager.setMasterVolume(volume),
-    getMasterVolume: () => soundManager.getMasterVolume(),
-    setMuted: (muted: boolean) => soundManager.setMuted(muted),
-    isMuted: () => soundManager.isSoundMuted(),
-    isEnabled: () => soundManager.isAudioEnabled(),
-    // Game-specific methods
-    playCardSuccess: () => soundManager.playCardSuccess(),
-    playCardError: () => soundManager.playCardError(),
-    playTurnTransition: () => soundManager.playTurnTransition(),
-    playGameVictory: () => soundManager.playGameVictory(),
-    playPlayerAction: () => soundManager.playPlayerAction(),
-    playCardThrow: () => soundManager.playCardThrow(),
-  };
-};
-
-export default SoundEffectsManager;
+// Initialize on module load if in browser
+if (typeof window !== 'undefined') {
+  soundEffects.init();
+}
