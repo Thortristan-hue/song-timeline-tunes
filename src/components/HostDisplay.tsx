@@ -1,12 +1,12 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Music, Crown, Users, Timer, Star, Loader2 } from 'lucide-react';
+import { Music, Crown, Users, Timer, Star, Loader2, AlertTriangle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from './MysteryCard';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HostDisplayProps {
   currentTurnPlayer: Player;
@@ -36,6 +36,28 @@ export function HostDisplay({
   onRetrySong
 }: HostDisplayProps) {
   const progressPercentage = currentSongDuration > 0 ? (currentSongProgress / currentSongDuration) * 100 : 0;
+
+  // Subscribe to real-time updates for current player's timeline
+  useEffect(() => {
+    if (!currentTurnPlayer?.id) return;
+
+    const channel = supabase
+      .channel(`player-${currentTurnPlayer.id}-timeline`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'players',
+        filter: `id=eq.${currentTurnPlayer.id}`
+      }, (payload) => {
+        console.log('🔄 Player timeline updated:', payload);
+        // The useGameRoom hook will handle the state update
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [currentTurnPlayer?.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
@@ -146,13 +168,29 @@ export function HostDisplay({
         </div>
       )}
 
-      {/* Mystery card display - Static for host with enhanced validation */}
+      {/* Mystery card display - Enhanced for host view */}
       <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
           
           <div className="relative">
-            {gameState.currentSong ? (
+            {songLoadingError ? (
+              <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white">
+                <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
+                <div className="text-sm text-center px-4 text-red-200 leading-tight mb-4">
+                  {songLoadingError}
+                </div>
+                {onRetrySong && (
+                  <Button
+                    onClick={onRetrySong}
+                    disabled={retryingSong}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1"
+                  >
+                    {retryingSong ? 'Retrying...' : 'Retry'}
+                  </Button>
+                )}
+              </Card>
+            ) : gameState.currentSong ? (
               <MysteryCard
                 song={gameState.currentSong}
                 isRevealed={gameState.mysteryCardRevealed || false}

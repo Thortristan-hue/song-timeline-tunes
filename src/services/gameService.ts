@@ -26,7 +26,7 @@ class GameService {
     
     try {
       const urlObj = new URL(url);
-      // Accept any valid URL protocol including file://, blob://, data:// etc.
+      // Accept any valid URL protocol including file://, blob://, data://, etc.
       return ['https:', 'http:', 'data:', 'blob:', 'file:'].includes(urlObj.protocol);
     } catch {
       // If URL constructor fails, check if it's a relative path
@@ -240,6 +240,83 @@ class GameService {
       .eq('id', roomId);
 
     if (error) throw error;
+  }
+
+  async placeCard(roomId: string, playerId: string, song: Song, position: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get current player timeline
+      const { data: player, error: fetchError } = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('id', playerId)
+        .single();
+
+      if (fetchError || !player) {
+        throw new Error('Failed to fetch player timeline');
+      }
+
+      // Create new timeline with inserted song
+      const currentTimeline = Array.isArray(player.timeline) ? (player.timeline as unknown as Song[]) : [];
+      const newTimeline = [...currentTimeline];
+      newTimeline.splice(position, 0, song);
+
+      // Update player timeline in database
+      const { error: updateError } = await supabase
+        .from('players')
+        .update({ 
+          timeline: newTimeline as any,
+          score: this.calculateScore(newTimeline)
+        })
+        .eq('id', playerId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error placing card:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  private calculateScore(timeline: Song[]): number {
+    // Check if timeline is in correct chronological order
+    for (let i = 0; i < timeline.length - 1; i++) {
+      const currentYear = parseInt(timeline[i].release_year);
+      const nextYear = parseInt(timeline[i + 1].release_year);
+      if (currentYear > nextYear) {
+        return Math.max(0, timeline.length - 1); // Deduct points for incorrect order
+      }
+    }
+    return timeline.length; // Full points for correct order
+  }
+
+  async updateGameState(roomId: string, updates: Partial<{
+    currentTurn: number;
+    currentSong: Song | null;
+    phase: string;
+  }>): Promise<void> {
+    try {
+      const dbUpdates: any = { ...updates };
+      
+      if (updates.currentSong) {
+        dbUpdates.current_song = updates.currentSong as any;
+      }
+
+      const { error } = await supabase
+        .from('game_rooms')
+        .update(dbUpdates)
+        .eq('id', roomId);
+
+      if (error) throw error;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update game state';
+      throw new Error(errorMessage);
+    }
   }
 
   subscribeToRoom(roomId: string, callbacks: {

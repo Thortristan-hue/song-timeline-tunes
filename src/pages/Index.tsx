@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
@@ -23,6 +22,8 @@ export default function Index() {
   const [isLoadingSong, setIsLoadingSong] = useState(false);
   const [currentSongProgress, setCurrentSongProgress] = useState(0);
   const [currentSongDuration, setCurrentSongDuration] = useState(30);
+  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -109,6 +110,7 @@ export default function Index() {
       try {
         const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
         const validSongs = defaultPlaylistService.filterValidSongs(customSongs);
+        console.log('🎵 Filtered valid songs:', validSongs.length, 'out of', customSongs.length);
         setValidGameSongs(validSongs);
 
         if (room?.id && isHost && validSongs.length > 0) {
@@ -140,6 +142,7 @@ export default function Index() {
     
     if (songs.length === 0) {
       console.error('❌ No songs available for turn');
+      setSongLoadingError('No valid songs available');
       return null;
     }
     
@@ -153,39 +156,41 @@ export default function Index() {
         const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
         const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
         console.log('✅ SONG READY WITH PREVIEW');
+        setSongLoadingError(null);
         return songWithPreview;
       } catch (error) {
         console.warn('⚠️ Preview fetch failed, using song without preview:', error);
+        setSongLoadingError(null);
         return selectedSong;
       }
     }
     
     console.log('✅ SONG READY (already had preview)');
+    setSongLoadingError(null);
     return selectedSong;
   };
 
-  // Start a new turn
+  // Start a new turn with proper state management
   const startNewTurn = async (turnIndex: number) => {
     console.log('🚀 STARTING TURN', turnIndex, 'for player:', players[turnIndex % players.length]?.name);
     
     const songs = getValidGameSongs();
     if (songs.length === 0) {
       console.error('❌ Cannot start turn - no valid songs available');
-      toast({
-        title: "Game Error",
-        description: "No valid songs available for gameplay.",
-        variant: "destructive",
-      });
+      setSongLoadingError('No valid songs available for gameplay');
       return;
     }
     
     setIsLoadingSong(true);
+    setSongLoadingError(null);
     
     try {
       const selectedSong = await pickAndPrepareSong();
       
       if (selectedSong) {
         console.log('✅ UPDATING GAME STATE WITH SONG:', selectedSong.deezer_title);
+        
+        // Update local state immediately
         setGameState(prev => ({
           ...prev,
           currentTurn: turnIndex,
@@ -197,22 +202,23 @@ export default function Index() {
           mysteryCardRevealed: false,
           currentSong: selectedSong
         }));
+
+        // Update database if host
+        if (room?.id && isHost) {
+          await gameService.updateGameState(room.id, {
+            currentTurn: turnIndex,
+            currentSong: selectedSong
+          });
+        }
+        
         console.log('✅ TURN READY - Mystery card should now be visible');
       } else {
         console.error('❌ Failed to prepare song for turn');
-        toast({
-          title: "Turn Error",
-          description: "Failed to load a song for this turn.",
-          variant: "destructive",
-        });
+        setSongLoadingError('Failed to load a song for this turn');
       }
     } catch (error) {
       console.error('❌ Turn start error:', error);
-      toast({
-        title: "Turn Error", 
-        description: "Error starting the turn. Please try again.",
-        variant: "destructive",
-      });
+      setSongLoadingError('Error starting the turn. Please try again.');
     } finally {
       setIsLoadingSong(false);
     }
@@ -351,8 +357,12 @@ export default function Index() {
     return players[gameState.currentTurn % players.length];
   };
 
-  const handlePlaceCard = (position: number) => {
-    if (!gameState.currentSong || !currentPlayer) return;
+  const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
+    if (!gameState.currentSong || !currentPlayer || !room?.id) {
+      return { success: false };
+    }
+    
+    console.log('🎯 Placing card at position:', position);
     
     setGameState(prev => ({
       ...prev,
@@ -360,15 +370,16 @@ export default function Index() {
       cardPlacementConfirmed: true
     }));
 
-    const isCorrect = Math.random() > 0.3;
-    
-    setTimeout(() => {
-      if (isCorrect) {
-        const newTimeline = [...currentPlayer.timeline];
-        newTimeline.splice(position, 0, gameState.currentSong!);
-        
-        updatePlayer(currentPlayer.name, currentPlayer.color);
-        
+    try {
+      // Update database
+      const result = await gameService.placeCard(
+        room.id, 
+        currentPlayer.id, 
+        gameState.currentSong, 
+        position
+      );
+      
+      if (result.success) {
         setGameState(prev => ({
           ...prev,
           cardPlacementCorrect: true,
@@ -377,11 +388,13 @@ export default function Index() {
         
         soundEffects.playSound('correct');
         
+        // Move to next turn after delay
         setTimeout(async () => {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
           await startNewTurn(nextTurn);
         }, 2000);
         
+        return { success: true };
       } else {
         setGameState(prev => ({
           ...prev,
@@ -395,8 +408,24 @@ export default function Index() {
           const nextTurn = (gameState.currentTurn + 1) % players.length;
           await startNewTurn(nextTurn);
         }, 2000);
+        
+        return { success: false };
       }
-    }, 1000);
+    } catch (error) {
+      console.error('❌ Card placement error:', error);
+      setSongLoadingError('Failed to place card');
+      return { success: false };
+    }
+  };
+
+  const handleDragStart = (song: Song) => {
+    console.log('🎯 Drag started for song:', song.deezer_title);
+    setDraggedSong(song);
+  };
+
+  const handleDragEnd = () => {
+    console.log('🎯 Drag ended');
+    setDraggedSong(null);
   };
 
   const handlePlayPause = () => {
@@ -475,7 +504,7 @@ export default function Index() {
                 mysteryCardRevealed: gameState.mysteryCardRevealed,
                 cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
-              songLoadingError={null}
+              songLoadingError={songLoadingError}
               retryingSong={isLoadingSong}
               onRetrySong={async () => {
                 await startNewTurn(gameState.currentTurn);
@@ -500,8 +529,13 @@ export default function Index() {
                 mysteryCardRevealed: gameState.mysteryCardRevealed,
                 cardPlacementCorrect: gameState.cardPlacementCorrect
               }}
+              draggedSong={draggedSong}
               onPlaceCard={handlePlaceCard}
               onPlayPause={handlePlayPause}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              songLoadingError={songLoadingError}
+              retryingSong={isLoadingSong}
             />
           );
         }
