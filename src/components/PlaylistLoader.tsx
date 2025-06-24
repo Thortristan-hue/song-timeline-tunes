@@ -61,59 +61,52 @@ export function PlaylistLoader({
     e.preventDefault();
     
     if (!playlistUrl.trim()) {
-      setError('Please enter a Deezer playlist URL');
+      setError('Please enter a playlist URL');
       return;
     }
-
-    // Use the improved validation from deezerLoader
-    if (!deezerLoader.isValidDeezerUrl(playlistUrl.trim())) {
-      setError('Please enter a valid Deezer playlist URL. Supported formats: deezer.com/playlist/ID or just the playlist ID number');
-      return;
-    }
-
+  
     setLoading(true);
     setError('');
     setProgress(0);
-    setStatus('Loading playlist...');
-
+    setStatus('Initializing...');
+  
     try {
-      setStatus('Fetching playlist tracks...');
-      setProgress(25);
-      
-      // Try to load directly from Deezer first
+      // Try multiple sources with progress updates
+      const sources = [
+        { name: 'Deezer Direct', method: deezerLoader.loadPlaylist },
+        { name: 'Deezer Proxy', method: songService.loadPlaylist },
+        { name: 'Fallback', method: defaultPlaylistService.loadDefaultPlaylist }
+      ];
+  
       let songs: Song[] = [];
       
-      try {
-        songs = await deezerLoader.loadPlaylist(playlistUrl.trim());
-        setProgress(75);
-        setStatus('Processing songs...');
-      } catch (deezerError) {
-        console.log('Direct Deezer load failed, trying song service:', deezerError);
-        // Fallback to songService if direct Deezer fails
-        const { songService } = await import('@/services/songService');
-        setStatus('Fetching playlist tracks via fallback...');
-        setProgress(50);
-        songs = await songService.loadPlaylist(playlistUrl.trim());
-        setProgress(75);
-        setStatus('Processing songs...');
+      for (const [index, source] of sources.entries()) {
+        try {
+          setStatus(`Trying ${source.name}...`);
+          setProgress((index + 1) * 25);
+          
+          songs = await source.method(playlistUrl.trim());
+          if (songs.length > 0) break;
+        } catch (error) {
+          console.warn(`${source.name} failed:`, error);
+          if (index === sources.length - 1) throw error;
+        }
       }
   
-      if (!songs?.length) {
-        setError('No valid songs found in playlist.');
-        onPlaylistLoaded(false);
-        return;
+      setProgress(75);
+      setStatus('Validating songs...');
+      
+      const { isValid, validCount } = defaultPlaylistService.validatePlaylistForGameplay(songs);
+      if (!isValid) {
+        throw new Error(`Only ${validCount} valid songs found (minimum 10 required)`);
       }
-
-      if (songs.every(song => song.id && song.deezer_title)) {
-        setCustomSongs(songs);
-        setStatus('Playlist loaded successfully!');
-        setProgress(100);
-        onPlaylistLoaded(true);
-      } else {
-        throw new Error('Invalid song data structure received');
-      }
+  
+      setCustomSongs(songs);
+      setStatus('Success! Playlist loaded');
+      setProgress(100);
+      onPlaylistLoaded(true);
+      
     } catch (error) {
-      console.error('Playlist load error:', error);
       setError(error instanceof Error ? error.message : 'Failed to load playlist');
       onPlaylistLoaded(false);
       setProgress(0);
