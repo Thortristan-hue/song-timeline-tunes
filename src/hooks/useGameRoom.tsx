@@ -37,6 +37,10 @@ export function useGameRoom(): UseGameRoomReturn {
       const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName || 'Host');
       setRoom(newRoom);
       
+      // Create host player
+      const hostPlayer = await gameService.joinRoom(lobbyCode, hostName || 'Host');
+      setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(hostPlayer));
+      
       toast({
         title: "Room created!",
         description: `Lobby code: ${lobbyCode}. Share this with players to join.`,
@@ -171,11 +175,36 @@ export function useGameRoom(): UseGameRoomReturn {
   useEffect(() => {
     if (!room) return;
 
+    console.log('Setting up subscriptions for room:', room.id);
+
+    // Initial load of players
+    const loadPlayers = async () => {
+      try {
+        const dbPlayers = await gameService.getPlayersInRoom(room.id);
+        const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
+        console.log('Loaded players:', convertedPlayers.length);
+        setPlayers(convertedPlayers);
+        
+        if (currentPlayer) {
+          const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
+          if (updatedCurrentPlayer) {
+            setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load players:', err);
+      }
+    };
+
+    loadPlayers();
+
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
+        console.log('Room updated:', updatedRoom);
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
+        console.log('Players updated:', dbPlayers.length);
         const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
         setPlayers(convertedPlayers);
         
@@ -188,12 +217,8 @@ export function useGameRoom(): UseGameRoomReturn {
       }
     });
 
-    gameService.getPlayersInRoom(room.id).then(dbPlayers => {
-      const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
-      setPlayers(convertedPlayers);
-    });
-
     return () => {
+      console.log('Unsubscribing from room:', room.id);
       channel.unsubscribe();
     };
   }, [room?.id, currentPlayer?.id]);
