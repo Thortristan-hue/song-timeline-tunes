@@ -20,6 +20,7 @@ export default function Index() {
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
+  const [hostName, setHostName] = useState('');
   
   const {
     room,
@@ -46,14 +47,11 @@ export default function Index() {
   const handleHostGame = async () => {
     try {
       soundEffects.playPlayerAction();
-      const roomId = await createRoom();
-      if (roomId) {
-        setGamePhase('hostLobby');
-      }
+      setGamePhase('hostLobby');
     } catch (error) {
       toast({
-        title: "Room Creation Failed",
-        description: "Unable to create game room. Please try again.",
+        title: "Navigation Failed",
+        description: "Unable to navigate to host lobby.",
         variant: "destructive",
       });
     }
@@ -70,6 +68,22 @@ export default function Index() {
     setGamePhase('menu');
     setMysteryCardRevealed(false);
     setCardPlacementResult(null);
+    setHostName('');
+  };
+
+  const handleCreateRoom = async (name: string) => {
+    try {
+      setHostName(name);
+      const roomId = await createRoom(name);
+      return !!roomId;
+    } catch (error) {
+      toast({
+        title: "Room Creation Failed",
+        description: "Unable to create game room. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
@@ -151,6 +165,12 @@ export default function Index() {
     return result;
   };
 
+  // Dummy setCustomSongs function for HostLobby
+  const setCustomSongs = (songs: Song[]) => {
+    // For now, we only use the default playlist
+    console.log('Custom songs not implemented yet:', songs);
+  };
+
   // Reset card states on new turn
   useEffect(() => {
     if (gameState.currentSong) {
@@ -180,11 +200,14 @@ export default function Index() {
       case 'hostLobby':
         return (
           <HostLobby
-            room={room}
+            lobbyCode={room?.lobby_code || ''}
             players={players}
             onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
+            setCustomSongs={setCustomSongs}
             isLoading={isLoading}
+            createRoom={handleCreateRoom}
+            currentHostName={hostName}
           />
         );
 
@@ -200,12 +223,11 @@ export default function Index() {
       case 'mobileLobby':
         return (
           <MobilePlayerLobby
-            room={room}
-            currentPlayer={currentPlayer}
-            players={players}
+            player={currentPlayer!}
+            lobbyCode={room?.lobby_code || ''}
             onUpdatePlayer={updatePlayer}
-            onBackToMenu={handleBackToMenu}
-            isLoading={isLoading}
+            gamePhase={gamePhase}
+            onGameStart={() => setGamePhase('playing')}
           />
         );
 
