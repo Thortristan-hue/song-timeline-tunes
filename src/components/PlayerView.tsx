@@ -9,7 +9,7 @@ import { MysteryCard } from '@/components/MysteryCard';
 import { useToast } from '@/components/ui/use-toast';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { useSoundEffects } from '@/lib/SoundEffects';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface PlayerViewProps {
   currentPlayer: Player;

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameCleanup } from '@/hooks/useGameCleanup';
 import { useToast } from '@/components/ui/use-toast';
-import { useSoundEffects } from '@/lib/SoundEffects';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { Button } from '@/components/ui/button';
 import { Player, Song, GameState, GamePhase } from '@/types/game';
 import { gameService } from '@/services/gameService';
 import { MainMenu } from '@/components/MainMenu';
