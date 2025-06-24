@@ -1,14 +1,15 @@
+// songService.ts
 import { Song } from "@/types/game";
-const PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/?url=';
 
+// Define types for external API responses
 interface DeezerTrack {
   id: number;
   title: string;
   artist: { name: string };
-  album: { title: string };
+  album: { title: string; cover_medium: string; release_date?: string };
   duration: number;
   preview?: string;
-  link: string;
+  release_date?: string;
 }
 
 interface DeezerPlaylistResponse {
@@ -17,309 +18,207 @@ interface DeezerPlaylistResponse {
   next?: string;
 }
 
-interface EnhancedMetadata {
-  artist?: string;
-  title?: string;
-  album?: string;
-  release_year?: string;
-  source: 'musicbrainz' | 'discogs' | 'deezer_only';
-  error?: string;
+interface MusicBrainzRecording {
+  id: string;
+  title: string;
+  'artist-credit': Array<{ name: string }>;
+  releases?: Array<{ date?: string }>;
+  'release-group'?: { 'first-release-date'?: string };
 }
 
-class SongService {
-  private cache: Song[] = [];
-  private currentSong: Song | null = null;
-  private nextSong: Song | null = null;
-  private requestCount = 0;
-  private lastRequestTime = 0;
-  private playlistTracks: DeezerTrack[] = [];
+interface MusicBrainzResponse {
+  recordings?: MusicBrainzRecording[];
+}
 
-  private rateLimit() {
+export class SongService {
+  private static readonly PROXY_URL = 'https://timeliner-proxy.thortristanjd.workers.dev/';
+  private static readonly DEEZER_BASE = 'https://api.deezer.com';
+  private static readonly MUSICBRAINZ_BASE = 'https://musicbrainz.org';
+  private static readonly DISCOGS_BASE = 'https://api.discogs.com';
+
+  private requestQueue: Promise<void> = Promise.resolve();
+  private lastRequestTime: number = 0;
+
+  // Rate limit to 1 request per second
+  private async rateLimit() {
     const now = Date.now();
-    if (now - this.lastRequestTime < 1100) {
-      return new Promise(resolve => {
-        setTimeout(resolve, 1100 - (now - this.lastRequestTime));
-      });
+    const elapsed = now - this.lastRequestTime;
+    
+    if (elapsed < 1000) {
+      await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
     }
-    this.lastRequestTime = now;
-    return Promise.resolve();
+    
+    this.lastRequestTime = Date.now();
   }
 
-  private extractPlaylistId(playlistUrl: string): string {
-    const match = playlistUrl.match(/playlist\/(\d+)/);
-    if (!match) throw new Error('Invalid Deezer playlist URL');
-    return match[1];
+  // Main method to load a playlist
+  public async loadPlaylist(playlistUrl: string): Promise<Song[]> {
+    try {
+      const playlistId = this.extractPlaylistId(playlistUrl);
+      const tracks = await this.fetchPlaylistTracks(playlistId);
+      
+      // Process tracks in parallel with concurrency control
+      const songPromises = tracks.map(track => 
+        this.processTrackWithFallback(track)
+      );
+      
+      const songs = await Promise.all(songPromises);
+      return songs.filter(song => song !== null) as Song[];
+    } catch (error) {
+      console.error('Failed to load playlist:', error);
+      throw new Error(`Playlist load failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async processTrackWithFallback(track: DeezerTrack): Promise<Song | null> {
+    try {
+      // Skip if no preview available
+      if (!track.preview) {
+        console.warn(`Skipping track without preview: ${track.title}`);
+        return null;
+      }
+
+      // Try to get year from Deezer first
+      let year = this.extractYearFromDeezer(track);
+      
+      // Fallback to MusicBrainz if year is missing
+      if (!year) {
+        year = await this.fetchYearFromMusicBrainz(track.artist.name, track.title);
+      }
+      
+      // Final fallback if still no year
+      if (!year) {
+        console.warn(`Could not determine year for: ${track.title}`);
+        return null;
+      }
+
+      return {
+        id: `dzr-${track.id}`,
+        deezer_title: track.title,
+        deezer_artist: track.artist.name,
+        deezer_album: track.album.title,
+        preview_url: track.preview,
+        release_year: year,
+        cardColor: this.generateRandomColor(),
+        album_cover: track.album.cover_medium
+      };
+    } catch (error) {
+      console.warn(`Failed to process track ${track.title}:`, error);
+      return null;
+    }
   }
 
   private async fetchPlaylistTracks(playlistId: string): Promise<DeezerTrack[]> {
-    const tracks: DeezerTrack[] = [];
-    let index = 0;
-    const limit = 50;
-
-    while (true) {
-      await this.rateLimit();
-      
-      const url = `https://api.deezer.com/playlist/${playlistId}/tracks?index=${index}&limit=${limit}`;
-      const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
-      
-      try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) {
-          throw new Error(`Deezer API error: ${response.status}`);
-        }
-        
-        const data: DeezerPlaylistResponse = await response.json();
-        tracks.push(...data.data);
-        
-        if (data.data.length < limit) {
-          break;
-        }
-        index += limit;
-      } catch (error) {
-        console.error('Error fetching playlist tracks:', error);
-        throw error;
-      }
-    }
-
-    return tracks;
-  }
-
-  private async searchMusicBrainz(artist: string, title: string): Promise<EnhancedMetadata | null> {
-    await this.rateLimit();
-    const query = `"${artist}" AND recording:"${title}"`;
-    const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=1`;
-    const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
-  
-    try {
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'User-Agent': 'TimelineTunes/1.0 (97uselobp@mozmail.com)'
-        }
-      });
-  
-      if (!response.ok) {
-        throw new Error(`MusicBrainz API error: ${response.status}`);
-      }
-  
-      const data = await response.json();
-  
-      if (!data.recordings || data.recordings.length === 0) {
-        return { 
-          error: 'No results found on MusicBrainz.',
-          source: 'musicbrainz'
-        };
-      }
-  
-      const recording = data.recordings[0];
-      let releaseYear = null;
-  
-      // Try to get release year from release group (proxied)
-      if (recording['release-group']?.id) {
-        const groupUrl = `https://musicbrainz.org/ws/2/release-group/${recording['release-group'].id}?fmt=json`;
-        const proxyGroupUrl = `${PROXY_BASE}${encodeURIComponent(groupUrl)}`;
-        await this.rateLimit();
-  
-        try {
-          const groupResponse = await fetch(proxyGroupUrl, {
-            headers: {
-              'User-Agent': 'TimelineTunes/1.0 (97uselobp@mozmail.com)'
-            }
-          });
-  
-          if (groupResponse.ok) {
-            const groupData = await groupResponse.json();
-            const date = groupData['first-release-date'];
-            if (date) {
-              releaseYear = date.split('-')[0];
-            }
-          }
-        } catch (error) {
-          console.warn('Error fetching release group:', error);
-        }
-      }
-  
-      // Fallback to individual releases
-      if (!releaseYear && recording.releases && recording.releases.length > 0) {
-        const date = recording.releases[0].date;
-        if (date) {
-          releaseYear = date.split('-')[0];
-        }
-      }
-  
-      return {
-        artist: recording['artist-credit']?.[0]?.name || artist,
-        title: recording.title || title,
-        album: recording.releases?.[0]?.title,
-        release_year: releaseYear,
-        source: 'musicbrainz'
-      };
-    } catch (error) {
-      console.error('MusicBrainz search failed:', error);
-      return null;
-    }
-  }
-
-  private async searchDiscogs(artist: string, title: string): Promise<string | null> {
     await this.rateLimit();
     
-    const query = `${artist} ${title}`;
-    const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release`;
+    const url = `${SongService.DEEZER_BASE}/playlist/${playlistId}/tracks`;
+    const proxyUrl = `${SongService.PROXY_URL}${encodeURIComponent(url)}`;
     
     try {
-      const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl, {
-        headers: {
-          'User-Agent': 'TimelineTunes/1.0',
-          'Authorization': 'Discogs token=8c454de03e9c40e4926b95160145a221'
-        }
-      });
+      const response = await this.fetchWithTimeout(proxyUrl);
+      const data: DeezerPlaylistResponse = await response.json();
       
-      if (!response.ok) {
-        throw new Error(`Discogs API error: ${response.status}`);
+      if (!data?.data) {
+        throw new Error('Invalid playlist data structure');
       }
       
-      const data = await response.json();
-      
-      if (data.results && data.results.length > 0) {
-        for (const result of data.results) {
-          if (result.year) {
-            return result.year.toString();
-          }
-        }
-      }
-      return null;
+      return data.data;
     } catch (error) {
-      console.error('Discogs search failed:', error);
-      return null;
-    }
-  }
-
-  private async enhanceTrackMetadata(track: DeezerTrack): Promise<Song | null> {
-    const artist = track.artist.name;
-    const title = track.title;
-    
-    // Try MusicBrainz first
-    let enhanced = await this.searchMusicBrainz(artist, title);
-    
-    // If MusicBrainz didn't provide a release year, try Discogs
-    if (!enhanced?.release_year) {
-      const discogsYear = await this.searchDiscogs(artist, title);
-      if (discogsYear) {
-        enhanced = {
-          artist,
-          title,
-          album: track.album.title,
-          release_year: discogsYear,
-          source: 'discogs'
-        };
-      }
-    }
-    
-    // If no enhanced metadata found, skip this track
-    if (!enhanced?.release_year) {
-      console.warn(`No release year found for ${artist} - ${title}, skipping`);
-      return null;
-    }
-    
-    // Verify preview URL is available
-    if (!track.preview) {
-      console.warn(`No preview available for ${artist} - ${title}, skipping`);
-      return null;
-    }
-    
-    // Generate a random card color
-    const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', 
-      '#BB8FCE', '#85C1E9', '#FFB6C1', '#87CEEB', '#DDA0DD', '#F0E68C'
-    ];
-    const cardColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    return {
-      id: `song-${track.id}-${Date.now()}`, // Generate unique ID using Deezer track ID and timestamp
-      deezer_artist: enhanced.artist || artist,
-      deezer_title: enhanced.title || title,
-      deezer_album: enhanced.album || track.album.title,
-      preview_url: track.preview,
-      release_year: enhanced.release_year,
-      genre: "Unknown",
-      cardColor
-    };
-  }
-
-  async loadPlaylist(playlistUrl: string): Promise<Song[]> {
-    try {
-      const playlistId = this.extractPlaylistId(playlistUrl);
-      console.log(`Loading playlist ${playlistId}...`);
-  
-      this.playlistTracks = await this.fetchPlaylistTracks(playlistId);
-      console.log(`Found ${this.playlistTracks.length} tracks in playlist`);
-  
-      // Enhance all tracks and collect valid songs
-      const processedSongs: Song[] = [];
-      for (const track of this.playlistTracks) {
-        const song = await this.enhanceTrackMetadata(track);
-        if (song) processedSongs.push(song);
-      }
-  
-      return processedSongs;
-    } catch (error) {
-      console.error('Error loading playlist:', error);
+      console.error('Failed to fetch playlist tracks:', error);
       throw error;
     }
   }
 
-  private async loadNextSong(): Promise<void> {
-    let attempts = 0;
-    const maxAttempts = Math.min(10, this.playlistTracks.length);
+  private async fetchYearFromMusicBrainz(artist: string, title: string): Promise<string | null> {
+    await this.rateLimit();
     
-    while (attempts < maxAttempts) {
-      const randomIndex = Math.floor(Math.random() * this.playlistTracks.length);
-      const track = this.playlistTracks[randomIndex];
+    try {
+      const query = `artist:"${artist}" AND recording:"${title}"`;
+      const url = `${SongService.MUSICBRAINZ_BASE}/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json`;
+      const proxyUrl = `${SongService.PROXY_URL}${encodeURIComponent(url)}`;
       
-      try {
-        const song = await this.enhanceTrackMetadata(track);
-        if (song) {
-          if (!this.currentSong) {
-            this.currentSong = song;
-          } else if (!this.nextSong) {
-            this.nextSong = song;
-          }
-          return;
+      const response = await this.fetchWithTimeout(proxyUrl, {
+        headers: { 'User-Agent': 'TimelineTunes/1.0 (your-email@example.com)' }
+      });
+      
+      const data: MusicBrainzResponse = await response.json();
+      
+      if (data.recordings?.[0]) {
+        const recording = data.recordings[0];
+        
+        // Try release group first
+        if (recording['release-group']?.['first-release-date']) {
+          return recording['release-group']['first-release-date'].split('-')[0];
         }
-      } catch (error) {
-        console.warn(`Failed to process track ${track.artist.name} - ${track.title}:`, error);
+        
+        // Fallback to individual releases
+        if (recording.releases?.[0]?.date) {
+          return recording.releases[0].date.split('-')[0];
+        }
       }
       
-      attempts++;
+      return null;
+    } catch (error) {
+      console.warn('MusicBrainz lookup failed:', error);
+      return null;
+    }
+  }
+
+  private extractPlaylistId(url: string): string {
+    // Handle both full URLs and just IDs
+    const match = url.match(/(?:playlist\/)?(\d+)/);
+    if (!match?.[1]) {
+      throw new Error('Invalid Deezer playlist URL or ID');
+    }
+    return match[1];
+  }
+
+  private extractYearFromDeezer(track: DeezerTrack): string | null {
+    // Try track release date first
+    if (track.release_date) {
+      return track.release_date.split('-')[0];
     }
     
-    console.error('Failed to load a valid song after maximum attempts');
-  }
-
-  getCurrentSong(): Song | null {
-    return this.currentSong;
-  }
-
-  async getNextSong(): Promise<Song | null> {
-    if (!this.nextSong) {
-      await this.loadNextSong();
+    // Fallback to album release date
+    if (track.album?.release_date) {
+      return track.album.release_date.split('-')[0];
     }
     
-    // Move next song to current and load a new next song
-    this.currentSong = this.nextSong;
-    this.nextSong = null;
-    
-    // Load the next song in the background
-    this.loadNextSong().catch(error => {
-      console.error('Error pre-loading next song:', error);
-    });
-    
-    return this.currentSong;
+    return null;
   }
 
-  hasValidSongs(): boolean {
-    return this.currentSong !== null;
+  private generateRandomColor(): string {
+    const colors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', 
+      '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+      '#F8C471', '#82E0AA', '#AED6F1', '#E8DAEF'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  private async fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   }
 }
 
+// Singleton instance
 export const songService = new SongService();
