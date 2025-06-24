@@ -1,10 +1,8 @@
-
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Music, Users, Gamepad2, Trophy, Sparkles } from 'lucide-react';
-import { TestingUtils } from '@/components/TestingUtils';
-import { useGameRoom } from '@/hooks/useGameRoom';
+import { Badge } from '@/components/ui/badge';
+import { Music, Users, Trophy, Zap, Play, Smartphone } from 'lucide-react';
 
 interface MainMenuProps {
   onHostGame: () => void;
@@ -12,156 +10,106 @@ interface MainMenuProps {
 }
 
 export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
-  const { createRoom, joinRoom } = useGameRoom();
-
-  // Handle test mode URL parameters
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const testMode = urlParams.get('testMode');
-    const roomCode = urlParams.get('roomCode');
-    const playerName = urlParams.get('playerName');
-
-    if (testMode && roomCode && playerName) {
-      console.log('Test mode detected, auto-joining room:', roomCode, 'as', playerName);
-      // Auto-join the room
-      setTimeout(async () => {
-        try {
-          const success = await joinRoom(roomCode, playerName);
-          if (success) {
-            console.log('Test player joined successfully');
-            // Navigate to the appropriate screen
-            window.location.hash = '#mobileLobby';
-          }
-        } catch (error) {
-          console.error('Test auto-join failed:', error);
-        }
-      }, 500);
-    }
-  }, [joinRoom]);
-
-  const handleCreateTestRoom = async (): Promise<string | null> => {
-    const roomCode = await createRoom('TestHost');
-    return roomCode;
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 via-indigo-900 to-violet-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse opacity-10"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`
-            }}
-          >
-            <Music className="h-8 w-8 text-purple-300 transform rotate-12" />
-          </div>
-        ))}
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
-        <div className="text-center space-y-8 max-w-4xl">
-          {/* Logo/Title */}
-          <div className="space-y-4">
-            <div className="relative">
-              <div className="absolute -inset-8 bg-gradient-to-r from-purple-600/30 to-pink-600/30 blur-3xl rounded-full animate-pulse"></div>
-              <h1 className="relative text-8xl md:text-9xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
-                Timeliner
-              </h1>
+      <div className="absolute top-10 left-10 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-20 right-10 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
+      <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-400/8 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}} />
+      
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+        {/* Header Section */}
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Music className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
-            <p className="text-2xl md:text-3xl text-purple-200/80 font-light">
-              Place songs in chronological order. First to 10 wins!
-            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white">
+              Timeliner
+            </h1>
           </div>
+          <p className="text-sm sm:text-base text-purple-300 max-w-md mx-auto">
+            Challenge your friends! Listen to mystery songs and place them in chronological order on your timeline.
+          </p>
+        </div>
 
-          {/* Main Action Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mx-auto">
-            <Card className="group hover:scale-105 transition-all duration-300 bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border-purple-400/30 backdrop-blur-sm overflow-hidden">
-              <div className="p-8 text-center space-y-4">
-                <div className="relative">
-                  <div className="absolute -inset-4 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 blur-xl rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                  <Users className="relative h-16 w-16 text-purple-400 mx-auto" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">Host Game</h3>
-                <p className="text-purple-200/70">Create a room and invite friends to play</p>
-                <Button 
-                  onClick={onHostGame}
-                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg hover:shadow-purple-500/50 transition-all duration-300"
-                >
-                  Create Room
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="group hover:scale-105 transition-all duration-300 bg-gradient-to-br from-pink-600/20 to-rose-600/20 border-pink-400/30 backdrop-blur-sm overflow-hidden">
-              <div className="p-8 text-center space-y-4">
-                <div className="relative">
-                  <div className="absolute -inset-4 bg-gradient-to-r from-pink-500/20 to-rose-500/20 blur-xl rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                  <Gamepad2 className="relative h-16 w-16 text-pink-400 mx-auto" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">Join Game</h3>
-                <p className="text-pink-200/70">Enter a room code to join an existing game</p>
-                <Button 
-                  onClick={onJoinGame}
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold py-3 px-6 rounded-xl text-lg shadow-lg hover:shadow-pink-500/50 transition-all duration-300"
-                >
-                  Join Room
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          {/* Testing Utils - Only show in development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-8">
-              <TestingUtils onCreateTestRoom={handleCreateTestRoom} />
-            </div>
-          )}
-
-          {/* How to Play */}
-          <Card className="bg-black/20 border-white/10 p-6 backdrop-blur-sm max-w-3xl mx-auto">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <Trophy className="h-6 w-6 text-yellow-400" />
-                <h3 className="text-xl font-bold text-white">How to Play</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-purple-200/80">
-                <div className="flex flex-col items-center gap-2">
-                  <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">1</span>
-                  <span>Listen to mystery song previews</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">2</span>
-                  <span>Place them in your timeline chronologically</span>
-                </div>
-                <div className="flex flex-col items-center gap-2">
-                  <span className="bg-purple-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">3</span>
-                  <span>First player to 10 correct placements wins!</span>
-                </div>
-              </div>
-            </div>
+        {/* Game Features */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-12 w-full max-w-4xl">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Multiplayer</div>
+            <div className="text-xs sm:text-sm text-blue-200">2-8 Players</div>
           </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Music className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Any Genre</div>
+            <div className="text-xs sm:text-sm text-purple-200">Your Playlists</div>
+          </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Fast Paced</div>
+            <div className="text-xs sm:text-sm text-yellow-200">30s Rounds</div>
+          </Card>
+          
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 p-3 sm:p-4 text-center">
+            <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 mx-auto mb-2" />
+            <div className="text-white font-bold text-sm sm:text-base">Compete</div>
+            <div className="text-xs sm:text-sm text-green-200">First to 10</div>
+          </Card>
+        </div>
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center max-w-3xl mx-auto">
-            <div className="flex items-center justify-center gap-2 text-purple-300/70">
-              <Music className="h-5 w-5" />
-              <span className="text-sm">Real Music Previews</span>
+        {/* Action Buttons - Made larger */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-lg">
+          <Button
+            onClick={onHostGame}
+            size="lg"
+            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg border-0 h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"
+          >
+            <Play className="h-6 w-6 sm:h-7 sm:w-7 mr-2" />
+            Host Game
+          </Button>
+          
+          <Button
+            onClick={onJoinGame}
+            size="lg"
+            variant="outline"
+            className="flex-1 bg-white/10 border-white/30 text-white hover:bg-white/20 shadow-lg h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"
+          >
+            <Smartphone className="h-6 w-6 sm:h-7 sm:w-7 mr-2" />
+            Join Game
+          </Button>
+        </div>
+
+        {/* How to Play */}
+        <Card className="bg-white/10 backdrop-blur-md border-white/20 p-4 sm:p-6 mt-8 sm:mt-12 w-full max-w-2xl">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4 text-center">How to Play</h3>
+          <div className="space-y-2 sm:space-y-3 text-sm sm:text-base text-purple-200">
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">1</Badge>
+              <p>Host creates a room and loads a Deezer playlist</p>
             </div>
-            <div className="flex items-center justify-center gap-2 text-purple-300/70">
-              <Users className="h-5 w-5" />
-              <span className="text-sm">Multiplayer Fun</span>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">2</Badge>
+              <p>Players join using the room code on their phones</p>
             </div>
-            <div className="flex items-center justify-center gap-2 text-purple-300/70">
-              <Sparkles className="h-5 w-5" />
-              <span className="text-sm">Custom Playlists</span>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">3</Badge>
+              <p>Listen to mystery songs and place them chronologically in your timeline</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <Badge className="bg-purple-500/20 text-purple-200 border-purple-400 min-w-6 h-6 flex items-center justify-center text-xs font-bold">4</Badge>
+              <p>First player to get 10 correct placements wins!</p>
             </div>
           </div>
+        </Card>
+
+        {/* Footer */}
+        <div className="mt-8 sm:mt-12 text-center">
+          <p className="text-xs sm:text-sm text-purple-300">
+            Powered by Deezer • Works on any device
+          </p>
         </div>
       </div>
     </div>

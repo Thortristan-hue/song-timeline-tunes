@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -35,8 +34,6 @@ export function HostLobby({
   const [hostName, setHostName] = useState(currentHostName);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
   const [copied, setCopied] = useState(false);
-
-  console.log('HostLobby players:', players.length, players);
 
   const handleCreateRoom = async () => {
     if (!hostName.trim()) {
