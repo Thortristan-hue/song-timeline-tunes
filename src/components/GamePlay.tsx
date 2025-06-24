@@ -8,7 +8,7 @@ import { PlayerTimeline } from '@/components/PlayerTimeline';
 import { useToast } from '@/components/ui/use-toast';
 import { Song, Player, GameState } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { useSoundEffects } from '@/lib/SoundEffects';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface GamePlayProps {
   room: any;

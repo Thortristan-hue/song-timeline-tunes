@@ -5,7 +5,6 @@ import { Progress } from '@/components/ui/progress';
 import { Music, Loader2, AlertCircle, CheckCircle, Radio } from 'lucide-react';
 import { Song } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
-import { songService } from '@/services/songService';
 import { cn } from '@/lib/utils';
 import { soundEffects } from '@/lib/SoundEffects';
 
@@ -111,13 +110,8 @@ export function PlaylistLoader({
   const attemptDeezerLoad = async (url: string): Promise<Song[]> => {
     try {
       updateState({ progress: 30, status: 'Connecting to Deezer...' });
-      const songs = await songService.loadPlaylist(url);
-      
-      if (songs.length > 0) {
-        updateState({ progress: 60, status: `Found ${songs.length} songs` });
-        return songs;
-      }
-      
+      // For now, return empty array as external API integration is not implemented
+      console.warn('Deezer loading not implemented - using fallback');
       return [];
     } catch (error) {
       console.warn('Deezer load failed:', error);
