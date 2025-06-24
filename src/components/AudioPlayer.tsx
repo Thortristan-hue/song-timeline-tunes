@@ -35,7 +35,7 @@ export function AudioPlayer({
     isMuted: false
   });
 
-  // Proxy the audio URL through our CORS proxy
+  // Fix the proxy URL generation
   const getProxiedUrl = useCallback((url: string | null): string | null => {
     if (!url) return null;
     
@@ -44,8 +44,18 @@ export function AudioPlayer({
       return url;
     }
     
-    // Proxy through our CORS proxy
-    return `https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(url)}`;
+    // If it's already a valid HTTP(S) URL, proxy it
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        return `https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(url)}`;
+      } catch (error) {
+        console.error('Failed to encode URL for proxy:', error);
+        return null;
+      }
+    }
+    
+    // If it's a relative or other type of URL, return as is
+    return url;
   }, []);
 
   // Reset audio state when src changes
@@ -75,19 +85,38 @@ export function AudioPlayer({
       }));
     };
 
-    const handleError = () => {
-      const error = 'Unable to load audio. This might be due to network issues or the audio file being unavailable.';
-      console.error('🎵 Audio error:', error);
+    const handleError = (event: Event) => {
+      const audioElement = event.target as HTMLAudioElement;
+      const error = audioElement.error;
+      let errorMessage = 'Unable to load audio.';
+      
+      if (error) {
+        switch (error.code) {
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage = 'Network error while loading audio.';
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage = 'Audio format not supported.';
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage = 'Audio source not supported.';
+            break;
+          default:
+            errorMessage = 'Unknown audio error occurred.';
+        }
+      }
+      
+      console.error('🎵 Audio error:', error, 'URL:', audioElement.src);
       
       setAudioState(prev => ({
         ...prev,
         hasError: true,
-        errorMessage: error,
+        errorMessage,
         isLoading: false,
         canPlay: false
       }));
       
-      onError?.(error);
+      onError?.(errorMessage);
     };
 
     const handleLoadStart = () => {

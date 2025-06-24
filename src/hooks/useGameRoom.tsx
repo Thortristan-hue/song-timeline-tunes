@@ -17,6 +17,8 @@ interface UseGameRoomReturn {
   updateRoomSongs: (songs: Song[]) => Promise<void>;
   startGame: () => Promise<void>;
   leaveRoom: () => void;
+  placeCard: (song: Song, position: number) => Promise<{ success: boolean }>;
+  setCurrentSong: (song: Song) => Promise<void>;
 }
 
 export function useGameRoom(): UseGameRoomReturn {
@@ -24,10 +26,35 @@ export function useGameRoom(): UseGameRoomReturn {
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
+
+  // Auto-rejoin on page load
+  useEffect(() => {
+    const attemptAutoRejoin = async () => {
+      setIsLoading(true);
+      try {
+        const rejoinResult = await gameService.autoRejoinIfPossible();
+        if (rejoinResult) {
+          setRoom(rejoinResult.room);
+          setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(rejoinResult.player));
+          
+          toast({
+            title: "Welcome back!",
+            description: `Rejoined lobby ${rejoinResult.room.lobby_code}`,
+          });
+        }
+      } catch (err) {
+        console.error('Auto-rejoin failed:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    attemptAutoRejoin();
+  }, [toast]);
 
   const createRoom = useCallback(async (hostName?: string): Promise<string | null> => {
     setIsLoading(true);
@@ -160,7 +187,40 @@ export function useGameRoom(): UseGameRoomReturn {
     }
   }, [room, toast]);
 
+  const placeCard = useCallback(async (song: Song, position: number): Promise<{ success: boolean }> => {
+    if (!room || !currentPlayer) return { success: false };
+    
+    try {
+      const result = await gameService.placeCard(room.id, currentPlayer.id, song, position);
+      return { success: result.success };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to place card';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return { success: false };
+    }
+  }, [room, currentPlayer, toast]);
+
+  const setCurrentSong = useCallback(async (song: Song): Promise<void> => {
+    if (!room) return;
+    
+    try {
+      await gameService.setCurrentSong(room.id, song);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set current song';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }, [room, toast]);
+
   const leaveRoom = useCallback(() => {
+    gameService.clearPlayerSession();
     setRoom(null);
     setPlayers([]);
     setCurrentPlayer(null);
@@ -171,12 +231,15 @@ export function useGameRoom(): UseGameRoomReturn {
   useEffect(() => {
     if (!room) return;
 
+    console.log('Setting up real-time subscription for room:', room.id);
+
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
         console.log('Room updated:', updatedRoom);
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
+        console.log('Players updated:', dbPlayers);
         const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
         setPlayers(convertedPlayers);
         
@@ -212,6 +275,8 @@ export function useGameRoom(): UseGameRoomReturn {
     updatePlayer,
     updateRoomSongs,
     startGame,
-    leaveRoom
+    leaveRoom,
+    placeCard,
+    setCurrentSong
   };
 }

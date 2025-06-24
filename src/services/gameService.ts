@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -9,7 +10,8 @@ class GameService {
   private sessionId: string;
 
   constructor() {
-    this.sessionId = this.generateSessionId();
+    this.sessionId = this.getStoredSessionId() || this.generateSessionId();
+    this.storeSessionId(this.sessionId);
   }
 
   generateSessionId(): string {
@@ -18,6 +20,47 @@ class GameService {
 
   getSessionId(): string {
     return this.sessionId;
+  }
+
+  private getStoredSessionId(): string | null {
+    return localStorage.getItem('game_session_id');
+  }
+
+  private storeSessionId(sessionId: string): void {
+    localStorage.setItem('game_session_id', sessionId);
+  }
+
+  // Session persistence for rejoining
+  storePlayerSession(roomId: string, playerId: string, lobbyCode: string): void {
+    const sessionData = {
+      roomId,
+      playerId,
+      lobbyCode,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('player_session', JSON.stringify(sessionData));
+  }
+
+  getStoredPlayerSession(): { roomId: string; playerId: string; lobbyCode: string } | null {
+    const stored = localStorage.getItem('player_session');
+    if (!stored) return null;
+    
+    try {
+      const sessionData = JSON.parse(stored);
+      // Check if session is less than 24 hours old
+      if (Date.now() - sessionData.timestamp < 24 * 60 * 60 * 1000) {
+        return sessionData;
+      }
+    } catch (error) {
+      console.error('Failed to parse stored session:', error);
+    }
+    
+    this.clearPlayerSession();
+    return null;
+  }
+
+  clearPlayerSession(): void {
+    localStorage.removeItem('player_session');
   }
 
   // More flexible URL validation
@@ -43,7 +86,9 @@ class GameService {
         lobby_code: lobbyCode,
         host_id: this.sessionId,
         phase: 'lobby',
-        songs: []
+        songs: [],
+        current_turn: 0,
+        current_song: null
       })
       .select()
       .single();
@@ -85,6 +130,9 @@ class GameService {
 
     if (playerError) throw playerError;
     
+    // Store session for rejoining
+    this.storePlayerSession(room.id, player.id, lobbyCode);
+    
     return player;
   }
 
@@ -107,6 +155,51 @@ class GameService {
     }
 
     return data;
+  }
+
+  // Auto-rejoin functionality
+  async autoRejoinIfPossible(): Promise<{ room: GameRoom; player: DatabasePlayer } | null> {
+    const session = this.getStoredPlayerSession();
+    if (!session) return null;
+
+    try {
+      // Check if room still exists
+      const { data: room, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', session.roomId)
+        .single();
+
+      if (roomError || !room) {
+        this.clearPlayerSession();
+        return null;
+      }
+
+      // Check if player still exists
+      const { data: player, error: playerError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', session.playerId)
+        .eq('room_id', session.roomId)
+        .single();
+
+      if (playerError || !player) {
+        this.clearPlayerSession();
+        return null;
+      }
+
+      // Reconnect player
+      const reconnectedPlayer = await this.reconnectPlayer(session.playerId);
+      
+      return {
+        room: this.convertDatabaseRoomToGameRoom(room),
+        player: reconnectedPlayer
+      };
+    } catch (error) {
+      console.error('Auto-rejoin failed:', error);
+      this.clearPlayerSession();
+      return null;
+    }
   }
 
   private generateRandomColor(): string {
@@ -137,7 +230,9 @@ class GameService {
       phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
       songs: Array.isArray(dbRoom.songs) ? (dbRoom.songs as unknown as Song[]) : [],
       created_at: dbRoom.created_at,
-      updated_at: dbRoom.updated_at
+      updated_at: dbRoom.updated_at,
+      current_turn: dbRoom.current_turn || 0,
+      current_song: dbRoom.current_song as Song | null
     };
   }
 
@@ -198,7 +293,8 @@ class GameService {
       if (songs.length > 0) {
         const randomSong = songs[Math.floor(Math.random() * songs.length)];
         await this.updatePlayer(player.id, {
-          timeline: [randomSong]
+          timeline: [randomSong],
+          score: 1
         });
       }
     }
@@ -242,12 +338,13 @@ class GameService {
     if (error) throw error;
   }
 
+  // New method: Handle card placement with full synchronization
   async placeCard(roomId: string, playerId: string, song: Song, position: number): Promise<{ success: boolean; error?: string }> {
     try {
       // Get current player timeline
       const { data: player, error: fetchError } = await supabase
         .from('players')
-        .select('timeline')
+        .select('timeline, score')
         .eq('id', playerId)
         .single();
 
@@ -260,12 +357,16 @@ class GameService {
       const newTimeline = [...currentTimeline];
       newTimeline.splice(position, 0, song);
 
-      // Update player timeline in database
+      // Check if placement is correct
+      const isCorrect = this.isTimelineCorrect(newTimeline);
+      const newScore = isCorrect ? (player.score || 0) + 1 : (player.score || 0);
+
+      // Update player timeline and score
       const { error: updateError } = await supabase
         .from('players')
         .update({ 
           timeline: newTimeline as any,
-          score: this.calculateScore(newTimeline)
+          score: newScore
         })
         .eq('id', playerId);
 
@@ -273,7 +374,37 @@ class GameService {
         throw updateError;
       }
 
-      return { success: true };
+      // Get current room state
+      const { data: room } = await supabase
+        .from('game_rooms')
+        .select('current_turn')
+        .eq('id', roomId)
+        .single();
+
+      const currentTurn = room?.current_turn || 0;
+
+      // Get all players to determine next turn
+      const { data: allPlayers } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('joined_at');
+
+      if (allPlayers) {
+        const activePlayers = allPlayers.filter(p => p.player_session_id !== room?.host_id || '');
+        const nextTurn = (currentTurn + 1) % activePlayers.length;
+        
+        // Update room with next turn and clear current song
+        await supabase
+          .from('game_rooms')
+          .update({ 
+            current_turn: nextTurn,
+            current_song: null
+          })
+          .eq('id', roomId);
+      }
+
+      return { success: isCorrect };
     } catch (error) {
       console.error('Error placing card:', error);
       return { 
@@ -281,6 +412,32 @@ class GameService {
         error: error instanceof Error ? error.message : 'Unknown error' 
       };
     }
+  }
+
+  // New method: Set current song for the room
+  async setCurrentSong(roomId: string, song: Song): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ current_song: song as any })
+        .eq('id', roomId);
+
+      if (error) throw error;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set current song';
+      throw new Error(errorMessage);
+    }
+  }
+
+  private isTimelineCorrect(timeline: Song[]): boolean {
+    for (let i = 0; i < timeline.length - 1; i++) {
+      const currentYear = parseInt(timeline[i].release_year);
+      const nextYear = parseInt(timeline[i + 1].release_year);
+      if (currentYear > nextYear) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private calculateScore(timeline: Song[]): number {
@@ -301,10 +458,18 @@ class GameService {
     phase: string;
   }>): Promise<void> {
     try {
-      const dbUpdates: any = { ...updates };
+      const dbUpdates: any = {};
       
-      if (updates.currentSong) {
+      if (updates.currentTurn !== undefined) {
+        dbUpdates.current_turn = updates.currentTurn;
+      }
+      
+      if (updates.currentSong !== undefined) {
         dbUpdates.current_song = updates.currentSong as any;
+      }
+      
+      if (updates.phase) {
+        dbUpdates.phase = updates.phase;
       }
 
       const { error } = await supabase

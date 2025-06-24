@@ -31,23 +31,35 @@ export default function Index() {
     joinRoom,
     updatePlayer,
     startGame,
-    leaveRoom
+    leaveRoom,
+    placeCard,
+    setCurrentSong
   } = useGameRoom();
   
   const {
     gameState,
-    placeCard,
     setIsPlaying,
     getCurrentPlayer,
     initializeGame
-  } = useGameLogic(room?.id || null, players);
+  } = useGameLogic(room?.id || null, players, room, setCurrentSong);
 
-  // Handle room phase changes
+  // Handle room phase changes and auto-navigate based on session
   useEffect(() => {
-    if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      setGamePhase('playing');
+    if (room) {
+      if (room.phase === 'playing' && gamePhase !== 'playing') {
+        setGamePhase('playing');
+      } else if (room.phase === 'lobby') {
+        if (isHost) {
+          setGamePhase('hostLobby');
+        } else if (currentPlayer) {
+          setGamePhase('mobileLobby');
+        }
+      }
+    } else if (!isLoading && gamePhase !== 'menu') {
+      // Only reset to menu if we're not loading and not already on menu
+      setGamePhase('menu');
     }
-  }, [room?.phase, gamePhase]);
+  }, [room?.phase, gamePhase, isHost, currentPlayer, isLoading]);
 
   // Navigation handlers
   const handleHostGame = async () => {
@@ -143,7 +155,8 @@ export default function Index() {
       return { success: false };
     }
 
-    const result = placeCard(currentPlayer.id, gameState.currentSong, position);
+    // Use the database-synced place card function
+    const result = await placeCard(gameState.currentSong, position);
     
     // Show result
     setMysteryCardRevealed(true);
@@ -189,6 +202,19 @@ export default function Index() {
       soundEffects.playGameVictory();
     }
   }, [gameState.winner, soundEffects]);
+
+  // Show loading screen while determining initial state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-6xl mb-4">🎵</div>
+          <div className="text-2xl font-bold mb-2">Loading...</div>
+          <div className="text-slate-300">Checking for existing game session</div>
+        </div>
+      </div>
+    );
+  }
 
   const renderPhase = () => {
     switch (gamePhase) {
