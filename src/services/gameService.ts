@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -14,7 +15,7 @@ class GameService {
   }
 
   generateSessionId(): string {
-    return Math.random().toString(36).substr(2, 9);
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
   }
 
   getSessionId(): string {
@@ -112,7 +113,35 @@ class GameService {
       throw new Error('Room not found');
     }
 
-    // Create player
+    // Check if a player with this name already exists in this room
+    const { data: existingPlayer } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('name', playerName)
+      .maybeSingle();
+
+    if (existingPlayer) {
+      // Update existing player's session ID and return
+      const { data: updatedPlayer, error: updateError } = await supabase
+        .from('players')
+        .update({
+          player_session_id: this.sessionId,
+          last_active: new Date().toISOString()
+        })
+        .eq('id', existingPlayer.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      
+      // Store session for rejoining
+      this.storePlayerSession(room.id, updatedPlayer.id, lobbyCode);
+      
+      return updatedPlayer;
+    }
+
+    // Create new player
     const { data: player, error: playerError } = await supabase
       .from('players')
       .insert({
@@ -279,7 +308,7 @@ class GameService {
   }
 
   async assignStartingCards(roomId: string, songs: Song[]): Promise<void> {
-    // Get all players in the room
+    // Get all players in the room (excluding host)
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('*')
@@ -287,8 +316,20 @@ class GameService {
 
     if (playersError || !players) throw playersError;
 
-    // Assign each player a random starting card
-    for (const player of players) {
+    // Get room info to identify host
+    const { data: room } = await supabase
+      .from('game_rooms')
+      .select('host_id')
+      .eq('id', roomId)
+      .single();
+
+    if (!room) throw new Error('Room not found');
+
+    // Filter out host from players
+    const nonHostPlayers = players.filter(player => player.player_session_id !== room.host_id);
+
+    // Assign each non-host player a random starting card
+    for (const player of nonHostPlayers) {
       if (songs.length > 0) {
         const randomSong = songs[Math.floor(Math.random() * songs.length)];
         await this.updatePlayer(player.id, {
@@ -373,16 +414,13 @@ class GameService {
         throw updateError;
       }
 
-      // Get current room state
+      // Get current room state and all players
       const { data: room } = await supabase
         .from('game_rooms')
         .select('current_turn, host_id')
         .eq('id', roomId)
         .single();
 
-      const currentTurn = room?.current_turn || 0;
-
-      // Get all players to determine next turn
       const { data: allPlayers } = await supabase
         .from('players')
         .select('*')
@@ -390,8 +428,10 @@ class GameService {
         .order('joined_at');
 
       if (allPlayers && room) {
+        // Only count non-host players for turn rotation
         const activePlayers = allPlayers.filter(p => p.player_session_id !== room.host_id);
-        const nextTurn = (currentTurn + 1) % activePlayers.length;
+        const currentTurn = room.current_turn || 0;
+        const nextTurn = (currentTurn + 1) % Math.max(1, activePlayers.length);
         
         // Update room with next turn and reset current song index
         await supabase

@@ -31,9 +31,14 @@ export function useGameRoom(): UseGameRoomReturn {
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
-  // Auto-rejoin on page load
+  // Auto-rejoin on page load - but only once
   useEffect(() => {
+    let hasAttemptedRejoin = false;
+    
     const attemptAutoRejoin = async () => {
+      if (hasAttemptedRejoin) return;
+      hasAttemptedRejoin = true;
+      
       setIsLoading(true);
       try {
         const rejoinResult = await gameService.autoRejoinIfPossible();
@@ -94,27 +99,15 @@ export function useGameRoom(): UseGameRoomReturn {
         throw new Error('Room not found');
       }
 
-      const existingPlayers = await gameService.getPlayersInRoom(roomData.id);
-      const existingPlayer = existingPlayers.find(p => p.name === playerName);
-
-      let player: DatabasePlayer;
-
-      if (existingPlayer) {
-        player = await gameService.reconnectPlayer(existingPlayer.id);
-        toast({
-          title: "Reconnected!",
-          description: `Welcome back, ${playerName}!`,
-        });
-      } else {
-        player = await gameService.joinRoom(lobbyCode, playerName);
-        toast({
-          title: "Joined room!",
-          description: `Welcome to lobby ${lobbyCode}`,
-        });
-      }
+      const player = await gameService.joinRoom(lobbyCode, playerName);
       
       setRoom(roomData);
       setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(player));
+      
+      toast({
+        title: "Joined room!",
+        description: `Welcome to lobby ${lobbyCode}`,
+      });
       
       return true;
     } catch (err) {
