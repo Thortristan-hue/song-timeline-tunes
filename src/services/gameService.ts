@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -88,7 +87,7 @@ class GameService {
         phase: 'lobby',
         songs: [],
         current_turn: 0,
-        current_song: null
+        current_song_index: 0
       })
       .select()
       .single();
@@ -232,7 +231,7 @@ class GameService {
       created_at: dbRoom.created_at,
       updated_at: dbRoom.updated_at,
       current_turn: dbRoom.current_turn || 0,
-      current_song: dbRoom.current_song as Song | null
+      current_song: null // We'll store this separately or derive it
     };
   }
 
@@ -338,7 +337,7 @@ class GameService {
     if (error) throw error;
   }
 
-  // New method: Handle card placement with full synchronization
+  // Handle card placement with full synchronization
   async placeCard(roomId: string, playerId: string, song: Song, position: number): Promise<{ success: boolean; error?: string }> {
     try {
       // Get current player timeline
@@ -377,7 +376,7 @@ class GameService {
       // Get current room state
       const { data: room } = await supabase
         .from('game_rooms')
-        .select('current_turn')
+        .select('current_turn, host_id')
         .eq('id', roomId)
         .single();
 
@@ -390,16 +389,16 @@ class GameService {
         .eq('room_id', roomId)
         .order('joined_at');
 
-      if (allPlayers) {
-        const activePlayers = allPlayers.filter(p => p.player_session_id !== room?.host_id || '');
+      if (allPlayers && room) {
+        const activePlayers = allPlayers.filter(p => p.player_session_id !== room.host_id);
         const nextTurn = (currentTurn + 1) % activePlayers.length;
         
-        // Update room with next turn and clear current song
+        // Update room with next turn and reset current song index
         await supabase
           .from('game_rooms')
           .update({ 
             current_turn: nextTurn,
-            current_song: null
+            current_song_index: 0
           })
           .eq('id', roomId);
       }
@@ -414,12 +413,14 @@ class GameService {
     }
   }
 
-  // New method: Set current song for the room
+  // Set current song for the room (using current_song_index for now)
   async setCurrentSong(roomId: string, song: Song): Promise<void> {
     try {
+      // For now, we'll just update the current_song_index to 1 to indicate a song is active
+      // In a full implementation, you might want to store the song data elsewhere
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song as any })
+        .update({ current_song_index: 1 })
         .eq('id', roomId);
 
       if (error) throw error;
@@ -465,7 +466,8 @@ class GameService {
       }
       
       if (updates.currentSong !== undefined) {
-        dbUpdates.current_song = updates.currentSong as any;
+        // For now, just set current_song_index to indicate song state
+        dbUpdates.current_song_index = updates.currentSong ? 1 : 0;
       }
       
       if (updates.phase) {

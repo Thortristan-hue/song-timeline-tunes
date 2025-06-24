@@ -50,4 +50,6 @@ export interface GameRoom {
   songs: Song[];
   created_at: string;
   updated_at: string;
+  current_turn?: number;
+  current_song?: Song | null;
 }
