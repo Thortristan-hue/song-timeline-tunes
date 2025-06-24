@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,9 @@ interface PlayerViewProps {
   onDragEnd: () => void;
   songLoadingError?: string | null;
   retryingSong?: boolean;
+  audioPlaybackError?: string | null;
+  onRetryAudio?: () => void;
+  onSkipSong?: () => void;
 }
 
 export function PlayerView({
@@ -46,7 +48,10 @@ export function PlayerView({
   onDragStart,
   onDragEnd,
   songLoadingError,
-  retryingSong
+  retryingSong,
+  audioPlaybackError,
+  onRetryAudio,
+  onSkipSong
 }: PlayerViewProps) {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
@@ -234,20 +239,40 @@ export function PlayerView({
         </div>
       </div>
 
-      {/* Mystery card */}
+      {/* Mystery card with better error handling */}
       <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
           
           <div className="relative">
             {songLoadingError ? (
-              <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white">
+              <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-4">
                 <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
-                <div className="text-sm text-center px-4 text-red-200 leading-tight mb-4">
+                <div className="text-sm text-center px-2 text-red-200 leading-tight mb-4">
                   {songLoadingError}
                 </div>
-                {retryingSong && (
-                  <div className="text-xs text-red-300">Retrying...</div>
+                {retryingSong ? (
+                  <div className="text-xs text-red-300 animate-pulse">Retrying...</div>
+                ) : (
+                  <div className="space-y-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => window.location.reload()}
+                      className="bg-red-600 hover:bg-red-700 text-xs"
+                    >
+                      Retry Game
+                    </Button>
+                    {onSkipSong && isMyTurn && (
+                      <Button 
+                        size="sm" 
+                        onClick={onSkipSong}
+                        variant="outline"
+                        className="text-xs border-red-400"
+                      >
+                        Skip Song
+                      </Button>
+                    )}
+                  </div>
                 )}
               </Card>
             ) : gameState.currentSong ? (
@@ -266,6 +291,11 @@ export function PlayerView({
                 <div className="text-lg text-center px-4 opacity-50">
                   {retryingSong ? 'Loading song...' : 'Waiting for mystery song...'}
                 </div>
+                {!retryingSong && (
+                  <div className="text-xs text-slate-400 mt-2 text-center px-4">
+                    If this takes too long, try refreshing the page
+                  </div>
+                )}
               </Card>
             )}
             
@@ -279,6 +309,39 @@ export function PlayerView({
           </div>
         </div>
       </div>
+
+      {/* Audio error overlay */}
+      {audioPlaybackError && isMyTurn && (
+        <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-40">
+          <div className="bg-amber-900/90 backdrop-blur-lg rounded-2xl p-4 border border-amber-600/50 max-w-xs text-center">
+            <div className="text-2xl mb-2">🔊</div>
+            <div className="text-sm text-amber-200 mb-3">
+              {audioPlaybackError}
+            </div>
+            <div className="space-y-2">
+              {onRetryAudio && (
+                <Button 
+                  size="sm" 
+                  onClick={onRetryAudio}
+                  className="bg-amber-600 hover:bg-amber-700 text-xs w-full"
+                >
+                  Try Play Again
+                </Button>
+              )}
+              {onSkipSong && (
+                <Button 
+                  size="sm" 
+                  onClick={onSkipSong}
+                  variant="outline"
+                  className="text-xs w-full border-amber-400"
+                >
+                  Skip This Song
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Player timeline */}
       {currentPlayer && (

@@ -16,12 +16,15 @@ interface HostDisplayProps {
   currentSongDuration: number;
   gameState: {
     currentSong: Song | null;
-    mysteryCardRevealed?: boolean;
-    cardPlacementCorrect?: boolean | null;
+    mysteryCardRevealed: boolean;
+    cardPlacementCorrect: boolean | null;
   };
   songLoadingError?: string | null;
   retryingSong?: boolean;
   onRetrySong?: () => void;
+  audioPlaybackError?: string | null;
+  onRetryAudio?: () => void;
+  onSkipSong?: () => void;
 }
 
 export function HostDisplay({
@@ -33,7 +36,10 @@ export function HostDisplay({
   gameState,
   songLoadingError,
   retryingSong,
-  onRetrySong
+  onRetrySong,
+  audioPlaybackError,
+  onRetryAudio,
+  onSkipSong
 }: HostDisplayProps) {
   const progressPercentage = currentSongDuration > 0 ? (currentSongProgress / currentSongDuration) * 100 : 0;
 
@@ -98,29 +104,108 @@ export function HostDisplay({
         </div>
       </div>
 
-      {/* Current turn player - large and prominent */}
-      <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
-        <Card className="bg-gradient-to-br from-slate-800/60 to-indigo-800/60 backdrop-blur-md border-indigo-400/30 p-8 text-center shadow-2xl">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="relative">
+      {/* Mystery Card Section with error handling */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl blur-2xl scale-150" />
+            
+            {songLoadingError ? (
+              <Card className="relative w-64 h-80 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-6">
+                <AlertTriangle className="h-16 w-16 mb-4 text-red-400" />
+                <div className="text-lg font-bold mb-3 text-red-200">Song Loading Error</div>
+                <div className="text-sm text-center text-red-300 leading-tight mb-6">
+                  {songLoadingError}
+                </div>
+                {retryingSong ? (
+                  <div className="text-sm text-red-300 animate-pulse">Retrying...</div>
+                ) : onRetrySong && (
+                  <Button 
+                    onClick={onRetrySong}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Try Another Song
+                  </Button>
+                )}
+              </Card>
+            ) : gameState.currentSong ? (
+              <MysteryCard
+                song={gameState.currentSong}
+                isRevealed={gameState.mysteryCardRevealed}
+                isInteractive={false}
+                isDestroyed={gameState.cardPlacementCorrect === false}
+                className="w-64 h-80"
+              />
+            ) : (
+              <Card className="relative w-64 h-80 bg-slate-700/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
+                <Music className="h-16 w-16 mb-4 opacity-50" />
+                <div className="text-xl text-center px-4 opacity-50 mb-2">
+                  {retryingSong ? 'Loading Mystery Song...' : 'Preparing Game...'}
+                </div>
+                {!retryingSong && (
+                  <div className="text-sm text-slate-400 text-center px-4">
+                    If this takes too long, there may be an issue with the playlist
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
+
+          {/* Audio error display */}
+          {audioPlaybackError && (
+            <div className="bg-amber-900/80 backdrop-blur-lg rounded-2xl p-4 border border-amber-600/50 max-w-md">
+              <div className="text-2xl mb-2">🔊</div>
+              <div className="text-lg font-bold text-amber-200 mb-2">Audio Playback Issue</div>
+              <div className="text-sm text-amber-300 mb-4">
+                {audioPlaybackError}
+              </div>
+              <div className="flex gap-2 justify-center">
+                {onRetryAudio && (
+                  <Button 
+                    onClick={onRetryAudio}
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    Retry Audio
+                  </Button>
+                )}
+                {onSkipSong && (
+                  <Button 
+                    onClick={onSkipSong}
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-400 text-amber-200"
+                  >
+                    Skip Song
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Current Turn Player Info */}
+          <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-6 border border-slate-600/50">
+            <div className="flex items-center justify-center gap-4 mb-4">
               <div 
-                className="w-8 h-8 rounded-full border-4 border-white shadow-lg" 
+                className="w-6 h-6 rounded-full border-2 border-white shadow-lg" 
                 style={{ backgroundColor: currentTurnPlayer.color }}
               />
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
-                <Crown className="h-3 w-3 text-slate-900" />
+              <div className="text-3xl font-black text-white">
+                {currentTurnPlayer.name}
+              </div>
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-slate-900 px-4 py-2 rounded-full text-lg font-black">
+                {currentTurnPlayer.score}/10
               </div>
             </div>
-            <div>
-              <h2 className="text-4xl font-bold text-white mb-1">
-                {currentTurnPlayer.name}'s Turn
-              </h2>
-              <div className="text-indigo-200 text-lg">
-                Score: {currentTurnPlayer.score}/10
-              </div>
+            
+            <div className="text-lg text-slate-300 text-center">
+              {gameState.currentSong && !songLoadingError ? 
+                "is placing their card..." : 
+                "waiting for song to load..."
+              }
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Song progress bar */}
@@ -167,59 +252,6 @@ export function HostDisplay({
           </Card>
         </div>
       )}
-
-      {/* Mystery card display - Enhanced for host view */}
-      <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
-          
-          <div className="relative">
-            {songLoadingError ? (
-              <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white">
-                <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
-                <div className="text-sm text-center px-4 text-red-200 leading-tight mb-4">
-                  {songLoadingError}
-                </div>
-                {onRetrySong && (
-                  <Button
-                    onClick={onRetrySong}
-                    disabled={retryingSong}
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1"
-                  >
-                    {retryingSong ? 'Retrying...' : 'Retry'}
-                  </Button>
-                )}
-              </Card>
-            ) : gameState.currentSong ? (
-              <MysteryCard
-                song={gameState.currentSong}
-                isRevealed={gameState.mysteryCardRevealed || false}
-                isInteractive={false}
-                isDestroyed={gameState.cardPlacementCorrect === false}
-                className="w-48 h-60"
-                loadingError={songLoadingError}
-              />
-            ) : (
-              <Card className="w-48 h-60 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
-                <Music className="h-12 w-12 mb-4 opacity-50" />
-                <div className="text-lg text-center px-4 opacity-50">
-                  {retryingSong ? 'Fetching song...' : 
-                   songLoadingError ? 'Failed to load song' : 
-                   'Loading mystery song...'}
-                </div>
-              </Card>
-            )}
-            
-            {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
-                <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
-                  {currentTurnPlayer.name} is thinking...
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* Current player's timeline */}
       <div className="absolute bottom-40 left-4 right-4 z-20">

@@ -24,6 +24,8 @@ export default function Index() {
   const [currentSongDuration, setCurrentSongDuration] = useState(30);
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
+  const [gameError, setGameError] = useState<string | null>(null);
+  const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const {
@@ -75,7 +77,7 @@ export default function Index() {
     }
   });
 
-  // Audio progress tracking
+  // Audio progress tracking with error handling
   useEffect(() => {
     if (audioRef.current) {
       const audio = audioRef.current;
@@ -87,14 +89,29 @@ export default function Index() {
       
       const handleLoadedMetadata = () => {
         setCurrentSongDuration(audio.duration || 30);
+        setAudioPlaybackError(null);
+      };
+
+      const handleAudioError = (e: Event) => {
+        console.error('Audio playback error:', e);
+        setAudioPlaybackError('Unable to play this song preview. Click to try again or skip to next song.');
+        setGameState(prev => ({ ...prev, isPlaying: false }));
+      };
+
+      const handleAudioEnded = () => {
+        setGameState(prev => ({ ...prev, isPlaying: false }));
       };
       
       audio.addEventListener('timeupdate', updateProgress);
       audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener('error', handleAudioError);
+      audio.addEventListener('ended', handleAudioEnded);
       
       return () => {
         audio.removeEventListener('timeupdate', updateProgress);
         audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('error', handleAudioError);
+        audio.removeEventListener('ended', handleAudioEnded);
       };
     }
   }, [gameState.currentSong]);
@@ -118,6 +135,7 @@ export default function Index() {
         }
       } catch (error) {
         console.error('❌ Song filtering failed:', error);
+        setGameError('Failed to process songs. Please try a different playlist.');
         setValidGameSongs([]);
       }
     };
@@ -136,53 +154,72 @@ export default function Index() {
     return [];
   };
 
-  // Pick and prepare a song for the turn
+  // Pick and prepare a song for the turn with better error handling
   const pickAndPrepareSong = async (): Promise<Song | null> => {
     const songs = getValidGameSongs();
     
     if (songs.length === 0) {
       console.error('❌ No songs available for turn');
-      setSongLoadingError('No valid songs available');
+      setSongLoadingError('No valid songs available. Please load a playlist first.');
+      setGameError('No songs loaded. Please go back and load a playlist.');
       return null;
     }
     
-    const randomIndex = Math.floor(Math.random() * songs.length);
-    const selectedSong = songs[randomIndex];
+    let attempts = 0;
+    const maxAttempts = Math.min(5, songs.length);
     
-    console.log('🎯 SELECTED SONG:', selectedSong.deezer_title, 'by', selectedSong.deezer_artist, '(' + selectedSong.release_year + ')');
-    
-    if (!selectedSong.preview_url) {
+    while (attempts < maxAttempts) {
       try {
-        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
-        const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
-        console.log('✅ SONG READY WITH PREVIEW');
+        const randomIndex = Math.floor(Math.random() * songs.length);
+        const selectedSong = songs[randomIndex];
+        
+        console.log('🎯 SELECTED SONG:', selectedSong.deezer_title, 'by', selectedSong.deezer_artist, '(' + selectedSong.release_year + ')');
+        
+        if (!selectedSong.preview_url) {
+          console.log('🔄 Fetching preview URL for song...');
+          const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+          const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(selectedSong);
+          console.log('✅ SONG READY WITH PREVIEW');
+          setSongLoadingError(null);
+          setGameError(null);
+          return songWithPreview;
+        }
+        
+        console.log('✅ SONG READY (already had preview)');
         setSongLoadingError(null);
-        return songWithPreview;
-      } catch (error) {
-        console.warn('⚠️ Preview fetch failed, using song without preview:', error);
-        setSongLoadingError(null);
+        setGameError(null);
         return selectedSong;
+      } catch (error) {
+        console.warn(`⚠️ Song preparation failed (attempt ${attempts + 1}):`, error);
+        attempts++;
+        
+        if (attempts >= maxAttempts) {
+          setSongLoadingError('Failed to load song preview. Please try again or use a different playlist.');
+          setGameError('Unable to load songs. There may be an issue with the playlist or network connection.');
+          return null;
+        }
       }
     }
     
-    console.log('✅ SONG READY (already had preview)');
-    setSongLoadingError(null);
-    return selectedSong;
+    return null;
   };
 
-  // Start a new turn with proper state management
+  // Start a new turn with proper error handling
   const startNewTurn = async (turnIndex: number) => {
     console.log('🚀 STARTING TURN', turnIndex, 'for player:', players[turnIndex % players.length]?.name);
     
     const songs = getValidGameSongs();
     if (songs.length === 0) {
       console.error('❌ Cannot start turn - no valid songs available');
+      setGameError('No songs available for gameplay. Please load a playlist first.');
       setSongLoadingError('No valid songs available for gameplay');
       return;
     }
     
     setIsLoadingSong(true);
     setSongLoadingError(null);
+    setGameError(null);
+    setAudioPlaybackError(null);
     
     try {
       const selectedSong = await pickAndPrepareSong();
@@ -214,11 +251,13 @@ export default function Index() {
         console.log('✅ TURN READY - Mystery card should now be visible');
       } else {
         console.error('❌ Failed to prepare song for turn');
-        setSongLoadingError('Failed to load a song for this turn');
+        setSongLoadingError('Failed to load a song for this turn. Please try again.');
+        setGameError('Unable to start the game. Please check your playlist or try again.');
       }
     } catch (error) {
       console.error('❌ Turn start error:', error);
       setSongLoadingError('Error starting the turn. Please try again.');
+      setGameError('Game error occurred. Please refresh and try again.');
     } finally {
       setIsLoadingSong(false);
     }
@@ -428,21 +467,84 @@ export default function Index() {
     setDraggedSong(null);
   };
 
-  const handlePlayPause = () => {
-    if (audioRef.current && gameState.currentSong) {
+  const handlePlayPause = async () => {
+    if (!audioRef.current || !gameState.currentSong?.preview_url) {
+      setAudioPlaybackError('No audio available for this song');
+      return;
+    }
+
+    try {
       if (gameState.isPlaying) {
         audioRef.current.pause();
         setGameState(prev => ({ ...prev, isPlaying: false }));
       } else {
-        audioRef.current.play().then(() => {
+        // Clear any previous errors
+        setAudioPlaybackError(null);
+        
+        // Reset audio to beginning
+        audioRef.current.currentTime = 0;
+        
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
           setGameState(prev => ({ ...prev, isPlaying: true }));
-        }).catch(console.error);
+        }
       }
+    } catch (error) {
+      console.error('Audio playback failed:', error);
+      setAudioPlaybackError('Unable to play audio. Click to try again or check your browser settings.');
+      setGameState(prev => ({ ...prev, isPlaying: false }));
     }
   };
 
-  // Phase rendering
+  const handleRetryAudio = async () => {
+    setAudioPlaybackError(null);
+    await handlePlayPause();
+  };
+
+  const handleSkipSong = async () => {
+    if (isHost && gameState.phase === 'playing') {
+      const nextTurn = (gameState.currentTurn + 1) % players.length;
+      await startNewTurn(nextTurn);
+    }
+  };
+
+  // Phase rendering with error handling
   const renderPhase = () => {
+    // Show game error overlay if there's a critical error
+    if (gameError && gameState.phase === 'playing') {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-red-900 via-slate-900 to-red-900 flex items-center justify-center p-8">
+          <div className="bg-red-900/80 backdrop-blur-lg rounded-2xl p-8 border border-red-600/50 max-w-md text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-white mb-4">Game Error</h2>
+            <p className="text-red-200 mb-6">{gameError}</p>
+            <div className="space-y-3">
+              <Button
+                onClick={() => {
+                  setGameError(null);
+                  setSongLoadingError(null);
+                  if (gameState.phase === 'playing' && players.length > 0) {
+                    startNewTurn(gameState.currentTurn);
+                  }
+                }}
+                className="w-full bg-red-600 hover:bg-red-700"
+              >
+                Try Again
+              </Button>
+              <Button
+                onClick={handleBackToMenu}
+                variant="outline"
+                className="w-full border-red-400 text-red-200 hover:bg-red-800"
+              >
+                Back to Menu
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     switch (gameState.phase) {
       case 'menu':
         return (
@@ -490,7 +592,20 @@ export default function Index() {
       case 'playing':
         if (isHost) {
           const currentTurnPlayer = getCurrentTurnPlayer();
-          if (!currentTurnPlayer) return null;
+          if (!currentTurnPlayer) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center p-8">
+                <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50 max-w-md text-center">
+                  <div className="text-6xl mb-4">🎵</div>
+                  <h2 className="text-2xl font-bold text-white mb-4">Waiting for Players</h2>
+                  <p className="text-slate-300 mb-6">No players are currently in the game. Waiting for players to join...</p>
+                  <Button onClick={handleBackToMenu} className="w-full">
+                    Back to Lobby
+                  </Button>
+                </div>
+              </div>
+            );
+          }
           
           return (
             <HostDisplay
@@ -509,11 +624,42 @@ export default function Index() {
               onRetrySong={async () => {
                 await startNewTurn(gameState.currentTurn);
               }}
+              audioPlaybackError={audioPlaybackError}
+              onRetryAudio={handleRetryAudio}
+              onSkipSong={handleSkipSong}
             />
           );
         } else {
           const currentTurnPlayer = getCurrentTurnPlayer();
-          if (!currentPlayer || !currentTurnPlayer) return null;
+          if (!currentPlayer) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center p-8">
+                <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50 max-w-md text-center">
+                  <div className="text-6xl mb-4">⚠️</div>
+                  <h2 className="text-2xl font-bold text-white mb-4">Player Not Found</h2>
+                  <p className="text-slate-300 mb-6">Your player data could not be loaded. Please rejoin the game.</p>
+                  <Button onClick={handleBackToMenu} className="w-full">
+                    Back to Menu
+                  </Button>
+                </div>
+              </div>
+            );
+          }
+          
+          if (!currentTurnPlayer) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center p-8">
+                <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50 max-w-md text-center">
+                  <div className="text-6xl mb-4">🎵</div>
+                  <h2 className="text-2xl font-bold text-white mb-4">Waiting for Game</h2>
+                  <p className="text-slate-300 mb-6">Waiting for the game to start...</p>
+                  <Button onClick={handleBackToMenu} className="w-full">
+                    Back to Menu
+                  </Button>
+                </div>
+              </div>
+            );
+          }
           
           return (
             <PlayerView
@@ -536,6 +682,9 @@ export default function Index() {
               onDragEnd={handleDragEnd}
               songLoadingError={songLoadingError}
               retryingSong={isLoadingSong}
+              audioPlaybackError={audioPlaybackError}
+              onRetryAudio={handleRetryAudio}
+              onSkipSong={handleSkipSong}
             />
           );
         }
@@ -562,9 +711,10 @@ export default function Index() {
           ref={audioRef}
           src={gameState.currentSong.preview_url}
           crossOrigin="anonymous"
-          preload="auto"
+          preload="metadata"
           onError={(e) => {
-            console.error('Audio error:', e);
+            console.error('Audio element error:', e);
+            setAudioPlaybackError('Audio failed to load. This may be due to browser restrictions or the audio file being unavailable.');
           }}
         />
       )}
