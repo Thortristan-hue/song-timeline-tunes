@@ -84,7 +84,6 @@ export const songService = {
   mapDeezerTrackToSong(track: any, previewUrl: string | null): Song {
       const song = {
         id: track.id.toString(),
-        deezer_id: track.id.toString(),
         deezer_title: track.title,
         deezer_artist: track.artist.name,
         deezer_album: track.album.title,
@@ -102,7 +101,6 @@ export const songService = {
 
       return {
         id: track.id,
-        deezer_id: track.id,
         deezer_title: track.name,
         deezer_artist: track.artists[0].name,
         deezer_album: track.album.name,
@@ -118,7 +116,6 @@ export const songService = {
 
       return {
         id: track.id,
-        deezer_id: track.id,
         deezer_title: track.name,
         deezer_artist: track.artistName,
         deezer_album: track.collectionName,
@@ -132,7 +129,6 @@ export const songService = {
   mapLocalTrackToSong(song: any, previewUrl: string | null): Song {
       return {
         id: song.id,
-        deezer_id: song.id,
         deezer_title: song.deezer_title,
         deezer_artist: song.deezer_artist,
         deezer_album: song.deezer_album,
@@ -146,7 +142,6 @@ export const songService = {
   createSongObject(song: any, previewUrl: string | null): Song {
       return {
         id: song.id,
-        deezer_id: song.deezer_id,
         deezer_title: song.deezer_title,
         deezer_artist: song.deezer_artist,
         deezer_album: song.deezer_album,
