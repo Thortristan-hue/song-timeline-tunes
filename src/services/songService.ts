@@ -21,7 +21,7 @@ export const songService = {
         return [];
       }
 
-      return data.songs as Song[];
+      return data.songs as unknown as Song[];
     } catch (error) {
       console.error("Error fetching songs:", error);
       return [];
