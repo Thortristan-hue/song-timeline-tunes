@@ -87,6 +87,7 @@ export function MysteryCard({
     );
   }
 
+  // Show redacted mystery card (not revealed yet)
   if (!isRevealed) {
     return (
       <Card
@@ -98,7 +99,6 @@ export function MysteryCard({
         draggable={isInteractive}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        // Enhanced touch support for mobile
         style={{
           WebkitUserSelect: 'none',
           userSelect: 'none',
@@ -107,13 +107,15 @@ export function MysteryCard({
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
-        <HelpCircle className="h-12 w-12 mb-2 relative z-10" />
+        <div className="text-4xl mb-2 relative z-10">🎵</div>
+        <HelpCircle className="h-8 w-8 mb-2 relative z-10 opacity-70" />
         <div className="text-2xl font-black mb-1 relative z-10">?</div>
         <div className="text-xs text-center px-2 opacity-90 relative z-10">Mystery Song</div>
       </Card>
     );
   }
 
+  // Show revealed card with actual song info
   return (
     <Card
       className={cn(

@@ -97,7 +97,8 @@ export function GamePlay({
       currentSong: newSong,
       timeLeft: 30,
       isPlaying: false,
-      transitioningTurn: false
+      transitioningTurn: false,
+      mysteryCardRevealed: false // Reset to redacted state for new turn
     }));
 
     setLocalGameState(prev => ({
@@ -239,6 +240,9 @@ export function GamePlay({
     const { song, position } = localGameState.confirmingPlacement;
     const player = activePlayers.find(p => p.id === currentPlayer.id);
     if (!player) return;
+
+    // First reveal the mystery card
+    setGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
 
     const newTimeline = [...player.timeline];
     newTimeline.splice(position, 0, song);
@@ -520,51 +524,22 @@ export function GamePlay({
         </div>
       </div>
 
-      {/* Mystery card - more playful design */}
+      {/* Mystery card - always show if song exists, properly handle revealed state */}
       {gameState.currentSong && (
         <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
           <div className="relative">
             {/* Card shadow/glow */}
             <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
             
-            <div 
-              className="relative w-36 h-44 rounded-3xl shadow-2xl flex flex-col items-center justify-center p-4 text-white border-2 border-white/20 transition-all duration-500 cursor-grab active:cursor-grabbing"
-              style={{
-                background: `linear-gradient(135deg, ${gameState.currentSong.cardColor || '#6366f1'} 0%, ${gameState.currentSong.cardColor || '#6366f1'}dd 50%, ${gameState.currentSong.cardColor || '#6366f1'}aa 100%)`,
-                transform: localGameState.draggedSong ? 
-                  'scale(0.95) rotate(-8deg) translateY(8px)' : 
-                  'scale(1) rotate(-2deg) translateY(0px)',
-                opacity: gameState.transitioningTurn ? 0.7 : 1,
-              }}
-              draggable={isMyTurn}
+            <MysteryCard
+              song={gameState.currentSong}
+              isRevealed={gameState.mysteryCardRevealed}
+              isInteractive={isMyTurn}
+              isDestroyed={false}
+              className="w-36 h-44"
               onDragStart={() => handleDragStart(gameState.currentSong!)}
-            >
-              {/* Card texture overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-black/20 rounded-3xl" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.3),transparent_70%)] rounded-3xl" />
-              
-              {/* Content */}
-              <div className="relative z-10 text-center">
-                <div className="relative mb-3">
-                  <Music className="h-12 w-12 mx-auto opacity-90" />
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-white/30 rounded-full flex items-center justify-center">
-                    <span className="text-xs">?</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="text-sm font-bold opacity-90 tracking-wide">MYSTERY TRACK</div>
-                  <div className="text-5xl font-black mb-2 drop-shadow-lg">?</div>
-                  <div className="text-xs italic opacity-80 leading-tight">
-                    {isMyTurn ? "Drag me to your timeline!" : `${currentTurnPlayer?.name} is thinking...`}
-                  </div>
-                </div>
-              </div>
-
-              {/* Corner decorations */}
-              <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-white/50 rounded-tl-lg" />
-              <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-white/50 rounded-br-lg" />
-            </div>
+              onDragEnd={() => setLocalGameState(prev => ({ ...prev, draggedSong: null }))}
+            />
 
             {/* Progress bar - more organic shape */}
             <div className="mt-4 flex items-center justify-center">

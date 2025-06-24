@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -239,7 +240,7 @@ export function PlayerView({
         </div>
       </div>
 
-      {/* Mystery card with better error handling */}
+      {/* Mystery card section - always show if song exists, redacted until revealed */}
       <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
@@ -289,16 +290,15 @@ export function PlayerView({
               <Card className="w-48 h-60 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
                 <Music className="h-12 w-12 mb-4 opacity-50" />
                 <div className="text-lg text-center px-4 opacity-50">
-                  {retryingSong ? 'Loading song...' : 'Waiting for mystery song...'}
+                  Waiting for mystery song...
                 </div>
-                {!retryingSong && (
-                  <div className="text-xs text-slate-400 mt-2 text-center px-4">
-                    If this takes too long, try refreshing the page
-                  </div>
-                )}
+                <div className="text-xs text-slate-400 mt-2 text-center px-4">
+                  {retryingSong ? 'Loading...' : 'Getting your next challenge ready!'}
+                </div>
               </Card>
             )}
             
+            {/* Only show instruction text when card is not revealed and we have a song */}
             {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
                 <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
