@@ -1,12 +1,11 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Crown, Users, Play, Pause, Music, Timer, Star } from 'lucide-react';
+import { Crown, Users, Music, Star } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from '@/components/MysteryCard';
+import { AudioPlayer } from '@/components/AudioPlayer';
 
 interface HostGameDisplayProps {
   currentPlayer: Player;
@@ -29,50 +28,8 @@ export function HostGameDisplay({
   mysteryCardRevealed,
   cardPlacementResult
 }: HostGameDisplayProps) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(30);
-
-  // Audio progress tracking
-  useEffect(() => {
-    if (audioRef.current) {
-      const audio = audioRef.current;
-      
-      const updateProgress = () => {
-        setCurrentTime(audio.currentTime || 0);
-        setDuration(audio.duration || 30);
-      };
-      
-      audio.addEventListener('timeupdate', updateProgress);
-      audio.addEventListener('loadedmetadata', updateProgress);
-      
-      return () => {
-        audio.removeEventListener('timeupdate', updateProgress);
-        audio.removeEventListener('loadedmetadata', updateProgress);
-      };
-    }
-  }, [currentSong]);
-
-  // Handle play/pause
-  useEffect(() => {
-    if (audioRef.current && currentSong?.preview_url) {
-      if (isPlaying) {
-        audioRef.current.play().catch(console.error);
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying, currentSong]);
-
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
-      {/* Audio element */}
-      {currentSong?.preview_url && (
-        <audio ref={audioRef} src={currentSong.preview_url} />
-      )}
-
       {/* Header */}
       <div className="absolute top-6 left-4 right-4 z-40">
         <div className="flex justify-between items-center">
@@ -141,34 +98,17 @@ export function HostGameDisplay({
               is placing their card...
             </div>
 
-            {/* Music Controls */}
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                onClick={onPlayPause}
-                size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl"
+            {/* Audio Controls */}
+            <div className="flex items-center justify-center">
+              <AudioPlayer
+                src={currentSong?.preview_url || null}
+                isPlaying={isPlaying}
+                onPlayPause={onPlayPause}
                 disabled={!currentSong?.preview_url}
-              >
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-              </Button>
+              />
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Song Progress */}
-      <div className="absolute top-72 left-1/2 transform -translate-x-1/2 w-96 z-30">
-        <Card className="bg-slate-800/60 backdrop-blur-md border-slate-600/30 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <Timer className="h-5 w-5 text-blue-400" />
-            <span className="text-white font-medium">Song Progress</span>
-          </div>
-          <Progress value={progressPercentage} className="h-4 bg-slate-700/50" />
-          <div className="flex justify-between text-sm text-slate-300 mt-2">
-            <span>{Math.round(currentTime)}s</span>
-            <span>{Math.round(duration)}s</span>
-          </div>
-        </Card>
       </div>
 
       {/* Current Player Timeline */}

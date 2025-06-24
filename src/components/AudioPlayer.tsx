@@ -35,6 +35,19 @@ export function AudioPlayer({
     isMuted: false
   });
 
+  // Proxy the audio URL through our CORS proxy
+  const getProxiedUrl = useCallback((url: string | null): string | null => {
+    if (!url) return null;
+    
+    // If it's already a proxied URL, return as is
+    if (url.includes('timeliner-proxy.thortristanjd.workers.dev')) {
+      return url;
+    }
+    
+    // Proxy through our CORS proxy
+    return `https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(url)}`;
+  }, []);
+
   // Reset audio state when src changes
   useEffect(() => {
     setAudioState(prev => ({
@@ -183,6 +196,8 @@ export function AudioPlayer({
     }
   };
 
+  const proxiedSrc = getProxiedUrl(src);
+
   // Show error state with recovery options
   if (audioState.hasError && !audioState.needsUserInteraction) {
     return (
@@ -237,10 +252,10 @@ export function AudioPlayer({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {src && (
+      {proxiedSrc && (
         <audio
           ref={audioRef}
-          src={src}
+          src={proxiedSrc}
           crossOrigin="anonymous"
           preload="metadata"
         />
@@ -250,7 +265,7 @@ export function AudioPlayer({
         onClick={handlePlayPause}
         size="sm"
         className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 h-9 w-9 p-0 shadow-md transform transition-all hover:scale-110"
-        disabled={disabled || !src || !audioState.canPlay || audioState.isLoading}
+        disabled={disabled || !proxiedSrc || !audioState.canPlay || audioState.isLoading}
       >
         {audioState.isLoading ? (
           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -266,7 +281,7 @@ export function AudioPlayer({
         size="sm"
         variant="outline"
         className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 transform transition-all hover:scale-110"
-        disabled={disabled || !src}
+        disabled={disabled || !proxiedSrc}
       >
         {audioState.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </Button>

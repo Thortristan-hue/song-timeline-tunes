@@ -20,7 +20,6 @@ export default function Index() {
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
-  const [hostName, setHostName] = useState('');
   
   const {
     room,
@@ -42,6 +41,13 @@ export default function Index() {
     getCurrentPlayer,
     initializeGame
   } = useGameLogic(room?.id || null, players);
+
+  // Handle room phase changes
+  useEffect(() => {
+    if (room?.phase === 'playing' && gamePhase !== 'playing') {
+      setGamePhase('playing');
+    }
+  }, [room?.phase, gamePhase]);
 
   // Navigation handlers
   const handleHostGame = async () => {
@@ -68,13 +74,11 @@ export default function Index() {
     setGamePhase('menu');
     setMysteryCardRevealed(false);
     setCardPlacementResult(null);
-    setHostName('');
   };
 
-  const handleCreateRoom = async (name: string) => {
+  const handleCreateRoom = async () => {
     try {
-      setHostName(name);
-      const roomId = await createRoom(name);
+      const roomId = await createRoom();
       return !!roomId;
     } catch (error) {
       toast({
@@ -115,7 +119,6 @@ export default function Index() {
     try {
       await startGame();
       await initializeGame();
-      setGamePhase('playing');
       soundEffects.playSound('game-start');
       
       toast({
@@ -207,7 +210,6 @@ export default function Index() {
             setCustomSongs={setCustomSongs}
             isLoading={isLoading}
             createRoom={handleCreateRoom}
-            currentHostName={hostName}
           />
         );
 

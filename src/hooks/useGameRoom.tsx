@@ -173,6 +173,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
+        console.log('Room updated:', updatedRoom);
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
@@ -188,6 +189,7 @@ export function useGameRoom(): UseGameRoomReturn {
       }
     });
 
+    // Load initial players
     gameService.getPlayersInRoom(room.id).then(dbPlayers => {
       const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
       setPlayers(convertedPlayers);
