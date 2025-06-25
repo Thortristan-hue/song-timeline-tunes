@@ -13,6 +13,8 @@ interface GameLogicState {
   isPlaying: boolean;
   winner: Player | null;
   loadingError: string | null;
+  timeLeft: number;
+  transitioningTurn: boolean;
 }
 
 export function useGameLogic(
@@ -31,7 +33,9 @@ export function useGameLogic(
     availableSongs: [],
     isPlaying: false,
     winner: null,
-    loadingError: null
+    loadingError: null,
+    timeLeft: 30,
+    transitioningTurn: false
   });
 
   // Sync players from room data
@@ -98,7 +102,8 @@ export function useGameLogic(
         ...prev,
         phase: 'ready',
         availableSongs: validSongs,
-        currentTurnIndex: 0
+        currentTurnIndex: 0,
+        timeLeft: 30
       }));
 
       // Start first turn if game is already in playing phase
@@ -129,6 +134,9 @@ export function useGameLogic(
     }
 
     try {
+      // Set transitioning state
+      setGameState(prev => ({ ...prev, transitioningTurn: true }));
+
       // Pick a random song from available songs
       let attempts = 0;
       let selectedSong: Song | null = null;
@@ -149,7 +157,9 @@ export function useGameLogic(
         ...prev,
         currentSong: selectedSong,
         isPlaying: false,
-        phase: 'playing'
+        phase: 'playing',
+        timeLeft: 30,
+        transitioningTurn: false
       }));
 
       // Sync to database if we have the callback
@@ -161,6 +171,7 @@ export function useGameLogic(
 
     } catch (error) {
       console.error('Failed to start new turn:', error);
+      setGameState(prev => ({ ...prev, transitioningTurn: false }));
       toast({
         title: "Turn Start Failed",
         description: "Could not load song for this turn",
