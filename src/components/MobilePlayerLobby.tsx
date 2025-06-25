@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,14 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Music, Users, Palette, Gamepad2, Clock } from 'lucide-react';
-import { Player } from '@/types/game';
+import { Player, GameRoom } from '@/types/game';
 
 interface MobilePlayerLobbyProps {
-  player: Player;
-  lobbyCode: string;
-  onUpdatePlayer: (name: string, color: string) => void;
-  gamePhase?: string;
-  onGameStart: () => void;
+  room: GameRoom | null;
+  players: Player[];
+  currentPlayer: Player | null;
+  onBackToMenu: () => void;
+  onUpdatePlayer: (name: string, color: string) => Promise<void>;
 }
 
 const PLAYER_COLORS = [
@@ -28,26 +27,33 @@ const PLAYER_COLORS = [
 ];
 
 export function MobilePlayerLobby({ 
-  player, 
-  lobbyCode, 
-  onUpdatePlayer,
-  gamePhase = 'lobby',
-  onGameStart
+  room,
+  players,
+  currentPlayer,
+  onBackToMenu,
+  onUpdatePlayer
 }: MobilePlayerLobbyProps) {
-  const [name, setName] = useState(player.name);
-  const [selectedColor, setSelectedColor] = useState(player.color);
+  const [name, setName] = useState(currentPlayer?.name || '');
+  const [selectedColor, setSelectedColor] = useState(currentPlayer?.color || PLAYER_COLORS[0]);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Listen for game phase changes
   useEffect(() => {
-    if (gamePhase === 'playing') {
-      onGameStart();
+    if (room?.phase === 'playing') {
+      // Game has started - this will be handled by the parent component
     }
-  }, [gamePhase, onGameStart]);
+  }, [room?.phase]);
 
   useEffect(() => {
-    setHasChanges(name !== player.name || selectedColor !== player.color);
-  }, [name, selectedColor, player.name, player.color]);
+    if (currentPlayer) {
+      setName(currentPlayer.name);
+      setSelectedColor(currentPlayer.color);
+    }
+  }, [currentPlayer]);
+
+  useEffect(() => {
+    setHasChanges(name !== (currentPlayer?.name || '') || selectedColor !== (currentPlayer?.color || ''));
+  }, [name, selectedColor, currentPlayer?.name, currentPlayer?.color]);
 
   const handleSave = () => {
     if (name.trim() && selectedColor) {
@@ -60,13 +66,27 @@ export function MobilePlayerLobby({
     setName(e.target.value);
   };
 
-  if (gamePhase === 'playing') {
+  if (room?.phase === 'playing') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-8 bg-black/20 border-purple-400/30 backdrop-blur-sm text-center">
           <Gamepad2 className="h-16 w-16 text-purple-400 mx-auto mb-4 animate-bounce" />
           <h2 className="text-2xl font-bold text-white mb-4">Game Starting!</h2>
           <p className="text-purple-200">Get ready to place your timeline cards...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!room || !currentPlayer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8 bg-black/20 border-red-400/30 backdrop-blur-sm text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Connection Error</h2>
+          <p className="text-red-200 mb-4">Unable to connect to the lobby.</p>
+          <Button onClick={onBackToMenu} className="bg-red-500 hover:bg-red-600">
+            Back to Menu
+          </Button>
         </Card>
       </div>
     );
@@ -108,7 +128,7 @@ export function MobilePlayerLobby({
             variant="outline" 
             className="bg-purple-500/20 text-purple-200 border-purple-400 text-lg px-4 py-2"
           >
-            Room: {lobbyCode}
+            Room: {room.lobby_code}
           </Badge>
         </div>
 

@@ -5,11 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Music, Users, Trophy, Zap, Play, Smartphone } from 'lucide-react';
 
 interface MainMenuProps {
-  onHostGame: () => void;
-  onJoinGame: () => void;
+  onCreateRoom: () => void;
+  onJoinRoom: () => void;
 }
 
-export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
+export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
       {/* Animated background elements */}
@@ -63,7 +63,7 @@ export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
         {/* Action Buttons - Made larger */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full max-w-lg">
           <Button
-            onClick={onHostGame}
+            onClick={onCreateRoom}
             size="lg"
             className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg border-0 h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"
           >
@@ -72,7 +72,7 @@ export function MainMenu({ onHostGame, onJoinGame }: MainMenuProps) {
           </Button>
           
           <Button
-            onClick={onJoinGame}
+            onClick={onJoinRoom}
             size="lg"
             variant="outline"
             className="flex-1 bg-white/10 border-white/30 text-white hover:bg-white/20 shadow-lg h-14 sm:h-16 text-lg sm:text-xl font-bold transition-all transform hover:scale-105"

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,12 +5,12 @@ import { Card } from '@/components/ui/card';
 import { ArrowLeft, Smartphone, Wifi } from 'lucide-react';
 
 interface MobileJoinProps {
-  onJoinLobby: (lobbyCode: string, playerName: string) => void;
+  onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
   onBackToMenu: () => void;
   isLoading?: boolean;
 }
 
-export function MobileJoin({ onJoinLobby, onBackToMenu, isLoading = false }: MobileJoinProps) {
+export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: MobileJoinProps) {
   const [lobbyCode, setLobbyCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +22,10 @@ export function MobileJoin({ onJoinLobby, onBackToMenu, isLoading = false }: Mob
     setError('');
     
     try {
-      onJoinLobby(lobbyCode.trim().toUpperCase(), playerName.trim());
+      const success = await onJoinRoom(lobbyCode.trim().toUpperCase(), playerName.trim());
+      if (!success) {
+        setError('Failed to join lobby. Please check the code and try again.');
+      }
     } catch (err) {
       setError('Failed to join lobby. Please try again.');
     }
