@@ -94,6 +94,7 @@ export function PlayerView({
     const { song, position } = localState.confirmingPlacement;
     console.log('🎯 Confirming card placement:', song.deezer_title, 'at position', position);
 
+    // Prevent spam clicking
     setLocalState(prev => ({ ...prev, isProcessingPlacement: true }));
 
     try {
@@ -117,7 +118,7 @@ export function PlayerView({
         soundEffects.playCardError();
         toast({
           title: "Close!",
-          description: `${song.deezer_title} - try a different position next time!`,
+          description: `${song.deezer_title} - wrong position! Card destroyed.`,
           variant: "destructive",
         });
       }
@@ -179,7 +180,7 @@ export function PlayerView({
                      style={{display: gameState.timeLeft <= 10 ? 'block' : 'none'}} />
               </div>
               <div className={`font-mono text-lg font-black ${getTimeColor()}`}>
-                {gameState.timeLeft}s
+                ∞
               </div>
             </div>
             
@@ -251,77 +252,89 @@ export function PlayerView({
         </div>
       </div>
 
-      {/* Mystery card section - always show if song exists */}
-      <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="relative animate-bounce-in">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-2xl scale-150" />
-          
-          <div className="relative">
-            {songLoadingError ? (
-              <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-4">
-                <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
-                <div className="text-sm text-center px-2 text-red-200 leading-tight mb-4">
-                  {songLoadingError}
-                </div>
-                {retryingSong ? (
-                  <div className="text-xs text-red-300 animate-pulse">Retrying...</div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => window.location.reload()}
-                      className="bg-red-600 hover:bg-red-700 text-xs"
-                    >
-                      Retry Game
-                    </Button>
-                    {onSkipSong && isMyTurn && (
+      {/* Mystery card section - only show if it's my turn */}
+      {isMyTurn && gameState.currentSong && (
+        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="relative animate-bounce-in">
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-2xl scale-150" />
+            
+            <div className="relative">
+              {songLoadingError ? (
+                <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-4">
+                  <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
+                  <div className="text-sm text-center px-2 text-red-200 leading-tight mb-4">
+                    {songLoadingError}
+                  </div>
+                  {retryingSong ? (
+                    <div className="text-xs text-red-300 animate-pulse">Retrying...</div>
+                  ) : (
+                    <div className="space-y-2">
                       <Button 
                         size="sm" 
-                        onClick={onSkipSong}
-                        variant="outline"
-                        className="text-xs border-red-400"
+                        onClick={() => window.location.reload()}
+                        className="bg-red-600 hover:bg-red-700 text-xs"
                       >
-                        Skip Song
+                        Retry Game
                       </Button>
-                    )}
+                      {onSkipSong && isMyTurn && (
+                        <Button 
+                          size="sm" 
+                          onClick={onSkipSong}
+                          variant="outline"
+                          className="text-xs border-red-400"
+                        >
+                          Skip Song
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              ) : (
+                <MysteryCard
+                  song={gameState.currentSong}
+                  isRevealed={gameState.mysteryCardRevealed}
+                  isInteractive={isMyTurn && isValidTurn}
+                  isDestroyed={gameState.cardPlacementCorrect === false}
+                  className="w-48 h-60"
+                  onDragStart={() => {
+                    if (isMyTurn && gameState.currentSong && isValidTurn) {
+                      soundEffects.playCardPlace();
+                      onDragStart(gameState.currentSong);
+                    }
+                  }}
+                  onDragEnd={onDragEnd}
+                />
+              )}
+              
+              {/* Instruction text */}
+              {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+                  <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full animate-pulse">
+                    Drag me to your timeline!
                   </div>
-                )}
-              </Card>
-            ) : gameState.currentSong ? (
-              <MysteryCard
-                song={gameState.currentSong}
-                isRevealed={gameState.mysteryCardRevealed}
-                isInteractive={isMyTurn && isValidTurn}
-                isDestroyed={gameState.cardPlacementCorrect === false}
-                className="w-48 h-60"
-                onDragStart={() => {
-                  if (isMyTurn && gameState.currentSong && isValidTurn) {
-                    soundEffects.playCardPlace();
-                    onDragStart(gameState.currentSong);
-                  }
-                }}
-                onDragEnd={onDragEnd}
-              />
-            ) : (
-              <Card className="w-48 h-60 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse">
-                <Music className="h-12 w-12 mb-4 opacity-50" />
-                <div className="text-lg text-center px-4 opacity-50">
-                  Waiting for mystery song...
                 </div>
-              </Card>
-            )}
-            
-            {/* Instruction text */}
-            {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
-              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
-                <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full animate-pulse">
-                  {isMyTurn ? "Drag me to your timeline!" : `${currentTurnPlayer?.name} is thinking...`}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Not my turn display */}
+      {!isMyTurn && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+          <div className="text-center space-y-4">
+            <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50">
+              <Music className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+              <div className="text-2xl font-bold text-white mb-2">
+                {currentTurnPlayer?.name} is playing
+              </div>
+              <div className="text-slate-300">
+                Wait for your turn to place cards
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Audio error overlay */}
       {audioPlaybackError && isMyTurn && (
@@ -376,7 +389,7 @@ export function PlayerView({
         </div>
       )}
 
-      {/* Confirmation buttons */}
+      {/* Confirmation buttons - only one set at bottom */}
       {localState.confirmingPlacement && !localState.isProcessingPlacement && (
         <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 animate-scale-in">
           <div className="flex gap-3 bg-slate-800/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-xl">
@@ -384,6 +397,7 @@ export function PlayerView({
               onClick={confirmPlacement}
               size="sm"
               className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-xl px-4 h-10 font-bold shadow-lg transform transition-all hover:scale-105"
+              disabled={localState.isProcessingPlacement}
             >
               <Check className="h-4 w-4 mr-2" />
               Lock it in!
@@ -392,6 +406,7 @@ export function PlayerView({
               onClick={cancelPlacement}
               size="sm"
               className="bg-slate-600/80 hover:bg-slate-500/80 text-white rounded-xl px-4 h-10 font-bold border border-slate-500/50 shadow-lg transform transition-all hover:scale-105"
+              disabled={localState.isProcessingPlacement}
             >
               <X className="h-4 w-4 mr-2" />
               Cancel
@@ -420,7 +435,7 @@ export function PlayerView({
                 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
                 'text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-400'
               }`}>
-                {localState.cardResult.correct ? 'PERFECT!' : 'CLOSE!'}
+                {localState.cardResult.correct ? 'PERFECT!' : 'DESTROYED!'}
               </div>
               
               <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md animate-scale-in">
@@ -433,6 +448,15 @@ export function PlayerView({
                 <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full font-bold text-lg">
                   {localState.cardResult.song.release_year}
                 </div>
+              </div>
+              
+              <div className={`text-lg font-medium ${
+                localState.cardResult.correct ? 'text-emerald-300' : 'text-rose-300'
+              }`}>
+                {localState.cardResult.correct ? 
+                  'Card added to your timeline! 🔥' : 
+                  'Wrong position - card destroyed! 💥'
+                }
               </div>
             </div>
           </div>

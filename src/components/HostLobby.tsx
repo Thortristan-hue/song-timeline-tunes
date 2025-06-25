@@ -149,13 +149,15 @@ export function HostLobby({
                     </Button>
                   </div>
                   
-                  {/* QR Code - Always displayed */}
-                  <div className="flex justify-center">
-                    <QRCodeGenerator 
-                      value={gameUrl}
-                      size={150}
-                      className="transform scale-75"
-                    />
+                  {/* QR Code - Fixed to display as actual QR image */}
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="text-sm text-slate-400">Scan to join:</div>
+                    <div className="bg-white p-2 rounded-lg">
+                      <QRCodeGenerator 
+                        value={gameUrl}
+                        size={120}
+                      />
+                    </div>
                   </div>
                 </div>
               </Card>

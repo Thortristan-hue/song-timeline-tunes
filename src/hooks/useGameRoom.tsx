@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { gameService, GameRoom, DatabasePlayer } from '@/services/gameService';
 import { Player, Song } from '@/types/game';
@@ -27,12 +26,14 @@ export function useGameRoom(): UseGameRoomReturn {
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed from true to false - disable auto-rejoin
   const [error, setError] = useState<string | null>(null);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
-  // Auto-rejoin on page load - but only once
+  // DISABLED: Auto-rejoin functionality temporarily removed
+  // This was causing game logic issues when players opened multiple tabs
+  /*
   useEffect(() => {
     let hasAttemptedRejoin = false;
     
@@ -61,6 +62,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
     attemptAutoRejoin();
   }, [toast]);
+  */
 
   const createRoom = useCallback(async (hostName?: string): Promise<string | null> => {
     setIsLoading(true);

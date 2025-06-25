@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,20 +36,16 @@ export function PlayerTimeline({
   transitioningTurn = false
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
-    const isConfirming = confirmingPlacement?.position === index;
-    
+    // No more confirmation UI on individual cards - moved to bottom of screen
     return (
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "relative w-28 h-28 rounded-lg shadow-xl flex flex-col items-center justify-center p-2 text-white text-xs transition-all duration-300",
-          isConfirming ? "scale-110 rotate-2 z-30" : "hover:scale-105"
+          "relative w-28 h-28 rounded-lg shadow-xl flex flex-col items-center justify-center p-2 text-white text-xs transition-all duration-300 hover:scale-105"
         )}
         style={{
           backgroundColor: song.cardColor,
-          boxShadow: isConfirming 
-            ? '0 10px 30px rgba(147,51,234,0.6)' 
-            : '0 4px 12px rgba(0,0,0,0.3)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
@@ -62,36 +59,22 @@ export function PlayerTimeline({
           </div>
           <div className="text-lg font-black mt-1">{song.release_year}</div>
         </div>
-
-        {isConfirming && (
-          <div className="absolute inset-0 bg-black/80 rounded-lg flex items-center justify-center gap-2">
-            <button
-              onClick={confirmPlacement}
-              className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full transition-all duration-200 hover:scale-110"
-            >
-              <Check className="h-5 w-5" />
-            </button>
-            <button
-              onClick={cancelPlacement}
-              className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-all duration-200 hover:scale-110"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
       </div>
     );
   };
 
   const renderDropZone = (position: number) => {
     const isHovered = hoveredPosition === position;
+    const isConfirming = confirmingPlacement?.position === position;
     
     return (
       <div
         key={`drop-zone-${position}`}
         className={cn(
           "w-2 h-32 rounded-full transition-all duration-300",
-          isHovered 
+          isConfirming
+            ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50 scale-125 animate-pulse'
+            : isHovered 
             ? 'bg-purple-400 shadow-lg shadow-purple-400/50 scale-110' 
             : 'bg-white/20 hover:bg-white/30'
         )}
