@@ -1,233 +1,151 @@
 
 import React, { useState, useEffect } from 'react';
-import { useGameRoom } from '@/hooks/useGameRoom';
-import { useGameLogic } from '@/hooks/useGameLogic';
-import { useToast } from '@/components/ui/use-toast';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { Song, GamePhase } from '@/types/game';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
 import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
-import { HostGameDisplay } from '@/components/HostGameDisplay';
-import { PlayerGameView } from '@/components/PlayerGameView';
+import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useGameRoom } from '@/hooks/useGameRoom';
+import { Song, GamePhase } from '@/types/game';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
-export default function Index() {
-  const { toast } = useToast();
+function Index() {
   const soundEffects = useSoundEffects();
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
-  const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
-  const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
-  
+  const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  const [playerName, setPlayerName] = useState('');
+  const [winner, setWinner] = useState<any>(null);
+
   const {
     room,
     players,
     currentPlayer,
     isHost,
     isLoading,
+    error,
     createRoom,
     joinRoom,
     updatePlayer,
+    updateRoomSongs,
     startGame,
     leaveRoom,
     placeCard,
     setCurrentSong
   } = useGameRoom();
-  
-  const {
-    gameState,
-    setIsPlaying,
-    getCurrentPlayer,
-    initializeGame
-  } = useGameLogic(room?.id || null, players, room, setCurrentSong);
 
-  // Handle room phase changes and auto-navigate based on session
+  // Check for auto-join from URL parameters (QR code)
   useEffect(() => {
-    if (room) {
-      if (room.phase === 'playing' && gamePhase !== 'playing') {
-        setGamePhase('playing');
-      } else if (room.phase === 'lobby') {
-        if (isHost) {
-          setGamePhase('hostLobby');
-        } else if (currentPlayer) {
-          setGamePhase('mobileLobby');
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join');
+    
+    if (joinCode && gamePhase === 'menu') {
+      console.log('🔗 Auto-joining from URL:', joinCode);
+      setGamePhase('mobileJoin');
+      // Clear the URL parameter after processing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [gamePhase]);
+
+  // Listen for room phase changes
+  useEffect(() => {
+    if (room?.phase === 'playing' && gamePhase !== 'playing') {
+      console.log('🎮 Room transitioned to playing phase');
+      setGamePhase('playing');
+      soundEffects.playGameStart();
+    }
+  }, [room?.phase, gamePhase, soundEffects]);
+
+  // Check for winner
+  useEffect(() => {
+    const winningPlayer = players.find(player => player.score >= 10);
+    if (winningPlayer && !winner) {
+      setWinner(winningPlayer);
+      setGamePhase('finished');
+      soundEffects.playGameStart(); // Victory sound
+    }
+  }, [players, winner, soundEffects]);
+
+  const handleCreateRoom = async (): Promise<boolean> => {
+    try {
+      const lobbyCode = await createRoom('Host');
+      if (lobbyCode) {
+        setGamePhase('hostLobby');
+        soundEffects.playGameStart();
+        return true;
       }
-    } else if (!isLoading && gamePhase !== 'menu') {
-      // Only reset to menu if we're not loading and not already on menu
-      setGamePhase('menu');
-    }
-  }, [room?.phase, gamePhase, isHost, currentPlayer, isLoading]);
-
-  // Navigation handlers
-  const handleHostGame = async () => {
-    try {
-      soundEffects.playPlayerAction();
-      setGamePhase('hostLobby');
+      return false;
     } catch (error) {
-      toast({
-        title: "Navigation Failed",
-        description: "Unable to navigate to host lobby.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleJoinGame = () => {
-    soundEffects.playPlayerAction();
-    setGamePhase('mobileJoin');
-  };
-
-  const handleBackToMenu = () => {
-    soundEffects.playPlayerAction();
-    leaveRoom();
-    setGamePhase('menu');
-    setMysteryCardRevealed(false);
-    setCardPlacementResult(null);
-  };
-
-  const handleCreateRoom = async () => {
-    try {
-      const roomId = await createRoom();
-      return !!roomId;
-    } catch (error) {
-      toast({
-        title: "Room Creation Failed",
-        description: "Unable to create game room. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Failed to create room:', error);
       return false;
     }
   };
 
-  const handleJoinLobby = async (lobbyCode: string, playerName: string) => {
+  const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
     try {
-      const success = await joinRoom(lobbyCode, playerName);
+      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
+      const success = await joinRoom(lobbyCode, name);
       if (success) {
-        soundEffects.playSound('player-join');
+        setPlayerName(name);
         setGamePhase('mobileLobby');
+        soundEffects.playPlayerJoin();
+        return true;
       }
+      return false;
     } catch (error) {
-      toast({
-        title: "Join Failed",
-        description: "Unable to join game lobby. Please check the code and try again.",
-        variant: "destructive",
-      });
+      console.error('Failed to join room:', error);
+      return false;
     }
   };
 
   const handleStartGame = async () => {
-    if (players.length < 2) {
-      toast({
-        title: "Cannot start game",
-        description: "Need at least 2 players to start the game.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       await startGame();
-      await initializeGame();
-      soundEffects.playSound('game-start');
-      
-      toast({
-        title: "🎵 Game Started!",
-        description: "Players can now place cards on their timelines!",
-      });
+      setGamePhase('playing');
+      soundEffects.playGameStart();
     } catch (error) {
-      toast({
-        title: "Game Start Failed",
-        description: "Unable to start the game. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Failed to start game:', error);
     }
   };
 
-  const handlePlayPause = () => {
-    setIsPlaying(!gameState.isPlaying);
+  const handleBackToMenu = () => {
+    leaveRoom();
+    setGamePhase('menu');
+    setCustomSongs([]);
+    setPlayerName('');
+    setWinner(null);
+    soundEffects.playButtonClick();
   };
 
-  const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
-    if (!gameState.currentSong || !currentPlayer) {
-      return { success: false };
-    }
-
-    // Use the database-synced place card function
-    const result = await placeCard(gameState.currentSong, position);
-    
-    // Show result
-    setMysteryCardRevealed(true);
-    setCardPlacementResult({
-      correct: result.success,
-      song: gameState.currentSong
-    });
-
-    // Play sound effects
-    if (result.success) {
-      soundEffects.playCardSuccess();
-    } else {
-      soundEffects.playCardError();
-    }
-
-    // Clear result after delay
-    setTimeout(() => {
-      setCardPlacementResult(null);
-      setMysteryCardRevealed(false);
-    }, 3000);
-
+  const handlePlaceCard = async (song: Song, position: number) => {
+    const result = await placeCard(song, position);
     return result;
   };
 
-  // Dummy setCustomSongs function for HostLobby
-  const setCustomSongs = (songs: Song[]) => {
-    // For now, we only use the default playlist
-    console.log('Custom songs not implemented yet:', songs);
-  };
-
-  // Reset card states on new turn
-  useEffect(() => {
-    if (gameState.currentSong) {
-      setMysteryCardRevealed(false);
-      setCardPlacementResult(null);
-    }
-  }, [gameState.currentSong]);
-
-  // Check for winner
-  useEffect(() => {
-    if (gameState.winner) {
-      setGamePhase('finished');
-      soundEffects.playGameVictory();
-    }
-  }, [gameState.winner, soundEffects]);
-
-  // Show loading screen while determining initial state
-  if (isLoading) {
+  if (isLoading && gamePhase !== 'menu') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="text-6xl mb-4">🎵</div>
+          <div className="text-6xl mb-4 animate-spin">🎵</div>
           <div className="text-2xl font-bold mb-2">Loading...</div>
-          <div className="text-slate-300">Checking for existing game session</div>
+          <div className="text-slate-300">Setting up your game experience</div>
         </div>
       </div>
     );
   }
 
-  const renderPhase = () => {
-    switch (gamePhase) {
-      case 'menu':
-        return (
-          <MainMenu 
-            onHostGame={handleHostGame} 
-            onJoinGame={handleJoinGame} 
+  return (
+    <ErrorBoundary>
+      <div className="min-h-screen">
+        {gamePhase === 'menu' && (
+          <MainMenu
+            onCreateRoom={() => setGamePhase('hostLobby')}
+            onJoinRoom={() => setGamePhase('mobileJoin')}
           />
-        );
+        )}
 
-      case 'hostLobby':
-        return (
+        {gamePhase === 'hostLobby' && (
           <HostLobby
             lobbyCode={room?.lobby_code || ''}
             players={players}
@@ -237,109 +155,59 @@ export default function Index() {
             isLoading={isLoading}
             createRoom={handleCreateRoom}
           />
-        );
+        )}
 
-      case 'mobileJoin':
-        return (
+        {gamePhase === 'mobileJoin' && (
           <MobileJoin
-            onJoinLobby={handleJoinLobby}
+            onJoinRoom={handleJoinRoom}
             onBackToMenu={handleBackToMenu}
             isLoading={isLoading}
           />
-        );
+        )}
 
-      case 'mobileLobby':
-        return (
+        {gamePhase === 'mobileLobby' && (
           <MobilePlayerLobby
-            player={currentPlayer!}
-            lobbyCode={room?.lobby_code || ''}
+            room={room}
+            players={players}
+            currentPlayer={currentPlayer}
+            onBackToMenu={handleBackToMenu}
             onUpdatePlayer={updatePlayer}
-            gamePhase={gamePhase}
-            onGameStart={() => setGamePhase('playing')}
           />
-        );
+        )}
 
-      case 'playing':
-        if (gameState.phase === 'loading') {
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-              <div className="text-center text-white">
-                <div className="text-6xl mb-4">🎵</div>
-                <div className="text-2xl font-bold mb-2">Loading Game...</div>
-                <div className="text-slate-300">Preparing songs and player cards</div>
-              </div>
-            </div>
-          );
-        }
+        {gamePhase === 'playing' && room && currentPlayer && (
+          <GamePlay
+            room={room}
+            players={players}
+            currentPlayer={currentPlayer}
+            isHost={isHost}
+            onPlaceCard={handlePlaceCard}
+            onSetCurrentSong={setCurrentSong}
+            customSongs={customSongs}
+          />
+        )}
 
-        if (gameState.loadingError) {
-          return (
-            <div className="min-h-screen bg-gradient-to-br from-red-900 via-slate-900 to-red-900 flex items-center justify-center">
-              <div className="text-center text-white bg-red-900/80 backdrop-blur-lg rounded-2xl p-8 border border-red-600/50 max-w-md">
-                <div className="text-6xl mb-4">⚠️</div>
-                <h2 className="text-2xl font-bold mb-4">Game Setup Error</h2>
-                <p className="text-red-200 mb-6">{gameState.loadingError}</p>
-                <button
-                  onClick={handleBackToMenu}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold"
-                >
-                  Back to Menu
-                </button>
-              </div>
-            </div>
-          );
-        }
-
-        const currentTurnPlayer = getCurrentPlayer();
-        
-        if (isHost) {
-          return (
-            <HostGameDisplay
-              currentPlayer={currentTurnPlayer}
-              allPlayers={gameState.players}
-              currentSong={gameState.currentSong}
-              roomCode={room?.lobby_code || ''}
-              isPlaying={gameState.isPlaying}
-              onPlayPause={handlePlayPause}
-              mysteryCardRevealed={mysteryCardRevealed}
-              cardPlacementResult={cardPlacementResult}
-            />
-          );
-        } else {
-          return (
-            <PlayerGameView
-              currentPlayer={currentPlayer}
-              currentTurnPlayer={currentTurnPlayer}
-              currentSong={gameState.currentSong}
-              roomCode={room?.lobby_code || ''}
-              isMyTurn={currentPlayer?.id === currentTurnPlayer?.id}
-              isPlaying={gameState.isPlaying}
-              onPlayPause={handlePlayPause}
-              onPlaceCard={handlePlaceCard}
-              mysteryCardRevealed={mysteryCardRevealed}
-              cardPlacementResult={cardPlacementResult}
-            />
-          );
-        }
-
-      case 'finished':
-        return (
+        {gamePhase === 'finished' && winner && (
           <VictoryScreen
-            winner={gameState.winner}
-            players={gameState.players}
-            onPlayAgain={initializeGame}
+            winner={winner}
+            players={players}
+            onPlayAgain={() => {
+              setGamePhase('hostLobby');
+              setWinner(null);
+            }}
             onBackToMenu={handleBackToMenu}
           />
-        );
+        )}
 
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <ErrorBoundary>
-      {renderPhase()}
+        {error && (
+          <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm">
+            <div className="font-bold mb-1">Error</div>
+            <div className="text-sm">{error}</div>
+          </div>
+        )}
+      </div>
     </ErrorBoundary>
   );
 }
+
+export default Index;

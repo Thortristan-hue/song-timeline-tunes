@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
-import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2 } from 'lucide-react';
+import { QRCodeGenerator } from '@/components/QRCodeGenerator';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, QrCode } from 'lucide-react';
 import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface HostLobbyProps {
   lobbyCode: string;
@@ -30,8 +30,10 @@ export function HostLobby({
   createRoom
 }: HostLobbyProps) {
   const { toast } = useToast();
+  const soundEffects = useSoundEffects();
   const [copied, setCopied] = useState(false);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
+  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     if (!roomCreated && !isLoading) {
@@ -43,6 +45,7 @@ export function HostLobby({
     const success = await createRoom();
     if (success) {
       setRoomCreated(true);
+      soundEffects.playGameStart();
     }
   };
 
@@ -50,6 +53,7 @@ export function HostLobby({
     try {
       await navigator.clipboard.writeText(lobbyCode);
       setCopied(true);
+      soundEffects.playButtonClick();
       toast({
         title: "Copied!",
         description: "Lobby code copied to clipboard",
@@ -64,6 +68,13 @@ export function HostLobby({
     }
   };
 
+  // Play sound when players join
+  useEffect(() => {
+    if (players.length > 0) {
+      soundEffects.playPlayerJoin();
+    }
+  }, [players.length, soundEffects]);
+
   if (!roomCreated || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
@@ -76,6 +87,8 @@ export function HostLobby({
     );
   }
 
+  const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
       {/* Animated background elements */}
@@ -86,7 +99,10 @@ export function HostLobby({
         {/* Header */}
         <div className="flex justify-between items-center p-8">
           <Button
-            onClick={onBackToMenu}
+            onClick={() => {
+              soundEffects.playButtonClick();
+              onBackToMenu();
+            }}
             variant="outline"
             className="bg-white/10 border-white/30 text-white hover:bg-white/20"
           >
@@ -104,7 +120,7 @@ export function HostLobby({
         </div>
 
         <div className="flex-1 flex items-center justify-center p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl w-full">
             
             {/* Left Column - Room Info & Controls */}
             <div className="space-y-6">
@@ -134,9 +150,17 @@ export function HostLobby({
                     </Button>
                   </div>
                   
-                  <p className="text-sm text-slate-400">
-                    Players can join at <span className="text-blue-400">timeliner.com</span> or scan QR code
-                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => setShowQR(!showQR)}
+                      size="sm"
+                      variant="outline"
+                      className="bg-slate-700/80 hover:bg-slate-600/80 border-slate-600/50"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      {showQR ? 'Hide QR' : 'Show QR'}
+                    </Button>
+                  </div>
                 </div>
               </Card>
 
@@ -175,7 +199,10 @@ export function HostLobby({
 
               {/* Start Game Button */}
               <Button
-                onClick={onStartGame}
+                onClick={() => {
+                  soundEffects.playGameStart();
+                  onStartGame();
+                }}
                 disabled={players.length < 2}
                 size="lg"
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg border-0 h-16 text-xl font-bold"
@@ -185,8 +212,19 @@ export function HostLobby({
               </Button>
             </div>
 
+            {/* Middle Column - QR Code */}
+            {showQR && (
+              <div className="flex items-center justify-center">
+                <QRCodeGenerator 
+                  value={gameUrl}
+                  size={250}
+                  className="animate-fade-in"
+                />
+              </div>
+            )}
+
             {/* Right Column - Players */}
-            <div>
+            <div className={showQR ? "lg:col-span-1" : "lg:col-span-2"}>
               <Card className="bg-slate-800/60 backdrop-blur-md border-slate-600/30 p-6 h-full">
                 <div className="flex items-center gap-3 mb-6">
                   <Users className="h-6 w-6 text-blue-400" />
@@ -208,7 +246,7 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-4 p-4 bg-slate-700/50 rounded-xl border border-slate-600/30 transition-all hover:bg-slate-700/70"
+                        className="flex items-center gap-4 p-4 bg-slate-700/50 rounded-xl border border-slate-600/30 transition-all hover:bg-slate-700/70 animate-fade-in"
                       >
                         <div className="text-2xl font-black text-slate-400">
                           #{index + 1}

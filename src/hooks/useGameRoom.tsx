@@ -94,12 +94,20 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
     
     try {
-      const roomData = await gameService.getRoomByCode(lobbyCode);
+      console.log('🎮 Attempting to join room:', lobbyCode, 'with name:', playerName);
+      
+      // First check if room exists
+      const roomData = await gameService.getRoomByCode(lobbyCode.toUpperCase());
       if (!roomData) {
-        throw new Error('Room not found');
+        throw new Error('Room not found. Please check the lobby code.');
       }
 
-      const player = await gameService.joinRoom(lobbyCode, playerName);
+      console.log('✅ Room found:', roomData);
+
+      // Join the room
+      const player = await gameService.joinRoom(lobbyCode.toUpperCase(), playerName);
+      
+      console.log('✅ Player joined:', player);
       
       setRoom(roomData);
       setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(player));
@@ -111,6 +119,7 @@ export function useGameRoom(): UseGameRoomReturn {
       
       return true;
     } catch (err) {
+      console.error('❌ Join room failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to join room';
       setError(errorMessage);
       toast({
@@ -184,9 +193,27 @@ export function useGameRoom(): UseGameRoomReturn {
     if (!room || !currentPlayer) return { success: false };
     
     try {
+      console.log('🎯 Placing card:', song.deezer_title, 'at position:', position);
       const result = await gameService.placeCard(room.id, currentPlayer.id, song, position);
+      
+      if (result.success) {
+        console.log('✅ Card placed successfully, game should progress to next turn');
+        toast({
+          title: "Perfect!",
+          description: `${song.deezer_title} placed correctly!`,
+        });
+      } else {
+        console.log('❌ Card placed incorrectly, game should still progress to next turn');
+        toast({
+          title: "Close!",
+          description: `Try a different position next time!`,
+          variant: "destructive",
+        });
+      }
+      
       return { success: result.success };
     } catch (err) {
+      console.error('❌ Card placement failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to place card';
       toast({
         title: "Error",
@@ -224,15 +251,15 @@ export function useGameRoom(): UseGameRoomReturn {
   useEffect(() => {
     if (!room) return;
 
-    console.log('Setting up real-time subscription for room:', room.id);
+    console.log('🔄 Setting up real-time subscription for room:', room.id);
 
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
-        console.log('Room updated:', updatedRoom);
+        console.log('🔄 Room updated:', updatedRoom);
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
-        console.log('Players updated:', dbPlayers);
+        console.log('👥 Players updated:', dbPlayers);
         const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
         setPlayers(convertedPlayers);
         
@@ -252,6 +279,7 @@ export function useGameRoom(): UseGameRoomReturn {
     });
 
     return () => {
+      console.log('🔄 Unsubscribing from room channel');
       channel.unsubscribe();
     };
   }, [room?.id, currentPlayer?.id]);

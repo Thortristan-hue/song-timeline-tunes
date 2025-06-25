@@ -1,15 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Music, Play, Pause, Clock, Volume2, VolumeX, ArrowLeft, Zap, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { PlayerTimeline } from '@/components/PlayerTimeline';
 import { MysteryCard } from '@/components/MysteryCard';
 import { useToast } from '@/components/ui/use-toast';
 import { Song, Player } from '@/types/game';
-import { cn } from '@/lib/utils';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface PlayerViewProps {
@@ -62,25 +59,28 @@ export function PlayerView({
     placedCardPosition: null as number | null,
     isMuted: false,
     cardResult: null as { correct: boolean; song: Song } | null,
+    isProcessingPlacement: false
   });
 
   const isValidTurn = 
     currentPlayer?.id === currentTurnPlayer?.id && 
     !gameState.cardPlacementPending &&
-    gameState.currentSong !== null;
+    gameState.currentSong !== null &&
+    !localState.isProcessingPlacement;
 
   const handleDragOver = (e: React.DragEvent, position: number) => {
-    if (!isMyTurn || !draggedSong) return;
+    if (!isMyTurn || !draggedSong || !isValidTurn) return;
     e.preventDefault();
   };
 
   const handleDrop = async (position: number) => {
-    if (!isMyTurn || !draggedSong) {
+    if (!isMyTurn || !draggedSong || !isValidTurn) {
       console.warn('❌ Invalid drop - not my turn or no dragged song');
       return;
     }
 
     console.log('🎯 Confirming placement at position:', position);
+    soundEffects.playCardPlace();
     setLocalState(prev => ({
       ...prev,
       confirmingPlacement: { song: draggedSong, position },
@@ -89,10 +89,12 @@ export function PlayerView({
   };
 
   const confirmPlacement = async () => {
-    if (!localState.confirmingPlacement) return;
+    if (!localState.confirmingPlacement || localState.isProcessingPlacement) return;
 
     const { song, position } = localState.confirmingPlacement;
     console.log('🎯 Confirming card placement:', song.deezer_title, 'at position', position);
+
+    setLocalState(prev => ({ ...prev, isProcessingPlacement: true }));
 
     try {
       const result = await onPlaceCard(position);
@@ -101,7 +103,8 @@ export function PlayerView({
         ...prev,
         confirmingPlacement: null,
         placedCardPosition: null,
-        cardResult: { correct: result.success, song }
+        cardResult: { correct: result.success, song },
+        isProcessingPlacement: false
       }));
 
       if (result.success) {
@@ -119,9 +122,10 @@ export function PlayerView({
         });
       }
 
-      // Show result for 2 seconds
+      // Show result for 2 seconds, then trigger turn transition
       setTimeout(() => {
         setLocalState(prev => ({ ...prev, cardResult: null }));
+        soundEffects.playTurnTransition();
       }, 2000);
 
     } catch (error) {
@@ -135,13 +139,15 @@ export function PlayerView({
       setLocalState(prev => ({
         ...prev,
         confirmingPlacement: null,
-        placedCardPosition: null
+        placedCardPosition: null,
+        isProcessingPlacement: false
       }));
     }
   };
 
   const cancelPlacement = () => {
     console.log('🎯 Canceling placement');
+    soundEffects.playButtonClick();
     setLocalState(prev => ({
       ...prev,
       confirmingPlacement: null,
@@ -160,13 +166,12 @@ export function PlayerView({
       {/* Decorative background elements */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-32 right-16 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
-      <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-purple-400/8 rounded-full blur-xl animate-pulse" style={{animationDelay: '4s'}} />
       
       {/* Header */}
       <div className="absolute top-6 left-4 right-4 z-40">
         <div className="flex justify-between items-start gap-6">
           {/* Timer section */}
-          <div className="flex items-center gap-4 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg transform -rotate-1">
+          <div className="flex items-center gap-4 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg transform -rotate-1 animate-fade-in">
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Clock className="h-5 w-5 text-blue-300" />
@@ -182,7 +187,10 @@ export function PlayerView({
             
             <div className="flex gap-2">
               <Button
-                onClick={onPlayPause}
+                onClick={() => {
+                  soundEffects.playButtonClick();
+                  onPlayPause();
+                }}
                 size="sm"
                 className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 h-9 w-9 p-0 shadow-md transform transition-all hover:scale-110"
                 disabled={!gameState.currentSong?.preview_url || !isMyTurn}
@@ -191,7 +199,10 @@ export function PlayerView({
               </Button>
               
               <Button
-                onClick={() => setLocalState(prev => ({ ...prev, isMuted: !prev.isMuted }))}
+                onClick={() => {
+                  soundEffects.playButtonClick();
+                  setLocalState(prev => ({ ...prev, isMuted: !prev.isMuted }));
+                }}
                 size="sm"
                 variant="outline"
                 className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 transform transition-all hover:scale-110"
@@ -203,7 +214,7 @@ export function PlayerView({
           </div>
 
           {/* Current player section */}
-          <div className="flex-1 max-w-sm transform rotate-1">
+          <div className="flex-1 max-w-sm transform rotate-1 animate-fade-in">
             <div className="bg-gradient-to-r from-slate-800/80 to-indigo-800/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-indigo-400/30 shadow-lg">
               <div className="flex items-center justify-center gap-3 text-white">
                 <div className="relative">
@@ -227,7 +238,7 @@ export function PlayerView({
           </div>
 
           {/* Room code */}
-          <div className="flex items-center gap-3 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg">
+          <div className="flex items-center gap-3 bg-slate-800/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/50 shadow-lg animate-fade-in">
             <div className="relative">
               <Zap className="h-5 w-5 text-yellow-400" />
               <div className="absolute -inset-1 bg-yellow-400/20 rounded-full blur animate-pulse" />
@@ -240,10 +251,10 @@ export function PlayerView({
         </div>
       </div>
 
-      {/* Mystery card section - always show if song exists, redacted until revealed */}
+      {/* Mystery card section - always show if song exists */}
       <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-110" />
+        <div className="relative animate-bounce-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-2xl scale-150" />
           
           <div className="relative">
             {songLoadingError ? (
@@ -283,7 +294,12 @@ export function PlayerView({
                 isInteractive={isMyTurn && isValidTurn}
                 isDestroyed={gameState.cardPlacementCorrect === false}
                 className="w-48 h-60"
-                onDragStart={() => isMyTurn && gameState.currentSong && onDragStart(gameState.currentSong)}
+                onDragStart={() => {
+                  if (isMyTurn && gameState.currentSong && isValidTurn) {
+                    soundEffects.playCardPlace();
+                    onDragStart(gameState.currentSong);
+                  }
+                }}
                 onDragEnd={onDragEnd}
               />
             ) : (
@@ -292,16 +308,13 @@ export function PlayerView({
                 <div className="text-lg text-center px-4 opacity-50">
                   Waiting for mystery song...
                 </div>
-                <div className="text-xs text-slate-400 mt-2 text-center px-4">
-                  {retryingSong ? 'Loading...' : 'Getting your next challenge ready!'}
-                </div>
               </Card>
             )}
             
-            {/* Only show instruction text when card is not revealed and we have a song */}
+            {/* Instruction text */}
             {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
-                <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+                <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full animate-pulse">
                   {isMyTurn ? "Drag me to your timeline!" : `${currentTurnPlayer?.name} is thinking...`}
                 </div>
               </div>
@@ -312,7 +325,7 @@ export function PlayerView({
 
       {/* Audio error overlay */}
       {audioPlaybackError && isMyTurn && (
-        <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-40">
+        <div className="absolute top-80 left-1/2 transform -translate-x-1/2 z-40 animate-fade-in">
           <div className="bg-amber-900/90 backdrop-blur-lg rounded-2xl p-4 border border-amber-600/50 max-w-xs text-center">
             <div className="text-2xl mb-2">🔊</div>
             <div className="text-sm text-amber-200 mb-3">
@@ -358,14 +371,14 @@ export function PlayerView({
             handleDrop={handleDrop}
             confirmPlacement={confirmPlacement}
             cancelPlacement={cancelPlacement}
-            transitioningTurn={false}
+            transitioningTurn={localState.isProcessingPlacement}
           />
         </div>
       )}
 
       {/* Confirmation buttons */}
-      {localState.confirmingPlacement && (
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30">
+      {localState.confirmingPlacement && !localState.isProcessingPlacement && (
+        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 animate-scale-in">
           <div className="flex gap-3 bg-slate-800/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-xl">
             <Button
               onClick={confirmPlacement}
@@ -389,7 +402,7 @@ export function PlayerView({
 
       {/* Result overlay */}
       {localState.cardResult && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50 animate-fade-in">
           <div className="text-center space-y-6 p-8">
             <div className="relative">
               <div className={`text-9xl mb-4 transform transition-all duration-1000 ${
@@ -402,7 +415,7 @@ export function PlayerView({
             </div>
             
             <div className="space-y-4">
-              <div className={`text-5xl font-black ${
+              <div className={`text-5xl font-black animate-glow-pulse ${
                 localState.cardResult.correct ? 
                 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
                 'text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-400'
@@ -410,7 +423,7 @@ export function PlayerView({
                 {localState.cardResult.correct ? 'PERFECT!' : 'CLOSE!'}
               </div>
               
-              <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md">
+              <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md animate-scale-in">
                 <div className="text-xl font-bold text-white mb-2">
                   {localState.cardResult.song.deezer_title}
                 </div>
@@ -422,6 +435,16 @@ export function PlayerView({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Processing overlay */}
+      {localState.isProcessingPlacement && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
+          <div className="bg-slate-800/80 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 text-center">
+            <div className="text-2xl mb-3 animate-spin">🎵</div>
+            <div className="text-white font-bold">Processing your move...</div>
           </div>
         </div>
       )}
