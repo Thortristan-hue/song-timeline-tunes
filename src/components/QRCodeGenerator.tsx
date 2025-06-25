@@ -1,6 +1,6 @@
 
 import React from 'react';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface QRCodeGeneratorProps {
   value: string;
@@ -15,7 +15,7 @@ export function QRCodeGenerator({ value, size = 200, className }: QRCodeGenerato
     <div className={`text-center space-y-3 ${className}`}>
       <div className="font-bold text-slate-800 text-lg">Scan to Join</div>
       <div className="mx-auto bg-white p-4 rounded-lg inline-block shadow-lg">
-        <QRCode 
+        <QRCodeSVG 
           value={joinUrl}
           size={size}
           level="M"
