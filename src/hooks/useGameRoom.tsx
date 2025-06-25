@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { gameService, GameRoom, DatabasePlayer } from '@/services/gameService';
 import { Player, Song } from '@/types/game';
@@ -10,6 +11,7 @@ interface UseGameRoomReturn {
   isHost: boolean;
   isLoading: boolean;
   error: string | null;
+  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
   createRoom: (hostName?: string) => Promise<string | null>;
   joinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
   updatePlayer: (name: string, color: string) => Promise<void>;
@@ -28,6 +30,7 @@ export function useGameRoom(): UseGameRoomReturn {
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
@@ -245,33 +248,104 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
   }, []);
 
-  // Enhanced real-time subscriptions with better error handling
+  // Enhanced real-time subscriptions with robust error handling and reconnection
   useEffect(() => {
     if (!room) return;
 
     console.log('🔄 Setting up enhanced real-time subscription for room:', room.id);
 
-    const channel = gameService.subscribeToRoom(room.id, {
-      onRoomUpdate: (updatedRoom) => {
-        console.log('🔄 Room updated:', updatedRoom);
-        setRoom(updatedRoom);
-      },
-      onPlayersUpdate: (dbPlayers) => {
-        console.log('👥 Players updated - raw data:', dbPlayers);
-        const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
-        console.log('👥 Players updated - converted:', convertedPlayers);
-        setPlayers(convertedPlayers);
-        
-        if (currentPlayer) {
-          const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
-          if (updatedCurrentPlayer) {
-            const converted = gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer);
-            console.log('👤 Current player updated:', converted);
-            setCurrentPlayer(converted);
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let currentChannel: any = null;
+
+    const setupChannel = () => {
+      console.log('🔄 Setting up room subscription channel...');
+
+      currentChannel = gameService.subscribeToRoom(room.id, {
+        onRoomUpdate: (updatedRoom) => {
+          console.log('🔄 Room updated:', updatedRoom);
+          setRoom(updatedRoom);
+          setConnectionStatus('connected');
+          reconnectAttempts = 0;
+        },
+        onPlayersUpdate: (dbPlayers) => {
+          console.log('👥 Players updated - raw data:', dbPlayers);
+          const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
+          console.log('👥 Players updated - converted:', convertedPlayers);
+          setPlayers(convertedPlayers);
+          
+          if (currentPlayer) {
+            const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
+            if (updatedCurrentPlayer) {
+              const converted = gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer);
+              console.log('👤 Current player updated:', converted);
+              setCurrentPlayer(converted);
+            }
           }
+          setConnectionStatus('connected');
+          reconnectAttempts = 0;
         }
+      });
+
+      // Monitor channel status
+      if (currentChannel && currentChannel.subscribe) {
+        currentChannel.subscribe((status: string) => {
+          console.log('🔄 Channel status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            setConnectionStatus('connected');
+            reconnectAttempts = 0;
+            
+            if (reconnectAttempts > 0) {
+              toast({
+                title: "🟢 Reconnected",
+                description: "Game sync restored!",
+              });
+            }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('❌ Channel error:', status);
+            handleConnectionError();
+          }
+        });
       }
-    });
+    };
+
+    const handleConnectionError = () => {
+      setConnectionStatus('disconnected');
+      
+      if (reconnectAttempts < maxReconnectAttempts) {
+        setConnectionStatus('reconnecting');
+        reconnectAttempts++;
+        
+        toast({
+          title: "🔄 Connection Lost",
+          description: `Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`,
+          variant: "destructive",
+        });
+
+        // Exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+        
+        reconnectTimeout = setTimeout(() => {
+          console.log(`🔄 Reconnecting channel (attempt ${reconnectAttempts})...`);
+          
+          if (currentChannel) {
+            currentChannel.unsubscribe();
+          }
+          setupChannel();
+        }, delay);
+      } else {
+        setConnectionStatus('disconnected');
+        toast({
+          title: "❌ Connection Failed",
+          description: "Cannot sync with other players. Please refresh.",
+          variant: "destructive",
+        });
+        
+        setError('Real-time sync failed. Please refresh the page.');
+      }
+    };
 
     // Load initial players with retry logic
     const loadInitialPlayers = async (retries = 3) => {
@@ -286,17 +360,26 @@ export function useGameRoom(): UseGameRoomReturn {
         if (retries > 0) {
           console.log(`🔄 Retrying to load players... (${retries} attempts left)`);
           setTimeout(() => loadInitialPlayers(retries - 1), 1000);
+        } else {
+          handleConnectionError();
         }
       }
     };
 
+    // Initial setup
+    setupChannel();
     loadInitialPlayers();
 
     return () => {
-      console.log('🔄 Unsubscribing from room channel');
-      channel.unsubscribe();
+      console.log('🔄 Cleaning up room subscriptions...');
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (currentChannel) {
+        currentChannel.unsubscribe();
+      }
     };
-  }, [room?.id, currentPlayer?.id]);
+  }, [room?.id, currentPlayer?.id, toast]);
 
   return {
     room,
@@ -305,6 +388,7 @@ export function useGameRoom(): UseGameRoomReturn {
     isHost,
     isLoading,
     error,
+    connectionStatus,
     createRoom,
     joinRoom,
     updatePlayer,

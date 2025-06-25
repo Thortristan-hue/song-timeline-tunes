@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
+import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -38,6 +37,12 @@ export function GamePlay({
   const soundEffects = useSoundEffects();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [gameError, setGameError] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState({
+    isConnected: true,
+    isReconnecting: false,
+    lastDisconnected: null as Date | null,
+    reconnectAttempts: 0
+  });
 
   // Add detailed logging for debugging host white screen
   console.log('🎮 GamePlay render - DEBUG INFO:', {
@@ -46,7 +51,8 @@ export function GamePlay({
     playersCount: players.length,
     currentPlayerExists: !!currentPlayer,
     roomId: room?.id,
-    hostId: room?.host_id
+    hostId: room?.host_id,
+    connectionState
   });
 
   // Use the game logic hook with room data
@@ -113,43 +119,123 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Real-time audio control subscription for player-controlled, host-output
+  // Enhanced Supabase Realtime connection with error handling and auto-reconnect
   useEffect(() => {
     if (!room?.id) return;
 
-    const channel = supabase
-      .channel(`audio-control-${room.id}`)
-      .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-        console.log('🎵 Received audio control:', payload);
-        
-        if (isHost && audioRef.current) {
-          const { action, currentTime, volume } = payload;
+    let audioChannel: any = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    
+    const setupAudioChannel = () => {
+      console.log('🔌 Setting up audio control channel...');
+      
+      audioChannel = supabase
+        .channel(`audio-control-${room.id}`)
+        .on('broadcast', { event: 'audio_control' }, (payload: any) => {
+          console.log('🎵 Received audio control:', payload);
           
-          switch (action) {
-            case 'play':
-              audioRef.current.currentTime = currentTime || 0;
-              audioRef.current.play().catch(console.error);
-              setIsPlaying(true);
-              break;
-            case 'pause':
-              audioRef.current.pause();
-              setIsPlaying(false);
-              break;
-            case 'seek':
-              audioRef.current.currentTime = currentTime || 0;
-              break;
-            case 'volume':
-              audioRef.current.volume = volume || 0.7;
-              break;
+          if (isHost && audioRef.current) {
+            const { action, currentTime, volume } = payload;
+            
+            try {
+              switch (action) {
+                case 'play':
+                  audioRef.current.currentTime = currentTime || 0;
+                  audioRef.current.play().catch(console.error);
+                  setIsPlaying(true);
+                  break;
+                case 'pause':
+                  audioRef.current.pause();
+                  setIsPlaying(false);
+                  break;
+                case 'seek':
+                  audioRef.current.currentTime = currentTime || 0;
+                  break;
+                case 'volume':
+                  audioRef.current.volume = volume || 0.7;
+                  break;
+              }
+            } catch (error) {
+              console.error('❌ Audio control error:', error);
+            }
           }
-        }
-      })
-      .subscribe();
+        })
+        .subscribe((status) => {
+          console.log('🔌 Audio channel status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            setConnectionState(prev => ({
+              ...prev,
+              isConnected: true,
+              isReconnecting: false,
+              reconnectAttempts: 0
+            }));
+            
+            if (connectionState.lastDisconnected) {
+              toast({
+                title: "🟢 Connection Restored",
+                description: "Real-time sync is working again!",
+              });
+            }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('❌ Audio channel error:', status);
+            handleConnectionError();
+          }
+        });
+    };
+
+    const handleConnectionError = () => {
+      setConnectionState(prev => ({
+        ...prev,
+        isConnected: false,
+        lastDisconnected: new Date(),
+        reconnectAttempts: prev.reconnectAttempts + 1
+      }));
+
+      if (connectionState.reconnectAttempts < 5) {
+        setConnectionState(prev => ({ ...prev, isReconnecting: true }));
+        
+        toast({
+          title: "🔄 Connection Lost",
+          description: `Attempting to reconnect... (${connectionState.reconnectAttempts + 1}/5)`,
+          variant: "destructive",
+        });
+
+        // Exponential backoff for reconnection
+        const delay = Math.min(1000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
+        
+        reconnectTimeout = setTimeout(() => {
+          console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
+          
+          if (audioChannel) {
+            audioChannel.unsubscribe();
+          }
+          setupAudioChannel();
+        }, delay);
+      } else {
+        toast({
+          title: "❌ Connection Failed",
+          description: "Cannot connect to real-time sync. Please refresh the page.",
+          variant: "destructive",
+        });
+        
+        setGameError('Real-time connection failed. Game may not sync properly. Please refresh the page.');
+      }
+    };
+
+    // Initial setup
+    setupAudioChannel();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (audioChannel) {
+        console.log('🔌 Cleaning up audio channel...');
+        audioChannel.unsubscribe();
+      }
     };
-  }, [room?.id, isHost, setIsPlaying]);
+  }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts, toast]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
@@ -162,12 +248,22 @@ export function GamePlay({
     currentSong: gameState.currentSong?.deezer_title,
     activePlayers: activePlayers.length,
     gamePhase: gameState.phase,
-    roomPhase: room?.phase
+    roomPhase: room?.phase,
+    connectionStatus: connectionState.isConnected ? 'connected' : 'disconnected'
   });
 
   // Enhanced audio control for player-controlled, host-output
   const sendAudioControl = async (action: string, data: any = {}) => {
     if (!room?.id) return;
+    
+    if (!connectionState.isConnected) {
+      toast({
+        title: "Connection Error",
+        description: "Cannot control audio - connection lost",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       await supabase
@@ -179,6 +275,11 @@ export function GamePlay({
         });
     } catch (error) {
       console.error('Failed to send audio control:', error);
+      toast({
+        title: "Control Failed",
+        description: "Could not send audio command",
+        variant: "destructive",
+      });
     }
   };
 
@@ -328,6 +429,36 @@ export function GamePlay({
     }
   };
 
+  // Connection status indicator component
+  const ConnectionIndicator = () => (
+    <div className="fixed top-4 right-4 z-50">
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        connectionState.isConnected 
+          ? 'bg-green-900/80 text-green-200 border border-green-700/50' 
+          : connectionState.isReconnecting
+          ? 'bg-yellow-900/80 text-yellow-200 border border-yellow-700/50'
+          : 'bg-red-900/80 text-red-200 border border-red-700/50'
+      }`}>
+        {connectionState.isConnected ? (
+          <>
+            <Wifi className="h-4 w-4" />
+            <span>Connected</span>
+          </>
+        ) : connectionState.isReconnecting ? (
+          <>
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-200/30 border-t-yellow-200" />
+            <span>Reconnecting...</span>
+          </>
+        ) : (
+          <>
+            <WifiOff className="h-4 w-4" />
+            <span>Disconnected</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   // Error boundary display
   if (gameError) {
     return (
@@ -453,6 +584,7 @@ export function GamePlay({
     
     return (
       <GameErrorBoundary>
+        <ConnectionIndicator />
         {audioElement}
         <HostGameView
           currentTurnPlayer={currentTurnPlayer}
@@ -471,6 +603,7 @@ export function GamePlay({
     
     return (
       <GameErrorBoundary>
+        <ConnectionIndicator />
         <PlayerView
           currentPlayer={currentPlayer}
           currentTurnPlayer={currentTurnPlayer!}
@@ -496,6 +629,7 @@ export function GamePlay({
 
   return (
     <GameErrorBoundary>
+      <ConnectionIndicator />
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="text-6xl mb-4 animate-spin">🎵</div>
