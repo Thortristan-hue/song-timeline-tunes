@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, QrCode } from 'lucide-react';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2 } from 'lucide-react';
 import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -33,7 +33,6 @@ export function HostLobby({
   const soundEffects = useSoundEffects();
   const [copied, setCopied] = useState(false);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
-  const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
     if (!roomCreated && !isLoading) {
@@ -120,7 +119,7 @@ export function HostLobby({
         </div>
 
         <div className="flex-1 flex items-center justify-center p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl w-full">
             
             {/* Left Column - Room Info & Controls */}
             <div className="space-y-6">
@@ -150,16 +149,13 @@ export function HostLobby({
                     </Button>
                   </div>
                   
-                  <div className="flex gap-2 justify-center">
-                    <Button
-                      onClick={() => setShowQR(!showQR)}
-                      size="sm"
-                      variant="outline"
-                      className="bg-slate-700/80 hover:bg-slate-600/80 border-slate-600/50"
-                    >
-                      <QrCode className="h-4 w-4 mr-2" />
-                      {showQR ? 'Hide QR' : 'Show QR'}
-                    </Button>
+                  {/* QR Code - Always displayed */}
+                  <div className="flex justify-center">
+                    <QRCodeGenerator 
+                      value={gameUrl}
+                      size={150}
+                      className="transform scale-75"
+                    />
                   </div>
                 </div>
               </Card>
@@ -212,19 +208,8 @@ export function HostLobby({
               </Button>
             </div>
 
-            {/* Middle Column - QR Code */}
-            {showQR && (
-              <div className="flex items-center justify-center">
-                <QRCodeGenerator 
-                  value={gameUrl}
-                  size={250}
-                  className="animate-fade-in"
-                />
-              </div>
-            )}
-
             {/* Right Column - Players */}
-            <div className={showQR ? "lg:col-span-1" : "lg:col-span-2"}>
+            <div>
               <Card className="bg-slate-800/60 backdrop-blur-md border-slate-600/30 p-6 h-full">
                 <div className="flex items-center gap-3 mb-6">
                   <Users className="h-6 w-6 text-blue-400" />

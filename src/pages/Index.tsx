@@ -32,7 +32,8 @@ function Index() {
     startGame,
     leaveRoom,
     placeCard,
-    setCurrentSong
+    setCurrentSong,
+    assignStartingCards
   } = useGameRoom();
 
   // Check for auto-join from URL parameters (QR code)

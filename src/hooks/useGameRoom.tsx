@@ -19,6 +19,7 @@ interface UseGameRoomReturn {
   leaveRoom: () => void;
   placeCard: (song: Song, position: number) => Promise<{ success: boolean }>;
   setCurrentSong: (song: Song) => Promise<void>;
+  assignStartingCards: (songs: Song[]) => Promise<void>;
 }
 
 export function useGameRoom(): UseGameRoomReturn {
@@ -189,6 +190,27 @@ export function useGameRoom(): UseGameRoomReturn {
     }
   }, [room, toast]);
 
+  const assignStartingCards = useCallback(async (songs: Song[]): Promise<void> => {
+    if (!room) return;
+    
+    try {
+      console.log('🎯 Assigning starting cards to players...');
+      await gameService.assignStartingCards(room.id, songs);
+      
+      toast({
+        title: "Game Started!",
+        description: "Starting cards have been dealt to all players",
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to assign starting cards';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  }, [room, toast]);
+
   const placeCard = useCallback(async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (!room || !currentPlayer) return { success: false };
     
@@ -298,6 +320,7 @@ export function useGameRoom(): UseGameRoomReturn {
     startGame,
     leaveRoom,
     placeCard,
-    setCurrentSong
+    setCurrentSong,
+    assignStartingCards
   };
 }

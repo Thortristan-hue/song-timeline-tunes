@@ -19,7 +19,8 @@ export function useGameLogic(
   roomId: string | null, 
   allPlayers: Player[],
   roomData: any = null,
-  onSetCurrentSong?: (song: Song) => Promise<void>
+  onSetCurrentSong?: (song: Song) => Promise<void>,
+  onAssignStartingCards?: (songs: Song[]) => Promise<void>
 ) {
   const { toast } = useToast();
   const [gameState, setGameState] = useState<GameLogicState>({
@@ -64,6 +65,20 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.current_turn]);
 
+  // Check if game has started and assign starting cards
+  useEffect(() => {
+    if (roomData?.phase === 'playing' && gameState.availableSongs.length > 0 && onAssignStartingCards) {
+      const playersNeedStartingCards = allPlayers.some(player => 
+        player.timeline.length === 0 && player.id !== roomData.host_id
+      );
+      
+      if (playersNeedStartingCards) {
+        console.log('🎯 Assigning starting cards to players...');
+        onAssignStartingCards(gameState.availableSongs);
+      }
+    }
+  }, [roomData?.phase, gameState.availableSongs, allPlayers, onAssignStartingCards, roomData?.host_id]);
+
   // Initialize game with default playlist
   const initializeGame = useCallback(async () => {
     try {
@@ -86,8 +101,8 @@ export function useGameLogic(
         currentTurnIndex: 0
       }));
 
-      // Start first turn
-      if (validSongs.length > 0) {
+      // Start first turn if game is already in playing phase
+      if (roomData?.phase === 'playing' && validSongs.length > 0) {
         await startNewTurn(validSongs);
       }
 
@@ -102,7 +117,7 @@ export function useGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, roomData?.phase]);
 
   // Start a new turn
   const startNewTurn = useCallback(async (availableSongs?: Song[]) => {

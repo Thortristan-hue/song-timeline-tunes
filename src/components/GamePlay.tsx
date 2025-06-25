@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Song, Player, GameState } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useGameLogic } from '@/hooks/useGameLogic';
 
 interface GamePlayProps {
   room: any;
@@ -33,27 +34,26 @@ export function GamePlay({
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const audioRef = useRef<HTMLAudioElement>(null);
-  
-  // Initialize game state
-  const [gameState, setGameState] = useState<GameState>({
-    phase: 'playing',
-    currentTurn: 0,
-    currentSong: null,
-    timeLeft: 30,
-    isPlaying: false,
-    isDarkMode: true,
-    throwingCard: null,
-    confirmingPlacement: null,
-    cardResult: null,
-    transitioningTurn: false,
-    winner: null,
-    isMuted: false,
-    pendingPlacement: null,
-    cardPlacementPending: false,
-    cardPlacementConfirmed: false,
-    cardPlacementCorrect: null,
-    mysteryCardRevealed: false
-  });
+
+  // Use the game logic hook with room data
+  const { gameState, setIsPlaying, getCurrentPlayer, initializeGame, startNewTurn } = useGameLogic(
+    room?.id,
+    players,
+    room,
+    onSetCurrentSong,
+    async (songs: Song[]) => {
+      // This callback will be called to assign starting cards
+      if (room?.id) {
+        try {
+          // Import gameService here to avoid circular dependencies
+          const { gameService } = await import('@/services/gameService');
+          await gameService.assignStartingCards(room.id, songs);
+        } catch (error) {
+          console.error('Failed to assign starting cards:', error);
+        }
+      }
+    }
+  );
   
   const [localGameState, setLocalGameState] = useState({
     draggedSong: null as Song | null,
@@ -62,116 +62,30 @@ export function GamePlay({
     confirmingPlacement: null as { song: Song; position: number } | null,
     placedCardPosition: null as number | null,
     isMuted: false,
-    availableSongs: [...customSongs],
-    usedSongs: [] as Song[],
     cardResult: null as { correct: boolean; song: Song } | null,
-    showKickOptions: null as string | null
+    showKickOptions: null as string | null,
+    mysteryCardRevealed: false
   });
+
+  // Initialize game when component mounts
+  useEffect(() => {
+    initializeGame();
+  }, [initializeGame]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
-  const currentTurnPlayer = activePlayers.length > 0 ? activePlayers[gameState.currentTurn % activePlayers.length] : null;
+  const currentTurnPlayer = getCurrentPlayer();
   const isMyTurn = currentPlayer?.id === currentTurnPlayer?.id;
 
   // Timer effect
   useEffect(() => {
     if (gameState.timeLeft > 0 && gameState.currentSong && !localGameState.confirmingPlacement) {
       const timer = setTimeout(() => {
-        setGameState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
+        // Handle timer in gameState if needed
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (gameState.timeLeft === 0) {
-      handleTimeUp();
     }
   }, [gameState.timeLeft, gameState.currentSong, localGameState.confirmingPlacement]);
-
-  // Initialize first song
-  useEffect(() => {
-    if (!gameState.currentSong && localGameState.availableSongs.length > 0 && activePlayers.length > 0) {
-      startNewTurn();
-    }
-  }, [localGameState.availableSongs, activePlayers.length]);
-
-  const startNewTurn = () => {
-    if (localGameState.availableSongs.length === 0) {
-      endGame();
-      return;
-    }
-
-    if (activePlayers.length === 0) {
-      toast({
-        title: "No active players",
-        description: "Waiting for players to join...",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const randomIndex = Math.floor(Math.random() * localGameState.availableSongs.length);
-    const newSong = localGameState.availableSongs[randomIndex];
-    
-    setGameState(prev => ({
-      ...prev,
-      currentSong: newSong,
-      timeLeft: 30,
-      isPlaying: false,
-      transitioningTurn: false,
-      mysteryCardRevealed: false // Reset to redacted state for new turn
-    }));
-
-    setLocalGameState(prev => ({
-      ...prev,
-      confirmingPlacement: null,
-      placedCardPosition: null,
-      cardResult: null
-    }));
-
-    // Set current song in the room
-    onSetCurrentSong(newSong);
-
-    toast({
-      title: `${currentTurnPlayer?.name}'s Turn`,
-      description: "Listen to the song and place it on the timeline!",
-    });
-  };
-
-  const handleTimeUp = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
-    setGameState(prev => ({ ...prev, isPlaying: false }));
-    toast({
-      title: "Time's up!",
-      description: "Audio stopped, but you can still place the card",
-      variant: "destructive",
-    });
-  };
-
-  const nextTurn = () => {
-    setGameState(prev => ({
-      ...prev,
-      transitioningTurn: true
-    }));
-
-    setTimeout(() => {
-      setGameState(prev => ({
-        ...prev,
-        currentTurn: (prev.currentTurn + 1) % activePlayers.length,
-        transitioningTurn: false
-      }));
-      
-      setLocalGameState(prev => ({
-        ...prev,
-        confirmingPlacement: null,
-        placedCardPosition: null,
-        cardResult: null
-      }));
-      
-      setTimeout(() => {
-        startNewTurn();
-      }, 500);
-    }, 1200);
-  };
 
   const playPauseAudio = () => {
     if (!audioRef.current || !gameState.currentSong?.preview_url) {
@@ -186,16 +100,15 @@ export function GamePlay({
     try {
       if (gameState.isPlaying) {
         audioRef.current.pause();
-        setGameState(prev => ({ ...prev, isPlaying: false }));
+        setIsPlaying(false);
       } else {
-        // Ensure the audio element is ready
         audioRef.current.currentTime = 0;
         const playPromise = audioRef.current.play();
         
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              setGameState(prev => ({ ...prev, isPlaying: true }));
+              setIsPlaying(true);
             })
             .catch(error => {
               console.error('Error playing audio:', error);
@@ -261,15 +174,13 @@ export function GamePlay({
     const { song, position } = localGameState.confirmingPlacement;
 
     // First reveal the mystery card
-    setGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
+    setLocalGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
 
     try {
       const result = await onPlaceCard(song, position);
       
       setLocalGameState(prev => ({
         ...prev,
-        availableSongs: prev.availableSongs.filter(s => s.id !== song.id),
-        usedSongs: [...prev.usedSongs, song],
         confirmingPlacement: null,
         placedCardPosition: null,
         cardResult: { correct: result.success, song }
@@ -289,10 +200,10 @@ export function GamePlay({
         variant: result.success ? "default" : "destructive",
       });
 
-      // Show result for 2 seconds, then proceed to next turn
+      // Show result for 2 seconds, then start new turn
       setTimeout(() => {
-        setLocalGameState(prev => ({ ...prev, cardResult: null }));
-        nextTurn();
+        setLocalGameState(prev => ({ ...prev, cardResult: null, mysteryCardRevealed: false }));
+        startNewTurn();
       }, 2000);
 
     } catch (error) {
@@ -312,13 +223,6 @@ export function GamePlay({
       placedCardPosition: null,
       draggedSong: gameState.currentSong
     }));
-  };
-
-  const endGame = () => {
-    toast({
-      title: "Game Finished!",
-      description: "Thanks for playing!",
-    });
   };
 
   const getTimeColor = () => {
@@ -429,9 +333,9 @@ export function GamePlay({
               variant: "destructive"
             });
           }}
-          onEnded={() => setGameState(prev => ({ ...prev, isPlaying: false }))}
-          onPlay={() => setGameState(prev => ({ ...prev, isPlaying: true }))}
-          onPause={() => setGameState(prev => ({ ...prev, isPlaying: false }))}
+          onEnded={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           onCanPlay={() => console.log('Audio ready to play')}
         />
       )}
@@ -444,11 +348,9 @@ export function GamePlay({
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Clock className="h-5 w-5 text-blue-300" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-ping" 
-                     style={{display: gameState.timeLeft <= 10 ? 'block' : 'none'}} />
               </div>
-              <div className={`font-mono text-lg font-black ${getTimeColor()}`}>
-                {gameState.timeLeft}s
+              <div className="font-mono text-lg font-black text-emerald-300">
+                ∞
               </div>
             </div>
             
@@ -521,7 +423,7 @@ export function GamePlay({
             
             <MysteryCard
               song={gameState.currentSong}
-              isRevealed={gameState.mysteryCardRevealed}
+              isRevealed={localGameState.mysteryCardRevealed}
               isInteractive={isMyTurn}
               isDestroyed={false}
               className="w-36 h-44"
