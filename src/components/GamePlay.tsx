@@ -44,6 +44,10 @@ export function GamePlay({
     reconnectAttempts: 0
   });
 
+  // Use refs to track audio channel subscription state
+  const audioChannelRef = useRef<any>(null);
+  const audioSubscriptionActiveRef = useRef(false);
+
   // Add detailed logging for debugging host white screen
   console.log('🎮 GamePlay render - DEBUG INFO:', {
     isHost,
@@ -119,72 +123,93 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Enhanced Supabase Realtime connection with error handling and auto-reconnect
+  // Fixed audio channel subscription with proper cleanup
   useEffect(() => {
     if (!room?.id) return;
 
-    let audioChannel: any = null;
+    // Prevent duplicate audio subscriptions
+    if (audioSubscriptionActiveRef.current) {
+      console.log('🎵 Audio subscription already active, skipping duplicate setup');
+      return;
+    }
+
     let reconnectTimeout: NodeJS.Timeout | null = null;
     
     const setupAudioChannel = () => {
+      // Clean up any existing audio channel
+      if (audioChannelRef.current) {
+        try {
+          audioChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error cleaning up previous audio channel:', e);
+        }
+      }
+
       console.log('🔌 Setting up audio control channel...');
       
-      audioChannel = supabase
-        .channel(`audio-control-${room.id}`)
-        .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-          console.log('🎵 Received audio control:', payload);
-          
-          if (isHost && audioRef.current) {
-            const { action, currentTime, volume } = payload;
+      try {
+        audioChannelRef.current = supabase
+          .channel(`audio-control-${room.id}`)
+          .on('broadcast', { event: 'audio_control' }, (payload: any) => {
+            console.log('🎵 Received audio control:', payload);
             
-            try {
-              switch (action) {
-                case 'play':
-                  audioRef.current.currentTime = currentTime || 0;
-                  audioRef.current.play().catch(console.error);
-                  setIsPlaying(true);
-                  break;
-                case 'pause':
-                  audioRef.current.pause();
-                  setIsPlaying(false);
-                  break;
-                case 'seek':
-                  audioRef.current.currentTime = currentTime || 0;
-                  break;
-                case 'volume':
-                  audioRef.current.volume = volume || 0.7;
-                  break;
+            if (isHost && audioRef.current) {
+              const { action, currentTime, volume } = payload;
+              
+              try {
+                switch (action) {
+                  case 'play':
+                    audioRef.current.currentTime = currentTime || 0;
+                    audioRef.current.play().catch(console.error);
+                    setIsPlaying(true);
+                    break;
+                  case 'pause':
+                    audioRef.current.pause();
+                    setIsPlaying(false);
+                    break;
+                  case 'seek':
+                    audioRef.current.currentTime = currentTime || 0;
+                    break;
+                  case 'volume':
+                    audioRef.current.volume = volume || 0.7;
+                    break;
+                }
+              } catch (error) {
+                console.error('❌ Audio control error:', error);
               }
-            } catch (error) {
-              console.error('❌ Audio control error:', error);
             }
-          }
-        })
-        .subscribe((status) => {
-          console.log('🔌 Audio channel status:', status);
-          
-          if (status === 'SUBSCRIBED') {
-            setConnectionState(prev => ({
-              ...prev,
-              isConnected: true,
-              isReconnecting: false,
-              reconnectAttempts: 0
-            }));
+          })
+          .subscribe((status) => {
+            console.log('🔌 Audio channel status:', status);
             
-            if (connectionState.lastDisconnected) {
-              toast({
-                title: "🟢 Connection Restored",
-                description: "Real-time sync is working again!",
-              });
+            if (status === 'SUBSCRIBED') {
+              audioSubscriptionActiveRef.current = true;
+              setConnectionState(prev => ({
+                ...prev,
+                isConnected: true,
+                isReconnecting: false,
+                reconnectAttempts: 0
+              }));
+              
+              if (connectionState.lastDisconnected) {
+                toast({
+                  title: "🟢 Connection Restored",
+                  description: "Real-time sync is working again!",
+                });
+              }
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error('❌ Audio channel error:', status);
+              handleConnectionError();
             }
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('❌ Audio channel error:', status);
-            handleConnectionError();
-          }
-        });
+          });
+      } catch (error) {
+        console.error('❌ Failed to setup audio channel:', error);
+        handleConnectionError();
+      }
     };
 
     const handleConnectionError = () => {
+      audioSubscriptionActiveRef.current = false;
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
@@ -201,15 +226,10 @@ export function GamePlay({
           variant: "destructive",
         });
 
-        // Exponential backoff for reconnection
         const delay = Math.min(1000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
         
         reconnectTimeout = setTimeout(() => {
           console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
-          
-          if (audioChannel) {
-            audioChannel.unsubscribe();
-          }
           setupAudioChannel();
         }, delay);
       } else {
@@ -230,10 +250,16 @@ export function GamePlay({
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      if (audioChannel) {
+      if (audioChannelRef.current) {
         console.log('🔌 Cleaning up audio channel...');
-        audioChannel.unsubscribe();
+        try {
+          audioChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error unsubscribing from audio channel:', e);
+        }
+        audioChannelRef.current = null;
       }
+      audioSubscriptionActiveRef.current = false;
     };
   }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts, toast]);
 

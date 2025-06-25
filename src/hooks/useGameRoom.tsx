@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { gameService, GameRoom, DatabasePlayer } from '@/services/gameService';
 import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
@@ -31,6 +30,10 @@ export function useGameRoom(): UseGameRoomReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  
+  // Use refs to track subscription state and prevent duplicate subscriptions
+  const currentChannelRef = useRef<any>(null);
+  const subscriptionActiveRef = useRef(false);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
@@ -241,6 +244,17 @@ export function useGameRoom(): UseGameRoomReturn {
   }, [room, toast]);
 
   const leaveRoom = useCallback(() => {
+    // Clean up subscriptions before leaving
+    if (currentChannelRef.current) {
+      try {
+        currentChannelRef.current.unsubscribe();
+      } catch (e) {
+        console.warn('Error unsubscribing from channel:', e);
+      }
+      currentChannelRef.current = null;
+    }
+    subscriptionActiveRef.current = false;
+    
     gameService.clearPlayerSession();
     setRoom(null);
     setPlayers([]);
@@ -248,71 +262,94 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
   }, []);
 
-  // Enhanced real-time subscriptions with robust error handling and reconnection
+  // Fixed real-time subscriptions with proper cleanup and duplicate prevention
   useEffect(() => {
     if (!room) return;
 
-    console.log('🔄 Setting up enhanced real-time subscription for room:', room.id);
+    // Prevent duplicate subscriptions
+    if (subscriptionActiveRef.current) {
+      console.log('🔄 Subscription already active, skipping duplicate setup');
+      return;
+    }
+
+    console.log('🔄 Setting up room subscription for room:', room.id);
 
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
     let reconnectTimeout: NodeJS.Timeout | null = null;
-    let currentChannel: any = null;
 
     const setupChannel = () => {
-      console.log('🔄 Setting up room subscription channel...');
-
-      currentChannel = gameService.subscribeToRoom(room.id, {
-        onRoomUpdate: (updatedRoom) => {
-          console.log('🔄 Room updated:', updatedRoom);
-          setRoom(updatedRoom);
-          setConnectionStatus('connected');
-          reconnectAttempts = 0;
-        },
-        onPlayersUpdate: (dbPlayers) => {
-          console.log('👥 Players updated - raw data:', dbPlayers);
-          const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
-          console.log('👥 Players updated - converted:', convertedPlayers);
-          setPlayers(convertedPlayers);
-          
-          if (currentPlayer) {
-            const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
-            if (updatedCurrentPlayer) {
-              const converted = gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer);
-              console.log('👤 Current player updated:', converted);
-              setCurrentPlayer(converted);
-            }
-          }
-          setConnectionStatus('connected');
-          reconnectAttempts = 0;
+      // Clean up any existing channel
+      if (currentChannelRef.current) {
+        try {
+          currentChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error cleaning up previous channel:', e);
         }
-      });
+      }
 
-      // Monitor channel status
-      if (currentChannel && currentChannel.subscribe) {
-        currentChannel.subscribe((status: string) => {
-          console.log('🔄 Channel status:', status);
-          
-          if (status === 'SUBSCRIBED') {
+      console.log('🔄 Creating new room subscription channel...');
+
+      try {
+        currentChannelRef.current = gameService.subscribeToRoom(room.id, {
+          onRoomUpdate: (updatedRoom) => {
+            console.log('🔄 Room updated:', updatedRoom);
+            setRoom(updatedRoom);
             setConnectionStatus('connected');
             reconnectAttempts = 0;
+          },
+          onPlayersUpdate: (dbPlayers) => {
+            console.log('👥 Players updated - raw data:', dbPlayers);
+            const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
+            console.log('👥 Players updated - converted:', convertedPlayers);
+            setPlayers(convertedPlayers);
             
-            if (reconnectAttempts > 0) {
-              toast({
-                title: "🟢 Reconnected",
-                description: "Game sync restored!",
-              });
+            if (currentPlayer) {
+              const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
+              if (updatedCurrentPlayer) {
+                const converted = gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer);
+                console.log('👤 Current player updated:', converted);
+                setCurrentPlayer(converted);
+              }
             }
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('❌ Channel error:', status);
-            handleConnectionError();
+            setConnectionStatus('connected');
+            reconnectAttempts = 0;
           }
         });
+
+        // Mark subscription as active
+        subscriptionActiveRef.current = true;
+
+        // Monitor channel status if available
+        if (currentChannelRef.current && currentChannelRef.current.subscribe) {
+          currentChannelRef.current.subscribe((status: string) => {
+            console.log('🔄 Channel status:', status);
+            
+            if (status === 'SUBSCRIBED') {
+              setConnectionStatus('connected');
+              reconnectAttempts = 0;
+              
+              if (reconnectAttempts > 0) {
+                toast({
+                  title: "🟢 Reconnected",
+                  description: "Game sync restored!",
+                });
+              }
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error('❌ Channel error:', status);
+              handleConnectionError();
+            }
+          });
+        }
+      } catch (error) {
+        console.error('❌ Failed to setup channel:', error);
+        handleConnectionError();
       }
     };
 
     const handleConnectionError = () => {
       setConnectionStatus('disconnected');
+      subscriptionActiveRef.current = false;
       
       if (reconnectAttempts < maxReconnectAttempts) {
         setConnectionStatus('reconnecting');
@@ -324,15 +361,10 @@ export function useGameRoom(): UseGameRoomReturn {
           variant: "destructive",
         });
 
-        // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
         
         reconnectTimeout = setTimeout(() => {
           console.log(`🔄 Reconnecting channel (attempt ${reconnectAttempts})...`);
-          
-          if (currentChannel) {
-            currentChannel.unsubscribe();
-          }
           setupChannel();
         }, delay);
       } else {
@@ -347,7 +379,7 @@ export function useGameRoom(): UseGameRoomReturn {
       }
     };
 
-    // Load initial players with retry logic
+    // Load initial players
     const loadInitialPlayers = async (retries = 3) => {
       try {
         console.log('👥 Loading initial players for room:', room.id);
@@ -375,9 +407,15 @@ export function useGameRoom(): UseGameRoomReturn {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      if (currentChannel) {
-        currentChannel.unsubscribe();
+      if (currentChannelRef.current) {
+        try {
+          currentChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error unsubscribing from channel:', e);
+        }
+        currentChannelRef.current = null;
       }
+      subscriptionActiveRef.current = false;
     };
   }, [room?.id, currentPlayer?.id, toast]);
 
