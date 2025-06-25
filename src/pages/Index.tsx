@@ -7,6 +7,7 @@ import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -36,6 +37,15 @@ function Index() {
     assignStartingCards
   } = useGameRoom();
 
+  // Enhanced debugging for phase transitions
+  console.log('📱 Index render - Phase transition debug:', {
+    gamePhase,
+    roomPhase: room?.phase,
+    isHost,
+    playersCount: players.length,
+    currentPlayer: currentPlayer?.name
+  });
+
   // Check for auto-join from URL parameters (QR code)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -49,14 +59,22 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Listen for room phase changes
+  // Enhanced room phase listener with better error handling
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase');
+      console.log('🎮 Room transitioned to playing phase - starting game');
+      console.log('🎮 Room data:', { 
+        phase: room.phase, 
+        id: room.id, 
+        hostId: room.host_id,
+        isHost,
+        playersCount: players.length 
+      });
+      
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, gamePhase, soundEffects]);
+  }, [room?.phase, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {
@@ -102,8 +120,9 @@ function Index() {
 
   const handleStartGame = async () => {
     try {
+      console.log('🎮 Host starting game...');
       await startGame();
-      setGamePhase('playing');
+      // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
     } catch (error) {
       console.error('Failed to start game:', error);
@@ -126,87 +145,91 @@ function Index() {
 
   if (isLoading && gamePhase !== 'menu') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="text-6xl mb-4 animate-spin">🎵</div>
-          <div className="text-2xl font-bold mb-2">Loading...</div>
-          <div className="text-slate-300">Setting up your game experience</div>
+      <GameErrorBoundary>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center text-white">
+            <div className="text-6xl mb-4 animate-spin">🎵</div>
+            <div className="text-2xl font-bold mb-2">Loading...</div>
+            <div className="text-slate-300">Setting up your game experience</div>
+          </div>
         </div>
-      </div>
+      </GameErrorBoundary>
     );
   }
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen">
-        {gamePhase === 'menu' && (
-          <MainMenu
-            onCreateRoom={() => setGamePhase('hostLobby')}
-            onJoinRoom={() => setGamePhase('mobileJoin')}
-          />
-        )}
+      <GameErrorBoundary>
+        <div className="min-h-screen">
+          {gamePhase === 'menu' && (
+            <MainMenu
+              onCreateRoom={() => setGamePhase('hostLobby')}
+              onJoinRoom={() => setGamePhase('mobileJoin')}
+            />
+          )}
 
-        {gamePhase === 'hostLobby' && (
-          <HostLobby
-            lobbyCode={room?.lobby_code || ''}
-            players={players}
-            onStartGame={handleStartGame}
-            onBackToMenu={handleBackToMenu}
-            setCustomSongs={setCustomSongs}
-            isLoading={isLoading}
-            createRoom={handleCreateRoom}
-          />
-        )}
+          {gamePhase === 'hostLobby' && (
+            <HostLobby
+              lobbyCode={room?.lobby_code || ''}
+              players={players}
+              onStartGame={handleStartGame}
+              onBackToMenu={handleBackToMenu}
+              setCustomSongs={setCustomSongs}
+              isLoading={isLoading}
+              createRoom={handleCreateRoom}
+            />
+          )}
 
-        {gamePhase === 'mobileJoin' && (
-          <MobileJoin
-            onJoinRoom={handleJoinRoom}
-            onBackToMenu={handleBackToMenu}
-            isLoading={isLoading}
-          />
-        )}
+          {gamePhase === 'mobileJoin' && (
+            <MobileJoin
+              onJoinRoom={handleJoinRoom}
+              onBackToMenu={handleBackToMenu}
+              isLoading={isLoading}
+            />
+          )}
 
-        {gamePhase === 'mobileLobby' && (
-          <MobilePlayerLobby
-            room={room}
-            players={players}
-            currentPlayer={currentPlayer}
-            onBackToMenu={handleBackToMenu}
-            onUpdatePlayer={updatePlayer}
-          />
-        )}
+          {gamePhase === 'mobileLobby' && (
+            <MobilePlayerLobby
+              room={room}
+              players={players}
+              currentPlayer={currentPlayer}
+              onBackToMenu={handleBackToMenu}
+              onUpdatePlayer={updatePlayer}
+            />
+          )}
 
-        {gamePhase === 'playing' && room && currentPlayer && (
-          <GamePlay
-            room={room}
-            players={players}
-            currentPlayer={currentPlayer}
-            isHost={isHost}
-            onPlaceCard={handlePlaceCard}
-            onSetCurrentSong={setCurrentSong}
-            customSongs={customSongs}
-          />
-        )}
+          {gamePhase === 'playing' && room && currentPlayer && (
+            <GamePlay
+              room={room}
+              players={players}
+              currentPlayer={currentPlayer}
+              isHost={isHost}
+              onPlaceCard={handlePlaceCard}
+              onSetCurrentSong={setCurrentSong}
+              customSongs={customSongs}
+            />
+          )}
 
-        {gamePhase === 'finished' && winner && (
-          <VictoryScreen
-            winner={winner}
-            players={players}
-            onPlayAgain={() => {
-              setGamePhase('hostLobby');
-              setWinner(null);
-            }}
-            onBackToMenu={handleBackToMenu}
-          />
-        )}
+          {gamePhase === 'finished' && winner && (
+            <VictoryScreen
+              winner={winner}
+              players={players}
+              onPlayAgain={() => {
+                setGamePhase('hostLobby');
+                setWinner(null);
+              }}
+              onBackToMenu={handleBackToMenu}
+            />
+          )}
 
-        {error && (
-          <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm">
-            <div className="font-bold mb-1">Error</div>
-            <div className="text-sm">{error}</div>
-          </div>
-        )}
-      </div>
+          {error && (
+            <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm z-50">
+              <div className="font-bold mb-1">Error</div>
+              <div className="text-sm">{error}</div>
+            </div>
+          )}
+        </div>
+      </GameErrorBoundary>
     </ErrorBoundary>
   );
 }
