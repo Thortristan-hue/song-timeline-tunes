@@ -34,6 +34,11 @@ export function HostLobby({
   const [copied, setCopied] = useState(false);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
 
+  // Debug logging for player updates
+  useEffect(() => {
+    console.log('🧍 HostLobby: Players updated:', players);
+  }, [players]);
+
   useEffect(() => {
     if (!roomCreated && !isLoading) {
       handleCreateRoom();
@@ -41,10 +46,14 @@ export function HostLobby({
   }, [roomCreated, isLoading]);
 
   const handleCreateRoom = async () => {
+    console.log('🏠 Creating room...');
     const success = await createRoom();
     if (success) {
       setRoomCreated(true);
       soundEffects.playGameStart();
+      console.log('✅ Room created successfully');
+    } else {
+      console.error('❌ Failed to create room');
     }
   };
 
@@ -149,15 +158,13 @@ export function HostLobby({
                     </Button>
                   </div>
                   
-                  {/* QR Code - Fixed to display as actual QR image */}
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="text-sm text-slate-400">Scan to join:</div>
-                    <div className="bg-white p-2 rounded-lg">
-                      <QRCodeGenerator 
-                        value={gameUrl}
-                        size={120}
-                      />
-                    </div>
+                  {/* QR Code */}
+                  <div className="flex justify-center">
+                    <QRCodeGenerator 
+                      value={gameUrl}
+                      size={140}
+                      className="scale-90"
+                    />
                   </div>
                 </div>
               </Card>
@@ -198,6 +205,7 @@ export function HostLobby({
               {/* Start Game Button */}
               <Button
                 onClick={() => {
+                  console.log('🎮 Starting game with players:', players);
                   soundEffects.playGameStart();
                   onStartGame();
                 }}
@@ -206,7 +214,7 @@ export function HostLobby({
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg border-0 h-16 text-xl font-bold"
               >
                 <Play className="h-6 w-6 mr-3" />
-                {players.length < 2 ? 'Need 2+ Players to Start' : 'Start Game'}
+                {players.length < 2 ? 'Need 2+ Players to Start' : `Start Game (${players.length} players)`}
               </Button>
             </div>
 
@@ -218,6 +226,9 @@ export function HostLobby({
                   <h3 className="text-xl font-bold text-white">
                     Players ({players.length})
                   </h3>
+                  {players.length > 0 && (
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  )}
                 </div>
                 
                 <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -249,7 +260,7 @@ export function HostLobby({
                             {player.name}
                           </div>
                           <div className="text-slate-300 text-sm">
-                            Ready to play
+                            Ready to play • {player.timeline?.length || 0} cards
                           </div>
                         </div>
                         

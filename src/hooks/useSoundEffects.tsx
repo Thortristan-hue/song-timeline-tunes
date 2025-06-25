@@ -2,12 +2,12 @@
 import { useCallback } from 'react';
 
 export function useSoundEffects() {
-  // Web Audio API for generating sound effects
+  // Web Audio API for generating softer, more natural sound effects
   const createAudioContext = useCallback(() => {
     return new (window.AudioContext || (window as any).webkitAudioContext)();
   }, []);
 
-  const playBeep = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine') => {
+  const playTone = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.1) => {
     try {
       const audioContext = createAudioContext();
       const oscillator = audioContext.createOscillator();
@@ -19,8 +19,9 @@ export function useSoundEffects() {
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       oscillator.type = type;
 
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+      // Softer volume and smoother fade out
+      gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + duration);
@@ -30,50 +31,48 @@ export function useSoundEffects() {
   }, [createAudioContext]);
 
   const playCardSuccess = useCallback(() => {
-    // Happy ascending notes
-    playBeep(523, 0.1); // C5
-    setTimeout(() => playBeep(659, 0.1), 100); // E5
-    setTimeout(() => playBeep(784, 0.2), 200); // G5
-  }, [playBeep]);
+    // Gentle ascending chime - like wind chimes
+    playTone(523, 0.15, 'triangle', 0.08); // C5
+    setTimeout(() => playTone(659, 0.15, 'triangle', 0.06), 80); // E5
+    setTimeout(() => playTone(784, 0.2, 'triangle', 0.04), 160); // G5
+  }, [playTone]);
 
   const playCardError = useCallback(() => {
-    // Descending error sound
-    playBeep(220, 0.15, 'square'); // A3
-    setTimeout(() => playBeep(196, 0.15, 'square'), 150); // G3
-    setTimeout(() => playBeep(174, 0.3, 'square'), 300); // F3
-  }, [playBeep]);
+    // Soft descending tone - not harsh
+    playTone(330, 0.2, 'sine', 0.06); // E4
+    setTimeout(() => playTone(293, 0.25, 'sine', 0.04), 120); // D4
+  }, [playTone]);
 
   const playTurnTransition = useCallback(() => {
-    // Quick whoosh sound
-    playBeep(800, 0.05);
-    setTimeout(() => playBeep(600, 0.05), 50);
-    setTimeout(() => playBeep(400, 0.1), 100);
-  }, [playBeep]);
+    // Gentle transition whoosh
+    playTone(440, 0.08, 'triangle', 0.05);
+    setTimeout(() => playTone(523, 0.1, 'triangle', 0.03), 40);
+  }, [playTone]);
 
   const playGameStart = useCallback(() => {
-    // Fanfare-like sound
-    playBeep(392, 0.2); // G4
-    setTimeout(() => playBeep(523, 0.2), 200); // C5
-    setTimeout(() => playBeep(659, 0.2), 400); // E5
-    setTimeout(() => playBeep(784, 0.4), 600); // G5
-  }, [playBeep]);
+    // Celebratory but gentle fanfare
+    playTone(392, 0.15, 'triangle', 0.06); // G4
+    setTimeout(() => playTone(523, 0.15, 'triangle', 0.05), 150); // C5
+    setTimeout(() => playTone(659, 0.15, 'triangle', 0.04), 300); // E5
+    setTimeout(() => playTone(784, 0.25, 'triangle', 0.03), 450); // G5
+  }, [playTone]);
 
   const playPlayerJoin = useCallback(() => {
-    // Two-tone notification
-    playBeep(440, 0.1);
-    setTimeout(() => playBeep(554, 0.2), 100);
-  }, [playBeep]);
+    // Friendly notification - like a soft bell
+    playTone(880, 0.12, 'triangle', 0.04);
+    setTimeout(() => playTone(1046, 0.15, 'triangle', 0.03), 80);
+  }, [playTone]);
 
   const playButtonClick = useCallback(() => {
-    // Quick click sound
-    playBeep(800, 0.05, 'square');
-  }, [playBeep]);
+    // Very subtle click - like a soft tap
+    playTone(1000, 0.04, 'triangle', 0.03);
+  }, [playTone]);
 
   const playCardPlace = useCallback(() => {
-    // Soft placement sound
-    playBeep(300, 0.1, 'triangle');
-    setTimeout(() => playBeep(200, 0.1, 'triangle'), 50);
-  }, [playBeep]);
+    // Soft placement sound - like placing a card on felt
+    playTone(220, 0.08, 'triangle', 0.04);
+    setTimeout(() => playTone(196, 0.1, 'sine', 0.02), 30);
+  }, [playTone]);
 
   return {
     playCardSuccess,

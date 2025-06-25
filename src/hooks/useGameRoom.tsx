@@ -26,51 +26,24 @@ export function useGameRoom(): UseGameRoomReturn {
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Changed from true to false - disable auto-rejoin
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
-  // DISABLED: Auto-rejoin functionality temporarily removed
-  // This was causing game logic issues when players opened multiple tabs
-  /*
-  useEffect(() => {
-    let hasAttemptedRejoin = false;
-    
-    const attemptAutoRejoin = async () => {
-      if (hasAttemptedRejoin) return;
-      hasAttemptedRejoin = true;
-      
-      setIsLoading(true);
-      try {
-        const rejoinResult = await gameService.autoRejoinIfPossible();
-        if (rejoinResult) {
-          setRoom(rejoinResult.room);
-          setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(rejoinResult.player));
-          
-          toast({
-            title: "Welcome back!",
-            description: `Rejoined lobby ${rejoinResult.room.lobby_code}`,
-          });
-        }
-      } catch (err) {
-        console.error('Auto-rejoin failed:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    attemptAutoRejoin();
-  }, [toast]);
-  */
+  // DISABLED: Auto-rejoin functionality - was causing issues
+  // Auto-rejoin logic has been completely removed to prevent game state conflicts
 
   const createRoom = useCallback(async (hostName?: string): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('🏠 Creating room with host name:', hostName || 'Host');
       const { room: newRoom, lobbyCode } = await gameService.createRoom(hostName || 'Host');
       setRoom(newRoom);
+      
+      console.log('✅ Room created successfully:', lobbyCode);
       
       toast({
         title: "Room created!",
@@ -79,6 +52,7 @@ export function useGameRoom(): UseGameRoomReturn {
       
       return lobbyCode;
     } catch (err) {
+      console.error('❌ Failed to create room:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to create room';
       setError(errorMessage);
       toast({
@@ -271,11 +245,11 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
   }, []);
 
-  // Set up real-time subscriptions when room changes
+  // Enhanced real-time subscriptions with better error handling
   useEffect(() => {
     if (!room) return;
 
-    console.log('🔄 Setting up real-time subscription for room:', room.id);
+    console.log('🔄 Setting up enhanced real-time subscription for room:', room.id);
 
     const channel = gameService.subscribeToRoom(room.id, {
       onRoomUpdate: (updatedRoom) => {
@@ -283,24 +257,40 @@ export function useGameRoom(): UseGameRoomReturn {
         setRoom(updatedRoom);
       },
       onPlayersUpdate: (dbPlayers) => {
-        console.log('👥 Players updated:', dbPlayers);
+        console.log('👥 Players updated - raw data:', dbPlayers);
         const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
+        console.log('👥 Players updated - converted:', convertedPlayers);
         setPlayers(convertedPlayers);
         
         if (currentPlayer) {
           const updatedCurrentPlayer = dbPlayers.find(p => p.id === currentPlayer.id);
           if (updatedCurrentPlayer) {
-            setCurrentPlayer(gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer));
+            const converted = gameService.convertDatabasePlayerToPlayer(updatedCurrentPlayer);
+            console.log('👤 Current player updated:', converted);
+            setCurrentPlayer(converted);
           }
         }
       }
     });
 
-    // Load initial players
-    gameService.getPlayersInRoom(room.id).then(dbPlayers => {
-      const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
-      setPlayers(convertedPlayers);
-    });
+    // Load initial players with retry logic
+    const loadInitialPlayers = async (retries = 3) => {
+      try {
+        console.log('👥 Loading initial players for room:', room.id);
+        const dbPlayers = await gameService.getPlayersInRoom(room.id);
+        console.log('👥 Initial players loaded:', dbPlayers);
+        const convertedPlayers = dbPlayers.map(gameService.convertDatabasePlayerToPlayer);
+        setPlayers(convertedPlayers);
+      } catch (error) {
+        console.error('❌ Failed to load initial players:', error);
+        if (retries > 0) {
+          console.log(`🔄 Retrying to load players... (${retries} attempts left)`);
+          setTimeout(() => loadInitialPlayers(retries - 1), 1000);
+        }
+      }
+    };
+
+    loadInitialPlayers();
 
     return () => {
       console.log('🔄 Unsubscribing from room channel');
