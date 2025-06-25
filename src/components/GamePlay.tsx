@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import { Song, Player, GameState } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useGameLogic } from '@/hooks/useGameLogic';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GamePlayProps {
   room: any;
@@ -115,8 +117,6 @@ export function GamePlay({
   useEffect(() => {
     if (!room?.id) return;
 
-    const { supabase } = require('@/integrations/supabase/client');
-    
     const channel = supabase
       .channel(`audio-control-${room.id}`)
       .on('broadcast', { event: 'audio_control' }, (payload: any) => {
@@ -168,8 +168,6 @@ export function GamePlay({
   // Enhanced audio control for player-controlled, host-output
   const sendAudioControl = async (action: string, data: any = {}) => {
     if (!room?.id) return;
-
-    const { supabase } = require('@/integrations/supabase/client');
     
     try {
       await supabase
