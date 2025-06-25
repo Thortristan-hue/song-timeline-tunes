@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,11 +16,9 @@ interface GamePlayProps {
   players: Player[];
   currentPlayer: Player | null;
   isHost: boolean;
-  songs: Song[];
-  gameState: GameState;
-  setGameState: React.Dispatch<React.SetStateAction<GameState>>;
-  onEndGame: () => void;
-  onKickPlayer: (playerId: string) => void;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
+  onSetCurrentSong: (song: Song) => Promise<void>;
+  customSongs: Song[];
 }
 
 export function GamePlay({ 
@@ -29,15 +26,34 @@ export function GamePlay({
   players, 
   currentPlayer, 
   isHost, 
-  songs, 
-  gameState,
-  setGameState,
-  onEndGame, 
-  onKickPlayer 
+  onPlaceCard,
+  onSetCurrentSong,
+  customSongs 
 }: GamePlayProps) {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // Initialize game state
+  const [gameState, setGameState] = useState<GameState>({
+    phase: 'playing',
+    currentTurn: 0,
+    currentSong: null,
+    timeLeft: 30,
+    isPlaying: false,
+    isDarkMode: true,
+    throwingCard: null,
+    confirmingPlacement: null,
+    cardResult: null,
+    transitioningTurn: false,
+    winner: null,
+    isMuted: false,
+    pendingPlacement: null,
+    cardPlacementPending: false,
+    cardPlacementConfirmed: false,
+    cardPlacementCorrect: null,
+    mysteryCardRevealed: false
+  });
   
   const [localGameState, setLocalGameState] = useState({
     draggedSong: null as Song | null,
@@ -46,7 +62,7 @@ export function GamePlay({
     confirmingPlacement: null as { song: Song; position: number } | null,
     placedCardPosition: null as number | null,
     isMuted: false,
-    availableSongs: [...songs],
+    availableSongs: [...customSongs],
     usedSongs: [] as Song[],
     cardResult: null as { correct: boolean; song: Song } | null,
     showKickOptions: null as string | null
@@ -109,6 +125,9 @@ export function GamePlay({
       placedCardPosition: null,
       cardResult: null
     }));
+
+    // Set current song in the room
+    onSetCurrentSong(newSong);
 
     toast({
       title: `${currentTurnPlayer?.name}'s Turn`,
@@ -236,71 +255,54 @@ export function GamePlay({
     }));
   };
 
-  const confirmPlacement = () => {
+  const confirmPlacement = async () => {
     if (!localGameState.confirmingPlacement || !currentPlayer) return;
 
     const { song, position } = localGameState.confirmingPlacement;
-    const player = activePlayers.find(p => p.id === currentPlayer.id);
-    if (!player) return;
 
     // First reveal the mystery card
     setGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
 
-    const newTimeline = [...player.timeline];
-    newTimeline.splice(position, 0, song);
-    
-    const isCorrect = checkTimelineOrder(newTimeline);
-    
-    // Update the player's data
-    const updatedPlayers = players.map(p => {
-      if (p.id === currentPlayer.id) {
-        return {
-          ...p,
-          timeline: newTimeline,
-          score: isCorrect ? p.score + 1 : p.score
-        };
+    try {
+      const result = await onPlaceCard(song, position);
+      
+      setLocalGameState(prev => ({
+        ...prev,
+        availableSongs: prev.availableSongs.filter(s => s.id !== song.id),
+        usedSongs: [...prev.usedSongs, song],
+        confirmingPlacement: null,
+        placedCardPosition: null,
+        cardResult: { correct: result.success, song }
+      }));
+
+      if (result.success) {
+        soundEffects.playCardSuccess();
+      } else {
+        soundEffects.playCardError();
       }
-      return p;
-    });
 
-    setLocalGameState(prev => ({
-      ...prev,
-      availableSongs: prev.availableSongs.filter(s => s.id !== song.id),
-      usedSongs: [...prev.usedSongs, song],
-      confirmingPlacement: null,
-      placedCardPosition: null,
-      cardResult: { correct: isCorrect, song }
-    }));
-
-    if (isCorrect) {
-      soundEffects.playCardSuccess();
-    } else {
-      soundEffects.playCardError();
-    }
-
-    toast({
-      title: isCorrect ? "Correct!" : "Incorrect!",
-      description: isCorrect ? 
-        `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) placed correctly!` :
-        `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) - wrong position!`,
-      variant: isCorrect ? "default" : "destructive",
-    });
-
-    const winner = updatedPlayers.find(p => p.score >= 10);
-    if (winner) {
-      setGameState(prev => ({ ...prev, winner }));
       toast({
-        title: "Game Over!",
-        description: `${winner.name} wins with ${winner.score} points!`,
+        title: result.success ? "Correct!" : "Incorrect!",
+        description: result.success ? 
+          `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) placed correctly!` :
+          `${song.deezer_title} by ${song.deezer_artist} (${song.release_year}) - wrong position!`,
+        variant: result.success ? "default" : "destructive",
       });
-      return;
-    }
 
-    // Show result for 2 seconds, then proceed to next turn
-    setTimeout(() => {
-      setLocalGameState(prev => ({ ...prev, cardResult: null }));
-      nextTurn();
-    }, 2000);
+      // Show result for 2 seconds, then proceed to next turn
+      setTimeout(() => {
+        setLocalGameState(prev => ({ ...prev, cardResult: null }));
+        nextTurn();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error placing card:', error);
+      toast({
+        title: "Error",
+        description: "Failed to place card. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const cancelPlacement = () => {
@@ -312,21 +314,11 @@ export function GamePlay({
     }));
   };
 
-  const checkTimelineOrder = (timeline: Song[]): boolean => {
-    for (let i = 0; i < timeline.length - 1; i++) {
-      const current = parseInt(timeline[i].release_year);
-      const next = parseInt(timeline[i + 1].release_year);
-      if (current > next) return false;
-    }
-    return true;
-  };
-
   const endGame = () => {
     toast({
       title: "Game Finished!",
       description: "Thanks for playing!",
     });
-    onEndGame();
   };
 
   const getTimeColor = () => {
@@ -343,7 +335,9 @@ export function GamePlay({
     }));
   };
 
-  if (gameState.winner) {
+  // Check for winner
+  const winner = players.find(player => player.score >= 10);
+  if (winner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-slate-800 to-violet-900 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(120,119,198,0.3),transparent_50%)] animate-pulse" />
@@ -365,10 +359,10 @@ export function GamePlay({
                 VICTORY!
               </h1>
               <div className="text-3xl font-bold text-white">
-                🏆 {gameState.winner.name} Takes the Crown! 🏆
+                🏆 {winner.name} Takes the Crown! 🏆
               </div>
               <div className="text-xl text-gray-300 font-medium">
-                Final Score: <span className="text-yellow-400 font-bold text-2xl">{gameState.winner.score}</span> points
+                Final Score: <span className="text-yellow-400 font-bold text-2xl">{winner.score}</span> points
               </div>
             </div>
 
@@ -406,14 +400,6 @@ export function GamePlay({
                   ))}
               </div>
             </div>
-
-            <Button
-              onClick={onEndGame}
-              size="lg"
-              className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition-all hover:scale-105"
-            >
-              Back to Lobby
-            </Button>
           </div>
         </div>
       </div>
@@ -615,18 +601,6 @@ export function GamePlay({
                   </div>
                   <span className="text-sm font-semibold text-white">{player.name}</span>
                 </div>
-                
-                {isHost && localGameState.showKickOptions === player.id && (
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-                    <Button
-                      onClick={() => onKickPlayer(player.id)}
-                      size="sm"
-                      className="text-xs h-8 px-3 bg-red-500 hover:bg-red-600 rounded-xl shadow-lg"
-                    >
-                      Kick Player
-                    </Button>
-                  </div>
-                )}
 
                 {/* Timeline preview - more organic */}
                 <div className="flex justify-center gap-1">
