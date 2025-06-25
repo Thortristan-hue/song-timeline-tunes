@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X } from 'lucide-react';
+import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -35,6 +35,7 @@ export function GamePlay({
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [gameError, setGameError] = useState<string | null>(null);
 
   // Use the game logic hook with room data
   const { gameState, setIsPlaying, getCurrentPlayer, initializeGame, startNewTurn } = useGameLogic(
@@ -43,15 +44,14 @@ export function GamePlay({
     room,
     onSetCurrentSong,
     async (songs: Song[]) => {
-      // This callback will be called to assign starting cards
-      if (room?.id) {
-        try {
-          // Import gameService here to avoid circular dependencies
+      try {
+        if (room?.id) {
           const { gameService } = await import('@/services/gameService');
           await gameService.assignStartingCards(room.id, songs);
-        } catch (error) {
-          console.error('Failed to assign starting cards:', error);
         }
+      } catch (error) {
+        console.error('Failed to assign starting cards:', error);
+        setGameError('Failed to assign starting cards. Please refresh the page.');
       }
     }
   );
@@ -67,17 +67,21 @@ export function GamePlay({
   // Initialize game when component mounts
   useEffect(() => {
     console.log('🎮 GamePlay component mounted, initializing game...');
-    initializeGame();
+    try {
+      initializeGame();
+    } catch (error) {
+      console.error('Failed to initialize game:', error);
+      setGameError('Failed to initialize game. Please refresh the page.');
+    }
   }, [initializeGame]);
 
-  // Handle user interaction for audio
+  // Handle user interaction for audio (only for players, not host)
   useEffect(() => {
+    if (isHost) return; // Host doesn't need audio interaction
+    
     const handleUserInteraction = () => {
       setLocalGameState(prev => ({ ...prev, userHasInteracted: true }));
-      // Play a soft welcome sound for players
-      if (!isHost) {
-        soundEffects.playPlayerJoin();
-      }
+      soundEffects.playPlayerJoin();
     };
 
     document.addEventListener('click', handleUserInteraction, { once: true });
@@ -99,23 +103,25 @@ export function GamePlay({
     currentTurnPlayer: currentTurnPlayer?.name,
     currentSong: gameState.currentSong?.deezer_title,
     activePlayers: activePlayers.length,
-    gamePhase: gameState.phase
+    gamePhase: gameState.phase,
+    roomPhase: room?.phase
   });
 
+  // Audio control (only for host)
   const playPauseAudio = () => {
-    if (!audioRef.current || !gameState.currentSong?.preview_url) {
+    if (!isHost) {
       toast({
-        title: "Audio Error",
-        description: "No audio available for this song",
+        title: "Audio Control",
+        description: "Audio is controlled by the host",
         variant: "destructive",
       });
       return;
     }
 
-    if (!localGameState.userHasInteracted) {
+    if (!audioRef.current || !gameState.currentSong?.preview_url) {
       toast({
-        title: "Audio Blocked",
-        description: "Please click anywhere first to enable audio",
+        title: "Audio Error",
+        description: "No audio available for this song",
         variant: "destructive",
       });
       return;
@@ -222,6 +228,24 @@ export function GamePlay({
     }
   };
 
+  // Error boundary display
+  if (gameError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+        <Card className="max-w-md p-8 bg-red-900/20 border-red-500/50">
+          <div className="text-center space-y-4">
+            <AlertTriangle className="h-16 w-16 text-red-400 mx-auto" />
+            <h2 className="text-2xl font-bold text-white">Game Error</h2>
+            <p className="text-red-200">{gameError}</p>
+            <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
+              Refresh Game
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Check for winner
   const winner = players.find(player => player.score >= 10);
   if (winner) {
@@ -293,8 +317,8 @@ export function GamePlay({
     );
   }
 
-  // Audio element - ensure it's always rendered when there's a song
-  const audioElement = gameState.currentSong?.preview_url && (
+  // Audio element - only render for host
+  const audioElement = isHost && gameState.currentSong?.preview_url && (
     <audio
       ref={audioRef}
       src={gameState.currentSong.preview_url}
@@ -336,33 +360,30 @@ export function GamePlay({
     );
   }
 
-  // Player view - only current player and host should see mystery card
+  // Player view - only current player sees mystery card
   if (currentPlayer) {
     console.log('🎮 Rendering PlayerView for:', currentPlayer.name, 'isMyTurn:', isMyTurn);
     
     return (
-      <>
-        {audioElement}
-        <PlayerView
-          currentPlayer={currentPlayer}
-          currentTurnPlayer={currentTurnPlayer!}
-          roomCode={room?.lobby_code || ''}
-          isMyTurn={isMyTurn}
-          gameState={{
-            currentSong: gameState.currentSong,
-            isPlaying: gameState.isPlaying,
-            timeLeft: gameState.timeLeft,
-            cardPlacementPending: localGameState.isProcessingPlacement,
-            mysteryCardRevealed: localGameState.mysteryCardRevealed,
-            cardPlacementCorrect: localGameState.cardResult?.correct || null
-          }}
-          draggedSong={localGameState.draggedSong}
-          onPlaceCard={handlePlaceCard}
-          onPlayPause={playPauseAudio}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-      </>
+      <PlayerView
+        currentPlayer={currentPlayer}
+        currentTurnPlayer={currentTurnPlayer!}
+        roomCode={room?.lobby_code || ''}
+        isMyTurn={isMyTurn}
+        gameState={{
+          currentSong: isMyTurn ? gameState.currentSong : null, // Only show to current player
+          isPlaying: gameState.isPlaying,
+          timeLeft: gameState.timeLeft,
+          cardPlacementPending: localGameState.isProcessingPlacement,
+          mysteryCardRevealed: localGameState.mysteryCardRevealed,
+          cardPlacementCorrect: localGameState.cardResult?.correct || null
+        }}
+        draggedSong={localGameState.draggedSong}
+        onPlaceCard={handlePlaceCard}
+        onPlayPause={playPauseAudio}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      />
     );
   }
 

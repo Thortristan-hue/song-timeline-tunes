@@ -186,31 +186,9 @@ export function PlayerView({
             
             <div className="w-px h-6 bg-slate-500" />
             
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  soundEffects.playButtonClick();
-                  onPlayPause();
-                }}
-                size="sm"
-                className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 h-9 w-9 p-0 shadow-md transform transition-all hover:scale-110"
-                disabled={!gameState.currentSong?.preview_url || !isMyTurn}
-              >
-                {gameState.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              
-              <Button
-                onClick={() => {
-                  soundEffects.playButtonClick();
-                  setLocalState(prev => ({ ...prev, isMuted: !prev.isMuted }));
-                }}
-                size="sm"
-                variant="outline"
-                className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 transform transition-all hover:scale-110"
-                disabled={!isMyTurn}
-              >
-                {localState.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
+            {/* Only show audio controls to host */}
+            <div className="text-xs text-slate-400">
+              Host controls audio
             </div>
           </div>
 
@@ -252,15 +230,15 @@ export function PlayerView({
         </div>
       </div>
 
-      {/* Mystery card section - only show if it's my turn */}
+      {/* Mystery card section - only show if it's my turn and song exists */}
       {isMyTurn && gameState.currentSong && (
-        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="absolute top-28 left-1/2 transform -translate-x-1/2 z-30">
           <div className="relative animate-bounce-in">
             <div className="absolute inset-0 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-3xl blur-2xl scale-150" />
             
             <div className="relative">
               {songLoadingError ? (
-                <Card className="w-48 h-60 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-4">
+                <Card className="aspect-square w-48 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white p-4">
                   <AlertTriangle className="h-12 w-12 mb-4 text-red-400" />
                   <div className="text-sm text-center px-2 text-red-200 leading-tight mb-4">
                     {songLoadingError}
@@ -295,7 +273,7 @@ export function PlayerView({
                   isRevealed={gameState.mysteryCardRevealed}
                   isInteractive={isMyTurn && isValidTurn}
                   isDestroyed={gameState.cardPlacementCorrect === false}
-                  className="w-48 h-60"
+                  className="aspect-square w-48"
                   onDragStart={() => {
                     if (isMyTurn && gameState.currentSong && isValidTurn) {
                       soundEffects.playCardPlace();
@@ -310,7 +288,7 @@ export function PlayerView({
               {!gameState.mysteryCardRevealed && gameState.currentSong && !songLoadingError && (
                 <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
                   <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full animate-pulse">
-                    Drag me to your timeline!
+                    Drag to timeline or tap drop zones!
                   </div>
                 </div>
               )}
@@ -371,44 +349,42 @@ export function PlayerView({
 
       {/* Player timeline */}
       {currentPlayer && (
-        <div className="absolute bottom-40 left-0 right-0 z-20 px-6">
-          <PlayerTimeline
-            player={currentPlayer}
-            isCurrent={isMyTurn}
-            isDarkMode={true}
-            draggedSong={draggedSong}
-            hoveredPosition={localState.placedCardPosition}
-            confirmingPlacement={localState.confirmingPlacement}
-            handleDragOver={handleDragOver}
-            handleDragLeave={() => {}}
-            handleDrop={handleDrop}
-            confirmPlacement={confirmPlacement}
-            cancelPlacement={cancelPlacement}
-            transitioningTurn={localState.isProcessingPlacement}
-          />
-        </div>
+        <PlayerTimeline
+          player={currentPlayer}
+          isCurrent={isMyTurn}
+          isDarkMode={true}
+          draggedSong={draggedSong}
+          hoveredPosition={localState.placedCardPosition}
+          confirmingPlacement={localState.confirmingPlacement}
+          handleDragOver={handleDragOver}
+          handleDragLeave={() => {}}
+          handleDrop={handleDrop}
+          confirmPlacement={confirmPlacement}
+          cancelPlacement={cancelPlacement}
+          transitioningTurn={localState.isProcessingPlacement}
+        />
       )}
 
       {/* Confirmation buttons - only one set at bottom */}
       {localState.confirmingPlacement && !localState.isProcessingPlacement && (
-        <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30 animate-scale-in">
-          <div className="flex gap-3 bg-slate-800/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-xl">
+        <div className="fixed bottom-48 left-1/2 transform -translate-x-1/2 z-40 animate-scale-in">
+          <div className="flex gap-3 bg-slate-800/90 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-xl">
             <Button
               onClick={confirmPlacement}
-              size="sm"
-              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-xl px-4 h-10 font-bold shadow-lg transform transition-all hover:scale-105"
+              size="lg"
+              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-xl px-6 h-12 font-bold shadow-lg transform transition-all hover:scale-105"
               disabled={localState.isProcessingPlacement}
             >
-              <Check className="h-4 w-4 mr-2" />
+              <Check className="h-5 w-5 mr-2" />
               Lock it in!
             </Button>
             <Button
               onClick={cancelPlacement}
-              size="sm"
-              className="bg-slate-600/80 hover:bg-slate-500/80 text-white rounded-xl px-4 h-10 font-bold border border-slate-500/50 shadow-lg transform transition-all hover:scale-105"
+              size="lg"
+              className="bg-slate-600/80 hover:bg-slate-500/80 text-white rounded-xl px-6 h-12 font-bold border border-slate-500/50 shadow-lg transform transition-all hover:scale-105"
               disabled={localState.isProcessingPlacement}
             >
-              <X className="h-4 w-4 mr-2" />
+              <X className="h-5 w-5 mr-2" />
               Cancel
             </Button>
           </div>
