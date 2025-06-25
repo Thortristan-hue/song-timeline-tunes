@@ -2,13 +2,13 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Music, Crown, Users, Trophy } from 'lucide-react';
+import { Music, Crown, Users, Trophy, Star } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from '@/components/MysteryCard';
 import { cn } from '@/lib/utils';
 
 interface HostGameViewProps {
-  currentTurnPlayer: Player;
+  currentTurnPlayer: Player | null;
   currentSong: Song | null;
   roomCode: string;
   players: Player[];
@@ -22,6 +22,18 @@ export function HostGameView({
   players,
   mysteryCardRevealed
 }: HostGameViewProps) {
+  if (!currentTurnPlayer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-6xl mb-4 animate-spin">🎵</div>
+          <div className="text-2xl font-bold mb-2">Loading Game...</div>
+          <div className="text-slate-300">Setting up the next turn</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
       {/* Decorative background elements */}
@@ -55,11 +67,11 @@ export function HostGameView({
             <div className="flex items-center justify-center gap-4 text-white">
               <div 
                 className="w-6 h-6 rounded-full border-2 border-white shadow-lg" 
-                style={{ backgroundColor: currentTurnPlayer?.color }}
+                style={{ backgroundColor: currentTurnPlayer.color }}
               />
               <div className="text-center">
-                <div className="font-bold text-xl">{currentTurnPlayer?.name}'s Turn</div>
-                <div className="text-sm text-indigo-200">Current Score: {currentTurnPlayer?.score}/10</div>
+                <div className="font-bold text-xl">{currentTurnPlayer.name}'s Turn</div>
+                <div className="text-sm text-indigo-200">Current Score: {currentTurnPlayer.score}/10</div>
               </div>
             </div>
           </div>
@@ -77,7 +89,7 @@ export function HostGameView({
               />
               
               <div className="mt-4 text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
-                {currentTurnPlayer?.name} is placing this card
+                {currentTurnPlayer.name} is placing this card
               </div>
             </div>
           )}
@@ -89,7 +101,10 @@ export function HostGameView({
         <div className="absolute bottom-60 left-1/2 transform -translate-x-1/2 z-20">
           <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 shadow-xl">
             <div className="text-center mb-4">
-              <h3 className="text-lg font-bold text-white">{currentTurnPlayer.name}'s Timeline</h3>
+              <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                <Star className="h-5 w-5 text-yellow-400" />
+                {currentTurnPlayer.name}'s Timeline
+              </h3>
             </div>
             
             <div className="flex items-center gap-4">

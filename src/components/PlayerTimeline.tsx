@@ -36,7 +36,6 @@ export function PlayerTimeline({
   transitioningTurn = false
 }: PlayerTimelineProps) {
   const renderCard = (song: Song, index: number) => {
-    // No more confirmation UI on individual cards - moved to bottom of screen
     return (
       <div
         key={`${player.id}-card-${index}`}
@@ -71,7 +70,8 @@ export function PlayerTimeline({
       <div
         key={`drop-zone-${position}`}
         className={cn(
-          "w-2 h-32 rounded-full transition-all duration-300",
+          "w-8 h-32 rounded-full transition-all duration-300 mx-2",
+          "touch-manipulation", // Better mobile touch handling
           isConfirming
             ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50 scale-125 animate-pulse'
             : isHovered 
@@ -81,6 +81,13 @@ export function PlayerTimeline({
         onDragOver={(e) => handleDragOver(e, position)}
         onDragLeave={handleDragLeave}
         onDrop={() => handleDrop(position)}
+        // Mobile-friendly touch events
+        onTouchStart={(e) => {
+          if (draggedSong) {
+            e.preventDefault();
+            handleDrop(position);
+          }
+        }}
       />
     );
   };
@@ -89,14 +96,14 @@ export function PlayerTimeline({
 
   return (
     <div 
-      className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-25"
+      className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-25 w-full max-w-6xl px-4"
       style={{
-        transform: `translateX(-50%) perspective(1200px) rotateX(-8deg)`,
+        transform: `translateX(-50%) perspective(1200px) rotateX(-5deg)`,
         transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: transitioningTurn ? 0.7 : 1
       }}
     >
-      <div className="flex items-center gap-4 p-6 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl">
+      <div className="flex items-center gap-2 p-6 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-x-auto">
         {player.timeline.map((song, index) => (
           <React.Fragment key={`${song.deezer_title}-${index}`}>
             {renderDropZone(index)}
@@ -107,10 +114,13 @@ export function PlayerTimeline({
         {renderDropZone(player.timeline.length)}
         
         {player.timeline.length === 0 && (
-          <div className="text-center py-8 px-16">
+          <div className="text-center py-8 px-16 flex-1">
             <Music className="h-16 w-16 text-purple-300 mx-auto mb-4 opacity-60" />
             <p className="text-purple-400 text-sm font-medium">
               Drag the mystery song to build your chronological timeline
+            </p>
+            <p className="text-purple-300 text-xs mt-2 opacity-75">
+              Drop zones will appear when you start dragging
             </p>
           </div>
         )}

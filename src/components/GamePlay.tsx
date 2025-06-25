@@ -60,24 +60,62 @@ export function GamePlay({
     draggedSong: null as Song | null,
     mysteryCardRevealed: false,
     cardResult: null as { correct: boolean; song: Song } | null,
-    isProcessingPlacement: false
+    isProcessingPlacement: false,
+    userHasInteracted: false
   });
 
   // Initialize game when component mounts
   useEffect(() => {
+    console.log('🎮 GamePlay component mounted, initializing game...');
     initializeGame();
   }, [initializeGame]);
+
+  // Handle user interaction for audio
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setLocalGameState(prev => ({ ...prev, userHasInteracted: true }));
+      // Play a soft welcome sound for players
+      if (!isHost) {
+        soundEffects.playPlayerJoin();
+      }
+    };
+
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, [isHost, soundEffects]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
   const currentTurnPlayer = getCurrentPlayer();
   const isMyTurn = currentPlayer?.id === currentTurnPlayer?.id;
 
+  console.log('🎮 GamePlay render:', {
+    isHost,
+    currentTurnPlayer: currentTurnPlayer?.name,
+    currentSong: gameState.currentSong?.deezer_title,
+    activePlayers: activePlayers.length,
+    gamePhase: gameState.phase
+  });
+
   const playPauseAudio = () => {
     if (!audioRef.current || !gameState.currentSong?.preview_url) {
       toast({
         title: "Audio Error",
         description: "No audio available for this song",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!localGameState.userHasInteracted) {
+      toast({
+        title: "Audio Blocked",
+        description: "Please click anywhere first to enable audio",
         variant: "destructive",
       });
       return;
@@ -132,6 +170,8 @@ export function GamePlay({
     setLocalGameState(prev => ({ ...prev, isProcessingPlacement: true }));
 
     try {
+      console.log('🎯 Placing card:', gameState.currentSong.deezer_title, 'at position:', position);
+      
       // First reveal the mystery card
       setLocalGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
 
@@ -146,7 +186,7 @@ export function GamePlay({
       if (result.success) {
         soundEffects.playCardSuccess();
         toast({
-          title: "Correct!",
+          title: "Perfect!",
           description: `${gameState.currentSong.deezer_title} placed correctly!`,
         });
       } else {
@@ -253,8 +293,8 @@ export function GamePlay({
     );
   }
 
-  // Audio element
-  {gameState.currentSong?.preview_url && (
+  // Audio element - ensure it's always rendered when there's a song
+  const audioElement = gameState.currentSong?.preview_url && (
     <audio
       ref={audioRef}
       src={gameState.currentSong.preview_url}
@@ -272,45 +312,67 @@ export function GamePlay({
       onPlay={() => setIsPlaying(true)}
       onPause={() => setIsPlaying(false)}
     />
-  )}
+  );
 
   // Render different views based on role
   if (isHost) {
+    console.log('🎮 Rendering HostGameView with:', {
+      currentTurnPlayer: currentTurnPlayer?.name,
+      players: activePlayers.length,
+      currentSong: gameState.currentSong?.deezer_title
+    });
+    
     return (
-      <HostGameView
-        currentTurnPlayer={currentTurnPlayer!}
-        currentSong={gameState.currentSong}
-        roomCode={room?.lobby_code || ''}
-        players={activePlayers}
-        mysteryCardRevealed={localGameState.mysteryCardRevealed}
-      />
+      <>
+        {audioElement}
+        <HostGameView
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={gameState.currentSong}
+          roomCode={room?.lobby_code || ''}
+          players={activePlayers}
+          mysteryCardRevealed={localGameState.mysteryCardRevealed}
+        />
+      </>
     );
   }
 
   // Player view - only current player and host should see mystery card
   if (currentPlayer) {
+    console.log('🎮 Rendering PlayerView for:', currentPlayer.name, 'isMyTurn:', isMyTurn);
+    
     return (
-      <PlayerView
-        currentPlayer={currentPlayer}
-        currentTurnPlayer={currentTurnPlayer!}
-        roomCode={room?.lobby_code || ''}
-        isMyTurn={isMyTurn}
-        gameState={{
-          currentSong: gameState.currentSong,
-          isPlaying: gameState.isPlaying,
-          timeLeft: gameState.timeLeft,
-          cardPlacementPending: localGameState.isProcessingPlacement,
-          mysteryCardRevealed: localGameState.mysteryCardRevealed,
-          cardPlacementCorrect: localGameState.cardResult?.correct || null
-        }}
-        draggedSong={localGameState.draggedSong}
-        onPlaceCard={handlePlaceCard}
-        onPlayPause={playPauseAudio}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      />
+      <>
+        {audioElement}
+        <PlayerView
+          currentPlayer={currentPlayer}
+          currentTurnPlayer={currentTurnPlayer!}
+          roomCode={room?.lobby_code || ''}
+          isMyTurn={isMyTurn}
+          gameState={{
+            currentSong: gameState.currentSong,
+            isPlaying: gameState.isPlaying,
+            timeLeft: gameState.timeLeft,
+            cardPlacementPending: localGameState.isProcessingPlacement,
+            mysteryCardRevealed: localGameState.mysteryCardRevealed,
+            cardPlacementCorrect: localGameState.cardResult?.correct || null
+          }}
+          draggedSong={localGameState.draggedSong}
+          onPlaceCard={handlePlaceCard}
+          onPlayPause={playPauseAudio}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+      </>
     );
   }
 
-  return null;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+      <div className="text-center text-white">
+        <div className="text-6xl mb-4 animate-spin">🎵</div>
+        <div className="text-2xl font-bold mb-2">Loading...</div>
+        <div className="text-slate-300">Setting up your game experience</div>
+      </div>
+    </div>
+  );
 }
