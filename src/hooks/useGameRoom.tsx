@@ -1,6 +1,3 @@
-
-
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -58,6 +55,16 @@ export function useGameRoom() {
         );
         if (current) {
           setCurrentPlayer(current);
+        }
+      }
+
+      // Update host current player if we are the host
+      if (hostSessionId.current) {
+        const hostPlayer = convertedPlayers.find(p => 
+          data?.find(dbP => dbP.id === p.id && dbP.player_session_id === hostSessionId.current)
+        );
+        if (hostPlayer) {
+          setCurrentPlayer(hostPlayer);
         }
       }
     } catch (error) {
@@ -143,6 +150,35 @@ export function useGameRoom() {
         current_turn: data.current_turn,
         current_song: null
       });
+
+      // Create a player record for the host
+      const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
+      ];
+      const timelineColors = [
+        '#FF8E8E', '#5DEDE5', '#58C4E0', '#A8D8C8', '#FFE9B8',
+        '#E8B7E8', '#AAE0D1', '#F9E07F', '#C8A2D0', '#97CEF0'
+      ];
+
+      const { data: hostPlayerData, error: hostPlayerError } = await supabase
+        .from('players')
+        .insert({
+          room_id: data.id,
+          player_session_id: sessionId,
+          name: hostName,
+          color: colors[0], // Give host the first color
+          timeline_color: timelineColors[0],
+          score: 0,
+          timeline: [],
+          is_host: true
+        })
+        .select()
+        .single();
+
+      if (hostPlayerError) throw hostPlayerError;
+
+      setCurrentPlayer(convertPlayer(hostPlayerData));
       setIsHost(true);
       return data.lobby_code;
     } catch (error) {
@@ -152,7 +188,7 @@ export function useGameRoom() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [convertPlayer]);
 
   const joinRoom = useCallback(async (lobbyCode: string, playerName: string): Promise<boolean> => {
     try {
@@ -193,7 +229,8 @@ export function useGameRoom() {
           color: colors[Math.floor(Math.random() * colors.length)],
           timeline_color: timelineColors[Math.floor(Math.random() * timelineColors.length)],
           score: 0,
-          timeline: []
+          timeline: [],
+          is_host: false
         })
         .select()
         .single();
@@ -392,7 +429,7 @@ export function useGameRoom() {
 
     try {
       console.log('🃏 Assigning starting cards to players...');
-      const nonHostPlayers = players.filter(p => p.id !== room.host_id);
+      const nonHostPlayers = players.filter(p => !p.id.includes(room.host_id));
       
       for (const player of nonHostPlayers) {
         if (player.timeline.length === 0) {
@@ -438,5 +475,3 @@ export function useGameRoom() {
     assignStartingCards
   };
 }
-
-

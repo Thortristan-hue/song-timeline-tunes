@@ -51,7 +51,8 @@ export function GamePlay({
 
   // Get current turn player
   const currentTurnPlayer = getCurrentPlayer();
-  const activePlayers = players.filter(p => p.id !== room?.host_id);
+  // Filter out host from active players for turn-based gameplay
+  const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
 
   // Audio setup
   useEffect(() => {
