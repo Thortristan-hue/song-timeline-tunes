@@ -143,6 +143,11 @@ function Index() {
     return result;
   };
 
+  // Create a wrapper function for updatePlayer that matches the expected signature
+  const handleUpdatePlayer = async (name: string, color: string): Promise<void> => {
+    await updatePlayer({ name, color });
+  };
+
   if (isLoading && gamePhase !== 'menu') {
     return (
       <GameErrorBoundary>
@@ -194,7 +199,7 @@ function Index() {
               players={players}
               currentPlayer={currentPlayer}
               onBackToMenu={handleBackToMenu}
-              onUpdatePlayer={updatePlayer}
+              onUpdatePlayer={handleUpdatePlayer}
             />
           )}
 
@@ -235,3 +240,4 @@ function Index() {
 }
 
 export default Index;
+
