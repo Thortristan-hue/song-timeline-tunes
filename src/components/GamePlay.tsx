@@ -94,6 +94,7 @@ export function GamePlay({
       const channel = supabase
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
+          console.log('🔊 Audio control received:', payload.payload);
           if (payload.payload?.action === 'play') {
             setIsPlaying(true);
           } else if (payload.payload?.action === 'pause') {
@@ -119,22 +120,29 @@ export function GamePlay({
     };
   }, [room?.id]);
 
-  // Handle audio playback
+  // Handle audio playback - Fixed audio implementation
   useEffect(() => {
-    if (!gameState.currentSong?.preview_url || !isHost) return;
+    if (!gameState.currentSong?.preview_url) {
+      console.log('⚠️ No preview URL available for current song');
+      return;
+    }
 
+    // Cleanup previous audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
 
-    if (isPlaying && gameState.currentSong.preview_url) {
+    if (isPlaying) {
+      console.log('🎵 Starting audio playback:', gameState.currentSong.preview_url);
       const audio = new Audio(gameState.currentSong.preview_url);
       audioRef.current = audio;
 
       audio.addEventListener('loadedmetadata', () => {
         songDurationRef.current = audio.duration;
         setAudioPlaybackError(null);
+        console.log('🎵 Audio loaded, duration:', audio.duration);
       });
 
       audio.addEventListener('timeupdate', () => {
@@ -142,13 +150,20 @@ export function GamePlay({
       });
 
       audio.addEventListener('error', (e) => {
-        console.error('Audio playback error:', e);
+        console.error('🚨 Audio playback error:', e);
         setAudioPlaybackError('Failed to play audio preview');
       });
 
+      audio.addEventListener('ended', () => {
+        console.log('🎵 Audio ended');
+        setIsPlaying(false);
+      });
+
+      // Set volume and play
+      audio.volume = 0.7;
       audio.play().catch((error) => {
-        console.error('Failed to play audio:', error);
-        setAudioPlaybackError('Audio autoplay blocked by browser');
+        console.error('🚨 Failed to play audio:', error);
+        setAudioPlaybackError('Audio autoplay blocked by browser - click play to start');
       });
     }
 
@@ -158,16 +173,20 @@ export function GamePlay({
         audioRef.current = null;
       }
     };
-  }, [isPlaying, gameState.currentSong?.preview_url, isHost]);
+  }, [isPlaying, gameState.currentSong?.preview_url]);
 
   const handlePlayPause = async () => {
+    console.log('🎵 Play/Pause clicked, current state:', { isPlaying, isHost });
+    
     if (!isHost) {
       // For players, send request to host
       if (audioChannelRef.current) {
+        const action = isPlaying ? 'pause' : 'play';
+        console.log('📡 Sending audio control to host:', action);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
-          payload: { action: isPlaying ? 'pause' : 'play' }
+          payload: { action }
         });
       }
       return;
@@ -175,6 +194,7 @@ export function GamePlay({
 
     // For host, control directly
     const newIsPlaying = !isPlaying;
+    console.log('🎵 Host setting playing state:', newIsPlaying);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
@@ -190,14 +210,17 @@ export function GamePlay({
 
   const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
     if (!draggedSong || !currentPlayer) {
+      console.error('Cannot place card: missing draggedSong or currentPlayer');
       return { success: false };
     }
 
     try {
+      console.log('🃏 Placing card at position:', position);
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
       const result = await onPlaceCard(draggedSong, position);
+      console.log('🃏 Card placement result:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -215,6 +238,7 @@ export function GamePlay({
 
         // Show result for 3 seconds
         setTimeout(() => {
+          console.log('🃏 Clearing card placement result and starting next turn');
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
           setDraggedSong(null);
@@ -298,9 +322,24 @@ export function GamePlay({
       currentSong: gameState.currentSong?.deezer_title
     });
 
+    // Ensure we have a valid current turn player
+    const validCurrentTurnPlayer = currentTurnPlayer || activePlayers[0];
+    
+    if (!validCurrentTurnPlayer) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center text-white">
+            <div className="text-6xl mb-4">⏳</div>
+            <div className="text-2xl font-bold mb-2">Waiting for Players</div>
+            <div className="text-slate-300">Need at least one player to start the game</div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <HostDisplay
-        currentTurnPlayer={currentTurnPlayer || players[0]} // Fallback to first player
+        currentTurnPlayer={validCurrentTurnPlayer}
         players={activePlayers}
         roomCode={room.lobby_code}
         currentSongProgress={songProgressRef.current}

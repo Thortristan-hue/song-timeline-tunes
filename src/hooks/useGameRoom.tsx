@@ -230,10 +230,13 @@ export function useGameRoom() {
 
   const placeCard = useCallback(async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {
+      console.error('Cannot place card: missing currentPlayer or room');
       return { success: false };
     }
 
     try {
+      console.log('🎯 Placing card:', { song: song.deezer_title, position, currentTimeline: currentPlayer.timeline });
+      
       // Get current timeline
       const currentTimeline = [...currentPlayer.timeline];
       
@@ -257,9 +260,11 @@ export function useGameRoom() {
       if (isCorrect) {
         // Correct placement - keep the card and increment score
         newScore = currentPlayer.score + 1;
+        console.log('✅ Correct placement! New score:', newScore);
       } else {
         // Incorrect placement - remove the card (destroy it)
         finalTimeline = currentPlayer.timeline; // Keep original timeline without the new card
+        console.log('❌ Incorrect placement - card destroyed');
       }
 
       // Update player in database
@@ -271,15 +276,19 @@ export function useGameRoom() {
         })
         .eq('id', currentPlayer.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw error;
+      }
 
-      // Update local state
+      // Update local state immediately
       setCurrentPlayer(prev => prev ? {
         ...prev,
         timeline: finalTimeline,
         score: newScore
       } : null);
 
+      console.log('🎯 Card placement completed successfully');
       return { success: true, correct: isCorrect };
     } catch (error) {
       console.error('Failed to place card:', error);
@@ -367,33 +376,44 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      // Note: current_song doesn't exist in the database schema, so we skip this
-      console.log('Setting current song:', song.deezer_title);
+      console.log('🎵 Setting current song:', song.deezer_title);
+      // Update room state locally since we don't have current_song in database
+      setRoom(prev => prev ? { ...prev, current_song: song } : null);
     } catch (error) {
       console.error('Failed to set current song:', error);
     }
   }, [room, isHost]);
 
   const assignStartingCards = useCallback(async (availableSongs: Song[]): Promise<void> => {
-    if (!room || !isHost) return;
+    if (!room || !isHost || !availableSongs.length) {
+      console.log('⚠️ Cannot assign starting cards:', { room: !!room, isHost, songsLength: availableSongs.length });
+      return;
+    }
 
     try {
+      console.log('🃏 Assigning starting cards to players...');
       const nonHostPlayers = players.filter(p => p.id !== room.host_id);
       
       for (const player of nonHostPlayers) {
         if (player.timeline.length === 0) {
           const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+          console.log(`🃏 Assigning starting card to ${player.name}:`, randomSong.deezer_title);
           
-          await supabase
+          const { error } = await supabase
             .from('players')
             .update({
               timeline: [randomSong] as any
             })
             .eq('id', player.id);
+
+          if (error) {
+            console.error(`Failed to assign starting card to ${player.name}:`, error);
+          }
         }
       }
       
       // Refresh players after assigning cards
+      console.log('🔄 Refreshing players after assigning starting cards...');
       await fetchPlayers(room.id);
     } catch (error) {
       console.error('Failed to assign starting cards:', error);
