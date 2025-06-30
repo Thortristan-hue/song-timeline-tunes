@@ -20,10 +20,10 @@ class DefaultPlaylistService {
       .filter(item => this.validateSong(item))
       .map(item => this.mapToSong(item));
 
-    // Enrich with preview URLs
+    // Enrich with preview URLs and filter out songs without previews
     this.songs = await this.enrichWithPreviews(this.songs);
     
-    console.log(`✅ Loaded ${this.songs.length} valid songs`);
+    console.log(`✅ Loaded ${this.songs.length} valid songs with previews`);
     return this.songs;
   }
 
@@ -57,19 +57,38 @@ class DefaultPlaylistService {
   }
 
   private async enrichWithPreviews(songs: Song[]): Promise<Song[]> {
-    return Promise.all(songs.map(async song => {
-      if (!song.preview_url && song.deezer_url) {
-        try {
+    const songsWithPreviews: Song[] = [];
+    
+    for (const song of songs) {
+      try {
+        // If song already has preview_url, keep it
+        if (song.preview_url) {
+          songsWithPreviews.push(song);
+          continue;
+        }
+
+        // Try to get preview from Deezer URL
+        if (song.deezer_url) {
           const trackId = song.deezer_url.match(/track\/(\d+)/)?.[1];
           if (trackId) {
-            song.preview_url = await DeezerAudioService.getPreviewUrl(trackId);
+            console.log(`🎵 Fetching preview for: ${song.deezer_title}`);
+            const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+            song.preview_url = previewUrl;
+            songsWithPreviews.push(song);
+            console.log(`✅ Got preview for: ${song.deezer_title}`);
+          } else {
+            console.log(`⏭️ No track ID found for: ${song.deezer_title}`);
           }
-        } catch (error) {
-          console.error(`Failed to get preview for ${song.deezer_title}:`, error);
+        } else {
+          console.log(`⏭️ No Deezer URL for: ${song.deezer_title}`);
         }
+      } catch (error) {
+        console.log(`⏭️ Skipping ${song.deezer_title} - no preview available:`, error instanceof Error ? error.message : 'Unknown error');
+        // Don't add songs without previews to the final list
       }
-      return song;
-    }));
+    }
+
+    return songsWithPreviews;
   }
 
   private generateCardColor(): string {

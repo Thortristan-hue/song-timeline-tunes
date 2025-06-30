@@ -43,7 +43,7 @@ export class DeezerLoader {
     }
   }
 
-  // Load songs from Deezer playlist
+  // Load songs from Deezer playlist, filtering out songs without previews
   async loadPlaylist(playlistUrl: string): Promise<Song[]> {
     try {
       const playlistId = this.extractPlaylistId(playlistUrl);
@@ -78,19 +78,15 @@ export class DeezerLoader {
       for (let i = 0; i < playlistData.tracks.data.length; i++) {
         const track = playlistData.tracks.data[i];
         
-        // Fetch individual track data to get preview URL
-        let previewUrl = track.preview || undefined;
+        // Only include tracks that have a preview URL
+        const previewUrl = track.preview;
         
-        if (!previewUrl && track.id) {
-          try {
-            console.log(`🎵 Fetching preview URL for track ${track.id}...`);
-            const trackData = await this.fetchTrackPreview(track.id.toString());
-            previewUrl = trackData?.preview || undefined;
-            console.log(`🎵 Preview URL for ${track.title}: ${previewUrl}`);
-          } catch (error) {
-            console.warn(`Failed to fetch preview for track ${track.id}:`, error);
-          }
+        if (!previewUrl) {
+          console.log(`⏭️ Skipping ${track.title} - no preview available`);
+          continue;
         }
+
+        console.log(`✅ Adding ${track.title} with preview URL`);
 
         songs.push({
           id: track.id?.toString() || `track_${i}`,
@@ -106,33 +102,16 @@ export class DeezerLoader {
         });
       }
 
-      console.log(`Successfully loaded ${songs.length} songs from Deezer playlist`);
+      if (songs.length === 0) {
+        throw new Error('No songs with audio previews found in this playlist.');
+      }
+
+      console.log(`Successfully loaded ${songs.length} songs with previews from Deezer playlist`);
       return songs;
 
     } catch (error) {
       console.error('Error loading Deezer playlist:', error);
       throw error;
-    }
-  }
-
-  // Fetch individual track data to get preview URL
-  async fetchTrackPreview(trackId: string): Promise<{ preview?: string } | null> {
-    try {
-      const targetUrl = `https://api.deezer.com/track/${trackId}`;
-      console.log(`🎵 Fetching track data from: ${targetUrl}`);
-      
-      const trackData = await CorsProxyService.fetchJson<any>(targetUrl);
-      
-      if (trackData && trackData.preview) {
-        console.log(`✅ Found preview URL: ${trackData.preview}`);
-        return { preview: trackData.preview };
-      } else {
-        console.warn(`❌ No preview URL found for track ${trackId}`);
-        return null;
-      }
-    } catch (error) {
-      console.error(`Failed to fetch track preview for ${trackId}:`, error);
-      return null;
     }
   }
 

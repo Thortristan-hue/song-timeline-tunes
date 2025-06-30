@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2, VolumeX, AlertTriangle, SkipForward } from 'lucide-react';
@@ -16,9 +17,6 @@ interface AudioPlayerProps {
   className?: string;
 }
 
-/**
- * Audio Player Component
- */
 export function AudioPlayer({
   src,
   isPlaying,
@@ -54,29 +52,43 @@ export function AudioPlayer({
         let playableUrl = src;
 
         if (trackId) {
+          console.log(`🎵 Resolving Deezer track ${trackId} to MP3 URL...`);
           playableUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          console.log(`🎵 Resolved to MP3: ${playableUrl}`);
           onUrlResolved?.(playableUrl);
         }
 
         setAudioState(prev => ({
           ...prev,
           currentUrl: playableUrl,
-          isLoading: false
+          isLoading: false,
+          hasError: false
         }));
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Failed to load audio';
+        console.error('🚫 Audio resolution failed:', errorMsg);
+        
         setAudioState(prev => ({
           ...prev,
           hasError: true,
           errorMessage: errorMsg,
           isLoading: false
         }));
+        
         onError?.(errorMsg);
+        
+        // Auto-skip songs with no preview after a short delay
+        if (errorMsg.includes('No preview available') && onSkip) {
+          setTimeout(() => {
+            console.log('⏭️ Auto-skipping song with no preview');
+            onSkip();
+          }, 2000);
+        }
       }
     };
 
     resolveAudioUrl();
-  }, [src, onError, onUrlResolved]);
+  }, [src, onError, onUrlResolved, onSkip]);
 
   // Audio event handlers
   useEffect(() => {
@@ -84,6 +96,7 @@ export function AudioPlayer({
     if (!audio) return;
 
     const handleCanPlay = () => {
+      console.log('🔊 Audio can play');
       setAudioState(prev => ({
         ...prev,
         canPlay: true,
@@ -99,7 +112,7 @@ export function AudioPlayer({
       if (error) {
         switch (error.code) {
           case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = 'Network error';
+            errorMessage = 'Network error loading audio';
             break;
           case MediaError.MEDIA_ERR_DECODE:
             errorMessage = 'Audio format not supported';
@@ -110,6 +123,7 @@ export function AudioPlayer({
         }
       }
 
+      console.error('🚫 Audio element error:', errorMessage);
       setAudioState(prev => ({
         ...prev,
         hasError: true,
@@ -119,12 +133,19 @@ export function AudioPlayer({
       onError?.(errorMessage);
     };
 
+    const handleLoadStart = () => {
+      console.log('🔄 Audio loading started');
+      setAudioState(prev => ({ ...prev, isLoading: true }));
+    };
+
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('error', handleError);
+    audio.addEventListener('loadstart', handleLoadStart);
 
     return () => {
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('error', handleError);
+      audio.removeEventListener('loadstart', handleLoadStart);
     };
   }, [onError]);
 
@@ -135,17 +156,22 @@ export function AudioPlayer({
     try {
       if (isPlaying) {
         audio.pause();
+        console.log('⏸️ Audio paused');
       } else {
         audio.currentTime = 0;
+        console.log('▶️ Attempting to play audio');
         const playPromise = audio.play();
         
         if (playPromise !== undefined) {
           await playPromise;
           setAudioState(prev => ({ ...prev, needsUserInteraction: false }));
+          console.log('✅ Audio playing successfully');
         }
       }
       onPlayPause();
     } catch (error) {
+      console.error('🚫 Playback error:', error);
+      
       if (error instanceof Error && error.name === 'NotAllowedError') {
         setAudioState(prev => ({
           ...prev,
@@ -169,6 +195,7 @@ export function AudioPlayer({
   };
 
   const handleTryAgain = () => {
+    console.log('🔄 Trying again...');
     setAudioState(prev => ({
       ...prev,
       hasError: false,
@@ -178,7 +205,7 @@ export function AudioPlayer({
     audioRef.current?.load();
   };
 
-  // Error state
+  // Error state with auto-skip for missing previews
   if (audioState.hasError && !audioState.needsUserInteraction) {
     return (
       <div className={cn("flex items-center gap-2 p-3 bg-red-500/20 rounded-lg", className)}>
