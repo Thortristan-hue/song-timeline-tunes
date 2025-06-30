@@ -35,7 +35,7 @@ export function AudioPlayer({
     isMuted: false
   });
 
-  // Fix the proxy URL generation
+  // Generate proxied URL using the correct proxy format
   const getProxiedUrl = useCallback((url: string | null): string | null => {
     if (!url) return null;
     
@@ -44,10 +44,13 @@ export function AudioPlayer({
       return url;
     }
     
-    // If it's already a valid HTTP(S) URL, proxy it
+    // Only proxy valid HTTP(S) URLs that look like direct audio files
     if (url.startsWith('http://') || url.startsWith('https://')) {
       try {
-        return `https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(url)}`;
+        console.log(`🎵 Proxying audio URL: ${url}`);
+        const proxiedUrl = `https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(url)}`;
+        console.log(`🎵 Proxied URL: ${proxiedUrl}`);
+        return proxiedUrl;
       } catch (error) {
         console.error('Failed to encode URL for proxy:', error);
         return null;
@@ -287,6 +290,54 @@ export function AudioPlayer({
           src={proxiedSrc}
           crossOrigin="anonymous"
           preload="metadata"
+          onCanPlay={() => {
+            console.log('🎵 Audio can play');
+            setAudioState(prev => ({
+              ...prev,
+              canPlay: true,
+              isLoading: false,
+              hasError: false
+            }));
+          }}
+          onError={(event) => {
+            const audioElement = event.target as HTMLAudioElement;
+            const error = audioElement.error;
+            let errorMessage = 'Unable to load audio.';
+            
+            if (error) {
+              switch (error.code) {
+                case MediaError.MEDIA_ERR_NETWORK:
+                  errorMessage = 'Network error while loading audio.';
+                  break;
+                case MediaError.MEDIA_ERR_DECODE:
+                  errorMessage = 'Audio format not supported.';
+                  break;
+                case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                  errorMessage = 'Audio source not supported.';
+                  break;
+                default:
+                  errorMessage = 'Unknown audio error occurred.';
+              }
+            }
+            
+            console.error('🎵 Audio error:', error, 'URL:', audioElement.src);
+            
+            setAudioState(prev => ({
+              ...prev,
+              hasError: true,
+              errorMessage,
+              isLoading: false,
+              canPlay: false
+            }));
+            
+            onError?.(errorMessage);
+          }}
+          onLoadStart={() => {
+            setAudioState(prev => ({ ...prev, isLoading: true }));
+          }}
+          onLoadedData={() => {
+            setAudioState(prev => ({ ...prev, isLoading: false }));
+          }}
         />
       )}
       
@@ -306,7 +357,13 @@ export function AudioPlayer({
       </Button>
       
       <Button
-        onClick={handleMuteToggle}
+        onClick={() => {
+          const audio = audioRef.current;
+          if (audio) {
+            audio.muted = !audio.muted;
+            setAudioState(prev => ({ ...prev, isMuted: audio.muted }));
+          }
+        }}
         size="sm"
         variant="outline"
         className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200 transform transition-all hover:scale-110"

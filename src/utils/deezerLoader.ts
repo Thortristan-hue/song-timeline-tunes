@@ -1,3 +1,4 @@
+
 import { Song } from '@/types/game';
 import { CorsProxyService } from '@/services/corsProxyService';
 
@@ -72,18 +73,38 @@ export class DeezerLoader {
         '#D7BDE2', '#A9DFBF', '#F9E79F', '#FAD7A0'
       ];
 
-      const songs: Song[] = playlistData.tracks.data.map((track: any, index: number) => ({
-        id: track.id?.toString() || `track_${index}`,
-        deezer_title: track.title || 'Unknown Title',
-        deezer_artist: track.artist?.name || 'Unknown Artist',
-        deezer_album: track.album?.title || 'Unknown Album',
-        release_year: track.album?.release_date ? 
-          new Date(track.album.release_date).getFullYear().toString() : 
-          'Unknown',
-        genre: this.getGenreFromTrack(track),
-        cardColor: colors[index % colors.length],
-        preview_url: track.preview || undefined
-      }));
+      const songs: Song[] = [];
+
+      for (let i = 0; i < playlistData.tracks.data.length; i++) {
+        const track = playlistData.tracks.data[i];
+        
+        // Fetch individual track data to get preview URL
+        let previewUrl = track.preview || undefined;
+        
+        if (!previewUrl && track.id) {
+          try {
+            console.log(`🎵 Fetching preview URL for track ${track.id}...`);
+            const trackData = await this.fetchTrackPreview(track.id.toString());
+            previewUrl = trackData?.preview || undefined;
+            console.log(`🎵 Preview URL for ${track.title}: ${previewUrl}`);
+          } catch (error) {
+            console.warn(`Failed to fetch preview for track ${track.id}:`, error);
+          }
+        }
+
+        songs.push({
+          id: track.id?.toString() || `track_${i}`,
+          deezer_title: track.title || 'Unknown Title',
+          deezer_artist: track.artist?.name || 'Unknown Artist',
+          deezer_album: track.album?.title || 'Unknown Album',
+          release_year: track.album?.release_date ? 
+            new Date(track.album.release_date).getFullYear().toString() : 
+            'Unknown',
+          genre: this.getGenreFromTrack(track),
+          cardColor: colors[i % colors.length],
+          preview_url: previewUrl
+        });
+      }
 
       console.log(`Successfully loaded ${songs.length} songs from Deezer playlist`);
       return songs;
@@ -91,6 +112,27 @@ export class DeezerLoader {
     } catch (error) {
       console.error('Error loading Deezer playlist:', error);
       throw error;
+    }
+  }
+
+  // Fetch individual track data to get preview URL
+  async fetchTrackPreview(trackId: string): Promise<{ preview?: string } | null> {
+    try {
+      const targetUrl = `https://api.deezer.com/track/${trackId}`;
+      console.log(`🎵 Fetching track data from: ${targetUrl}`);
+      
+      const trackData = await CorsProxyService.fetchJson<any>(targetUrl);
+      
+      if (trackData && trackData.preview) {
+        console.log(`✅ Found preview URL: ${trackData.preview}`);
+        return { preview: trackData.preview };
+      } else {
+        console.warn(`❌ No preview URL found for track ${trackId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Failed to fetch track preview for ${trackId}:`, error);
+      return null;
     }
   }
 

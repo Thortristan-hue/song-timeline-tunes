@@ -10,7 +10,8 @@ export class CorsProxyService {
       // Construct proxy URL with the target URL as a parameter
       const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(url)}`;
       
-      console.log(`🔄 Fetching via custom proxy: ${url}`);
+      console.log(`🔄 Fetching via proxy: ${url}`);
+      console.log(`🔄 Proxy URL: ${proxyUrl}`);
       
       const response = await fetch(proxyUrl, {
         method: 'GET', // Proxy only supports GET requests
@@ -34,7 +35,7 @@ export class CorsProxyService {
         throw new Error(errorMessage);
       }
 
-      console.log(`✅ Successfully fetched via custom proxy: ${url}`);
+      console.log(`✅ Successfully fetched via proxy: ${url}`);
       return response;
     } catch (error) {
       console.error(`❌ Proxy fetch failed for ${url}:`, error);
