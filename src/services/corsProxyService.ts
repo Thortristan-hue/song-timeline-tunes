@@ -1,7 +1,3 @@
-/**
- * A service for making CORS-compatible requests through a Cloudflare Worker proxy.
- * Handles all communication with timeliner-proxy for Deezer, MusicBrainz, and Discogs APIs.
- */
 export class CorsProxyService {
   private static readonly PROXY_BASE_URL = 'https://timeliner-proxy.thortristanjd.workers.dev/';
   private static readonly ALLOWED_DOMAINS = [
@@ -11,26 +7,23 @@ export class CorsProxyService {
   ];
 
   /**
-   * Fetches a resource through the CORS proxy
-   * @param url The target API URL (must be from allowed domains)
-   * @returns A Promise resolving to the Response
-   * @throws Error if the request fails or URL is invalid
+   * Normalizes Deezer URLs from web format to API format
    */
+  private static normalizeDeezerUrl(url: string): string {
+    return url.replace('www.deezer.com', 'api.deezer.com');
+  }
+
   static async fetch(url: string): Promise<Response> {
-    this.validateUrl(url);
-    const proxyUrl = this.buildProxyUrl(url);
+    const normalizedUrl = this.normalizeDeezerUrl(url);
+    this.validateUrl(normalizedUrl);
+    const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(normalizedUrl)}`;
     
-    try {
-      const response = await fetch(proxyUrl);
-      
-      if (!response.ok) {
-        await this.handleErrorResponse(response);
-      }
-      
-      return response;
-    } catch (error) {
-      throw this.normalizeError(error);
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
+    return response;
   }
 
   /**
