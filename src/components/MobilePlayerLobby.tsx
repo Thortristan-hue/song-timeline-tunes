@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -81,7 +82,8 @@ export default function MobilePlayerLobby({
           <p className="text-gray-300 leading-relaxed">Time to show off your music knowledge. Good luck!</p>
         </div>
       </div>
-    
+    );
+  }
 
   if (!room || !currentPlayer) {
     return (
