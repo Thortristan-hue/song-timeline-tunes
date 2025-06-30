@@ -6,18 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Music, Users, Palette, Gamepad2, Clock } from 'lucide-react';
-
-// Mock types for demo
-interface Player {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface GameRoom {
-  lobby_code: string;
-  phase: 'waiting' | 'playing';
-}
+import { GameRoom, Player } from '@/types/game';
 
 interface MobilePlayerLobbyProps {
   room: GameRoom | null;
@@ -39,9 +28,25 @@ const PLAYER_COLORS = [
 ];
 
 export default function MobilePlayerLobby({ 
-  room = { lobby_code: 'DEMO123', phase: 'waiting' },
+  room = { 
+    id: 'demo', 
+    lobby_code: 'DEMO123', 
+    host_id: 'demo-host',
+    host_name: 'Demo Host',
+    phase: 'lobby',
+    songs: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
   players = [],
-  currentPlayer = { id: '1', name: 'Demo Player', color: PLAYER_COLORS[0] },
+  currentPlayer = { 
+    id: '1', 
+    name: 'Demo Player', 
+    color: PLAYER_COLORS[0],
+    timelineColor: PLAYER_COLORS[0],
+    score: 0,
+    timeline: []
+  },
   onBackToMenu = () => {},
   onUpdatePlayer = async () => {}
 }: MobilePlayerLobbyProps) {
