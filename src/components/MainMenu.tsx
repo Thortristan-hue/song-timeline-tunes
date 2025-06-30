@@ -33,11 +33,11 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </h1>
           
           <p className="text-xl sm:text-2xl text-gray-400 font-light max-w-2xl mx-auto leading-relaxed mb-4">
-            The music chronology game that challenges what you know about your favorite songs.
+            A fun music game for you and your friends. Can you guess when songs came out?
           </p>
           
           <p className="text-lg text-gray-500 font-light">
-            Listen. Think. Place. Win.
+            Just for fun, not for profit.
           </p>
         </div>
 
@@ -54,7 +54,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <Button
             onClick={onJoinRoom}
             variant="outline"
-            className="flex-1 border-gray-600 text-black hover:bg-white/5 h-14 text-lg font-semibold rounded-full transition-all duration-200"
+            className="flex-1 border-gray-600 text-white hover:bg-white/5 h-14 text-lg font-semibold rounded-full transition-all duration-200"
           >
             <Smartphone className="h-5 w-5 mr-2" />
             Join Game
@@ -91,7 +91,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* How to Play - Apple style */}
         <Card className="bg-gray-900/30 border-gray-800 p-8 w-full max-w-4xl">
           <h3 className="text-2xl font-semibold text-white mb-8 text-center">
-            How to Play
+            How it works
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -101,8 +101,8 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                   <span className="text-black font-semibold text-sm">1</span>
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold mb-1">Create Room</h4>
-                  <p className="text-gray-400 text-sm">Host loads a Deezer playlist and shares the room code</p>
+                  <h4 className="text-white font-semibold mb-1">Start a room</h4>
+                  <p className="text-gray-400 text-sm">Someone hosts and picks a playlist from Deezer</p>
                 </div>
               </div>
               
@@ -111,8 +111,8 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                   <span className="text-black font-semibold text-sm">2</span>
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold mb-1">Join Game</h4>
-                  <p className="text-gray-400 text-sm">Players enter the room code on their devices</p>
+                  <h4 className="text-white font-semibold mb-1">Friends join in</h4>
+                  <p className="text-gray-400 text-sm">Everyone else joins with the room code</p>
                 </div>
               </div>
             </div>
@@ -123,8 +123,8 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                   <span className="text-black font-semibold text-sm">3</span>
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold mb-1">Listen & Place</h4>
-                  <p className="text-gray-400 text-sm">Hear mystery songs and place them in chronological order</p>
+                  <h4 className="text-white font-semibold mb-1">Listen and guess</h4>
+                  <p className="text-gray-400 text-sm">Songs start playing, you place them on your timeline</p>
                 </div>
               </div>
               
@@ -133,8 +133,8 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                   <span className="text-black font-semibold text-sm">4</span>
                 </div>
                 <div>
-                  <h4 className="text-white font-semibold mb-1">Win</h4>
-                  <p className="text-gray-400 text-sm">First to 10 correct placements takes the crown</p>
+                  <h4 className="text-white font-semibold mb-1">See who knows best</h4>
+                  <p className="text-gray-400 text-sm">First to get 10 right wins (and gets bragging rights)</p>
                 </div>
               </div>
             </div>
@@ -142,9 +142,13 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         </Card>
 
         {/* Footer - Minimal Apple style */}
-        <div className="mt-16 text-center">
+        <div className="mt-16 text-center space-y-3">
           <p className="text-gray-500 text-sm">
-            Powered by Deezer • Works on any device
+            Uses Deezer for music • Works on any device
+          </p>
+          <p className="text-gray-600 text-xs max-w-md mx-auto">
+            This is an independent project created for friends to enjoy together. 
+            Not affiliated with or endorsed by any music service or company.
           </p>
         </div>
       </div>
