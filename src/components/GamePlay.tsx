@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
-import { HostDisplay } from '@/components/HostDisplay';
+import { HostGameView } from '@/components/HostGameView';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -27,18 +27,11 @@ export function GamePlay({
   customSongs
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
-  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
-  const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
-  const [retryingSong, setRetryingSong] = useState(false);
-  const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
 
   const audioChannelRef = useRef<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const songProgressRef = useRef(0);
-  const songDurationRef = useRef(0);
 
   const {
     gameState,
@@ -47,22 +40,6 @@ export function GamePlay({
     initializeGame,
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
-
-  // Debug logging - but only log once per second to prevent spam
-  const lastLogTime = useRef(0);
-  const now = Date.now();
-  if (now - lastLogTime.current > 1000) {
-    console.log('🎮 GamePlay render - DEBUG INFO:', {
-      isHost,
-      roomPhase: room?.phase,
-      playersCount: players.length,
-      currentPlayerExists: !!currentPlayer,
-      roomId: room?.id,
-      hostId: room?.host_id,
-      connectionState: { gamePhase: gameState.phase, currentSong: !!gameState.currentSong }
-    });
-    lastLogTime.current = now;
-  }
 
   // Initialize game on mount
   useEffect(() => {
@@ -76,21 +53,16 @@ export function GamePlay({
   const currentTurnPlayer = getCurrentPlayer();
   const activePlayers = players.filter(p => p.id !== room?.host_id);
 
-  // Audio setup with proper cleanup
+  // Audio setup
   useEffect(() => {
     if (!room?.id) return;
 
-    // Cleanup existing channel
     if (audioChannelRef.current) {
-      console.log('🧹 Cleaning up existing audio channel...');
       audioChannelRef.current.unsubscribe();
       audioChannelRef.current = null;
     }
 
-    // Only set up audio channel every 5 seconds to prevent spam
     const setupChannel = () => {
-      console.log('🔌 Setting up audio control channel for room:', room.id);
-      
       const channel = supabase
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
@@ -101,14 +73,11 @@ export function GamePlay({
             setIsPlaying(false);
           }
         })
-        .subscribe((status) => {
-          console.log('🔌 Audio channel status:', status);
-        });
+        .subscribe();
 
       audioChannelRef.current = channel;
     };
 
-    // Debounce channel setup
     const timeoutId = setTimeout(setupChannel, 1000);
 
     return () => {
@@ -120,69 +89,10 @@ export function GamePlay({
     };
   }, [room?.id]);
 
-  // Handle audio playback - Fixed audio implementation
-  useEffect(() => {
-    if (!gameState.currentSong?.preview_url) {
-      console.log('⚠️ No preview URL available for current song');
-      return;
-    }
-
-    // Cleanup previous audio
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-    }
-
-    if (isPlaying) {
-      console.log('🎵 Starting audio playback:', gameState.currentSong.preview_url);
-      const audio = new Audio(gameState.currentSong.preview_url);
-      audioRef.current = audio;
-
-      audio.addEventListener('loadedmetadata', () => {
-        songDurationRef.current = audio.duration;
-        setAudioPlaybackError(null);
-        console.log('🎵 Audio loaded, duration:', audio.duration);
-      });
-
-      audio.addEventListener('timeupdate', () => {
-        songProgressRef.current = audio.currentTime;
-      });
-
-      audio.addEventListener('error', (e) => {
-        console.error('🚨 Audio playback error:', e);
-        setAudioPlaybackError('Failed to play audio preview');
-      });
-
-      audio.addEventListener('ended', () => {
-        console.log('🎵 Audio ended');
-        setIsPlaying(false);
-      });
-
-      // Set volume and play
-      audio.volume = 0.7;
-      audio.play().catch((error) => {
-        console.error('🚨 Failed to play audio:', error);
-        setAudioPlaybackError('Audio autoplay blocked by browser - click play to start');
-      });
-    }
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [isPlaying, gameState.currentSong?.preview_url]);
-
   const handlePlayPause = async () => {
-    console.log('🎵 Play/Pause clicked, current state:', { isPlaying, isHost });
-    
     if (!isHost) {
-      // For players, send request to host
       if (audioChannelRef.current) {
         const action = isPlaying ? 'pause' : 'play';
-        console.log('📡 Sending audio control to host:', action);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
@@ -192,13 +102,10 @@ export function GamePlay({
       return;
     }
 
-    // For host, control directly
     const newIsPlaying = !isPlaying;
-    console.log('🎵 Host setting playing state:', newIsPlaying);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
-    // Broadcast to other players
     if (audioChannelRef.current) {
       await audioChannelRef.current.send({
         type: 'broadcast',
@@ -209,8 +116,8 @@ export function GamePlay({
   };
 
   const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
-    if (!draggedSong || !currentPlayer) {
-      console.error('Cannot place card: missing draggedSong or currentPlayer');
+    if (!gameState.currentSong || !currentPlayer) {
+      console.error('Cannot place card: missing song or player');
       return { success: false };
     }
 
@@ -219,7 +126,7 @@ export function GamePlay({
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
-      const result = await onPlaceCard(draggedSong, position);
+      const result = await onPlaceCard(gameState.currentSong, position);
       console.log('🃏 Card placement result:', result);
       
       if (result.success) {
@@ -227,7 +134,7 @@ export function GamePlay({
         
         setCardPlacementResult({ 
           correct: isCorrect, 
-          song: draggedSong 
+          song: gameState.currentSong 
         });
 
         if (isCorrect) {
@@ -236,14 +143,9 @@ export function GamePlay({
           soundEffects.playCardError();
         }
 
-        // Show result for 3 seconds
         setTimeout(() => {
-          console.log('🃏 Clearing card placement result and starting next turn');
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
-          setDraggedSong(null);
-          
-          // Start next turn
           startNewTurn();
         }, 3000);
 
@@ -258,48 +160,6 @@ export function GamePlay({
       return { success: false };
     }
   };
-
-  const handleDragStart = (song: Song) => {
-    setDraggedSong(song);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedSong(null);
-  };
-
-  const handleRetrySong = () => {
-    setRetryingSong(true);
-    setSongLoadingError(null);
-    setTimeout(() => {
-      startNewTurn();
-      setRetryingSong(false);
-    }, 1000);
-  };
-
-  const handleRetryAudio = () => {
-    setAudioPlaybackError(null);
-    setIsPlaying(false);
-    setTimeout(() => setIsPlaying(true), 500);
-  };
-
-  const handleSkipSong = () => {
-    setAudioPlaybackError(null);
-    setSongLoadingError(null);
-    startNewTurn();
-  };
-
-  // Debug logging for renders (throttled)
-  if (now - lastLogTime.current > 1000) {
-    console.log('🎮 GamePlay render:', {
-      isHost,
-      currentTurnPlayer: currentTurnPlayer?.name,
-      currentSong: gameState.currentSong?.deezer_title,
-      activePlayers: activePlayers.length,
-      gamePhase: gameState.phase,
-      roomPhase: room?.phase,
-      connectionStatus: audioChannelRef.current ? 'connected' : 'disconnected'
-    });
-  }
 
   // Loading state
   if (gameState.phase === 'loading') {
@@ -316,13 +176,6 @@ export function GamePlay({
 
   // Host view
   if (isHost) {
-    console.log('🎮 Rendering HostDisplay with:', {
-      currentTurnPlayer: currentTurnPlayer?.name,
-      playersCount: players.length,
-      currentSong: gameState.currentSong?.deezer_title
-    });
-
-    // Ensure we have a valid current turn player
     const validCurrentTurnPlayer = currentTurnPlayer || activePlayers[0];
     
     if (!validCurrentTurnPlayer) {
@@ -338,23 +191,15 @@ export function GamePlay({
     }
 
     return (
-      <HostDisplay
+      <HostGameView
         currentTurnPlayer={validCurrentTurnPlayer}
-        players={activePlayers}
+        currentSong={gameState.currentSong}
         roomCode={room.lobby_code}
-        currentSongProgress={songProgressRef.current}
-        currentSongDuration={songDurationRef.current}
-        gameState={{
-          currentSong: gameState.currentSong,
-          mysteryCardRevealed,
-          cardPlacementCorrect: cardPlacementResult?.correct || null
-        }}
-        songLoadingError={songLoadingError}
-        retryingSong={retryingSong}
-        onRetrySong={handleRetrySong}
-        audioPlaybackError={audioPlaybackError}
-        onRetryAudio={handleRetryAudio}
-        onSkipSong={handleSkipSong}
+        players={activePlayers}
+        mysteryCardRevealed={mysteryCardRevealed}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        cardPlacementResult={cardPlacementResult}
       />
     );
   }
@@ -373,8 +218,6 @@ export function GamePlay({
   }
 
   const isMyTurn = currentTurnPlayer?.id === currentPlayer.id;
-
-  console.log('🎮 Rendering PlayerView for:', currentPlayer.name, 'isMyTurn:', isMyTurn);
 
   return (
     <PlayerGameView
