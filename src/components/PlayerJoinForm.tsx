@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,30 +20,46 @@ export function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="playerName" className="text-sm font-medium text-white">
-          Player Name
-        </label>
-        <Input
-          id="playerName"
-          type="text"
-          placeholder="Enter your name..."
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-purple-400 focus:ring-purple-400/20"
-          maxLength={20}
-        />
+    <div className="space-y-8">
+      {/* Disclaimer */}
+      <div className="text-center space-y-2 mb-8">
+        <p className="text-sm text-white/70 leading-relaxed max-w-md mx-auto">
+          This is just a fun game for friends! We're not affiliated with any music streaming services or record labels. 
+          It's a free project made for good times and good music.
+        </p>
       </div>
-      
-      <Button 
-        type="submit" 
-        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
-        disabled={!name.trim()}
-      >
-        <Users className="mr-2 h-4 w-4" />
-        Join the Beat
-      </Button>
-    </form>
+
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <label htmlFor="playerName" className="block text-lg font-medium text-white/90 tracking-tight">
+            What should we call you?
+          </label>
+          <Input
+            id="playerName"
+            type="text"
+            placeholder="Your name here..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSubmit(e)}
+            className="h-14 text-lg bg-white/5 border-0 rounded-2xl text-white placeholder:text-white/40 
+                     focus:bg-white/10 focus:ring-2 focus:ring-white/20 transition-all duration-200
+                     backdrop-blur-xl shadow-inner"
+            maxLength={20}
+          />
+        </div>
+        
+        <Button 
+          onClick={handleSubmit}
+          className="w-full h-14 bg-white text-black hover:bg-white/90 
+                   font-semibold text-lg rounded-2xl transition-all duration-200 
+                   shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
+                   border-0 tracking-tight"
+          disabled={!name.trim()}
+        >
+          <Users className="mr-3 h-5 w-5" />
+          Join the Game
+        </Button>
+      </div>
+    </div>
   );
 }
