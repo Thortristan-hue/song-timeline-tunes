@@ -31,6 +31,7 @@ export function GamePlay({
   const [isPlaying, setIsPlaying] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
+  const [startingCardsAssigned, setStartingCardsAssigned] = useState(false);
 
   const audioChannelRef = useRef<any>(null);
 
@@ -53,17 +54,62 @@ export function GamePlay({
   // Get current turn player - this will only be from active players (non-host)
   const currentTurnPlayer = getCurrentPlayer();
   // Filter out host from active players for display and turn logic
-  const activePlayers = players.filter(p => !p.id.includes(room?.host_id) && p.id !== room?.host_id);
+  const activePlayers = players.filter(p => {
+    const isHostPlayer = p.id.includes(room?.host_id) || p.id === room?.host_id;
+    return !isHostPlayer;
+  });
 
-  console.log('🎯 Game debug:', {
+  console.log('🎯 Game debug (HOST FILTERING):', {
     allPlayers: players.length,
     activePlayers: activePlayers.length,
     currentTurnPlayer: currentTurnPlayer?.name,
     isHost,
-    hostId: room?.host_id
+    hostId: room?.host_id,
+    hostFilteredOut: players.filter(p => p.id.includes(room?.host_id) || p.id === room?.host_id).length
   });
 
-  // Audio setup
+  // Assign starting cards to players when game starts
+  useEffect(() => {
+    const assignStartingCards = async () => {
+      if (
+        !startingCardsAssigned &&
+        gameState.phase === 'playing' &&
+        gameState.availableSongs.length > 0 &&
+        activePlayers.length > 0 &&
+        isHost
+      ) {
+        console.log('🃏 Assigning starting cards to all players');
+        
+        for (const player of activePlayers) {
+          if (player.timeline.length === 0) {
+            const randomSong = gameState.availableSongs[Math.floor(Math.random() * gameState.availableSongs.length)];
+            console.log(`🃏 Assigning starting card to ${player.name}:`, randomSong.deezer_title);
+            
+            try {
+              const { error } = await supabase
+                .from('players')
+                .update({
+                  timeline: [randomSong] as any
+                })
+                .eq('id', player.id);
+
+              if (error) {
+                console.error(`Failed to assign starting card to ${player.name}:`, error);
+              }
+            } catch (error) {
+              console.error(`Error assigning starting card to ${player.name}:`, error);
+            }
+          }
+        }
+        
+        setStartingCardsAssigned(true);
+      }
+    };
+
+    assignStartingCards();
+  }, [gameState.phase, gameState.availableSongs, activePlayers, isHost, startingCardsAssigned]);
+
+  // Audio setup - only for current turn player's song
   useEffect(() => {
     if (!room?.id) return;
 
@@ -77,10 +123,13 @@ export function GamePlay({
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
           console.log('🔊 Audio control received:', payload.payload);
-          if (payload.payload?.action === 'play') {
-            setIsPlaying(true);
-          } else if (payload.payload?.action === 'pause') {
-            setIsPlaying(false);
+          // Only play/pause if this is for the current turn player's song
+          if (payload.payload?.currentTurnPlayerId === currentTurnPlayer?.id) {
+            if (payload.payload?.action === 'play') {
+              setIsPlaying(true);
+            } else if (payload.payload?.action === 'pause') {
+              setIsPlaying(false);
+            }
           }
         })
         .subscribe();
@@ -97,35 +146,51 @@ export function GamePlay({
         audioChannelRef.current = null;
       }
     };
-  }, [room?.id]);
+  }, [room?.id, currentTurnPlayer?.id]);
 
   const handlePlayPause = async () => {
-    console.log('🎵 Play/Pause clicked:', { isHost, isPlaying, currentSong: gameState.currentSong?.deezer_title });
+    console.log('🎵 Play/Pause clicked:', { 
+      isHost, 
+      isPlaying, 
+      currentSong: gameState.currentSong?.deezer_title,
+      currentTurnPlayer: currentTurnPlayer?.name
+    });
+    
+    if (!currentTurnPlayer) {
+      console.log('⚠️ No current turn player, ignoring play/pause');
+      return;
+    }
     
     if (!isHost) {
       if (audioChannelRef.current) {
         const action = isPlaying ? 'pause' : 'play';
-        console.log(`🔊 Sending audio control: ${action}`);
+        console.log(`🔊 Sending audio control: ${action} for player ${currentTurnPlayer.name}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
-          payload: { action }
+          payload: { 
+            action,
+            currentTurnPlayerId: currentTurnPlayer.id
+          }
         });
       }
       return;
     }
 
     const newIsPlaying = !isPlaying;
-    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying}`);
+    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying} for ${currentTurnPlayer.name}`);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
     if (audioChannelRef.current) {
-      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'}`);
+      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'} for player ${currentTurnPlayer.name}`);
       await audioChannelRef.current.send({
         type: 'broadcast',
         event: 'audio-control',
-        payload: { action: newIsPlaying ? 'play' : 'pause' }
+        payload: { 
+          action: newIsPlaying ? 'play' : 'pause',
+          currentTurnPlayerId: currentTurnPlayer.id
+        }
       });
     }
   };
@@ -228,7 +293,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
         />
         
-        {/* Hidden audio player for host */}
+        {/* Hidden audio player for host - only plays current turn player's song */}
         {gameState.currentSong?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
@@ -277,8 +342,8 @@ export function GamePlay({
         cardPlacementResult={cardPlacementResult}
       />
       
-      {/* Hidden audio player for player */}
-      {gameState.currentSong?.preview_url && (
+      {/* Hidden audio player for player - only plays if it's their turn */}
+      {gameState.currentSong?.preview_url && isMyTurn && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer
             src={gameState.currentSong.preview_url}

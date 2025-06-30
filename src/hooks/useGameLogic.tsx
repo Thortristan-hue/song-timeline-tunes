@@ -40,14 +40,19 @@ export function useGameLogic(
   // Filter out host players and sync active players only
   useEffect(() => {
     if (allPlayers.length > 0 && roomData?.host_id) {
-      // Only include non-host players in the game state
-      const activePlayers = allPlayers.filter(p => !p.id.includes(roomData.host_id) && p.id !== roomData.host_id);
+      // CRITICAL: Only include non-host players in the game state
+      // Host should NEVER be in the players array or turn rotation
+      const activePlayers = allPlayers.filter(p => {
+        const isHost = p.id.includes(roomData.host_id) || p.id === roomData.host_id;
+        return !isHost;
+      });
       
-      console.log('🎯 Filtering players:', {
+      console.log('🎯 Filtering players (HOST EXCLUSION):', {
         allPlayers: allPlayers.length,
         hostId: roomData.host_id,
         activePlayers: activePlayers.length,
-        playerIds: allPlayers.map(p => ({ id: p.id, name: p.name, isHost: p.id.includes(roomData.host_id) || p.id === roomData.host_id }))
+        activePlayerNames: activePlayers.map(p => p.name),
+        hostFiltered: allPlayers.filter(p => p.id.includes(roomData.host_id) || p.id === roomData.host_id).map(p => p.name)
       });
       
       setGameState(prev => ({
@@ -73,7 +78,8 @@ export function useGameLogic(
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
-        currentTurnIndex: roomData.current_turn || 0
+        // Ensure turn index is always within bounds of non-host players
+        currentTurnIndex: Math.min(roomData.current_turn || 0, Math.max(0, prev.players.length - 1))
       }));
     }
   }, [roomData?.current_song, roomData?.current_turn]);
@@ -222,8 +228,21 @@ export function useGameLogic(
       setGameState(prev => ({ ...prev, isPlaying: playing }));
     },
     getCurrentPlayer: () => {
-      // Only return from active players (non-host)
-      return gameState.players[gameState.currentTurnIndex] || null;
+      // CRITICAL: Only return from active players (non-host players)
+      // Never return host as current player
+      const activePlayers = gameState.players;
+      if (activePlayers.length === 0) return null;
+      
+      const currentIndex = Math.min(gameState.currentTurnIndex, activePlayers.length - 1);
+      const currentPlayer = activePlayers[currentIndex];
+      
+      console.log('🎯 Getting current player:', {
+        currentIndex,
+        currentPlayer: currentPlayer?.name,
+        totalActivePlayers: activePlayers.length
+      });
+      
+      return currentPlayer || null;
     },
     initializeGame,
     startNewTurn: () => startNewTurn()
