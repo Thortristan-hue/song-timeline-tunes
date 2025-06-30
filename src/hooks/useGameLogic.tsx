@@ -108,7 +108,8 @@ export function useGameLogic(
 
       // Start first turn if game is already in playing phase
       if (roomData?.phase === 'playing' && validSongs.length > 0) {
-        await startNewTurn(validSongs);
+        console.log('🎯 Room is in playing phase, starting new turn...');
+        await startNewTurnWithSongs(validSongs);
       }
 
     } catch (error) {
@@ -124,10 +125,8 @@ export function useGameLogic(
     }
   }, [toast, roomData?.phase]);
 
-  // Start a new turn
-  const startNewTurn = useCallback(async (availableSongs?: Song[]) => {
-    const songsToUse = availableSongs || gameState.availableSongs;
-    
+  // Helper function to start new turn with specific songs
+  const startNewTurnWithSongs = useCallback(async (songsToUse: Song[]) => {
     if (songsToUse.length === 0) {
       console.error('No available songs for new turn');
       return;
@@ -152,6 +151,8 @@ export function useGameLogic(
         throw new Error('Could not find a song with preview after 5 attempts');
       }
 
+      console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
+
       // Update local state
       setGameState(prev => ({
         ...prev,
@@ -167,8 +168,6 @@ export function useGameLogic(
         await onSetCurrentSong(selectedSong);
       }
 
-      console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
-
     } catch (error) {
       console.error('Failed to start new turn:', error);
       setGameState(prev => ({ ...prev, transitioningTurn: false }));
@@ -178,7 +177,13 @@ export function useGameLogic(
         variant: "destructive",
       });
     }
-  }, [gameState.availableSongs, onSetCurrentSong, toast]);
+  }, [onSetCurrentSong, toast]);
+
+  // Start a new turn
+  const startNewTurn = useCallback(async (availableSongs?: Song[]) => {
+    const songsToUse = availableSongs || gameState.availableSongs;
+    await startNewTurnWithSongs(songsToUse);
+  }, [gameState.availableSongs, startNewTurnWithSongs]);
 
   // Fetch song preview with fallback
   const fetchSongPreview = async (song: Song): Promise<Song | null> => {
@@ -193,12 +198,16 @@ export function useGameLogic(
     }
   };
 
-  // Check if we need a new turn when current song is null
+  // Start new turn when room transitions to playing and we have no current song
   useEffect(() => {
-    if (gameState.phase === 'playing' && !gameState.currentSong && gameState.availableSongs.length > 0) {
+    if (roomData?.phase === 'playing' && 
+        !gameState.currentSong && 
+        gameState.availableSongs.length > 0 && 
+        gameState.phase === 'ready') {
+      console.log('🎯 Room phase is playing but no current song - starting turn...');
       startNewTurn();
     }
-  }, [gameState.phase, gameState.currentSong, gameState.availableSongs.length, startNewTurn]);
+  }, [roomData?.phase, gameState.currentSong, gameState.availableSongs.length, gameState.phase, startNewTurn]);
 
   return {
     gameState,

@@ -117,7 +117,7 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Enhanced audio channel subscription for player-to-host control
+  // Enhanced audio channel subscription for player-to-host control with reduced reconnections
   useEffect(() => {
     if (!room?.id) {
       // Clean up when no room
@@ -140,16 +140,16 @@ export function GamePlay({
       return;
     }
 
-    // Skip if already subscribed to the same room
-    if (audioSubscribedRef.current && audioRoomIdRef.current === room.id) {
-      console.log('🎵 Already subscribed to audio for room:', room.id, 'skipping duplicate setup');
+    // Skip if already subscribed to the same room and connection is stable
+    if (audioSubscribedRef.current && 
+        audioRoomIdRef.current === room.id && 
+        connectionState.isConnected) {
       return;
     }
 
     const cleanupAudioChannel = () => {
       if (audioChannelRef.current) {
         try {
-          console.log('🧹 Cleaning up existing audio channel...');
           audioChannelRef.current.unsubscribe();
         } catch (e) {
           console.warn('Error cleaning up previous audio channel:', e);
@@ -160,7 +160,10 @@ export function GamePlay({
     };
     
     const setupAudioChannel = () => {
-      cleanupAudioChannel();
+      // Only cleanup if we're not connected or switching rooms
+      if (!connectionState.isConnected || audioRoomIdRef.current !== room.id) {
+        cleanupAudioChannel();
+      }
 
       console.log('🔌 Setting up audio control channel for room:', room.id);
       
@@ -168,7 +171,6 @@ export function GamePlay({
         const channel = supabase
           .channel(`audio-control-${room.id}-${Date.now()}`)
           .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-            console.log('🎵 Received audio control:', payload);
             
             if (isHost && audioRef.current) {
               const { action, currentTime, volume } = payload;
@@ -198,7 +200,6 @@ export function GamePlay({
           });
 
         channel.subscribe((status) => {
-          console.log('🔌 Audio channel status:', status);
           
           if (status === 'SUBSCRIBED') {
             audioSubscribedRef.current = true;
@@ -232,10 +233,10 @@ export function GamePlay({
         reconnectAttempts: prev.reconnectAttempts + 1
       }));
 
-      if (connectionState.reconnectAttempts < 5) {
+      if (connectionState.reconnectAttempts < 3) { // Reduced max attempts
         setConnectionState(prev => ({ ...prev, isReconnecting: true }));
 
-        const delay = Math.min(1000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
+        const delay = Math.min(2000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
         
         audioReconnectTimeoutRef.current = setTimeout(() => {
           console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
@@ -244,7 +245,10 @@ export function GamePlay({
       }
     };
 
-    setupAudioChannel();
+    // Only setup if we don't have a stable connection
+    if (!audioSubscribedRef.current || !connectionState.isConnected) {
+      setupAudioChannel();
+    }
 
     return () => {
       if (audioReconnectTimeoutRef.current) {
@@ -254,7 +258,7 @@ export function GamePlay({
       cleanupAudioChannel();
       audioRoomIdRef.current = null;
     };
-  }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts]);
+  }, [room?.id, isHost, setIsPlaying, connectionState.isConnected, connectionState.reconnectAttempts]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
