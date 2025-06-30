@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,23 +39,22 @@ export function PlayerTimeline({
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "relative aspect-square w-28 rounded-lg shadow-xl flex flex-col items-center justify-center p-2 text-white text-xs transition-all duration-300 hover:scale-105"
+          "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1",
+          "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl"
         )}
-        style={{
-          backgroundColor: song.cardColor,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-        }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
-        <Music className="h-8 w-8 mb-1 opacity-80" />
-        <div className="text-center relative z-10">
-          <div className="font-bold text-xs mb-1 truncate w-full">
-            {song.deezer_title.length > 12 ? song.deezer_title.substring(0, 12) + '...' : song.deezer_title}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
+        <Music className="h-8 w-8 mb-3 opacity-70" />
+        <div className="text-center relative z-10 space-y-1">
+          <div className="font-semibold text-sm leading-tight tracking-tight">
+            {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
           </div>
-          <div className="text-xs opacity-75 truncate w-full">
-            {song.deezer_artist.length > 10 ? song.deezer_artist.substring(0, 10) + '...' : song.deezer_artist}
+          <div className="text-xs opacity-60 font-medium">
+            {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
           </div>
-          <div className="text-lg font-black mt-1">{song.release_year}</div>
+          <div className="text-xl font-bold mt-2 bg-white/10 rounded-full px-2 py-1">
+            {song.release_year}
+          </div>
         </div>
       </div>
     );
@@ -70,18 +68,17 @@ export function PlayerTimeline({
       <div
         key={`drop-zone-${position}`}
         className={cn(
-          "w-16 h-32 rounded-full transition-all duration-300 mx-2 flex items-center justify-center",
-          "touch-manipulation cursor-pointer", // Better mobile touch handling
+          "w-20 h-36 rounded-3xl transition-all duration-300 mx-3 flex items-center justify-center",
+          "touch-manipulation cursor-pointer backdrop-blur-xl border",
           isConfirming
-            ? 'bg-yellow-400 shadow-lg shadow-yellow-400/50 scale-125 animate-pulse'
+            ? 'bg-blue-500/30 border-blue-400/50 shadow-lg shadow-blue-400/25 scale-110 animate-pulse'
             : isHovered 
-            ? 'bg-purple-400 shadow-lg shadow-purple-400/50 scale-110' 
-            : 'bg-white/20 hover:bg-white/30'
+            ? 'bg-white/15 border-white/20 shadow-lg scale-105' 
+            : 'bg-white/5 border-white/10 hover:bg-white/10'
         )}
         onDragOver={(e) => handleDragOver(e, position)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, position)}
-        // Mobile-friendly touch events with proper event handling
         onClick={(e) => {
           if (draggedSong && isCurrent) {
             handleDrop(e, position);
@@ -95,8 +92,8 @@ export function PlayerTimeline({
         }}
       >
         {draggedSong && isCurrent && (
-          <div className="text-white text-xs font-bold text-center">
-            Place<br />Here
+          <div className="text-white/80 text-xs font-medium text-center leading-tight">
+            Drop<br />here
           </div>
         )}
       </div>
@@ -107,14 +104,14 @@ export function PlayerTimeline({
 
   return (
     <div 
-      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-25 w-full max-w-6xl px-4"
+      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-25 w-full max-w-7xl px-6"
       style={{
-        transform: `translateX(-50%) perspective(1200px) rotateX(-2deg)`,
-        transition: 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        opacity: transitioningTurn ? 0.7 : 1
+        transform: `translateX(-50%)`,
+        transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: transitioningTurn ? 0.6 : 1
       }}
     >
-      <div className="flex items-center gap-2 p-6 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-x-auto">
+      <div className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto">
         {player.timeline.map((song, index) => (
           <React.Fragment key={`${song.deezer_title}-${index}`}>
             {renderDropZone(index)}
@@ -125,14 +122,14 @@ export function PlayerTimeline({
         {renderDropZone(player.timeline.length)}
         
         {player.timeline.length === 0 && (
-          <div className="text-center py-8 px-16 flex-1">
-            <Music className="h-16 w-16 text-purple-300 mx-auto mb-4 opacity-60" />
-            <p className="text-purple-400 text-sm font-medium">
-              {isCurrent ? "Drag the mystery song to build your chronological timeline" : "Waiting for cards..."}
+          <div className="text-center py-12 px-20 flex-1">
+            <Music className="h-16 w-16 text-white/30 mx-auto mb-6" />
+            <p className="text-white/70 text-lg font-medium mb-2">
+              {isCurrent ? "Your timeline starts here" : "Building timeline..."}
             </p>
             {isCurrent && (
-              <p className="text-purple-300 text-xs mt-2 opacity-75">
-                Drop zones will appear when you start dragging
+              <p className="text-white/50 text-sm font-normal">
+                Drag the song card to create your chronological timeline
               </p>
             )}
           </div>
