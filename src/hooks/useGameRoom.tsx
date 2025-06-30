@@ -33,8 +33,9 @@ export function useGameRoom(): UseGameRoomReturn {
   
   // Use refs to track subscription state and prevent duplicate subscriptions
   const currentChannelRef = useRef<any>(null);
-  const subscriptionActiveRef = useRef(false);
   const roomIdRef = useRef<string | null>(null);
+  const isSubscribedRef = useRef(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
 
@@ -251,7 +252,13 @@ export function useGameRoom(): UseGameRoomReturn {
       }
       currentChannelRef.current = null;
     }
-    subscriptionActiveRef.current = false;
+    
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    isSubscribedRef.current = false;
     roomIdRef.current = null;
     
     gameService.clearPlayerSession();
@@ -261,7 +268,7 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
   }, []);
 
-  // Enhanced subscription management with better duplicate prevention
+  // Fixed subscription management with proper cleanup and fresh channel creation
   useEffect(() => {
     if (!room?.id) {
       // Clean up when no room
@@ -273,13 +280,19 @@ export function useGameRoom(): UseGameRoomReturn {
         }
         currentChannelRef.current = null;
       }
-      subscriptionActiveRef.current = false;
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      isSubscribedRef.current = false;
       roomIdRef.current = null;
       return;
     }
 
     // Skip if already subscribed to the same room
-    if (subscriptionActiveRef.current && roomIdRef.current === room.id) {
+    if (isSubscribedRef.current && roomIdRef.current === room.id) {
       console.log('🔄 Already subscribed to room:', room.id, 'skipping duplicate setup');
       return;
     }
@@ -288,7 +301,6 @@ export function useGameRoom(): UseGameRoomReturn {
 
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
 
     const cleanupCurrentChannel = () => {
       if (currentChannelRef.current) {
@@ -300,7 +312,7 @@ export function useGameRoom(): UseGameRoomReturn {
         }
         currentChannelRef.current = null;
       }
-      subscriptionActiveRef.current = false;
+      isSubscribedRef.current = false;
     };
 
     const setupChannel = () => {
@@ -310,7 +322,8 @@ export function useGameRoom(): UseGameRoomReturn {
       console.log('🔄 Creating new room subscription channel for room:', room.id);
 
       try {
-        currentChannelRef.current = gameService.subscribeToRoom(room.id, {
+        // Create a completely fresh channel instance
+        const subscription = gameService.subscribeToRoom(room.id, {
           onRoomUpdate: (updatedRoom) => {
             console.log('🔄 Room updated:', updatedRoom);
             setRoom(updatedRoom);
@@ -336,33 +349,17 @@ export function useGameRoom(): UseGameRoomReturn {
           }
         });
 
-        // Mark subscription as active for this room
-        subscriptionActiveRef.current = true;
+        if (!subscription) {
+          throw new Error('Failed to create subscription');
+        }
+
+        currentChannelRef.current = subscription;
+        isSubscribedRef.current = true;
         roomIdRef.current = room.id;
 
         console.log('✅ Channel setup completed for room:', room.id);
+        setConnectionStatus('connected');
 
-        // Monitor channel status if available
-        if (currentChannelRef.current && currentChannelRef.current.subscribe) {
-          currentChannelRef.current.subscribe((status: string) => {
-            console.log('🔄 Channel status:', status);
-            
-            if (status === 'SUBSCRIBED') {
-              setConnectionStatus('connected');
-              reconnectAttempts = 0;
-              
-              if (reconnectAttempts > 0) {
-                toast({
-                  title: "🟢 Reconnected",
-                  description: "Game sync restored!",
-                });
-              }
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-              console.error('❌ Channel error:', status);
-              handleConnectionError();
-            }
-          });
-        }
       } catch (error) {
         console.error('❌ Failed to setup channel:', error);
         handleConnectionError();
@@ -371,7 +368,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
     const handleConnectionError = () => {
       setConnectionStatus('disconnected');
-      subscriptionActiveRef.current = false;
+      isSubscribedRef.current = false;
       
       if (reconnectAttempts < maxReconnectAttempts) {
         setConnectionStatus('reconnecting');
@@ -385,7 +382,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
         
-        reconnectTimeout = setTimeout(() => {
+        reconnectTimeoutRef.current = setTimeout(() => {
           console.log(`🔄 Reconnecting channel (attempt ${reconnectAttempts})...`);
           setupChannel();
         }, delay);
@@ -426,8 +423,9 @@ export function useGameRoom(): UseGameRoomReturn {
 
     return () => {
       console.log('🔄 Cleaning up room subscriptions for room:', room.id);
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       cleanupCurrentChannel();
       roomIdRef.current = null;

@@ -46,8 +46,9 @@ export function GamePlay({
 
   // Use refs to track audio channel subscription state
   const audioChannelRef = useRef<any>(null);
-  const audioSubscriptionActiveRef = useRef(false);
   const audioRoomIdRef = useRef<string | null>(null);
+  const audioSubscribedRef = useRef(false);
+  const audioReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add detailed logging for debugging host white screen
   console.log('🎮 GamePlay render - DEBUG INFO:', {
@@ -87,14 +88,6 @@ export function GamePlay({
     userHasInteracted: false
   });
 
-  // Audio control state for player-controlled, host-output system
-  const [audioControlState, setAudioControlState] = useState({
-    isPlaying: false,
-    currentTime: 0,
-    duration: 0,
-    volume: 0.7
-  });
-
   // Initialize game when component mounts
   useEffect(() => {
     console.log('🎮 GamePlay component mounted, initializing game...');
@@ -124,7 +117,7 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Enhanced audio channel subscription with better duplicate prevention
+  // Fixed audio channel subscription with proper cleanup
   useEffect(() => {
     if (!room?.id) {
       // Clean up when no room
@@ -136,19 +129,23 @@ export function GamePlay({
         }
         audioChannelRef.current = null;
       }
-      audioSubscriptionActiveRef.current = false;
+      
+      if (audioReconnectTimeoutRef.current) {
+        clearTimeout(audioReconnectTimeoutRef.current);
+        audioReconnectTimeoutRef.current = null;
+      }
+      
+      audioSubscribedRef.current = false;
       audioRoomIdRef.current = null;
       return;
     }
 
     // Skip if already subscribed to the same room
-    if (audioSubscriptionActiveRef.current && audioRoomIdRef.current === room.id) {
+    if (audioSubscribedRef.current && audioRoomIdRef.current === room.id) {
       console.log('🎵 Already subscribed to audio for room:', room.id, 'skipping duplicate setup');
       return;
     }
 
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-    
     const cleanupAudioChannel = () => {
       if (audioChannelRef.current) {
         try {
@@ -159,7 +156,7 @@ export function GamePlay({
         }
         audioChannelRef.current = null;
       }
-      audioSubscriptionActiveRef.current = false;
+      audioSubscribedRef.current = false;
     };
     
     const setupAudioChannel = () => {
@@ -169,8 +166,9 @@ export function GamePlay({
       console.log('🔌 Setting up audio control channel for room:', room.id);
       
       try {
-        audioChannelRef.current = supabase
-          .channel(`audio-control-${room.id}`)
+        // Create a completely fresh channel instance
+        const channel = supabase
+          .channel(`audio-control-${room.id}-${Date.now()}`) // Add timestamp to ensure uniqueness
           .on('broadcast', { event: 'audio_control' }, (payload: any) => {
             console.log('🎵 Received audio control:', payload);
             
@@ -199,31 +197,36 @@ export function GamePlay({
                 console.error('❌ Audio control error:', error);
               }
             }
-          })
-          .subscribe((status) => {
-            console.log('🔌 Audio channel status:', status);
-            
-            if (status === 'SUBSCRIBED') {
-              audioSubscriptionActiveRef.current = true;
-              audioRoomIdRef.current = room.id;
-              setConnectionState(prev => ({
-                ...prev,
-                isConnected: true,
-                isReconnecting: false,
-                reconnectAttempts: 0
-              }));
-              
-              if (connectionState.lastDisconnected) {
-                toast({
-                  title: "🟢 Connection Restored",
-                  description: "Real-time sync is working again!",
-                });
-              }
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-              console.error('❌ Audio channel error:', status);
-              handleConnectionError();
-            }
           });
+
+        // Subscribe to the channel
+        channel.subscribe((status) => {
+          console.log('🔌 Audio channel status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            audioSubscribedRef.current = true;
+            audioRoomIdRef.current = room.id;
+            setConnectionState(prev => ({
+              ...prev,
+              isConnected: true,
+              isReconnecting: false,
+              reconnectAttempts: 0
+            }));
+            
+            if (connectionState.lastDisconnected) {
+              toast({
+                title: "🟢 Connection Restored",
+                description: "Real-time sync is working again!",
+              });
+            }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('❌ Audio channel error:', status);
+            handleConnectionError();
+          }
+        });
+
+        audioChannelRef.current = channel;
+        
       } catch (error) {
         console.error('❌ Failed to setup audio channel:', error);
         handleConnectionError();
@@ -231,7 +234,7 @@ export function GamePlay({
     };
 
     const handleConnectionError = () => {
-      audioSubscriptionActiveRef.current = false;
+      audioSubscribedRef.current = false;
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
@@ -250,7 +253,7 @@ export function GamePlay({
 
         const delay = Math.min(1000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
         
-        reconnectTimeout = setTimeout(() => {
+        audioReconnectTimeoutRef.current = setTimeout(() => {
           console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
           setupAudioChannel();
         }, delay);
@@ -269,8 +272,9 @@ export function GamePlay({
     setupAudioChannel();
 
     return () => {
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
+      if (audioReconnectTimeoutRef.current) {
+        clearTimeout(audioReconnectTimeoutRef.current);
+        audioReconnectTimeoutRef.current = null;
       }
       cleanupAudioChannel();
       audioRoomIdRef.current = null;
