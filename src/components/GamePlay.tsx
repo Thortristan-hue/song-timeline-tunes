@@ -53,7 +53,7 @@ export function GamePlay({
   // Get current turn player - this will only be from active players (non-host)
   const currentTurnPlayer = getCurrentPlayer();
   // Filter out host from active players for display and turn logic
-  const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
+  const activePlayers = players.filter(p => !p.id.includes(room?.host_id) && p.id !== room?.host_id);
 
   console.log('🎯 Game debug:', {
     allPlayers: players.length,
@@ -188,8 +188,8 @@ export function GamePlay({
           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
             <div className="text-3xl animate-spin">🎵</div>
           </div>
-          <div className="text-2xl font-semibold mb-2">Getting the music ready...</div>
-          <div className="text-white/60 max-w-md mx-auto">We're curating the perfect soundtrack for your game</div>
+          <div className="text-2xl font-semibold mb-2">Getting the tunes ready...</div>
+          <div className="text-white/60 max-w-md mx-auto">We're setting up some great music for you</div>
         </div>
       </div>
     );
@@ -209,7 +209,7 @@ export function GamePlay({
           <div className="text-center text-white relative z-10">
             <div className="text-6xl mb-4">⏳</div>
             <div className="text-2xl font-semibold mb-2">Waiting for players</div>
-            <div className="text-white/60">Need at least one player to start the fun</div>
+            <div className="text-white/60">Need at least one player to get started</div>
           </div>
         </div>
       );
@@ -253,8 +253,8 @@ export function GamePlay({
         </div>
         <div className="text-center text-white relative z-10">
           <div className="text-6xl mb-4">❌</div>
-          <div className="text-2xl font-semibold mb-2">Oops, something went wrong</div>
-          <div className="text-white/60">We couldn't find your player data</div>
+          <div className="text-2xl font-semibold mb-2">Something went wrong</div>
+          <div className="text-white/60">Couldn't find your player info</div>
         </div>
       </div>
     );

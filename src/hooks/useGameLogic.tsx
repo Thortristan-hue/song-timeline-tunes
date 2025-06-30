@@ -41,7 +41,14 @@ export function useGameLogic(
   useEffect(() => {
     if (allPlayers.length > 0 && roomData?.host_id) {
       // Only include non-host players in the game state
-      const activePlayers = allPlayers.filter(p => !p.id.includes(roomData.host_id));
+      const activePlayers = allPlayers.filter(p => !p.id.includes(roomData.host_id) && p.id !== roomData.host_id);
+      
+      console.log('🎯 Filtering players:', {
+        allPlayers: allPlayers.length,
+        hostId: roomData.host_id,
+        activePlayers: activePlayers.length,
+        playerIds: allPlayers.map(p => ({ id: p.id, name: p.name, isHost: p.id.includes(roomData.host_id) || p.id === roomData.host_id }))
+      });
       
       setGameState(prev => ({
         ...prev,

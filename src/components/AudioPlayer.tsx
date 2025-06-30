@@ -149,24 +149,47 @@ export function AudioPlayer({
     };
   }, [onError]);
 
+  // Handle play/pause with proper audio sync
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioState.currentUrl) return;
+
+    const handlePlayback = async () => {
+      try {
+        if (isPlaying && audio.paused) {
+          audio.currentTime = 0;
+          console.log('▶️ Playing audio');
+          await audio.play();
+        } else if (!isPlaying && !audio.paused) {
+          console.log('⏸️ Pausing audio');
+          audio.pause();
+        }
+      } catch (error) {
+        console.error('🚫 Playback sync error:', error);
+        if (error instanceof Error && error.name === 'NotAllowedError') {
+          setAudioState(prev => ({
+            ...prev,
+            needsUserInteraction: true,
+            hasError: true,
+            errorMessage: 'Click to enable audio'
+          }));
+        }
+      }
+    };
+
+    handlePlayback();
+  }, [isPlaying, audioState.currentUrl]);
+
   const handlePlayPause = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio || !audioState.currentUrl) return;
 
     try {
-      if (isPlaying) {
-        audio.pause();
-        console.log('⏸️ Audio paused');
-      } else {
+      if (audioState.needsUserInteraction) {
+        // First time user interaction
         audio.currentTime = 0;
-        console.log('▶️ Attempting to play audio');
-        const playPromise = audio.play();
-        
-        if (playPromise !== undefined) {
-          await playPromise;
-          setAudioState(prev => ({ ...prev, needsUserInteraction: false }));
-          console.log('✅ Audio playing successfully');
-        }
+        await audio.play();
+        setAudioState(prev => ({ ...prev, needsUserInteraction: false, hasError: false }));
       }
       onPlayPause();
     } catch (error) {
@@ -185,7 +208,7 @@ export function AudioPlayer({
         onError?.(errorMsg);
       }
     }
-  }, [isPlaying, onPlayPause, onError, audioState.currentUrl]);
+  }, [onPlayPause, onError, audioState.currentUrl, audioState.needsUserInteraction]);
 
   const handleMuteToggle = () => {
     if (audioRef.current) {
