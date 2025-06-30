@@ -54,7 +54,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <Button
             onClick={onJoinRoom}
             variant="outline"
-            className="flex-1 border-gray-600 text-white hover:bg-white/5 h-14 text-lg font-semibold rounded-full transition-all duration-200"
+            className="flex-1 border-gray-600 text-black hover:bg-white/5 h-14 text-lg font-semibold rounded-full transition-all duration-200"
           >
             <Smartphone className="h-5 w-5 mr-2" />
             Join Game
