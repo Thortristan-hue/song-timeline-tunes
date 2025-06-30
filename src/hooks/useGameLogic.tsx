@@ -37,16 +37,19 @@ export function useGameLogic(
     transitioningTurn: false
   });
 
-  // Sync players from room data
+  // Filter out host players and sync active players only
   useEffect(() => {
-    if (allPlayers.length > 0) {
+    if (allPlayers.length > 0 && roomData?.host_id) {
+      // Only include non-host players in the game state
+      const activePlayers = allPlayers.filter(p => !p.id.includes(roomData.host_id));
+      
       setGameState(prev => ({
         ...prev,
-        players: allPlayers
+        players: activePlayers
       }));
       
-      // Check for winner
-      const winner = allPlayers.find(player => player.score >= 10);
+      // Check for winner among active players only
+      const winner = activePlayers.find(player => player.score >= 10);
       if (winner && !gameState.winner) {
         setGameState(prev => ({
           ...prev,
@@ -55,7 +58,7 @@ export function useGameLogic(
         }));
       }
     }
-  }, [allPlayers, gameState.winner]);
+  }, [allPlayers, roomData?.host_id, gameState.winner]);
 
   // Sync current song and turn from room data
   useEffect(() => {
@@ -137,6 +140,7 @@ export function useGameLogic(
       }
 
       console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
+      console.log(`🎵 Song preview URL: ${selectedSong.preview_url}`);
 
       // Update local state
       setGameState(prev => ({
@@ -173,10 +177,20 @@ export function useGameLogic(
   // Fetch song preview with fallback
   const fetchSongPreview = async (song: Song): Promise<Song | null> => {
     try {
-      if (song.preview_url) return song;
+      if (song.preview_url) {
+        console.log(`🎵 Song already has preview URL: ${song.preview_url}`);
+        return song;
+      }
       
+      console.log(`🔍 Fetching preview URL for: ${song.deezer_title}`);
       const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(song);
-      return songWithPreview.preview_url ? songWithPreview : null;
+      if (songWithPreview.preview_url) {
+        console.log(`✅ Found preview URL: ${songWithPreview.preview_url}`);
+        return songWithPreview;
+      } else {
+        console.warn(`❌ No preview URL found for: ${song.deezer_title}`);
+        return null;
+      }
     } catch (error) {
       console.warn(`Failed to fetch preview for ${song.deezer_title}:`, error);
       return null;
@@ -196,10 +210,13 @@ export function useGameLogic(
 
   return {
     gameState,
-    setIsPlaying: (playing: boolean) => setGameState(prev => ({ ...prev, isPlaying: playing })),
+    setIsPlaying: (playing: boolean) => {
+      console.log(`🎵 Setting isPlaying to: ${playing}`);
+      setGameState(prev => ({ ...prev, isPlaying: playing }));
+    },
     getCurrentPlayer: () => {
-      const activePlayers = gameState.players.filter(p => p.id !== roomData?.host_id);
-      return activePlayers[gameState.currentTurnIndex] || null;
+      // Only return from active players (non-host)
+      return gameState.players[gameState.currentTurnIndex] || null;
     },
     initializeGame,
     startNewTurn: () => startNewTurn()

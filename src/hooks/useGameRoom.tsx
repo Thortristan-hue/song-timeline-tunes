@@ -151,7 +151,7 @@ export function useGameRoom() {
         current_song: null
       });
 
-      // Create a player record for the host
+      // Create a player record for the host with is_host flag
       const colors = [
         '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
         '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'
@@ -171,7 +171,7 @@ export function useGameRoom() {
           timeline_color: timelineColors[0],
           score: 0,
           timeline: [],
-          is_host: true
+          is_host: true  // Mark as host
         })
         .select()
         .single();
@@ -219,7 +219,7 @@ export function useGameRoom() {
       const sessionId = generateSessionId();
       playerSessionId.current = sessionId;
 
-      // Create player
+      // Create player with is_host: false
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
@@ -230,7 +230,7 @@ export function useGameRoom() {
           timeline_color: timelineColors[Math.floor(Math.random() * timelineColors.length)],
           score: 0,
           timeline: [],
-          is_host: false
+          is_host: false  // Mark as non-host
         })
         .select()
         .single();
@@ -429,6 +429,7 @@ export function useGameRoom() {
 
     try {
       console.log('🃏 Assigning starting cards to players...');
+      // Only assign to non-host players
       const nonHostPlayers = players.filter(p => !p.id.includes(room.host_id));
       
       for (const player of nonHostPlayers) {

@@ -6,6 +6,7 @@ import { HostGameView } from '@/components/HostGameView';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { AudioPlayer } from '@/components/AudioPlayer';
 
 interface GamePlayProps {
   room: any;
@@ -49,10 +50,18 @@ export function GamePlay({
     }
   }, [room?.phase, gameState.phase, initializeGame]);
 
-  // Get current turn player
+  // Get current turn player - this will only be from active players (non-host)
   const currentTurnPlayer = getCurrentPlayer();
-  // Filter out host from active players for turn-based gameplay
+  // Filter out host from active players for display and turn logic
   const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
+
+  console.log('🎯 Game debug:', {
+    allPlayers: players.length,
+    activePlayers: activePlayers.length,
+    currentTurnPlayer: currentTurnPlayer?.name,
+    isHost,
+    hostId: room?.host_id
+  });
 
   // Audio setup
   useEffect(() => {
@@ -91,9 +100,12 @@ export function GamePlay({
   }, [room?.id]);
 
   const handlePlayPause = async () => {
+    console.log('🎵 Play/Pause clicked:', { isHost, isPlaying, currentSong: gameState.currentSong?.deezer_title });
+    
     if (!isHost) {
       if (audioChannelRef.current) {
         const action = isPlaying ? 'pause' : 'play';
+        console.log(`🔊 Sending audio control: ${action}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
@@ -104,10 +116,12 @@ export function GamePlay({
     }
 
     const newIsPlaying = !isPlaying;
+    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying}`);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
     if (audioChannelRef.current) {
+      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'}`);
       await audioChannelRef.current.send({
         type: 'broadcast',
         event: 'audio-control',
@@ -192,16 +206,30 @@ export function GamePlay({
     }
 
     return (
-      <HostGameView
-        currentTurnPlayer={validCurrentTurnPlayer}
-        currentSong={gameState.currentSong}
-        roomCode={room.lobby_code}
-        players={activePlayers}
-        mysteryCardRevealed={mysteryCardRevealed}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        cardPlacementResult={cardPlacementResult}
-      />
+      <div className="relative">
+        <HostGameView
+          currentTurnPlayer={validCurrentTurnPlayer}
+          currentSong={gameState.currentSong}
+          roomCode={room.lobby_code}
+          players={activePlayers}
+          mysteryCardRevealed={mysteryCardRevealed}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          cardPlacementResult={cardPlacementResult}
+        />
+        
+        {/* Hidden audio player for host */}
+        {gameState.currentSong?.preview_url && (
+          <div className="fixed bottom-4 right-4 opacity-50">
+            <AudioPlayer
+              src={gameState.currentSong.preview_url}
+              isPlaying={isPlaying}
+              onPlayPause={handlePlayPause}
+              className="bg-black/50 p-2 rounded"
+            />
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -221,17 +249,31 @@ export function GamePlay({
   const isMyTurn = currentTurnPlayer?.id === currentPlayer.id;
 
   return (
-    <PlayerGameView
-      currentPlayer={currentPlayer}
-      currentTurnPlayer={currentTurnPlayer || currentPlayer}
-      currentSong={gameState.currentSong}
-      roomCode={room.lobby_code}
-      isMyTurn={isMyTurn}
-      isPlaying={isPlaying}
-      onPlayPause={handlePlayPause}
-      onPlaceCard={handlePlaceCard}
-      mysteryCardRevealed={mysteryCardRevealed}
-      cardPlacementResult={cardPlacementResult}
-    />
+    <div className="relative">
+      <PlayerGameView
+        currentPlayer={currentPlayer}
+        currentTurnPlayer={currentTurnPlayer || currentPlayer}
+        currentSong={gameState.currentSong}
+        roomCode={room.lobby_code}
+        isMyTurn={isMyTurn}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        onPlaceCard={handlePlaceCard}
+        mysteryCardRevealed={mysteryCardRevealed}
+        cardPlacementResult={cardPlacementResult}
+      />
+      
+      {/* Hidden audio player for player */}
+      {gameState.currentSong?.preview_url && (
+        <div className="fixed bottom-4 right-4 opacity-50">
+          <AudioPlayer
+            src={gameState.currentSong.preview_url}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            className="bg-black/50 p-2 rounded"
+          />
+        </div>
+      )}
+    </div>
   );
 }
