@@ -1,100 +1,74 @@
-export class CorsProxyService {
-  private static readonly PROXY_BASE_URL = 'https://timeliner-proxy.thortristanjd.workers.dev/';
-  
-  /**
-   * Converts any Deezer URL to API format
-   * Example:
-   * https://www.deezer.com/track/123 → https://api.deezer.com/track/123
-   */
-  private static forceApiUrl(url: string): string {
-    try {
-      const parsed = new URL(url);
-      
-      // Handle both www.deezer.com and deezer.com
-      if (parsed.hostname.includes('deezer.com')) {
-        parsed.hostname = 'api.deezer.com';
-        return parsed.toString();
-      }
-      
-      return url;
-    } catch {
-      return url;
-    }
-  }
+/**
+ * Deezer Audio Proxy Service
+ * Handles fetching and playing Deezer track previews through a CORS proxy
+ */
+export class DeezerAudioService {
+  private static readonly PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/';
+  private static readonly DEEZER_API = 'https://api.deezer.com/track/';
 
   /**
-   * Fetches through proxy with automatic URL correction
+   * Fetches track data and returns the MP3 preview URL
+   * @param trackId Deezer track ID (e.g., "1797192397")
+   * @returns Promise<string> MP3 preview URL
+   * @throws Error if request fails or no preview available
    */
-  static async fetch(url: string): Promise<Response> {
-    const apiUrl = this.forceApiUrl(url);
-    const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(apiUrl)}`;
-    
+  static async getPreviewUrl(trackId: string): Promise<string> {
+    if (!trackId.match(/^\d+$/)) {
+      throw new Error('Invalid Deezer track ID');
+    }
+
+    const apiUrl = `${this.DEEZER_API}${trackId}`;
+    const proxyUrl = `${this.PROXY_BASE}?url=${encodeURIComponent(apiUrl)}`;
+
     const response = await fetch(proxyUrl);
+    const data = await this.parseResponse(response);
+
+    if (!data.preview) {
+      throw new Error('No preview available for this track');
+    }
+
+    return data.preview;
+  }
+
+  /**
+   * Creates and returns a playable Audio element
+   * @param trackId Deezer track ID
+   * @returns Promise<HTMLAudioElement> Configured audio element
+   */
+  static async createAudioElement(trackId: string): Promise<HTMLAudioElement> {
+    const previewUrl = await this.getPreviewUrl(trackId);
+    const audio = new Audio(previewUrl);
+    audio.preload = 'auto';
+    audio.controls = false;
+    return audio;
+  }
+
+  /**
+   * Plays a track preview (automatically handles loading)
+   * @param trackId Deezer track ID
+   * @returns Promise that resolves when playback begins
+   */
+  static async playPreview(trackId: string): Promise<void> {
+    const audio = await this.createAudioElement(trackId);
+    return new Promise((resolve, reject) => {
+      audio.oncanplaythrough = () => {
+        audio.play().then(resolve).catch(reject);
+      };
+      audio.onerror = () => {
+        reject(new Error('Audio playback failed'));
+      };
+    });
+  }
+
+  private static async parseResponse(response: Response): Promise<any> {
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(`API request failed: ${response.status}`);
     }
-    return response;
-  }
 
-  static async fetchJson<T>(url: string): Promise<T> {
-    const response = await this.fetch(url);
-    return response.json();
-  }
-}
-
-  /**
-   * Fetches JSON data through the proxy
-   * @param url The target API URL
-   * @returns Parsed JSON data
-   */
-  static async fetchJson<T>(url: string): Promise<T> {
-    const response = await this.fetch(url);
-    return response.json();
-  }
-
-  /**
-   * Checks if a URL can be accessed through the proxy
-   * @param url The URL to validate
-   * @returns boolean indicating if the URL is supported
-   */
-  static isSupportedUrl(url: string): boolean {
     try {
-      const hostname = new URL(url).hostname;
-      return this.ALLOWED_DOMAINS.some(domain => hostname.endsWith(domain));
-    } catch {
-      return false;
+      return await response.json();
+    } catch (error) {
+      throw new Error('Failed to parse API response');
     }
-  }
-
-  private static validateUrl(url: string): void {
-    if (!this.isSupportedUrl(url)) {
-      throw new Error(`Unsupported URL: ${url}. Proxy only allows: ${this.ALLOWED_DOMAINS.join(', ')}`);
-    }
-  }
-
-  private static buildProxyUrl(url: string): string {
-    return `${this.PROXY_BASE_URL}?url=${encodeURIComponent(url)}`;
-  }
-
-  private static async handleErrorResponse(response: Response): Promise<void> {
-    let errorMessage = `Proxy request failed with status ${response.status}`;
-    
-    try {
-      const errorData = await response.json();
-      if (errorData?.error) {
-        errorMessage += `: ${errorData.error}`;
-      }
-    } catch {
-      // Fall back to status text if JSON parsing fails
-      errorMessage += `: ${response.statusText}`;
-    }
-    
-    throw new Error(errorMessage);
-  }
-
-  private static normalizeError(error: unknown): Error {
-    if (error instanceof Error) return error;
-    return new Error(String(error));
   }
 }
