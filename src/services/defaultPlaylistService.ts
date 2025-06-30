@@ -27,14 +27,14 @@ class DefaultPlaylistService {
         return true;
       })
       .map(item => ({
-        id: item.id || Math.random().toString(36).substr(2, 9),
+        id: Math.random().toString(36).substr(2, 9), // Generate random ID since it's not in the JSON
         deezer_title: item.deezer_title || 'Unknown Title',
         deezer_artist: item.deezer_artist || 'Unknown Artist',
         deezer_album: item.deezer_album || 'Unknown Album',
         release_year: item.release_year.toString(),
         genre: item.genre || 'Unknown',
         cardColor: this.generateCardColor(),
-        preview_url: item.preview_url
+        preview_url: item.deezer_url || undefined // Use deezer_url as preview_url fallback
       }));
 
     console.log(`✅ Loaded ${this.songs.length} valid songs (filtered out songs without release years)`);

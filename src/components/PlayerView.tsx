@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,7 @@ export function PlayerView({
   onDragStart,
   onDragEnd
 }: PlayerViewProps) {
-  const [confirmingPlacement, setConfirmingPlacement] = useState<{ position: number } | null>(null);
+  const [confirmingPlacement, setConfirmingPlacement] = useState<{ song: Song; position: number } | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -61,7 +60,7 @@ export function PlayerView({
     if (!isMyTurn || !draggedSong) return;
     
     setHoveredPosition(null);
-    setConfirmingPlacement({ position });
+    setConfirmingPlacement({ song: draggedSong, position });
   };
 
   const confirmPlacement = async () => {
