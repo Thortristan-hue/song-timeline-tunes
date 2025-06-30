@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,17 +51,6 @@ export function GamePlay({
   const audioSubscribedRef = useRef(false);
   const audioReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Add detailed logging for debugging host white screen
-  console.log('🎮 GamePlay render - DEBUG INFO:', {
-    isHost,
-    roomPhase: room?.phase,
-    playersCount: players.length,
-    currentPlayerExists: !!currentPlayer,
-    roomId: room?.id,
-    hostId: room?.host_id,
-    connectionState
-  });
-
   // Use the game logic hook with room data
   const { gameState, setIsPlaying, getCurrentPlayer, initializeGame, startNewTurn } = useGameLogic(
     room?.id,
@@ -90,13 +80,7 @@ export function GamePlay({
 
   // Initialize game when component mounts
   useEffect(() => {
-    console.log('🎮 GamePlay component mounted, initializing game...');
-    try {
-      initializeGame();
-    } catch (error) {
-      console.error('Failed to initialize game:', error);
-      setGameError('Failed to initialize game. Please refresh the page.');
-    }
+    initializeGame();
   }, [initializeGame]);
 
   // Handle user interaction for audio (only for players, not host)
@@ -117,7 +101,7 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Enhanced audio channel subscription for player-to-host control with reduced reconnections
+  // Simplified audio channel subscription
   useEffect(() => {
     if (!room?.id) {
       // Clean up when no room
@@ -125,7 +109,7 @@ export function GamePlay({
         try {
           audioChannelRef.current.unsubscribe();
         } catch (e) {
-          console.warn('Error cleaning up audio channel:', e);
+          // Silent cleanup
         }
         audioChannelRef.current = null;
       }
@@ -140,10 +124,8 @@ export function GamePlay({
       return;
     }
 
-    // Skip if already subscribed to the same room and connection is stable
-    if (audioSubscribedRef.current && 
-        audioRoomIdRef.current === room.id && 
-        connectionState.isConnected) {
+    // Skip if already subscribed to the same room
+    if (audioSubscribedRef.current && audioRoomIdRef.current === room.id) {
       return;
     }
 
@@ -152,7 +134,7 @@ export function GamePlay({
         try {
           audioChannelRef.current.unsubscribe();
         } catch (e) {
-          console.warn('Error cleaning up previous audio channel:', e);
+          // Silent cleanup
         }
         audioChannelRef.current = null;
       }
@@ -160,18 +142,12 @@ export function GamePlay({
     };
     
     const setupAudioChannel = () => {
-      // Only cleanup if we're not connected or switching rooms
-      if (!connectionState.isConnected || audioRoomIdRef.current !== room.id) {
-        cleanupAudioChannel();
-      }
-
-      console.log('🔌 Setting up audio control channel for room:', room.id);
+      cleanupAudioChannel();
       
       try {
         const channel = supabase
-          .channel(`audio-control-${room.id}-${Date.now()}`)
+          .channel(`audio-control-${room.id}`)
           .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-            
             if (isHost && audioRef.current) {
               const { action, currentTime, volume } = payload;
               
@@ -179,7 +155,7 @@ export function GamePlay({
                 switch (action) {
                   case 'play':
                     audioRef.current.currentTime = currentTime || 0;
-                    audioRef.current.play().catch(console.error);
+                    audioRef.current.play().catch(() => {});
                     setIsPlaying(true);
                     break;
                   case 'pause':
@@ -194,13 +170,12 @@ export function GamePlay({
                     break;
                 }
               } catch (error) {
-                console.error('❌ Audio control error:', error);
+                // Silent error handling
               }
             }
           });
 
         channel.subscribe((status) => {
-          
           if (status === 'SUBSCRIBED') {
             audioSubscribedRef.current = true;
             audioRoomIdRef.current = room.id;
@@ -210,45 +185,17 @@ export function GamePlay({
               isReconnecting: false,
               reconnectAttempts: 0
             }));
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('❌ Audio channel error:', status);
-            handleConnectionError();
           }
         });
 
         audioChannelRef.current = channel;
         
       } catch (error) {
-        console.error('❌ Failed to setup audio channel:', error);
-        handleConnectionError();
+        // Silent error handling
       }
     };
 
-    const handleConnectionError = () => {
-      audioSubscribedRef.current = false;
-      setConnectionState(prev => ({
-        ...prev,
-        isConnected: false,
-        lastDisconnected: new Date(),
-        reconnectAttempts: prev.reconnectAttempts + 1
-      }));
-
-      if (connectionState.reconnectAttempts < 3) { // Reduced max attempts
-        setConnectionState(prev => ({ ...prev, isReconnecting: true }));
-
-        const delay = Math.min(2000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
-        
-        audioReconnectTimeoutRef.current = setTimeout(() => {
-          console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
-          setupAudioChannel();
-        }, delay);
-      }
-    };
-
-    // Only setup if we don't have a stable connection
-    if (!audioSubscribedRef.current || !connectionState.isConnected) {
-      setupAudioChannel();
-    }
+    setupAudioChannel();
 
     return () => {
       if (audioReconnectTimeoutRef.current) {
@@ -258,22 +205,12 @@ export function GamePlay({
       cleanupAudioChannel();
       audioRoomIdRef.current = null;
     };
-  }, [room?.id, isHost, setIsPlaying, connectionState.isConnected, connectionState.reconnectAttempts]);
+  }, [room?.id, isHost, setIsPlaying]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
   const currentTurnPlayer = getCurrentPlayer();
   const isMyTurn = currentPlayer?.id === currentTurnPlayer?.id;
-
-  console.log('🎮 GamePlay render:', {
-    isHost,
-    currentTurnPlayer: currentTurnPlayer?.name,
-    currentSong: gameState.currentSong?.deezer_title,
-    activePlayers: activePlayers.length,
-    gamePhase: gameState.phase,
-    roomPhase: room?.phase,
-    connectionStatus: connectionState.isConnected ? 'connected' : 'disconnected'
-  });
 
   // Enhanced audio control for player-controlled, host-output
   const sendAudioControl = async (action: string, data: any = {}) => {
@@ -294,9 +231,7 @@ export function GamePlay({
         event: 'audio_control',
         payload: { action, ...data }
       });
-      console.log('🎵 Sent audio control:', action, data);
     } catch (error) {
-      console.error('Failed to send audio control:', error);
       toast({
         title: "Control Failed",
         description: "Could not send audio command",
@@ -333,7 +268,6 @@ export function GamePlay({
                 setIsPlaying(true);
               })
               .catch(error => {
-                console.error('Error playing audio:', error);
                 toast({
                   title: "Audio Error",
                   description: "Could not play the song preview. Try a different browser or check your audio settings.",
@@ -349,7 +283,6 @@ export function GamePlay({
         });
       }
     } catch (error) {
-      console.error('Audio playback error:', error);
       toast({
         title: "Audio Error",
         description: "Failed to control audio playback",
@@ -371,15 +304,10 @@ export function GamePlay({
   const handlePlaceCard = async (position: number) => {
     if (!gameState.currentSong || localGameState.isProcessingPlacement) return { success: false };
 
-    console.log('🎯 Starting card placement optimization...');
-    const startTime = Date.now();
-
     setLocalGameState(prev => ({ ...prev, isProcessingPlacement: true }));
 
     try {
       setLocalGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
-
-      console.log('🎯 Placing card:', gameState.currentSong.deezer_title, 'at position:', position);
       
       const placementPromise = onPlaceCard(gameState.currentSong, position);
       const timeoutPromise = new Promise<{ success: boolean }>((_, reject) => {
@@ -387,9 +315,6 @@ export function GamePlay({
       });
 
       const result = await Promise.race([placementPromise, timeoutPromise]);
-      
-      const endTime = Date.now();
-      console.log(`🎯 Card placement completed in ${endTime - startTime}ms`);
       
       setLocalGameState(prev => ({
         ...prev,
@@ -424,10 +349,6 @@ export function GamePlay({
       return result;
 
     } catch (error) {
-      console.error('Error placing card:', error);
-      const endTime = Date.now();
-      console.log(`🎯 Card placement failed after ${endTime - startTime}ms`);
-      
       setLocalGameState(prev => ({ ...prev, isProcessingPlacement: false }));
       
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -570,15 +491,14 @@ export function GamePlay({
     );
   }
 
-  // Audio element - only render for host
+  // Audio element - only render for host with proper URL handling
   const audioElement = isHost && gameState.currentSong?.preview_url && (
     <audio
       ref={audioRef}
-      src={gameState.currentSong.preview_url}
+      src={`https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(gameState.currentSong.preview_url)}`}
       crossOrigin="anonymous"
       preload="metadata"
       onError={(e) => {
-        console.error('Audio error:', e);
         toast({
           title: "Audio Error", 
           description: "Could not load song preview",
@@ -593,13 +513,6 @@ export function GamePlay({
 
   // Enhanced host view with error boundary
   if (isHost) {
-    console.log('🎮 Rendering HostGameView with:', {
-      currentTurnPlayer: currentTurnPlayer?.name,
-      players: activePlayers.length,
-      currentSong: gameState.currentSong?.deezer_title,
-      roomPhase: room?.phase
-    });
-    
     return (
       <GameErrorBoundary>
         <ConnectionIndicator />
@@ -617,8 +530,6 @@ export function GamePlay({
 
   // Player view with error boundary - only current player sees mystery card
   if (currentPlayer) {
-    console.log('🎮 Rendering PlayerView for:', currentPlayer.name, 'isMyTurn:', isMyTurn);
-    
     return (
       <GameErrorBoundary>
         <ConnectionIndicator />

@@ -15,7 +15,7 @@ interface PlayerTimelineProps {
   confirmingPlacement: { song: Song; position: number } | null;
   handleDragOver: (e: React.DragEvent, position: number) => void;
   handleDragLeave: () => void;
-  handleDrop: (position: number) => void;
+  handleDrop: (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => void;
   confirmPlacement: () => void;
   cancelPlacement: () => void;
   transitioningTurn?: boolean;
@@ -80,17 +80,17 @@ export function PlayerTimeline({
         )}
         onDragOver={(e) => handleDragOver(e, position)}
         onDragLeave={handleDragLeave}
-        onDrop={() => handleDrop(position)}
-        // Mobile-friendly touch events
-        onClick={() => {
+        onDrop={(e) => handleDrop(e, position)}
+        // Mobile-friendly touch events with proper event handling
+        onClick={(e) => {
           if (draggedSong && isCurrent) {
-            handleDrop(position);
+            handleDrop(e, position);
           }
         }}
         onTouchStart={(e) => {
           if (draggedSong && isCurrent) {
             e.preventDefault();
-            handleDrop(position);
+            handleDrop(e, position);
           }
         }}
       >

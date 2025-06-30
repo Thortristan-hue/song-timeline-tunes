@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,8 +56,12 @@ export function PlayerView({
     setHoveredPosition(null);
   };
 
-  const handleDrop = (e: React.DragEvent, position: number) => {
-    e.preventDefault();
+  const handleDrop = (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => {
+    // Safely handle event if it exists and has preventDefault
+    if (e && 'preventDefault' in e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    
     if (!isMyTurn || !draggedSong) return;
     
     setHoveredPosition(null);
@@ -219,7 +224,7 @@ export function PlayerView({
           confirmingPlacement={confirmingPlacement}
           handleDragOver={handleDragOver}
           handleDragLeave={handleDragLeave}
-          handleDrop={(position) => handleDrop({} as React.DragEvent, position)}
+          handleDrop={handleDrop}
           confirmPlacement={confirmPlacement}
           cancelPlacement={cancelPlacement}
         />
