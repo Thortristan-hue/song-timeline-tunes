@@ -30,6 +30,7 @@ export interface Song {
   genre: string;
   cardColor: string;
   preview_url?: string;
+  deezer_url?: string;
 }
 
 export interface Player {
