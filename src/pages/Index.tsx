@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
-import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
+import MobilePlayerLobby from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
