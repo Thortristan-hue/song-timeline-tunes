@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,7 +56,6 @@ export function PlayerView({
   };
 
   const handleDrop = (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => {
-    // Safely handle event if it exists and has preventDefault
     if (e && 'preventDefault' in e && typeof e.preventDefault === 'function') {
       e.preventDefault();
     }
@@ -85,127 +83,126 @@ export function PlayerView({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-20 left-10 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-32 right-16 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
+      {/* Subtle background elements */}
+      <div className="absolute top-32 left-16 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl" />
+      <div className="absolute bottom-40 right-20 w-80 h-80 bg-purple-500/2 rounded-full blur-3xl" />
       
       {/* Header */}
-      <div className="absolute top-6 left-4 right-4 z-40">
+      <div className="absolute top-6 left-6 right-6 z-40">
         <div className="flex justify-between items-center">
           {/* Current Turn Info */}
-          <div className="flex items-center gap-3 bg-slate-800/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-600/50 shadow-lg">
+          <div className="flex items-center gap-4 bg-black/20 backdrop-blur-3xl px-6 py-4 rounded-3xl border border-white/10">
             <div 
-              className="w-4 h-4 rounded-full border-2 border-white shadow-lg" 
+              className="w-3 h-3 rounded-full shadow-lg" 
               style={{ backgroundColor: currentTurnPlayer?.color }}
             />
             <div className="text-white">
-              <div className="font-bold text-lg">
-                {isMyTurn ? "Your Turn" : `${currentTurnPlayer?.name}'s Turn`}
+              <div className="font-semibold text-lg tracking-tight">
+                {isMyTurn ? "Your turn" : `${currentTurnPlayer?.name}'s turn`}
               </div>
-              <div className="text-sm text-slate-300">
-                Score: {currentTurnPlayer?.score}/10
+              <div className="text-sm text-white/60 font-medium">
+                {currentTurnPlayer?.score}/10 points
               </div>
             </div>
-            {isMyTurn && <Crown className="h-5 w-5 text-yellow-400" />}
+            {isMyTurn && <Crown className="h-5 w-5 text-yellow-400 ml-2" />}
           </div>
 
           {/* Room Code */}
-          <Badge variant="outline" className="bg-purple-500/20 text-purple-200 border-purple-400 text-lg px-4 py-2 font-mono">
+          <div className="bg-white/10 backdrop-blur-3xl text-white border border-white/10 
+                        text-lg px-6 py-3 font-mono font-semibold rounded-2xl tracking-wider">
             {roomCode}
-          </Badge>
+          </div>
         </div>
       </div>
 
       {/* Game Progress */}
       <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="bg-slate-800/60 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-600/30">
-          <div className="flex items-center gap-4">
+        <div className="bg-black/15 backdrop-blur-3xl px-8 py-4 rounded-3xl border border-white/10">
+          <div className="flex items-center gap-6">
             <Clock className="h-5 w-5 text-blue-400" />
             <div className="text-white">
-              <div className="text-sm text-slate-300">Time Remaining</div>
-              <div className="font-bold text-lg">{gameState.timeLeft}s</div>
+              <div className="text-sm text-white/60 font-medium">Time left</div>
+              <div className="font-semibold text-xl tracking-tight">{gameState.timeLeft}s</div>
             </div>
-            <Progress value={(gameState.timeLeft / 30) * 100} className="w-32" />
+            <Progress 
+              value={(gameState.timeLeft / 30) * 100} 
+              className="w-40 h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-blue-400 [&>div]:to-purple-400 [&>div]:rounded-full" 
+            />
           </div>
         </div>
       </div>
 
-      {/* Mystery Card Section - Only show when it's player's turn */}
+      {/* Mystery Card Section */}
       {isMyTurn && gameState.currentSong && (
         <div className="absolute top-48 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl blur-xl scale-110" />
-              
-              <MysteryCard
-                song={gameState.currentSong}
-                isRevealed={gameState.mysteryCardRevealed}
-                isInteractive={true}
-                className="w-48 h-60"
-                onDragStart={() => onDragStart(gameState.currentSong!)}
-                onDragEnd={onDragEnd}
-              />
-            </div>
+          <div className="text-center space-y-6">
+            <MysteryCard
+              song={gameState.currentSong}
+              isRevealed={gameState.mysteryCardRevealed}
+              isInteractive={true}
+              className="w-52 h-64 rounded-3xl"
+              onDragStart={() => onDragStart(gameState.currentSong!)}
+              onDragEnd={onDragEnd}
+            />
 
-            {/* Enhanced Audio Controls for Players */}
-            <div className="flex items-center justify-center gap-3 bg-slate-800/90 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-lg">
+            {/* Audio Controls */}
+            <div className="flex items-center justify-center gap-4 bg-black/15 backdrop-blur-3xl p-5 rounded-3xl border border-white/10">
               <Button
                 onClick={onPlayPause}
-                size="lg"
-                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-xl px-6 py-3 font-bold text-white shadow-lg"
+                className="bg-white text-black hover:bg-white/90 rounded-2xl px-6 py-3 font-semibold 
+                         transition-all duration-200 hover:scale-105 active:scale-95 border-0"
                 disabled={!gameState.currentSong?.preview_url}
               >
                 {gameState.isPlaying ? (
                   <>
-                    <Pause className="h-5 w-5 mr-2" />
-                    Pause on Host
+                    <Pause className="h-4 w-4 mr-2" />
+                    Pause
                   </>
                 ) : (
                   <>
-                    <Play className="h-5 w-5 mr-2" />
-                    Play on Host
+                    <Play className="h-4 w-4 mr-2" />
+                    Play
                   </>
                 )}
               </Button>
               
               <Button
                 onClick={() => setIsMuted(!isMuted)}
-                size="lg"
-                variant="outline"
-                className="rounded-xl border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 px-4 py-3"
+                className="bg-white/10 hover:bg-white/20 border-0 rounded-2xl px-4 py-3 text-white
+                         transition-all duration-200 hover:scale-105 active:scale-95"
               >
-                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
             </div>
 
-            <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">
-              🎧 Audio plays on host screen • Drag card to timeline
+            <div className="text-sm text-white/50 bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
+              Audio plays on the host screen
             </div>
           </div>
         </div>
       )}
 
-      {/* Waiting for Turn Display */}
+      {/* Waiting for Turn */}
       {!isMyTurn && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-          <div className="text-center space-y-4">
-            <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50">
-              <Music className="h-16 w-16 text-purple-400 mx-auto mb-4" />
-              <div className="text-2xl font-bold text-white mb-2">
-                {currentTurnPlayer?.name} is playing
+          <div className="text-center space-y-6">
+            <div className="bg-black/15 backdrop-blur-3xl rounded-3xl p-12 border border-white/10 max-w-md">
+              <Music className="h-20 w-20 text-white/30 mx-auto mb-6" />
+              <div className="text-2xl font-semibold text-white mb-3 tracking-tight">
+                {currentTurnPlayer?.name} is thinking...
               </div>
-              <div className="text-slate-300">
-                Wait for your turn to place cards
+              <div className="text-white/60 font-medium">
+                Hang tight, your turn is coming up!
               </div>
               
-              <div className="mt-4 flex items-center justify-center gap-3">
+              <div className="mt-6 flex items-center justify-center gap-3">
                 <div 
-                  className="w-3 h-3 rounded-full border border-white"
+                  className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: currentTurnPlayer?.color }}
                 />
-                <div className="text-sm text-slate-400">
-                  Current Score: {currentTurnPlayer?.score}/10
+                <div className="text-sm text-white/50">
+                  {currentTurnPlayer?.score}/10 points
                 </div>
               </div>
             </div>
@@ -232,23 +229,23 @@ export function PlayerView({
 
       {/* Confirmation Buttons */}
       {confirmingPlacement && (
-        <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="flex gap-3 bg-slate-800/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-600/30 shadow-xl">
+        <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="flex gap-4 bg-black/20 backdrop-blur-3xl p-5 rounded-3xl border border-white/10">
             <Button
               onClick={confirmPlacement}
-              size="sm"
-              className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-xl px-6 py-3 font-bold shadow-lg"
+              className="bg-white text-black hover:bg-white/90 rounded-2xl px-8 py-3 font-semibold
+                       transition-all duration-200 hover:scale-105 active:scale-95 border-0"
             >
               <Check className="h-4 w-4 mr-2" />
-              Place Card
+              Place it here
             </Button>
             <Button
               onClick={cancelPlacement}
-              size="sm"
-              className="bg-slate-600/80 hover:bg-slate-500/80 text-white rounded-xl px-6 py-3 font-bold border border-slate-500/50"
+              className="bg-white/10 hover:bg-white/20 text-white rounded-2xl px-8 py-3 font-semibold 
+                       border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95"
             >
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              Never mind
             </Button>
           </div>
         </div>
@@ -256,30 +253,30 @@ export function PlayerView({
 
       {/* Card Placement Result */}
       {gameState.cardPlacementCorrect !== null && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
-          <div className="text-center space-y-6 p-8">
-            <div className={`text-9xl mb-4 ${
-              gameState.cardPlacementCorrect ? 'text-emerald-400 animate-bounce' : 'text-rose-400 animate-pulse'
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xl flex items-center justify-center z-50">
+          <div className="text-center space-y-8 p-8">
+            <div className={`text-8xl mb-6 ${
+              gameState.cardPlacementCorrect ? 'animate-bounce' : 'animate-pulse'
             }`}>
-              {gameState.cardPlacementCorrect ? '🎯' : '💥'}
+              {gameState.cardPlacementCorrect ? '🎯' : '💫'}
             </div>
             
-            <div className={`text-5xl font-black ${
+            <div className={`text-5xl font-bold tracking-tight ${
               gameState.cardPlacementCorrect ? 
-              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
-              'text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-400'
+              'text-green-400' : 
+              'text-blue-400'
             }`}>
-              {gameState.cardPlacementCorrect ? 'PERFECT!' : 'CLOSE!'}
+              {gameState.cardPlacementCorrect ? 'Perfect!' : 'Nice try!'}
             </div>
             
-            <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md">
-              <div className="text-xl font-bold text-white mb-2">
+            <div className="bg-black/20 backdrop-blur-3xl rounded-3xl p-8 border border-white/10 max-w-sm">
+              <div className="text-xl font-semibold text-white mb-2">
                 {gameState.currentSong?.deezer_title}
               </div>
-              <div className="text-lg text-slate-300 mb-3">
-                by {gameState.currentSong?.deezer_artist}
+              <div className="text-lg text-white/70 mb-4 font-medium">
+                {gameState.currentSong?.deezer_artist}
               </div>
-              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full font-bold text-lg">
+              <div className="inline-block bg-white text-black px-4 py-2 rounded-full font-bold">
                 {gameState.currentSong?.release_year}
               </div>
             </div>
