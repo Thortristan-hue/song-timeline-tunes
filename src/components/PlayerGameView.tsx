@@ -33,6 +33,8 @@ export function PlayerGameView({
   cardPlacementResult
 }: PlayerGameViewProps) {
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [confirmingPlacement, setConfirmingPlacement] = useState<{ song: Song; position: number } | null>(null);
+  const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 
   const handleDragStart = (song: Song) => {
     setDraggedSong(song);
@@ -42,9 +44,41 @@ export function PlayerGameView({
     setDraggedSong(null);
   };
 
-  const handleTimelineCardPlace = async (position: number): Promise<{ success: boolean }> => {
-    if (!draggedSong) return { success: false };
-    return await onPlaceCard(position);
+  const handleDragOver = (e: React.DragEvent, position: number) => {
+    if (!isMyTurn || !draggedSong) return;
+    e.preventDefault();
+    setHoveredPosition(position);
+  };
+
+  const handleDragLeave = () => {
+    setHoveredPosition(null);
+  };
+
+  const handleDrop = (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => {
+    if (e && 'preventDefault' in e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    
+    if (!isMyTurn || !draggedSong) return;
+    
+    setHoveredPosition(null);
+    setConfirmingPlacement({ song: draggedSong, position });
+  };
+
+  const confirmPlacement = async () => {
+    if (!confirmingPlacement) return;
+    
+    try {
+      await onPlaceCard(confirmingPlacement.position);
+    } catch (error) {
+      console.error('Failed to place card:', error);
+    } finally {
+      setConfirmingPlacement(null);
+    }
+  };
+
+  const cancelPlacement = () => {
+    setConfirmingPlacement(null);
   };
 
   return (
@@ -167,9 +201,16 @@ export function PlayerGameView({
           
           <PlayerTimeline
             player={currentPlayer}
-            onCardPlace={handleTimelineCardPlace}
+            isCurrent={isMyTurn}
+            isDarkMode={true}
             draggedSong={draggedSong}
-            isInteractive={isMyTurn}
+            hoveredPosition={hoveredPosition}
+            confirmingPlacement={confirmingPlacement}
+            handleDragOver={handleDragOver}
+            handleDragLeave={handleDragLeave}
+            handleDrop={handleDrop}
+            confirmPlacement={confirmPlacement}
+            cancelPlacement={cancelPlacement}
           />
         </div>
       </div>
