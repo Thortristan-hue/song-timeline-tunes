@@ -24,10 +24,10 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
     try {
       const success = await onJoinRoom(lobbyCode.trim().toUpperCase(), playerName.trim());
       if (!success) {
-        setError('Failed to join lobby. Please check the code and try again.');
+        setError('Hmm, that didn\'t work. Double-check the code?');
       }
     } catch (err) {
-      setError('Failed to join lobby. Please try again.');
+      setError('Something went wrong. Give it another try!');
     }
   };
 
@@ -45,40 +45,56 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-indigo-900 p-6 flex flex-col">
-      {/* Header with improved touch target */}
-      <div className="mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 flex flex-col">
+      {/* Subtle background elements */}
+      <div className="absolute top-32 left-8 w-64 h-64 bg-blue-500/3 rounded-full blur-3xl" />
+      <div className="absolute bottom-40 right-8 w-48 h-48 bg-purple-500/2 rounded-full blur-3xl" />
+      
+      {/* Header */}
+      <div className="mb-8 relative z-10">
         <Button
           onClick={onBackToMenu}
-          variant="outline"
-          className="bg-white/10 border-white/20 text-white hover:bg-white/20 h-12 px-6 text-base"
+          className="bg-white/10 hover:bg-white/20 border-0 text-white h-12 px-6 text-base font-medium 
+                   rounded-2xl backdrop-blur-xl transition-all duration-200 hover:scale-105 active:scale-95"
         >
-          <ArrowLeft className="h-5 w-5 mr-3" />
+          <ArrowLeft className="h-4 w-4 mr-3" />
           Back
         </Button>
       </div>
 
-      {/* Main content with better spacing for mobile */}
-      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
-        <Card className="bg-white/10 border-white/20 p-8 rounded-2xl">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10">
+        {/* Disclaimer */}
+        <div className="text-center mb-8">
+          <p className="text-sm text-white/50 leading-relaxed">
+            This is just a fun game for friends! We're not affiliated with any music services. 
+            It's a free project made for good times and great music.
+          </p>
+        </div>
+
+        <div className="bg-black/20 backdrop-blur-3xl border border-white/10 p-8 rounded-3xl">
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-10">
             <div className="relative mb-6">
-              <Smartphone className="h-16 w-16 text-blue-400 mx-auto" />
-              <Wifi className="h-6 w-6 text-green-400 absolute -top-1 -right-1" />
+              <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl">
+                <Smartphone className="h-8 w-8 text-white/80" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <Wifi className="h-3 w-3 text-white" />
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-3">Join Game</h1>
-            <p className="text-purple-200/80 text-lg leading-relaxed">
-              Enter the lobby code shared by your host
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Join the fun</h1>
+            <p className="text-white/60 text-base leading-relaxed font-medium">
+              Got a code from your friend? Let's get you in!
             </p>
           </div>
 
-          {/* Form with improved mobile experience */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Form */}
+          <div className="space-y-6">
             {/* Lobby Code Input */}
             <div>
-              <label htmlFor="lobbyCode" className="block text-lg font-medium text-white mb-3">
-                Lobby Code
+              <label htmlFor="lobbyCode" className="block text-lg font-semibold text-white mb-3 tracking-tight">
+                Game Code
               </label>
               <Input
                 id="lobbyCode"
@@ -86,29 +102,33 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
                 placeholder="ABC123"
                 value={lobbyCode}
                 onChange={handleLobbyCodeChange}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 h-14 text-xl text-center font-mono tracking-wider"
+                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-xl text-center 
+                         font-mono tracking-wider rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
+                         backdrop-blur-xl shadow-inner transition-all duration-200"
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck="false"
                 inputMode="text"
               />
-              <p className="text-purple-200/60 text-sm mt-2 text-center">
-                6-character code from host
+              <p className="text-white/40 text-sm mt-2 text-center font-medium">
+                Ask your friend for the 6-character code
               </p>
             </div>
 
             {/* Player Name Input */}
             <div>
-              <label htmlFor="playerName" className="block text-lg font-medium text-white mb-3">
-                Your Name
+              <label htmlFor="playerName" className="block text-lg font-semibold text-white mb-3 tracking-tight">
+                What should we call you?
               </label>
               <Input
                 id="playerName"
                 type="text"
-                placeholder="Enter your name"
+                placeholder="Your name here..."
                 value={playerName}
                 onChange={handleNameChange}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 h-14 text-lg"
+                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-lg 
+                         rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
+                         backdrop-blur-xl shadow-inner transition-all duration-200"
                 maxLength={20}
                 autoCapitalize="words"
                 autoCorrect="off"
@@ -117,35 +137,37 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-4">
+              <div className="bg-red-500/10 border border-red-400/20 rounded-2xl p-4 backdrop-blur-xl">
                 <p className="text-red-300 text-center font-medium">{error}</p>
               </div>
             )}
 
-            {/* Join Button with loading state */}
+            {/* Join Button */}
             <Button
-              type="submit"
+              onClick={handleSubmit}
               disabled={!lobbyCode.trim() || !playerName.trim() || isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-bold h-14 text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white text-black hover:bg-white/90 font-semibold h-16 text-lg 
+                       rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 
+                       hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight"
             >
               {isLoading ? (
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                   Connecting...
                 </div>
               ) : (
-                'Join Lobby'
+                'Join Game'
               )}
             </Button>
-          </form>
+          </div>
 
           {/* Help text */}
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-purple-200/60 text-sm text-center leading-relaxed">
-              Ask the host to share the lobby code with you. Make sure you're connected to the internet.
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <p className="text-white/50 text-sm text-center leading-relaxed">
+              Make sure you're connected to the internet and have the right code from your host.
             </p>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
