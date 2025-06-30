@@ -27,6 +27,56 @@ class DefaultPlaylistService {
     return this.songs;
   }
 
+  /**
+   * Filters valid songs from an array
+   * @param songs Array of songs to filter
+   * @returns Array of valid songs
+   */
+  filterValidSongs(songs: Song[]): Song[] {
+    return songs.filter(song => {
+      // Check if song has required fields
+      if (!song.release_year || !song.deezer_title || !song.deezer_artist) {
+        return false;
+      }
+      
+      // Validate release year
+      const year = parseInt(song.release_year.toString());
+      if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  /**
+   * Fetches preview URL for a song
+   * @param song Song object
+   * @returns Promise<Song> Song with preview URL if available
+   */
+  async fetchPreviewUrl(song: Song): Promise<Song> {
+    try {
+      if (song.preview_url) {
+        return song;
+      }
+
+      // Try to extract track ID from deezer_url if available
+      const deezerUrl = (song as any).deezer_url;
+      if (deezerUrl) {
+        const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
+        if (trackId) {
+          const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          return { ...song, preview_url: previewUrl };
+        }
+      }
+
+      return song;
+    } catch (error) {
+      console.warn(`Failed to fetch preview for ${song.deezer_title}:`, error);
+      return song;
+    }
+  }
+
   private validateSong(item: any): boolean {
     if (!item.release_year?.toString().trim()) {
       console.log('⏭️ Skipping song without release year:', item.deezer_title);

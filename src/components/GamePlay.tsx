@@ -176,14 +176,20 @@ export function GamePlay({
     }
   };
 
-  // Loading state
+  // Modern loading state
   if (gameState.phase === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="text-6xl mb-4 animate-spin">🎵</div>
-          <div className="text-2xl font-bold mb-2">Loading Game...</div>
-          <div className="text-slate-300">Preparing the music timeline</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        </div>
+        <div className="text-center text-white relative z-10">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <div className="text-3xl animate-spin">🎵</div>
+          </div>
+          <div className="text-2xl font-semibold mb-2">Getting the music ready...</div>
+          <div className="text-white/60 max-w-md mx-auto">We're curating the perfect soundtrack for your game</div>
         </div>
       </div>
     );
@@ -195,11 +201,15 @@ export function GamePlay({
     
     if (!validCurrentTurnPlayer) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-          <div className="text-center text-white">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0">
+            <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+            <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl" />
+          </div>
+          <div className="text-center text-white relative z-10">
             <div className="text-6xl mb-4">⏳</div>
-            <div className="text-2xl font-bold mb-2">Waiting for Players</div>
-            <div className="text-slate-300">Need at least one player to start the game</div>
+            <div className="text-2xl font-semibold mb-2">Waiting for players</div>
+            <div className="text-white/60">Need at least one player to start the fun</div>
           </div>
         </div>
       );
@@ -236,11 +246,15 @@ export function GamePlay({
   // Player view
   if (!currentPlayer) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-        <div className="text-center text-white">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-red-500/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-orange-500/5 rounded-full blur-3xl" />
+        </div>
+        <div className="text-center text-white relative z-10">
           <div className="text-6xl mb-4">❌</div>
-          <div className="text-2xl font-bold mb-2">Player Not Found</div>
-          <div className="text-slate-300">Unable to load your player data</div>
+          <div className="text-2xl font-semibold mb-2">Oops, something went wrong</div>
+          <div className="text-white/60">We couldn't find your player data</div>
         </div>
       </div>
     );
