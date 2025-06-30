@@ -117,7 +117,7 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Fixed audio channel subscription with proper cleanup
+  // Enhanced audio channel subscription for player-to-host control
   useEffect(() => {
     if (!room?.id) {
       // Clean up when no room
@@ -160,15 +160,13 @@ export function GamePlay({
     };
     
     const setupAudioChannel = () => {
-      // Always clean up first
       cleanupAudioChannel();
 
       console.log('🔌 Setting up audio control channel for room:', room.id);
       
       try {
-        // Create a completely fresh channel instance
         const channel = supabase
-          .channel(`audio-control-${room.id}-${Date.now()}`) // Add timestamp to ensure uniqueness
+          .channel(`audio-control-${room.id}-${Date.now()}`)
           .on('broadcast', { event: 'audio_control' }, (payload: any) => {
             console.log('🎵 Received audio control:', payload);
             
@@ -199,7 +197,6 @@ export function GamePlay({
             }
           });
 
-        // Subscribe to the channel
         channel.subscribe((status) => {
           console.log('🔌 Audio channel status:', status);
           
@@ -212,13 +209,6 @@ export function GamePlay({
               isReconnecting: false,
               reconnectAttempts: 0
             }));
-            
-            if (connectionState.lastDisconnected) {
-              toast({
-                title: "🟢 Connection Restored",
-                description: "Real-time sync is working again!",
-              });
-            }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('❌ Audio channel error:', status);
             handleConnectionError();
@@ -244,12 +234,6 @@ export function GamePlay({
 
       if (connectionState.reconnectAttempts < 5) {
         setConnectionState(prev => ({ ...prev, isReconnecting: true }));
-        
-        toast({
-          title: "🔄 Connection Lost",
-          description: `Attempting to reconnect... (${connectionState.reconnectAttempts + 1}/5)`,
-          variant: "destructive",
-        });
 
         const delay = Math.min(1000 * Math.pow(2, connectionState.reconnectAttempts), 10000);
         
@@ -257,18 +241,9 @@ export function GamePlay({
           console.log(`🔄 Reconnecting audio channel (attempt ${connectionState.reconnectAttempts + 1})...`);
           setupAudioChannel();
         }, delay);
-      } else {
-        toast({
-          title: "❌ Connection Failed",
-          description: "Cannot connect to real-time sync. Please refresh the page.",
-          variant: "destructive",
-        });
-        
-        setGameError('Real-time connection failed. Game may not sync properly. Please refresh the page.');
       }
     };
 
-    // Initial setup
     setupAudioChannel();
 
     return () => {
@@ -279,7 +254,7 @@ export function GamePlay({
       cleanupAudioChannel();
       audioRoomIdRef.current = null;
     };
-  }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts, toast]);
+  }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts]);
 
   // Filter out host from players when determining current turn
   const activePlayers = players.filter(player => player.id !== room?.host_id);
@@ -298,7 +273,7 @@ export function GamePlay({
 
   // Enhanced audio control for player-controlled, host-output
   const sendAudioControl = async (action: string, data: any = {}) => {
-    if (!room?.id) return;
+    if (!room?.id || !audioChannelRef.current) return;
     
     if (!connectionState.isConnected) {
       toast({
@@ -310,13 +285,12 @@ export function GamePlay({
     }
     
     try {
-      await supabase
-        .channel(`audio-control-${room.id}`)
-        .send({
-          type: 'broadcast',
-          event: 'audio_control',
-          payload: { action, ...data }
-        });
+      await audioChannelRef.current.send({
+        type: 'broadcast',
+        event: 'audio_control',
+        payload: { action, ...data }
+      });
+      console.log('🎵 Sent audio control:', action, data);
     } catch (error) {
       console.error('Failed to send audio control:', error);
       toast({
@@ -396,16 +370,13 @@ export function GamePlay({
     console.log('🎯 Starting card placement optimization...');
     const startTime = Date.now();
 
-    // Prevent spam clicking
     setLocalGameState(prev => ({ ...prev, isProcessingPlacement: true }));
 
     try {
-      // Optimistic UI: Show card placement immediately
       setLocalGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
 
       console.log('🎯 Placing card:', gameState.currentSong.deezer_title, 'at position:', position);
       
-      // Call the placement with timeout for faster feedback
       const placementPromise = onPlaceCard(gameState.currentSong, position);
       const timeoutPromise = new Promise<{ success: boolean }>((_, reject) => {
         setTimeout(() => reject(new Error('Card placement timeout')), 5000);
@@ -437,7 +408,6 @@ export function GamePlay({
         });
       }
 
-      // Show result for 2 seconds, then start new turn
       setTimeout(() => {
         setLocalGameState(prev => ({ 
           ...prev, 
@@ -654,7 +624,7 @@ export function GamePlay({
           roomCode={room?.lobby_code || ''}
           isMyTurn={isMyTurn}
           gameState={{
-            currentSong: isMyTurn ? gameState.currentSong : null, // Only show to current player
+            currentSong: isMyTurn ? gameState.currentSong : null,
             isPlaying: gameState.isPlaying,
             timeLeft: gameState.timeLeft,
             cardPlacementPending: localGameState.isProcessingPlacement,
