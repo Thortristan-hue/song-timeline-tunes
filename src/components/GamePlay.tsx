@@ -47,6 +47,7 @@ export function GamePlay({
   // Use refs to track audio channel subscription state
   const audioChannelRef = useRef<any>(null);
   const audioSubscriptionActiveRef = useRef(false);
+  const audioRoomIdRef = useRef<string | null>(null);
 
   // Add detailed logging for debugging host white screen
   console.log('🎮 GamePlay render - DEBUG INFO:', {
@@ -123,29 +124,49 @@ export function GamePlay({
     };
   }, [isHost, soundEffects]);
 
-  // Fixed audio channel subscription with proper cleanup
+  // Enhanced audio channel subscription with better duplicate prevention
   useEffect(() => {
-    if (!room?.id) return;
+    if (!room?.id) {
+      // Clean up when no room
+      if (audioChannelRef.current) {
+        try {
+          audioChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error cleaning up audio channel:', e);
+        }
+        audioChannelRef.current = null;
+      }
+      audioSubscriptionActiveRef.current = false;
+      audioRoomIdRef.current = null;
+      return;
+    }
 
-    // Prevent duplicate audio subscriptions
-    if (audioSubscriptionActiveRef.current) {
-      console.log('🎵 Audio subscription already active, skipping duplicate setup');
+    // Skip if already subscribed to the same room
+    if (audioSubscriptionActiveRef.current && audioRoomIdRef.current === room.id) {
+      console.log('🎵 Already subscribed to audio for room:', room.id, 'skipping duplicate setup');
       return;
     }
 
     let reconnectTimeout: NodeJS.Timeout | null = null;
     
-    const setupAudioChannel = () => {
-      // Clean up any existing audio channel
+    const cleanupAudioChannel = () => {
       if (audioChannelRef.current) {
         try {
+          console.log('🧹 Cleaning up existing audio channel...');
           audioChannelRef.current.unsubscribe();
         } catch (e) {
           console.warn('Error cleaning up previous audio channel:', e);
         }
+        audioChannelRef.current = null;
       }
+      audioSubscriptionActiveRef.current = false;
+    };
+    
+    const setupAudioChannel = () => {
+      // Always clean up first
+      cleanupAudioChannel();
 
-      console.log('🔌 Setting up audio control channel...');
+      console.log('🔌 Setting up audio control channel for room:', room.id);
       
       try {
         audioChannelRef.current = supabase
@@ -184,6 +205,7 @@ export function GamePlay({
             
             if (status === 'SUBSCRIBED') {
               audioSubscriptionActiveRef.current = true;
+              audioRoomIdRef.current = room.id;
               setConnectionState(prev => ({
                 ...prev,
                 isConnected: true,
@@ -250,16 +272,8 @@ export function GamePlay({
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      if (audioChannelRef.current) {
-        console.log('🔌 Cleaning up audio channel...');
-        try {
-          audioChannelRef.current.unsubscribe();
-        } catch (e) {
-          console.warn('Error unsubscribing from audio channel:', e);
-        }
-        audioChannelRef.current = null;
-      }
-      audioSubscriptionActiveRef.current = false;
+      cleanupAudioChannel();
+      audioRoomIdRef.current = null;
     };
   }, [room?.id, isHost, setIsPlaying, connectionState.reconnectAttempts, toast]);
 

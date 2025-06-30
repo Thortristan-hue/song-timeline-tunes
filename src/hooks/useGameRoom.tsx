@@ -34,11 +34,9 @@ export function useGameRoom(): UseGameRoomReturn {
   // Use refs to track subscription state and prevent duplicate subscriptions
   const currentChannelRef = useRef<any>(null);
   const subscriptionActiveRef = useRef(false);
+  const roomIdRef = useRef<string | null>(null);
 
   const isHost = room ? room.host_id === gameService.getSessionId() : false;
-
-  // DISABLED: Auto-rejoin functionality - was causing issues
-  // Auto-rejoin logic has been completely removed to prevent game state conflicts
 
   const createRoom = useCallback(async (hostName?: string): Promise<string | null> => {
     setIsLoading(true);
@@ -254,6 +252,7 @@ export function useGameRoom(): UseGameRoomReturn {
       currentChannelRef.current = null;
     }
     subscriptionActiveRef.current = false;
+    roomIdRef.current = null;
     
     gameService.clearPlayerSession();
     setRoom(null);
@@ -262,13 +261,26 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
   }, []);
 
-  // Fixed real-time subscriptions with proper cleanup and duplicate prevention
+  // Enhanced subscription management with better duplicate prevention
   useEffect(() => {
-    if (!room) return;
+    if (!room?.id) {
+      // Clean up when no room
+      if (currentChannelRef.current) {
+        try {
+          currentChannelRef.current.unsubscribe();
+        } catch (e) {
+          console.warn('Error cleaning up channel:', e);
+        }
+        currentChannelRef.current = null;
+      }
+      subscriptionActiveRef.current = false;
+      roomIdRef.current = null;
+      return;
+    }
 
-    // Prevent duplicate subscriptions
-    if (subscriptionActiveRef.current) {
-      console.log('🔄 Subscription already active, skipping duplicate setup');
+    // Skip if already subscribed to the same room
+    if (subscriptionActiveRef.current && roomIdRef.current === room.id) {
+      console.log('🔄 Already subscribed to room:', room.id, 'skipping duplicate setup');
       return;
     }
 
@@ -278,17 +290,24 @@ export function useGameRoom(): UseGameRoomReturn {
     const maxReconnectAttempts = 5;
     let reconnectTimeout: NodeJS.Timeout | null = null;
 
-    const setupChannel = () => {
-      // Clean up any existing channel
+    const cleanupCurrentChannel = () => {
       if (currentChannelRef.current) {
         try {
+          console.log('🧹 Cleaning up existing channel...');
           currentChannelRef.current.unsubscribe();
         } catch (e) {
           console.warn('Error cleaning up previous channel:', e);
         }
+        currentChannelRef.current = null;
       }
+      subscriptionActiveRef.current = false;
+    };
 
-      console.log('🔄 Creating new room subscription channel...');
+    const setupChannel = () => {
+      // Always clean up first
+      cleanupCurrentChannel();
+
+      console.log('🔄 Creating new room subscription channel for room:', room.id);
 
       try {
         currentChannelRef.current = gameService.subscribeToRoom(room.id, {
@@ -317,8 +336,11 @@ export function useGameRoom(): UseGameRoomReturn {
           }
         });
 
-        // Mark subscription as active
+        // Mark subscription as active for this room
         subscriptionActiveRef.current = true;
+        roomIdRef.current = room.id;
+
+        console.log('✅ Channel setup completed for room:', room.id);
 
         // Monitor channel status if available
         if (currentChannelRef.current && currentChannelRef.current.subscribe) {
@@ -403,19 +425,12 @@ export function useGameRoom(): UseGameRoomReturn {
     loadInitialPlayers();
 
     return () => {
-      console.log('🔄 Cleaning up room subscriptions...');
+      console.log('🔄 Cleaning up room subscriptions for room:', room.id);
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
-      if (currentChannelRef.current) {
-        try {
-          currentChannelRef.current.unsubscribe();
-        } catch (e) {
-          console.warn('Error unsubscribing from channel:', e);
-        }
-        currentChannelRef.current = null;
-      }
-      subscriptionActiveRef.current = false;
+      cleanupCurrentChannel();
+      roomIdRef.current = null;
     };
   }, [room?.id, currentPlayer?.id, toast]);
 
