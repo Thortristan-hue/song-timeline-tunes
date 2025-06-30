@@ -1,22 +1,33 @@
 export class CorsProxyService {
   private static readonly PROXY_BASE_URL = 'https://timeliner-proxy.thortristanjd.workers.dev/';
-  private static readonly ALLOWED_DOMAINS = [
-    'api.deezer.com',
-    'musicbrainz.org',
-    'api.discogs.com'
-  ];
-
+  
   /**
-   * Normalizes Deezer URLs from web format to API format
+   * Converts any Deezer URL to API format
+   * Example:
+   * https://www.deezer.com/track/123 → https://api.deezer.com/track/123
    */
-  private static normalizeDeezerUrl(url: string): string {
-    return url.replace('www.deezer.com', 'api.deezer.com');
+  private static forceApiUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      
+      // Handle both www.deezer.com and deezer.com
+      if (parsed.hostname.includes('deezer.com')) {
+        parsed.hostname = 'api.deezer.com';
+        return parsed.toString();
+      }
+      
+      return url;
+    } catch {
+      return url;
+    }
   }
 
+  /**
+   * Fetches through proxy with automatic URL correction
+   */
   static async fetch(url: string): Promise<Response> {
-    const normalizedUrl = this.normalizeDeezerUrl(url);
-    this.validateUrl(normalizedUrl);
-    const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(normalizedUrl)}`;
+    const apiUrl = this.forceApiUrl(url);
+    const proxyUrl = `${this.PROXY_BASE_URL}?url=${encodeURIComponent(apiUrl)}`;
     
     const response = await fetch(proxyUrl);
     if (!response.ok) {
@@ -25,6 +36,12 @@ export class CorsProxyService {
     }
     return response;
   }
+
+  static async fetchJson<T>(url: string): Promise<T> {
+    const response = await this.fetch(url);
+    return response.json();
+  }
+}
 
   /**
    * Fetches JSON data through the proxy
