@@ -208,11 +208,9 @@ export function GamePlay({
         });
 
         if (isCorrect) {
-          soundEffects.playCorrect();
+          soundEffects.playCardSuccess();
         } else {
-          soundEffects.playIncorrect();
-          // For incorrect placements, we need to remove the card from the timeline
-          // This should be handled by the backend, but let's make sure
+          soundEffects.playCardError();
         }
 
         // Show result for 3 seconds
