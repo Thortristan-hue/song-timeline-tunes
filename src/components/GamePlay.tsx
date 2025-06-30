@@ -1,571 +1,356 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Music, Play, Pause, Clock, Volume2, VolumeX, Trophy, ArrowLeft, Zap, Star, Check, X, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { PlayerView } from '@/components/PlayerView';
-import { HostGameView } from '@/components/HostGameView';
-import { GameErrorBoundary } from '@/components/GameErrorBoundary';
-import { useToast } from '@/components/ui/use-toast';
-import { Song, Player, GameState } from '@/types/game';
-import { cn } from '@/lib/utils';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useGameLogic } from '@/hooks/useGameLogic';
+import { PlayerGameView } from '@/components/PlayerGameView';
+import { HostDisplay } from '@/components/HostDisplay';
+import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface GamePlayProps {
   room: any;
   players: Player[];
   currentPlayer: Player | null;
   isHost: boolean;
-  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean }>;
   onSetCurrentSong: (song: Song) => Promise<void>;
   customSongs: Song[];
 }
 
-export function GamePlay({ 
-  room, 
-  players, 
-  currentPlayer, 
-  isHost, 
+export function GamePlay({
+  room,
+  players,
+  currentPlayer,
+  isHost,
   onPlaceCard,
   onSetCurrentSong,
-  customSongs 
+  customSongs
 }: GamePlayProps) {
-  const { toast } = useToast();
   const soundEffects = useSoundEffects();
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [gameError, setGameError] = useState<string | null>(null);
-  const [connectionState, setConnectionState] = useState({
-    isConnected: true,
-    isReconnecting: false,
-    lastDisconnected: null as Date | null,
-    reconnectAttempts: 0
-  });
+  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
+  const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
+  const [songLoadingError, setSongLoadingError] = useState<string | null>(null);
+  const [retryingSong, setRetryingSong] = useState(false);
+  const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
 
-  // Use refs to track audio channel subscription state
   const audioChannelRef = useRef<any>(null);
-  const audioRoomIdRef = useRef<string | null>(null);
-  const audioSubscribedRef = useRef(false);
-  const audioReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const songProgressRef = useRef(0);
+  const songDurationRef = useRef(0);
 
-  // Use the game logic hook with room data
-  const { gameState, setIsPlaying, getCurrentPlayer, initializeGame, startNewTurn } = useGameLogic(
-    room?.id,
-    players,
-    room,
-    onSetCurrentSong,
-    async (songs: Song[]) => {
-      try {
-        if (room?.id) {
-          const { gameService } = await import('@/services/gameService');
-          await gameService.assignStartingCards(room.id, songs);
-        }
-      } catch (error) {
-        console.error('Failed to assign starting cards:', error);
-        setGameError('Failed to assign starting cards. Please refresh the page.');
-      }
+  const {
+    gameState,
+    setIsPlaying: setGameIsPlaying,
+    getCurrentPlayer,
+    initializeGame,
+    startNewTurn
+  } = useGameLogic(room?.id, players, room, onSetCurrentSong);
+
+  // Debug logging - but only log once per second to prevent spam
+  const lastLogTime = useRef(0);
+  const now = Date.now();
+  if (now - lastLogTime.current > 1000) {
+    console.log('🎮 GamePlay render - DEBUG INFO:', {
+      isHost,
+      roomPhase: room?.phase,
+      playersCount: players.length,
+      currentPlayerExists: !!currentPlayer,
+      roomId: room?.id,
+      hostId: room?.host_id,
+      connectionState: { gamePhase: gameState.phase, currentSong: !!gameState.currentSong }
+    });
+    lastLogTime.current = now;
+  }
+
+  // Initialize game on mount
+  useEffect(() => {
+    if (room?.phase === 'playing' && gameState.phase === 'loading') {
+      console.log('🎯 Initializing game...');
+      initializeGame();
     }
-  );
-  
-  const [localGameState, setLocalGameState] = useState({
-    draggedSong: null as Song | null,
-    mysteryCardRevealed: false,
-    cardResult: null as { correct: boolean; song: Song } | null,
-    isProcessingPlacement: false,
-    userHasInteracted: false
-  });
+  }, [room?.phase, gameState.phase, initializeGame]);
 
-  // Initialize game when component mounts
+  // Get current turn player
+  const currentTurnPlayer = getCurrentPlayer();
+  const activePlayers = players.filter(p => p.id !== room?.host_id);
+
+  // Audio setup with proper cleanup
   useEffect(() => {
-    initializeGame();
-  }, [initializeGame]);
+    if (!room?.id) return;
 
-  // Handle user interaction for audio (only for players, not host)
-  useEffect(() => {
-    if (isHost) return; // Host doesn't need audio interaction
-    
-    const handleUserInteraction = () => {
-      setLocalGameState(prev => ({ ...prev, userHasInteracted: true }));
-      soundEffects.playPlayerJoin();
-    };
-
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, [isHost, soundEffects]);
-
-  // Simplified audio channel subscription
-  useEffect(() => {
-    if (!room?.id) {
-      // Clean up when no room
-      if (audioChannelRef.current) {
-        try {
-          audioChannelRef.current.unsubscribe();
-        } catch (e) {
-          // Silent cleanup
-        }
-        audioChannelRef.current = null;
-      }
-      
-      if (audioReconnectTimeoutRef.current) {
-        clearTimeout(audioReconnectTimeoutRef.current);
-        audioReconnectTimeoutRef.current = null;
-      }
-      
-      audioSubscribedRef.current = false;
-      audioRoomIdRef.current = null;
-      return;
+    // Cleanup existing channel
+    if (audioChannelRef.current) {
+      console.log('🧹 Cleaning up existing audio channel...');
+      audioChannelRef.current.unsubscribe();
+      audioChannelRef.current = null;
     }
 
-    // Skip if already subscribed to the same room
-    if (audioSubscribedRef.current && audioRoomIdRef.current === room.id) {
-      return;
-    }
-
-    const cleanupAudioChannel = () => {
-      if (audioChannelRef.current) {
-        try {
-          audioChannelRef.current.unsubscribe();
-        } catch (e) {
-          // Silent cleanup
-        }
-        audioChannelRef.current = null;
-      }
-      audioSubscribedRef.current = false;
-    };
-    
-    const setupAudioChannel = () => {
-      cleanupAudioChannel();
+    // Only set up audio channel every 5 seconds to prevent spam
+    const setupChannel = () => {
+      console.log('🔌 Setting up audio control channel for room:', room.id);
       
-      try {
-        const channel = supabase
-          .channel(`audio-control-${room.id}`)
-          .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-            if (isHost && audioRef.current) {
-              const { action, currentTime, volume } = payload;
-              
-              try {
-                switch (action) {
-                  case 'play':
-                    audioRef.current.currentTime = currentTime || 0;
-                    audioRef.current.play().catch(() => {});
-                    setIsPlaying(true);
-                    break;
-                  case 'pause':
-                    audioRef.current.pause();
-                    setIsPlaying(false);
-                    break;
-                  case 'seek':
-                    audioRef.current.currentTime = currentTime || 0;
-                    break;
-                  case 'volume':
-                    audioRef.current.volume = volume || 0.7;
-                    break;
-                }
-              } catch (error) {
-                // Silent error handling
-              }
-            }
-          });
-
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            audioSubscribedRef.current = true;
-            audioRoomIdRef.current = room.id;
-            setConnectionState(prev => ({
-              ...prev,
-              isConnected: true,
-              isReconnecting: false,
-              reconnectAttempts: 0
-            }));
+      const channel = supabase
+        .channel(`audio-${room.id}`)
+        .on('broadcast', { event: 'audio-control' }, (payload) => {
+          if (payload.payload?.action === 'play') {
+            setIsPlaying(true);
+          } else if (payload.payload?.action === 'pause') {
+            setIsPlaying(false);
           }
+        })
+        .subscribe((status) => {
+          console.log('🔌 Audio channel status:', status);
         });
 
-        audioChannelRef.current = channel;
-        
-      } catch (error) {
-        // Silent error handling
-      }
+      audioChannelRef.current = channel;
     };
 
-    setupAudioChannel();
+    // Debounce channel setup
+    const timeoutId = setTimeout(setupChannel, 1000);
 
     return () => {
-      if (audioReconnectTimeoutRef.current) {
-        clearTimeout(audioReconnectTimeoutRef.current);
-        audioReconnectTimeoutRef.current = null;
+      clearTimeout(timeoutId);
+      if (audioChannelRef.current) {
+        audioChannelRef.current.unsubscribe();
+        audioChannelRef.current = null;
       }
-      cleanupAudioChannel();
-      audioRoomIdRef.current = null;
     };
-  }, [room?.id, isHost, setIsPlaying]);
+  }, [room?.id]);
 
-  // Filter out host from players when determining current turn
-  const activePlayers = players.filter(player => player.id !== room?.host_id);
-  const currentTurnPlayer = getCurrentPlayer();
-  const isMyTurn = currentPlayer?.id === currentTurnPlayer?.id;
+  // Handle audio playback
+  useEffect(() => {
+    if (!gameState.currentSong?.preview_url || !isHost) return;
 
-  // Enhanced audio control for player-controlled, host-output
-  const sendAudioControl = async (action: string, data: any = {}) => {
-    if (!room?.id || !audioChannelRef.current) return;
-    
-    if (!connectionState.isConnected) {
-      toast({
-        title: "Connection Error",
-        description: "Cannot control audio - connection lost",
-        variant: "destructive",
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    if (isPlaying && gameState.currentSong.preview_url) {
+      const audio = new Audio(gameState.currentSong.preview_url);
+      audioRef.current = audio;
+
+      audio.addEventListener('loadedmetadata', () => {
+        songDurationRef.current = audio.duration;
+        setAudioPlaybackError(null);
       });
+
+      audio.addEventListener('timeupdate', () => {
+        songProgressRef.current = audio.currentTime;
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.error('Audio playback error:', e);
+        setAudioPlaybackError('Failed to play audio preview');
+      });
+
+      audio.play().catch((error) => {
+        console.error('Failed to play audio:', error);
+        setAudioPlaybackError('Audio autoplay blocked by browser');
+      });
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [isPlaying, gameState.currentSong?.preview_url, isHost]);
+
+  const handlePlayPause = async () => {
+    if (!isHost) {
+      // For players, send request to host
+      if (audioChannelRef.current) {
+        await audioChannelRef.current.send({
+          type: 'broadcast',
+          event: 'audio-control',
+          payload: { action: isPlaying ? 'pause' : 'play' }
+        });
+      }
       return;
     }
-    
-    try {
+
+    // For host, control directly
+    const newIsPlaying = !isPlaying;
+    setIsPlaying(newIsPlaying);
+    setGameIsPlaying(newIsPlaying);
+
+    // Broadcast to other players
+    if (audioChannelRef.current) {
       await audioChannelRef.current.send({
         type: 'broadcast',
-        event: 'audio_control',
-        payload: { action, ...data }
-      });
-    } catch (error) {
-      toast({
-        title: "Control Failed",
-        description: "Could not send audio command",
-        variant: "destructive",
+        event: 'audio-control',
+        payload: { action: newIsPlaying ? 'play' : 'pause' }
       });
     }
   };
 
-  const playPauseAudio = async () => {
-    if (!gameState.currentSong?.preview_url) {
-      toast({
-        title: "Audio Error",
-        description: "No audio available for this song",
-        variant: "destructive",
-      });
-      return;
+  const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
+    if (!draggedSong || !currentPlayer) {
+      return { success: false };
     }
 
     try {
-      if (isHost) {
-        // Host controls audio directly
-        if (!audioRef.current) return;
+      setMysteryCardRevealed(true);
+      soundEffects.playCardPlace();
 
-        if (gameState.isPlaying) {
-          audioRef.current.pause();
-          setIsPlaying(false);
-        } else {
-          audioRef.current.currentTime = 0;
-          const playPromise = audioRef.current.play();
-          
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                setIsPlaying(true);
-              })
-              .catch(error => {
-                toast({
-                  title: "Audio Error",
-                  description: "Could not play the song preview. Try a different browser or check your audio settings.",
-                  variant: "destructive",
-                });
-              });
-          }
-        }
-      } else {
-        // Player sends control to host
-        await sendAudioControl(gameState.isPlaying ? 'pause' : 'play', {
-          currentTime: 0
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Audio Error",
-        description: "Failed to control audio playback",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDragStart = (song: Song) => {
-    if (!isMyTurn) return;
-    setLocalGameState(prev => ({ ...prev, draggedSong: song }));
-  };
-
-  const handleDragEnd = () => {
-    setLocalGameState(prev => ({ ...prev, draggedSong: null }));
-  };
-
-  // Optimized card placement with faster validation
-  const handlePlaceCard = async (position: number) => {
-    if (!gameState.currentSong || localGameState.isProcessingPlacement) return { success: false };
-
-    setLocalGameState(prev => ({ ...prev, isProcessingPlacement: true }));
-
-    try {
-      setLocalGameState(prev => ({ ...prev, mysteryCardRevealed: true }));
+      const result = await onPlaceCard(draggedSong, position);
       
-      const placementPromise = onPlaceCard(gameState.currentSong, position);
-      const timeoutPromise = new Promise<{ success: boolean }>((_, reject) => {
-        setTimeout(() => reject(new Error('Card placement timeout')), 5000);
-      });
-
-      const result = await Promise.race([placementPromise, timeoutPromise]);
-      
-      setLocalGameState(prev => ({
-        ...prev,
-        cardResult: { correct: result.success, song: gameState.currentSong! },
-        isProcessingPlacement: false
-      }));
-
       if (result.success) {
-        soundEffects.playCardSuccess();
-        toast({
-          title: "Perfect!",
-          description: `${gameState.currentSong.deezer_title} placed correctly!`,
+        const isCorrect = result.correct ?? false;
+        
+        setCardPlacementResult({ 
+          correct: isCorrect, 
+          song: draggedSong 
         });
-      } else {
-        soundEffects.playCardError();
-        toast({
-          title: "Incorrect!",
-          description: `${gameState.currentSong.deezer_title} - wrong position! Card destroyed.`,
-          variant: "destructive",
-        });
+
+        if (isCorrect) {
+          soundEffects.playCorrect();
+        } else {
+          soundEffects.playIncorrect();
+          // For incorrect placements, we need to remove the card from the timeline
+          // This should be handled by the backend, but let's make sure
+        }
+
+        // Show result for 3 seconds
+        setTimeout(() => {
+          setCardPlacementResult(null);
+          setMysteryCardRevealed(false);
+          setDraggedSong(null);
+          
+          // Start next turn
+          startNewTurn();
+        }, 3000);
+
+        return { success: true };
       }
 
-      setTimeout(() => {
-        setLocalGameState(prev => ({ 
-          ...prev, 
-          cardResult: null, 
-          mysteryCardRevealed: false 
-        }));
-        startNewTurn();
-      }, 2000);
-
-      return result;
-
+      return { success: false };
     } catch (error) {
-      setLocalGameState(prev => ({ ...prev, isProcessingPlacement: false }));
-      
-      if (error instanceof Error && error.message.includes('timeout')) {
-        toast({
-          title: "Timeout",
-          description: "Card placement is taking longer than expected. Please try again.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to place card. Please try again.",
-          variant: "destructive",
-        });
-      }
+      console.error('Failed to place card:', error);
+      setCardPlacementResult(null);
+      setMysteryCardRevealed(false);
       return { success: false };
     }
   };
 
-  // Connection status indicator component
-  const ConnectionIndicator = () => (
-    <div className="fixed top-4 right-4 z-50">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        connectionState.isConnected 
-          ? 'bg-green-900/80 text-green-200 border border-green-700/50' 
-          : connectionState.isReconnecting
-          ? 'bg-yellow-900/80 text-yellow-200 border border-yellow-700/50'
-          : 'bg-red-900/80 text-red-200 border border-red-700/50'
-      }`}>
-        {connectionState.isConnected ? (
-          <>
-            <Wifi className="h-4 w-4" />
-            <span>Connected</span>
-          </>
-        ) : connectionState.isReconnecting ? (
-          <>
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-200/30 border-t-yellow-200" />
-            <span>Reconnecting...</span>
-          </>
-        ) : (
-          <>
-            <WifiOff className="h-4 w-4" />
-            <span>Disconnected</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  const handleDragStart = (song: Song) => {
+    setDraggedSong(song);
+  };
 
-  // Error boundary display
-  if (gameError) {
-    return (
-      <GameErrorBoundary>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
-          <Card className="max-w-md p-8 bg-red-900/20 border-red-500/50">
-            <div className="text-center space-y-4">
-              <AlertTriangle className="h-16 w-16 text-red-400 mx-auto" />
-              <h2 className="text-2xl font-bold text-white">Game Error</h2>
-              <p className="text-red-200">{gameError}</p>
-              <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
-                Refresh Game
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </GameErrorBoundary>
-    );
+  const handleDragEnd = () => {
+    setDraggedSong(null);
+  };
+
+  const handleRetrySong = () => {
+    setRetryingSong(true);
+    setSongLoadingError(null);
+    setTimeout(() => {
+      startNewTurn();
+      setRetryingSong(false);
+    }, 1000);
+  };
+
+  const handleRetryAudio = () => {
+    setAudioPlaybackError(null);
+    setIsPlaying(false);
+    setTimeout(() => setIsPlaying(true), 500);
+  };
+
+  const handleSkipSong = () => {
+    setAudioPlaybackError(null);
+    setSongLoadingError(null);
+    startNewTurn();
+  };
+
+  // Debug logging for renders (throttled)
+  if (now - lastLogTime.current > 1000) {
+    console.log('🎮 GamePlay render:', {
+      isHost,
+      currentTurnPlayer: currentTurnPlayer?.name,
+      currentSong: gameState.currentSong?.deezer_title,
+      activePlayers: activePlayers.length,
+      gamePhase: gameState.phase,
+      roomPhase: room?.phase,
+      connectionStatus: audioChannelRef.current ? 'connected' : 'disconnected'
+    });
   }
 
-  // Check for winner
-  const winner = players.find(player => player.score >= 10);
-  if (winner) {
+  // Loading state
+  if (gameState.phase === 'loading') {
     return (
-      <GameErrorBoundary>
-        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-slate-800 to-violet-900 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(120,119,198,0.3),transparent_50%)] animate-pulse" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(236,72,153,0.2),transparent_50%)]" />
-          
-          <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
-            <div className="text-center space-y-8 max-w-2xl">
-              <div className="relative">
-                <Trophy className="w-32 h-32 mx-auto text-yellow-400 mb-6 animate-bounce" style={{
-                  filter: 'drop-shadow(0 0 20px rgba(251, 191, 36, 0.5))',
-                  animationDuration: '2s'
-                }} />
-                <div className="absolute -top-4 -right-4 text-6xl animate-spin" style={{animationDuration: '8s'}}>🎉</div>
-                <div className="absolute -bottom-4 -left-4 text-4xl animate-bounce" style={{animationDelay: '0.5s'}}>✨</div>
-              </div>
-              
-              <div className="space-y-4">
-                <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 animate-pulse">
-                  VICTORY!
-                </h1>
-                <div className="text-3xl font-bold text-white">
-                  🏆 {winner.name} Takes the Crown! 🏆
-                </div>
-                <div className="text-xl text-gray-300 font-medium">
-                  Final Score: <span className="text-yellow-400 font-bold text-2xl">{winner.score}</span> points
-                </div>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
-                <h3 className="text-2xl font-bold mb-6 text-white">Final Leaderboard</h3>
-                <div className="space-y-3">
-                  {players
-                    .sort((a, b) => b.score - a.score)
-                    .map((player, index) => (
-                      <div 
-                        key={player.id}
-                        className={`flex items-center justify-between p-4 rounded-xl ${
-                          index === 0 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/30' :
-                          index === 1 ? 'bg-gradient-to-r from-gray-400/20 to-gray-500/20 border border-gray-400/30' :
-                          index === 2 ? 'bg-gradient-to-r from-amber-600/20 to-amber-700/20 border border-amber-600/30' :
-                          'bg-white/5 border border-white/10'
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="text-2xl font-black">
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-4 h-4 rounded-full border-2 border-white"
-                              style={{ backgroundColor: player.color }}
-                            />
-                            <span className="font-semibold text-white text-lg">{player.name}</span>
-                          </div>
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {player.score}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </GameErrorBoundary>
-    );
-  }
-
-  // Audio element - only render for host with proper URL handling
-  const audioElement = isHost && gameState.currentSong?.preview_url && (
-    <audio
-      ref={audioRef}
-      src={`https://timeliner-proxy.thortristanjd.workers.dev/?url=${encodeURIComponent(gameState.currentSong.preview_url)}`}
-      crossOrigin="anonymous"
-      preload="metadata"
-      onError={(e) => {
-        toast({
-          title: "Audio Error", 
-          description: "Could not load song preview",
-          variant: "destructive"
-        });
-      }}
-      onEnded={() => setIsPlaying(false)}
-      onPlay={() => setIsPlaying(true)}
-      onPause={() => setIsPlaying(false)}
-    />
-  );
-
-  // Enhanced host view with error boundary
-  if (isHost) {
-    return (
-      <GameErrorBoundary>
-        <ConnectionIndicator />
-        {audioElement}
-        <HostGameView
-          currentTurnPlayer={currentTurnPlayer}
-          currentSong={gameState.currentSong}
-          roomCode={room?.lobby_code || ''}
-          players={activePlayers}
-          mysteryCardRevealed={localGameState.mysteryCardRevealed}
-        />
-      </GameErrorBoundary>
-    );
-  }
-
-  // Player view with error boundary - only current player sees mystery card
-  if (currentPlayer) {
-    return (
-      <GameErrorBoundary>
-        <ConnectionIndicator />
-        <PlayerView
-          currentPlayer={currentPlayer}
-          currentTurnPlayer={currentTurnPlayer!}
-          roomCode={room?.lobby_code || ''}
-          isMyTurn={isMyTurn}
-          gameState={{
-            currentSong: isMyTurn ? gameState.currentSong : null,
-            isPlaying: gameState.isPlaying,
-            timeLeft: gameState.timeLeft,
-            cardPlacementPending: localGameState.isProcessingPlacement,
-            mysteryCardRevealed: localGameState.mysteryCardRevealed,
-            cardPlacementCorrect: localGameState.cardResult?.correct || null
-          }}
-          draggedSong={localGameState.draggedSong}
-          onPlaceCard={handlePlaceCard}
-          onPlayPause={playPauseAudio}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-      </GameErrorBoundary>
-    );
-  }
-
-  return (
-    <GameErrorBoundary>
-      <ConnectionIndicator />
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="text-6xl mb-4 animate-spin">🎵</div>
-          <div className="text-2xl font-bold mb-2">Loading...</div>
-          <div className="text-slate-300">Setting up your game experience</div>
+          <div className="text-2xl font-bold mb-2">Loading Game...</div>
+          <div className="text-slate-300">Preparing the music timeline</div>
         </div>
       </div>
-    </GameErrorBoundary>
+    );
+  }
+
+  // Host view
+  if (isHost) {
+    console.log('🎮 Rendering HostDisplay with:', {
+      currentTurnPlayer: currentTurnPlayer?.name,
+      playersCount: players.length,
+      currentSong: gameState.currentSong?.deezer_title
+    });
+
+    return (
+      <HostDisplay
+        currentTurnPlayer={currentTurnPlayer || players[0]} // Fallback to first player
+        players={activePlayers}
+        roomCode={room.lobby_code}
+        currentSongProgress={songProgressRef.current}
+        currentSongDuration={songDurationRef.current}
+        gameState={{
+          currentSong: gameState.currentSong,
+          mysteryCardRevealed,
+          cardPlacementCorrect: cardPlacementResult?.correct || null
+        }}
+        songLoadingError={songLoadingError}
+        retryingSong={retryingSong}
+        onRetrySong={handleRetrySong}
+        audioPlaybackError={audioPlaybackError}
+        onRetryAudio={handleRetryAudio}
+        onSkipSong={handleSkipSong}
+      />
+    );
+  }
+
+  // Player view
+  if (!currentPlayer) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-6xl mb-4">❌</div>
+          <div className="text-2xl font-bold mb-2">Player Not Found</div>
+          <div className="text-slate-300">Unable to load your player data</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isMyTurn = currentTurnPlayer?.id === currentPlayer.id;
+
+  console.log('🎮 Rendering PlayerView for:', currentPlayer.name, 'isMyTurn:', isMyTurn);
+
+  return (
+    <PlayerGameView
+      currentPlayer={currentPlayer}
+      currentTurnPlayer={currentTurnPlayer || currentPlayer}
+      currentSong={gameState.currentSong}
+      roomCode={room.lobby_code}
+      isMyTurn={isMyTurn}
+      isPlaying={isPlaying}
+      onPlayPause={handlePlayPause}
+      onPlaceCard={handlePlaceCard}
+      mysteryCardRevealed={mysteryCardRevealed}
+      cardPlacementResult={cardPlacementResult}
+    />
   );
 }
