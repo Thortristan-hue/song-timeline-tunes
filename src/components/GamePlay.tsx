@@ -156,8 +156,8 @@ export function GamePlay({
       currentTurnPlayer: currentTurnPlayer?.name
     });
     
-    if (!currentTurnPlayer) {
-      console.log('⚠️ No current turn player, ignoring play/pause');
+    if (!currentTurnPlayer || !gameState.currentSong) {
+      console.log('⚠️ No current turn player or song, ignoring play/pause');
       return;
     }
     
@@ -223,10 +223,35 @@ export function GamePlay({
           soundEffects.playCardError();
         }
 
-        setTimeout(() => {
+        // Move to next turn after showing result
+        setTimeout(async () => {
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
-          startNewTurn();
+          setIsPlaying(false);
+          
+          // Update turn in database
+          if (isHost) {
+            const nextTurnIndex = (gameState.currentTurnIndex + 1) % activePlayers.length;
+            console.log(`🔄 Moving to next turn: ${nextTurnIndex}`);
+            
+            try {
+              const { error } = await supabase
+                .from('game_rooms')
+                .update({ current_turn: nextTurnIndex })
+                .eq('id', room.id);
+                
+              if (error) {
+                console.error('Failed to update turn:', error);
+              }
+            } catch (error) {
+              console.error('Error updating turn:', error);
+            }
+          }
+          
+          // Start new turn with new song
+          setTimeout(() => {
+            startNewTurn();
+          }, 1000);
         }, 3000);
 
         return { success: true };

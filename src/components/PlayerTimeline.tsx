@@ -1,7 +1,8 @@
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Music, Check, X, Sparkles, Calendar } from "lucide-react";
+import { Trophy, Music, Check, X, Sparkles, Calendar, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
 
@@ -34,16 +35,47 @@ export function PlayerTimeline({
   cancelPlacement,
   transitioningTurn = false
 }: PlayerTimelineProps) {
+  const playTimelineSong = async (song: Song) => {
+    if (!song.preview_url) {
+      console.log('No preview URL available for this song');
+      return;
+    }
+    
+    // Create and play audio element
+    const audio = new Audio(song.preview_url);
+    audio.volume = 0.5;
+    
+    try {
+      await audio.play();
+      console.log(`Playing timeline song: ${song.deezer_title}`);
+      
+      // Stop after 30 seconds
+      setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }, 30000);
+    } catch (error) {
+      console.error('Failed to play timeline song:', error);
+    }
+  };
+
   const renderCard = (song: Song, index: number) => {
     return (
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1",
+          "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1 cursor-pointer group",
           "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl"
         )}
+        onClick={() => playTimelineSong(song)}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
+        
+        {/* Play button overlay */}
+        <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <Play className="h-8 w-8 text-white" />
+        </div>
+        
         <Music className="h-8 w-8 mb-3 opacity-70" />
         <div className="text-center relative z-10 space-y-1">
           <div className="font-semibold text-sm leading-tight tracking-tight">

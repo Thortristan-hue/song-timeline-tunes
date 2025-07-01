@@ -70,16 +70,19 @@ export function PlayerGameView({
     if (!confirmingPlacement) return;
     
     try {
-      await onPlaceCard(confirmingPlacement.position);
+      const result = await onPlaceCard(confirmingPlacement.position);
+      console.log('Card placement result:', result);
     } catch (error) {
       console.error('Failed to place card:', error);
     } finally {
       setConfirmingPlacement(null);
+      setDraggedSong(null);
     }
   };
 
   const cancelPlacement = () => {
     setConfirmingPlacement(null);
+    setDraggedSong(null);
   };
 
   return (
