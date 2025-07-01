@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -181,7 +180,7 @@ export function useGameRoom() {
         created_at: data.created_at,
         updated_at: data.updated_at,
         current_turn: data.current_turn,
-        current_song: null
+        current_song: data.current_song ? data.current_song as unknown as Song : null
       });
 
       // Create a virtual host player for local use only (not stored in database)
@@ -275,7 +274,7 @@ export function useGameRoom() {
         created_at: roomData.created_at,
         updated_at: roomData.updated_at,
         current_turn: roomData.current_turn,
-        current_song: roomData.current_song || null
+        current_song: roomData.current_song ? roomData.current_song as unknown as Song : null
       });
       
       setCurrentPlayer(convertPlayer(playerData));
