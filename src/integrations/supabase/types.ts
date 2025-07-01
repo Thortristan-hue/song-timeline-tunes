@@ -57,6 +57,7 @@ export type Database = {
           current_song_index: number | null
           current_turn: number | null
           host_id: string
+          host_name: string | null
           id: string
           lobby_code: string
           phase: string
@@ -68,6 +69,7 @@ export type Database = {
           current_song_index?: number | null
           current_turn?: number | null
           host_id: string
+          host_name?: string | null
           id?: string
           lobby_code: string
           phase?: string
@@ -79,6 +81,7 @@ export type Database = {
           current_song_index?: number | null
           current_turn?: number | null
           host_id?: string
+          host_name?: string | null
           id?: string
           lobby_code?: string
           phase?: string

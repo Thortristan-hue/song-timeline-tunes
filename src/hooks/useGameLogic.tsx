@@ -37,22 +37,22 @@ export function useGameLogic(
     transitioningTurn: false
   });
 
-  // Filter out host players and sync active players only
+  // CRITICAL: Filter and sync ONLY non-host players
   useEffect(() => {
-    if (allPlayers.length > 0 && roomData?.host_id) {
-      // CRITICAL: Only include non-host players in the game state
-      // Host should NEVER be in the players array or turn rotation
+    if (allPlayers.length > 0) {
+      // NEVER include host players - they should already be filtered out, but double-check
       const activePlayers = allPlayers.filter(p => {
-        const isHost = p.id.includes(roomData.host_id) || p.id === roomData.host_id;
-        return !isHost;
+        // Extra safety: exclude any potential host players
+        const isHostLike = p.id.includes('host-') || 
+                          (roomData?.host_id && p.id === roomData.host_id);
+        return !isHostLike;
       });
       
-      console.log('🎯 Filtering players (HOST EXCLUSION):', {
-        allPlayers: allPlayers.length,
-        hostId: roomData.host_id,
-        activePlayers: activePlayers.length,
+      console.log('🎯 Game Logic - Active Players (NO HOST):', {
+        allPlayersCount: allPlayers.length,
+        activePlayersCount: activePlayers.length,
         activePlayerNames: activePlayers.map(p => p.name),
-        hostFiltered: allPlayers.filter(p => p.id.includes(roomData.host_id) || p.id === roomData.host_id).map(p => p.name)
+        hostId: roomData?.host_id
       });
       
       setGameState(prev => ({
@@ -78,7 +78,7 @@ export function useGameLogic(
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
-        // Ensure turn index is always within bounds of non-host players
+        // CRITICAL: Ensure turn index is always within bounds of active (non-host) players
         currentTurnIndex: Math.min(roomData.current_turn || 0, Math.max(0, prev.players.length - 1))
       }));
     }
@@ -228,10 +228,12 @@ export function useGameLogic(
       setGameState(prev => ({ ...prev, isPlaying: playing }));
     },
     getCurrentPlayer: () => {
-      // CRITICAL: Only return from active players (non-host players)
-      // Never return host as current player
+      // CRITICAL: Only return from active (non-host) players
       const activePlayers = gameState.players;
-      if (activePlayers.length === 0) return null;
+      if (activePlayers.length === 0) {
+        console.log('🎯 No active players available');
+        return null;
+      }
       
       const currentIndex = Math.min(gameState.currentTurnIndex, activePlayers.length - 1);
       const currentPlayer = activePlayers[currentIndex];
@@ -239,7 +241,8 @@ export function useGameLogic(
       console.log('🎯 Getting current player:', {
         currentIndex,
         currentPlayer: currentPlayer?.name,
-        totalActivePlayers: activePlayers.length
+        totalActivePlayers: activePlayers.length,
+        allActivePlayerNames: activePlayers.map(p => p.name)
       });
       
       return currentPlayer || null;

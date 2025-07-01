@@ -32,27 +32,35 @@ export function useGameRoom() {
     };
   }, []);
 
-  // Fetch players for a room (excluding the host)
+  // Fetch players for a room (ONLY non-host players)
   const fetchPlayers = useCallback(async (roomId: string) => {
     try {
       const { data, error } = await supabase
         .from('players')
         .select('*')
         .eq('room_id', roomId)
-        .is('is_host', null) // Only get non-host players
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
 
-      console.log('👥 Players updated - raw data:', data);
-      const convertedPlayers = data?.map(convertPlayer) || [];
-      console.log('👥 Players updated - converted:', convertedPlayers);
+      console.log('👥 All players from DB - raw data:', data);
+      
+      // CRITICAL: Filter out ANY host players completely
+      const nonHostPlayers = data?.filter(dbPlayer => {
+        // Never include host in the players array
+        const isHostPlayer = dbPlayer.is_host === true || 
+                           (hostSessionId.current && dbPlayer.player_session_id === hostSessionId.current);
+        return !isHostPlayer;
+      }) || [];
+      
+      const convertedPlayers = nonHostPlayers.map(convertPlayer);
+      console.log('👥 Non-host players only - converted:', convertedPlayers);
       setPlayers(convertedPlayers);
 
       // Update current player if we have one (only for non-host players)
-      if (playerSessionId.current) {
+      if (playerSessionId.current && !isHost) {
         const current = convertedPlayers.find(p => 
-          data?.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
+          nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
         );
         if (current) {
           setCurrentPlayer(current);
@@ -61,7 +69,7 @@ export function useGameRoom() {
     } catch (error) {
       console.error('Failed to fetch players:', error);
     }
-  }, [convertPlayer]);
+  }, [convertPlayer, isHost]);
 
   // Subscribe to room changes
   useEffect(() => {
@@ -114,27 +122,27 @@ export function useGameRoom() {
       const sessionId = generateSessionId();
       hostSessionId.current = sessionId;
 
-      // Generate a temporary lobby code that will be replaced by the database trigger
-      const tempLobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      console.log('🏠 Creating room with host session ID:', sessionId);
 
       const { data, error } = await supabase
         .from('game_rooms')
         .insert({
           host_id: sessionId,
-          host_name: hostName, // Store host name in the room record
-          phase: 'lobby',
-          lobby_code: tempLobbyCode
+          host_name: hostName,
+          phase: 'lobby'
         })
         .select()
         .single();
 
       if (error) throw error;
 
+      console.log('✅ Room created successfully:', data);
+
       setRoom({
         id: data.id,
         lobby_code: data.lobby_code,
         host_id: data.host_id,
-        host_name: hostName,
+        host_name: data.host_name || hostName,
         phase: data.phase as 'lobby' | 'playing' | 'finished',
         songs: Array.isArray(data.songs) ? data.songs as unknown as Song[] : [],
         created_at: data.created_at,
@@ -194,7 +202,9 @@ export function useGameRoom() {
       const sessionId = generateSessionId();
       playerSessionId.current = sessionId;
 
-      // Create player (non-host)
+      console.log('🎮 Joining room as player with session ID:', sessionId);
+
+      // Create player (NEVER as host - is_host should be null/false)
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
@@ -204,12 +214,15 @@ export function useGameRoom() {
           color: colors[Math.floor(Math.random() * colors.length)],
           timeline_color: timelineColors[Math.floor(Math.random() * timelineColors.length)],
           score: 0,
-          timeline: []
+          timeline: [],
+          is_host: false // Explicitly set to false to ensure no confusion
         })
         .select()
         .single();
 
       if (playerError) throw playerError;
+
+      console.log('✅ Player created successfully:', playerData);
 
       setRoom({
         id: roomData.id,
@@ -226,7 +239,7 @@ export function useGameRoom() {
       setCurrentPlayer(convertPlayer(playerData));
       setIsHost(false);
       
-      // Fetch all players (excluding host)
+      // Fetch all non-host players
       await fetchPlayers(roomData.id);
       
       return true;
@@ -410,6 +423,7 @@ export function useGameRoom() {
 
     try {
       console.log('🃏 Assigning starting cards to players...');
+      console.log('🎯 Players to assign cards to:', players.map(p => ({ name: p.name, timelineLength: p.timeline.length })));
       
       for (const player of players) {
         if (player.timeline.length === 0) {
@@ -425,6 +439,8 @@ export function useGameRoom() {
 
           if (error) {
             console.error(`Failed to assign starting card to ${player.name}:`, error);
+          } else {
+            console.log(`✅ Successfully assigned starting card to ${player.name}`);
           }
         }
       }
