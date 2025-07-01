@@ -160,7 +160,7 @@ export class GameService {
       }
 
       // Update player's timeline
-      const currentTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as Song[] : [];
+      const currentTimeline = Array.isArray(playerData.timeline) ? (playerData.timeline as unknown as Song[]) : [];
       const newTimeline = [...currentTimeline];
       newTimeline.splice(position, 0, song);
 
