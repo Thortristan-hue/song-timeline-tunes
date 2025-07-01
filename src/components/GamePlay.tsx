@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -33,7 +34,10 @@ export function GamePlay({
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [startingCardsAssigned, setStartingCardsAssigned] = useState(false);
   const [currentSongWithPreview, setCurrentSongWithPreview] = useState<Song | null>(null);
+  const [isProcessingTurn, setIsProcessingTurn] = useState(false);
 
+  // FIXED: Single audio instance management to prevent overlaps
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<any>(null);
 
   const {
@@ -69,11 +73,11 @@ export function GamePlay({
     hostFilteredOut: players.filter(p => p.id.includes(room?.host_id) || p.id === room?.host_id).length
   });
 
-  // Fetch preview URL just-in-time when current song changes
+  // FIXED: Fetch preview URL just-in-time when current song changes - ensuring correct song
   useEffect(() => {
     const fetchPreviewForCurrentSong = async () => {
       if (gameState.currentSong && gameState.currentSong.id) {
-        console.log('🎵 Fetching preview just-in-time for current song:', gameState.currentSong.deezer_title);
+        console.log('🎵 FIXED: Fetching preview for CURRENT MYSTERY CARD only:', gameState.currentSong.deezer_title);
         try {
           const previewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.id);
           const songWithPreview = {
@@ -81,7 +85,7 @@ export function GamePlay({
             preview_url: previewUrl
           };
           setCurrentSongWithPreview(songWithPreview);
-          console.log('✅ Preview URL fetched for current turn player song:', previewUrl);
+          console.log('✅ FIXED: Preview URL fetched for current mystery card:', previewUrl);
         } catch (error) {
           console.error('❌ Failed to fetch preview URL:', error);
           setCurrentSongWithPreview(gameState.currentSong);
@@ -135,7 +139,7 @@ export function GamePlay({
     assignStartingCards();
   }, [gameState.phase, gameState.availableSongs, activePlayers, isHost, startingCardsAssigned]);
 
-  // Audio setup - only for current turn player's song
+  // FIXED: Audio setup - only for current turn player's mystery card
   useEffect(() => {
     if (!room?.id || !currentTurnPlayer) return;
 
@@ -148,14 +152,21 @@ export function GamePlay({
       const channel = supabase
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
-          console.log('🔊 Audio control received:', payload.payload);
-          // FIXED: Only respond to audio controls for the current turn player's song
+          console.log('🔊 FIXED: Audio control received for mystery card:', payload.payload);
+          // FIXED: Only respond to audio controls for the current mystery card
           if (payload.payload?.currentTurnPlayerId === currentTurnPlayer.id && 
               payload.payload?.songId === currentSongWithPreview?.id) {
             if (payload.payload?.action === 'play') {
               setIsPlaying(true);
             } else if (payload.payload?.action === 'pause') {
               setIsPlaying(false);
+            } else if (payload.payload?.action === 'stop') {
+              setIsPlaying(false);
+              // FIXED: Stop any currently playing audio
+              if (currentAudioRef.current) {
+                currentAudioRef.current.pause();
+                currentAudioRef.current.currentTime = 0;
+              }
             }
           }
         })
@@ -175,8 +186,19 @@ export function GamePlay({
     };
   }, [room?.id, currentTurnPlayer?.id, currentSongWithPreview?.id]);
 
+  // FIXED: Stop any playing audio when song changes to prevent overlaps
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current = null;
+      }
+    };
+  }, [currentSongWithPreview?.id]);
+
   const handlePlayPause = async () => {
-    console.log('🎵 Play/Pause clicked:', { 
+    console.log('🎵 FIXED: Play/Pause for MYSTERY CARD only:', { 
       isHost, 
       isPlaying, 
       currentSong: currentSongWithPreview?.deezer_title,
@@ -184,21 +206,28 @@ export function GamePlay({
     });
     
     if (!currentTurnPlayer || !currentSongWithPreview) {
-      console.log('⚠️ No current turn player or song, ignoring play/pause');
+      console.log('⚠️ No current turn player or mystery card, ignoring play/pause');
       return;
+    }
+    
+    // FIXED: Stop any currently playing audio before starting new one
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
     }
     
     if (!isHost) {
       if (audioChannelRef.current) {
         const action = isPlaying ? 'pause' : 'play';
-        console.log(`🔊 Sending audio control: ${action} for player ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
+        console.log(`🔊 FIXED: Sending audio control for mystery card: ${action}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
           payload: { 
             action,
             currentTurnPlayerId: currentTurnPlayer.id,
-            songId: currentSongWithPreview.id // FIXED: Include specific song ID
+            songId: currentSongWithPreview.id
           }
         });
       }
@@ -206,37 +235,47 @@ export function GamePlay({
     }
 
     const newIsPlaying = !isPlaying;
-    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying} for ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
+    console.log(`🎵 FIXED: Host playing mystery card: ${newIsPlaying} for ${currentTurnPlayer.name}`);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
     if (audioChannelRef.current) {
-      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'} for player ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
+      console.log(`🔊 FIXED: Broadcasting mystery card audio control: ${newIsPlaying ? 'play' : 'pause'}`);
       await audioChannelRef.current.send({
         type: 'broadcast',
         event: 'audio-control',
         payload: { 
           action: newIsPlaying ? 'play' : 'pause',
           currentTurnPlayerId: currentTurnPlayer.id,
-          songId: currentSongWithPreview.id // FIXED: Include specific song ID
+          songId: currentSongWithPreview.id
         }
       });
     }
   };
 
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
-    if (!currentPlayer) {
-      console.error('Cannot place card: missing player');
+    if (!currentPlayer || isProcessingTurn) {
+      console.error('Cannot place card: missing player or turn in progress');
       return { success: false };
     }
 
+    // FIXED: Prevent multiple concurrent turn processing
+    setIsProcessingTurn(true);
+
     try {
-      console.log('🃏 Placing card:', { song: song.deezer_title, position });
+      console.log('🃏 FIXED: Placing mystery card:', { song: song.deezer_title, position });
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
+      // FIXED: Stop any playing audio when card is placed
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+
       const result = await onPlaceCard(song, position);
-      console.log('🃏 Card placement result:', result);
+      console.log('🃏 FIXED: Card placement result:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -252,16 +291,25 @@ export function GamePlay({
           soundEffects.playCardError();
         }
 
-        // Move to next turn after showing result
+        // FIXED: Always advance turn after showing result, regardless of correctness
         setTimeout(async () => {
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
           setIsPlaying(false);
           
-          // Update turn in database
+          // FIXED: Stop any audio before turn transition
+          if (audioChannelRef.current) {
+            await audioChannelRef.current.send({
+              type: 'broadcast',
+              event: 'audio-control',
+              payload: { action: 'stop' }
+            });
+          }
+          
+          // FIXED: Update turn in database - ALWAYS advance to next player
           if (isHost) {
             const nextTurnIndex = (gameState.currentTurnIndex + 1) % activePlayers.length;
-            console.log(`🔄 Moving to next turn: ${nextTurnIndex}`);
+            console.log(`🔄 FIXED: Always advancing turn from ${gameState.currentTurnIndex} to ${nextTurnIndex}`);
             
             try {
               const { error } = await supabase
@@ -271,26 +319,32 @@ export function GamePlay({
                 
               if (error) {
                 console.error('Failed to update turn:', error);
+              } else {
+                console.log('✅ FIXED: Turn successfully advanced to next player');
               }
             } catch (error) {
               console.error('Error updating turn:', error);
             }
           }
           
-          // Start new turn with new song
+          // FIXED: Start new turn with new mystery card after brief delay
           setTimeout(() => {
+            console.log('🎯 FIXED: Starting new turn with new mystery card');
             startNewTurn();
+            setIsProcessingTurn(false);
           }, 1000);
         }, 3000);
 
         return { success: true };
       }
 
+      setIsProcessingTurn(false);
       return { success: false };
     } catch (error) {
       console.error('Failed to place card:', error);
       setCardPlacementResult(null);
       setMysteryCardRevealed(false);
+      setIsProcessingTurn(false);
       return { success: false };
     }
   };
@@ -347,7 +401,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
         />
         
-        {/* FIXED: Hidden audio player for host - only plays current turn player's song */}
+        {/* FIXED: Hidden audio player for host - only plays current mystery card */}
         {currentSongWithPreview?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
@@ -355,6 +409,7 @@ export function GamePlay({
               isPlaying={isPlaying}
               onPlayPause={handlePlayPause}
               className="bg-black/50 p-2 rounded"
+              ref={currentAudioRef}
             />
           </div>
         )}
@@ -396,7 +451,7 @@ export function GamePlay({
         cardPlacementResult={cardPlacementResult}
       />
       
-      {/* FIXED: Hidden audio player for player - only plays if it's their turn */}
+      {/* FIXED: Hidden audio player for player - only plays if it's their turn and it's the mystery card */}
       {currentSongWithPreview?.preview_url && isMyTurn && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer
@@ -404,6 +459,7 @@ export function GamePlay({
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
             className="bg-black/50 p-2 rounded"
+            ref={currentAudioRef}
           />
         </div>
       )}

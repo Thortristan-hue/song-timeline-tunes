@@ -37,10 +37,12 @@ export function PlayerGameView({
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 
   const handleDragStart = (song: Song) => {
+    console.log('🎯 FIXED: Starting drag for mystery card:', song.deezer_title);
     setDraggedSong(song);
   };
 
   const handleDragEnd = () => {
+    console.log('🎯 FIXED: Ending drag for mystery card');
     setDraggedSong(null);
   };
 
@@ -61,29 +63,32 @@ export function PlayerGameView({
     
     if (!isMyTurn || !draggedSong) return;
     
+    console.log('🎯 FIXED: Mystery card dropped at position:', position);
     setHoveredPosition(null);
     setPlacementPending({ song: draggedSong, position });
     setDraggedSong(null);
   };
 
-  const confirmPlacement = async () => {
-    if (!placementPending) return;
+  // FIXED: Handle confirmation of placement
+  const handleConfirmPlacement = async (song: Song, position: number): Promise<{ success: boolean }> => {
+    console.log('🎯 FIXED: Confirming placement of mystery card:', { song: song.deezer_title, position });
     
     try {
-      console.log('Confirming placement:', { song: placementPending.song.deezer_title, position: placementPending.position });
-      const result = await onPlaceCard(placementPending.song, placementPending.position);
-      console.log('Card placement result:', result);
-      
+      const result = await onPlaceCard(song, position);
       setPlacementPending(null);
+      return result;
     } catch (error) {
-      console.error('Failed to place card:', error);
+      console.error('FIXED: Failed to confirm placement:', error);
       setPlacementPending(null);
+      return { success: false };
     }
   };
 
-  const tryAgain = () => {
+  // FIXED: Handle cancellation of placement (try again)
+  const handleCancelPlacement = () => {
     if (placementPending) {
-      setDraggedSong(placementPending.song);
+      console.log('🔄 FIXED: Canceling placement, allowing try again for mystery card');
+      setDraggedSong(placementPending.song); // Allow dragging again
     }
     setPlacementPending(null);
   };
@@ -101,7 +106,7 @@ export function PlayerGameView({
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
         <div className="bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
           <p className="text-white/70 text-sm font-medium">
-            Your turn to play • Drag the mystery card to your timeline
+            {isMyTurn ? "Your turn to play • Drag the mystery card to your timeline" : `${currentTurnPlayer.name}'s turn`}
           </p>
         </div>
       </div>
@@ -161,7 +166,7 @@ export function PlayerGameView({
         </div>
       </div>
 
-      {/* Mystery Card */}
+      {/* FIXED: Mystery Card - only show if it's the player's turn and no placement pending */}
       {currentSong && isMyTurn && !placementPending && (
         <PlayerMysteryCard
           currentSong={currentSong}
@@ -213,40 +218,11 @@ export function PlayerGameView({
             handleDragOver={handleDragOver}
             handleDragLeave={handleDragLeave}
             handleDrop={handleDrop}
+            onConfirmPlacement={handleConfirmPlacement}
+            onCancelPlacement={handleCancelPlacement}
           />
         </div>
       </div>
-
-      {/* Placement Confirmation Overlay */}
-      {placementPending && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
-          <div className="bg-white/20 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl text-center">
-            <div className="text-white text-xl font-semibold mb-4">
-              Confirm your placement?
-            </div>
-            <div className="text-white/70 text-sm mb-6">
-              Place "{placementPending.song.deezer_title}" at position {placementPending.position + 1}
-            </div>
-            <div className="flex gap-4 justify-center">
-              <Button
-                onClick={confirmPlacement}
-                className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl flex items-center gap-2"
-              >
-                <Check className="h-4 w-4" />
-                Confirm Placement
-              </Button>
-              <Button
-                onClick={tryAgain}
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 px-6 py-3 rounded-xl flex items-center gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Try Again
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Result Display */}
       {cardPlacementResult && (

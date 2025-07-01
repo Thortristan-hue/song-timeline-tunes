@@ -1,321 +1,101 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, AlertTriangle, SkipForward } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { Play, Pause, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 interface AudioPlayerProps {
-  src: string | null;
+  src: string;
   isPlaying: boolean;
   onPlayPause: () => void;
-  onError?: (error: string) => void;
-  onSkip?: () => void;
-  onUrlResolved?: (mp3Url: string) => void;
-  disabled?: boolean;
   className?: string;
+  volume?: number;
 }
 
-export function AudioPlayer({
+export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
   src,
   isPlaying,
   onPlayPause,
-  onError,
-  onSkip,
-  onUrlResolved,
-  disabled = false,
-  className
-}: AudioPlayerProps) {
-  const { toast } = useToast();
+  className,
+  volume = 0.5
+}, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [audioState, setAudioState] = useState({
-    canPlay: false,
-    needsUserInteraction: false,
-    hasError: false,
-    errorMessage: '',
-    isLoading: false,
-    isMuted: false,
-    currentUrl: ''
-  });
 
-  // Resolve audio URL
-  useEffect(() => {
-    const resolveAudioUrl = async () => {
-      if (!src) return;
+  // FIXED: Expose audio element via ref for external control
+  useImperativeHandle(ref, () => audioRef.current!, []);
 
-      setAudioState(prev => ({ ...prev, isLoading: true, hasError: false }));
-
-      try {
-        // Check if it's a Deezer track URL
-        const trackId = src.match(/track\/(\d+)/)?.[1];
-        let playableUrl = src;
-
-        if (trackId) {
-          console.log(`🎵 Resolving Deezer track ${trackId} to MP3 URL...`);
-          playableUrl = await DeezerAudioService.getPreviewUrl(trackId);
-          console.log(`🎵 Resolved to MP3: ${playableUrl}`);
-          onUrlResolved?.(playableUrl);
-        }
-
-        setAudioState(prev => ({
-          ...prev,
-          currentUrl: playableUrl,
-          isLoading: false,
-          hasError: false
-        }));
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Failed to load audio';
-        console.error('🚫 Audio resolution failed:', errorMsg);
-        
-        setAudioState(prev => ({
-          ...prev,
-          hasError: true,
-          errorMessage: errorMsg,
-          isLoading: false
-        }));
-        
-        onError?.(errorMsg);
-        
-        // Auto-skip songs with no preview after a short delay
-        if (errorMsg.includes('No preview available') && onSkip) {
-          setTimeout(() => {
-            console.log('⏭️ Auto-skipping song with no preview');
-            onSkip();
-          }, 2000);
-        }
-      }
-    };
-
-    resolveAudioUrl();
-  }, [src, onError, onUrlResolved, onSkip]);
-
-  // Audio event handlers
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleCanPlay = () => {
-      console.log('🔊 Audio can play');
-      setAudioState(prev => ({
-        ...prev,
-        canPlay: true,
-        isLoading: false,
-        hasError: false
-      }));
-    };
-
-    const handleError = () => {
-      const error = audio.error;
-      let errorMessage = 'Audio playback failed';
-
-      if (error) {
-        switch (error.code) {
-          case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = 'Network error loading audio';
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            errorMessage = 'Audio format not supported';
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage = 'Audio source not supported';
-            break;
+    // FIXED: Set volume and ensure no overlapping audio
+    audio.volume = volume;
+    
+    if (isPlaying) {
+      // FIXED: Stop any other playing audio before starting
+      const allAudio = document.querySelectorAll('audio');
+      allAudio.forEach(otherAudio => {
+        if (otherAudio !== audio && !otherAudio.paused) {
+          otherAudio.pause();
+          otherAudio.currentTime = 0;
         }
+      });
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('Audio play failed:', error);
+        });
       }
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, volume]);
 
-      console.error('🚫 Audio element error:', errorMessage);
-      setAudioState(prev => ({
-        ...prev,
-        hasError: true,
-        errorMessage,
-        isLoading: false
-      }));
-      onError?.(errorMessage);
-    };
-
-    const handleLoadStart = () => {
-      console.log('🔄 Audio loading started');
-      setAudioState(prev => ({ ...prev, isLoading: true }));
-    };
-
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('loadstart', handleLoadStart);
-
-    return () => {
-      audio.removeEventListener('canplay', handleCanPlay);
-      audio.removeEventListener('error', handleError);
-      audio.removeEventListener('loadstart', handleLoadStart);
-    };
-  }, [onError]);
-
-  // Handle play/pause with proper audio sync
+  // FIXED: Handle audio ending to update state
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audioState.currentUrl) return;
+    if (!audio) return;
 
-    const handlePlayback = async () => {
-      try {
-        if (isPlaying && audio.paused) {
-          audio.currentTime = 0;
-          console.log('▶️ Playing audio');
-          await audio.play();
-        } else if (!isPlaying && !audio.paused) {
-          console.log('⏸️ Pausing audio');
-          audio.pause();
-        }
-      } catch (error) {
-        console.error('🚫 Playback sync error:', error);
-        if (error instanceof Error && error.name === 'NotAllowedError') {
-          setAudioState(prev => ({
-            ...prev,
-            needsUserInteraction: true,
-            hasError: true,
-            errorMessage: 'Click to enable audio'
-          }));
-        }
-      }
+    const handleEnded = () => {
+      onPlayPause(); // This will set isPlaying to false
     };
 
-    handlePlayback();
-  }, [isPlaying, audioState.currentUrl]);
+    audio.addEventListener('ended', handleEnded);
+    return () => audio.removeEventListener('ended', handleEnded);
+  }, [onPlayPause]);
 
-  const handlePlayPause = useCallback(async () => {
+  // FIXED: Update src and reset audio when it changes
+  useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audioState.currentUrl) return;
+    if (!audio) return;
 
-    try {
-      if (audioState.needsUserInteraction) {
-        // First time user interaction
-        audio.currentTime = 0;
-        await audio.play();
-        setAudioState(prev => ({ ...prev, needsUserInteraction: false, hasError: false }));
-      }
-      onPlayPause();
-    } catch (error) {
-      console.error('🚫 Playback error:', error);
-      
-      if (error instanceof Error && error.name === 'NotAllowedError') {
-        setAudioState(prev => ({
-          ...prev,
-          needsUserInteraction: true,
-          hasError: true,
-          errorMessage: 'Click to enable audio'
-        }));
-      } else {
-        const errorMsg = 'Playback failed. Try again or skip.';
-        setAudioState(prev => ({ ...prev, hasError: true, errorMessage: errorMsg }));
-        onError?.(errorMsg);
-      }
-    }
-  }, [onPlayPause, onError, audioState.currentUrl, audioState.needsUserInteraction]);
+    // FIXED: Stop current audio when src changes
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = src;
+    audio.load();
+  }, [src]);
 
-  const handleMuteToggle = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted;
-      setAudioState(prev => ({ ...prev, isMuted: audioRef.current?.muted ?? false }));
-    }
-  };
-
-  const handleTryAgain = () => {
-    console.log('🔄 Trying again...');
-    setAudioState(prev => ({
-      ...prev,
-      hasError: false,
-      errorMessage: '',
-      needsUserInteraction: false
-    }));
-    audioRef.current?.load();
-  };
-
-  // Error state with auto-skip for missing previews
-  if (audioState.hasError && !audioState.needsUserInteraction) {
-    return (
-      <div className={cn("flex items-center gap-2 p-3 bg-red-500/20 rounded-lg", className)}>
-        <AlertTriangle className="h-5 w-5 text-red-400" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-red-200">{audioState.errorMessage}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleTryAgain} className="bg-red-600 hover:bg-red-700 text-xs">
-            Try Again
-          </Button>
-          {onSkip && (
-            <Button size="sm" onClick={onSkip} variant="outline" className="text-xs border-red-400">
-              <SkipForward className="h-3 w-3 mr-1" />
-              Skip
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // User interaction required
-  if (audioState.needsUserInteraction) {
-    return (
-      <div className={cn("flex items-center gap-3 p-4 bg-amber-500/20 rounded-lg", className)}>
-        <div className="text-2xl">🔊</div>
-        <div className="flex-1">
-          <p className="text-sm text-amber-200 mb-2">Click to enable audio</p>
-          <Button onClick={handlePlayPause} className="bg-amber-600 hover:bg-amber-700" disabled={disabled}>
-            <Play className="h-4 w-4 mr-2" />
-            Enable Audio
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Normal state
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      {audioState.currentUrl && (
-        <audio
-          ref={audioRef}
-          src={audioState.currentUrl}
-          crossOrigin="anonymous"
-          preload="metadata"
-        />
-      )}
-      
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        style={{ display: 'none' }}
+      />
       <Button
-        onClick={handlePlayPause}
-        size="sm"
-        className="rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 h-9 w-9 p-0"
-        disabled={disabled || !audioState.currentUrl || !audioState.canPlay || audioState.isLoading}
-      >
-        {audioState.isLoading ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
-      
-      <Button
-        onClick={handleMuteToggle}
+        onClick={onPlayPause}
         size="sm"
         variant="outline"
-        className="rounded-xl h-9 w-9 p-0 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200"
-        disabled={disabled || !audioState.currentUrl}
+        className="flex items-center gap-1"
       >
-        {audioState.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
       </Button>
-      
-      {onSkip && (
-        <Button
-          onClick={onSkip}
-          size="sm"
-          variant="outline"
-          className="rounded-xl h-9 px-3 border-slate-600/50 bg-slate-700/80 hover:bg-slate-600/80 text-slate-200"
-          disabled={disabled}
-        >
-          <SkipForward className="h-4 w-4 mr-1" />
-          Skip
-        </Button>
-      )}
+      <Volume2 className="h-3 w-3 text-muted-foreground" />
     </div>
   );
-}
+});
+
+AudioPlayer.displayName = 'AudioPlayer';

@@ -2,7 +2,8 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Music, Check, X, Sparkles, Calendar, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Music, Check, X, Sparkles, Calendar, Play, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
 import { DeezerAudioService } from "@/services/DeezerAudioService";
@@ -18,6 +19,8 @@ interface PlayerTimelineProps {
   handleDragLeave: () => void;
   handleDrop: (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => void;
   transitioningTurn?: boolean;
+  onConfirmPlacement?: (song: Song, position: number) => Promise<{ success: boolean }>;
+  onCancelPlacement?: () => void;
 }
 
 export function PlayerTimeline({
@@ -30,11 +33,22 @@ export function PlayerTimeline({
   handleDragOver,
   handleDragLeave,
   handleDrop,
-  transitioningTurn = false
+  transitioningTurn = false,
+  onConfirmPlacement,
+  onCancelPlacement
 }: PlayerTimelineProps) {
   // Optimized timeline song playback with just-in-time preview fetching
   const playTimelineSong = async (song: Song) => {
     console.log('🎵 Playing timeline song:', song.deezer_title);
+    
+    // FIXED: Stop any currently playing audio before starting new one
+    const allAudio = document.querySelectorAll('audio');
+    allAudio.forEach(audio => {
+      if (!audio.paused) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
     
     let previewUrl = song.preview_url;
     
@@ -54,7 +68,7 @@ export function PlayerTimeline({
       return;
     }
     
-    // Create and play audio element
+    // FIXED: Create and play audio element with overlap prevention
     const audio = new Audio(previewUrl);
     audio.volume = 0.5;
     
@@ -72,13 +86,33 @@ export function PlayerTimeline({
     }
   };
 
+  const handleConfirmClick = async () => {
+    if (!placementPending || !onConfirmPlacement) return;
+    
+    try {
+      console.log('🎯 FIXED: Confirming placement for mystery card:', placementPending.song.deezer_title);
+      await onConfirmPlacement(placementPending.song, placementPending.position);
+    } catch (error) {
+      console.error('Failed to confirm placement:', error);
+    }
+  };
+
+  const handleTryAgainClick = () => {
+    if (!onCancelPlacement) return;
+    console.log('🔄 FIXED: Player choosing to try again with placement');
+    onCancelPlacement();
+  };
+
   const renderCard = (song: Song, index: number) => {
+    const isPendingPosition = placementPending?.position === index;
+    
     return (
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
           "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1 cursor-pointer group",
-          "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl"
+          "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl",
+          isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50"
         )}
         onClick={() => playTimelineSong(song)}
       >
@@ -88,6 +122,43 @@ export function PlayerTimeline({
         <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Play className="h-8 w-8 text-white" />
         </div>
+        
+        {/* FIXED: Show confirmation overlay for pending placement */}
+        {isPendingPosition && placementPending && (
+          <div className="absolute inset-0 bg-black/60 rounded-3xl flex flex-col items-center justify-center p-2 z-10">
+            <div className="text-center mb-3">
+              <div className="text-xs text-white/80 mb-1">Place here?</div>
+              <div className="text-xs font-semibold text-white truncate">
+                {placementPending.song.deezer_title}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmClick();
+                }}
+                size="sm"
+                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs h-6"
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Yes
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTryAgainClick();
+                }}
+                size="sm"
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 px-3 py-1 text-xs h-6"
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                No
+              </Button>
+            </div>
+          </div>
+        )}
         
         <Music className="h-8 w-8 mb-3 opacity-70" />
         <div className="text-center relative z-10 space-y-1">
@@ -136,14 +207,14 @@ export function PlayerTimeline({
           }
         }}
       >
-        {draggedSong && isCurrent && (
+        {draggedSong && isCurrent && !isPending && (
           <div className="text-white/80 text-xs font-medium text-center leading-tight">
             Drop<br />here
           </div>
         )}
         {isPending && (
           <div className="text-blue-200 text-xs font-medium text-center leading-tight">
-            Pending<br />placement
+            Confirm<br />placement
           </div>
         )}
       </div>
@@ -179,7 +250,7 @@ export function PlayerTimeline({
             </p>
             {isCurrent && (
               <p className="text-white/50 text-sm font-normal">
-                Drag the song card to create your chronological timeline
+                Drag the mystery card to create your chronological timeline
               </p>
             )}
           </div>
