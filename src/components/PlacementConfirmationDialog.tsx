@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -16,7 +17,7 @@ interface PlacementConfirmationDialogProps {
   song: Song | null;
   position: number;
   timeline: Song[];
-  onConfirm: () => void;
+  onConfirm: (song: Song, position: number) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -41,6 +42,10 @@ export function PlacementConfirmationDialog({
       return `at the end (after ${timeline[timeline.length - 1]?.release_year})`;
     }
     return `between ${timeline[position - 1]?.release_year} and ${timeline[position]?.release_year}`;
+  };
+
+  const handleConfirm = async () => {
+    await onConfirm(song, position);
   };
 
   return (
@@ -69,7 +74,7 @@ export function PlacementConfirmationDialog({
             Cancel
           </Button>
           <Button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
           >
             Confirm

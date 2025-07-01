@@ -7,6 +7,7 @@ import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { AudioPlayer } from '@/components/AudioPlayer';
+import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 interface GamePlayProps {
   room: any;
@@ -32,6 +33,7 @@ export function GamePlay({
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [startingCardsAssigned, setStartingCardsAssigned] = useState(false);
+  const [currentSongWithPreview, setCurrentSongWithPreview] = useState<Song | null>(null);
 
   const audioChannelRef = useRef<any>(null);
 
@@ -67,6 +69,31 @@ export function GamePlay({
     hostId: room?.host_id,
     hostFilteredOut: players.filter(p => p.id.includes(room?.host_id) || p.id === room?.host_id).length
   });
+
+  // Fetch preview URL just-in-time when current song changes
+  useEffect(() => {
+    const fetchPreviewForCurrentSong = async () => {
+      if (gameState.currentSong && gameState.currentSong.deezer_id) {
+        console.log('🎵 Fetching preview just-in-time for current song:', gameState.currentSong.deezer_title);
+        try {
+          const previewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.deezer_id);
+          const songWithPreview = {
+            ...gameState.currentSong,
+            preview_url: previewUrl
+          };
+          setCurrentSongWithPreview(songWithPreview);
+          console.log('✅ Preview URL fetched:', previewUrl);
+        } catch (error) {
+          console.error('❌ Failed to fetch preview URL:', error);
+          setCurrentSongWithPreview(gameState.currentSong);
+        }
+      } else {
+        setCurrentSongWithPreview(gameState.currentSong);
+      }
+    };
+
+    fetchPreviewForCurrentSong();
+  }, [gameState.currentSong]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -152,11 +179,11 @@ export function GamePlay({
     console.log('🎵 Play/Pause clicked:', { 
       isHost, 
       isPlaying, 
-      currentSong: gameState.currentSong?.deezer_title,
+      currentSong: currentSongWithPreview?.deezer_title,
       currentTurnPlayer: currentTurnPlayer?.name
     });
     
-    if (!currentTurnPlayer || !gameState.currentSong) {
+    if (!currentTurnPlayer || !currentSongWithPreview) {
       console.log('⚠️ No current turn player or song, ignoring play/pause');
       return;
     }
@@ -195,18 +222,18 @@ export function GamePlay({
     }
   };
 
-  const handlePlaceCard = async (position: number): Promise<{ success: boolean }> => {
-    if (!gameState.currentSong || !currentPlayer) {
-      console.error('Cannot place card: missing song or player');
+  const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
+    if (!currentPlayer) {
+      console.error('Cannot place card: missing player');
       return { success: false };
     }
 
     try {
-      console.log('🃏 Placing card at position:', position);
+      console.log('🃏 Placing card:', { song: song.deezer_title, position });
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
-      const result = await onPlaceCard(gameState.currentSong, position);
+      const result = await onPlaceCard(song, position);
       console.log('🃏 Card placement result:', result);
       
       if (result.success) {
@@ -214,7 +241,7 @@ export function GamePlay({
         
         setCardPlacementResult({ 
           correct: isCorrect, 
-          song: gameState.currentSong 
+          song: song 
         });
 
         if (isCorrect) {
@@ -309,7 +336,7 @@ export function GamePlay({
       <div className="relative">
         <HostGameView
           currentTurnPlayer={validCurrentTurnPlayer}
-          currentSong={gameState.currentSong}
+          currentSong={currentSongWithPreview}
           roomCode={room.lobby_code}
           players={activePlayers}
           mysteryCardRevealed={mysteryCardRevealed}
@@ -319,10 +346,10 @@ export function GamePlay({
         />
         
         {/* Hidden audio player for host - only plays current turn player's song */}
-        {gameState.currentSong?.preview_url && (
+        {currentSongWithPreview?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
-              src={gameState.currentSong.preview_url}
+              src={currentSongWithPreview.preview_url}
               isPlaying={isPlaying}
               onPlayPause={handlePlayPause}
               className="bg-black/50 p-2 rounded"
@@ -357,7 +384,7 @@ export function GamePlay({
       <PlayerGameView
         currentPlayer={currentPlayer}
         currentTurnPlayer={currentTurnPlayer || currentPlayer}
-        currentSong={gameState.currentSong}
+        currentSong={currentSongWithPreview}
         roomCode={room.lobby_code}
         isMyTurn={isMyTurn}
         isPlaying={isPlaying}
@@ -368,10 +395,10 @@ export function GamePlay({
       />
       
       {/* Hidden audio player for player - only plays if it's their turn */}
-      {gameState.currentSong?.preview_url && isMyTurn && (
+      {currentSongWithPreview?.preview_url && isMyTurn && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer
-            src={gameState.currentSong.preview_url}
+            src={currentSongWithPreview.preview_url}
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
             className="bg-black/50 p-2 rounded"

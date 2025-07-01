@@ -16,7 +16,7 @@ interface PlayerGameViewProps {
   isMyTurn: boolean;
   isPlaying: boolean;
   onPlayPause: () => void;
-  onPlaceCard: (position: number) => Promise<{ success: boolean }>;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
   mysteryCardRevealed: boolean;
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }
@@ -66,15 +66,18 @@ export function PlayerGameView({
     setConfirmingPlacement({ song: draggedSong, position });
   };
 
-  const confirmPlacement = async () => {
-    if (!confirmingPlacement) return;
-    
+  const confirmPlacement = async (song: Song, position: number) => {
     try {
-      const result = await onPlaceCard(confirmingPlacement.position);
+      console.log('Confirming placement:', { song: song.deezer_title, position });
+      const result = await onPlaceCard(song, position);
       console.log('Card placement result:', result);
+      
+      // Close dialog and reset state
+      setConfirmingPlacement(null);
+      setDraggedSong(null);
     } catch (error) {
       console.error('Failed to place card:', error);
-    } finally {
+      // Still close dialog on error
       setConfirmingPlacement(null);
       setDraggedSong(null);
     }
@@ -103,7 +106,6 @@ export function PlayerGameView({
         </div>
       </div>
 
-      {/* Header */}
       <div className="absolute top-16 left-6 right-6 z-40">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -125,7 +127,6 @@ export function PlayerGameView({
         </div>
       </div>
 
-      {/* Player Status */}
       <div className="absolute top-32 left-6 z-30">
         <div className="bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-xl">
           <div className="flex items-center gap-3">
@@ -141,7 +142,6 @@ export function PlayerGameView({
         </div>
       </div>
 
-      {/* Turn Status */}
       <div className="absolute top-32 right-6 z-30">
         <div className={`bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-xl ${
           isMyTurn ? 'ring-2 ring-blue-400/50' : ''

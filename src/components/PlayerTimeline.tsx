@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Music, Check, X, Sparkles, Calendar, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
+import { DeezerAudioService } from "@/services/DeezerAudioService";
 
 interface PlayerTimelineProps {
   player: Player;
@@ -16,7 +17,7 @@ interface PlayerTimelineProps {
   handleDragOver: (e: React.DragEvent, position: number) => void;
   handleDragLeave: () => void;
   handleDrop: (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => void;
-  confirmPlacement: () => void;
+  confirmPlacement: (song: Song, position: number) => Promise<void>;
   cancelPlacement: () => void;
   transitioningTurn?: boolean;
 }
@@ -36,18 +37,33 @@ export function PlayerTimeline({
   transitioningTurn = false
 }: PlayerTimelineProps) {
   const playTimelineSong = async (song: Song) => {
-    if (!song.preview_url) {
-      console.log('No preview URL available for this song');
+    console.log('🎵 Playing timeline song:', song.deezer_title);
+    
+    let previewUrl = song.preview_url;
+    
+    // Fetch preview just-in-time if not available or if it might be expired
+    if (!previewUrl && song.deezer_id) {
+      try {
+        console.log('🔍 Fetching preview URL just-in-time for timeline song');
+        previewUrl = await DeezerAudioService.getPreviewUrl(song.deezer_id);
+      } catch (error) {
+        console.error('❌ Failed to fetch preview URL for timeline song:', error);
+        return;
+      }
+    }
+    
+    if (!previewUrl) {
+      console.log('❌ No preview URL available for this song');
       return;
     }
     
     // Create and play audio element
-    const audio = new Audio(song.preview_url);
+    const audio = new Audio(previewUrl);
     audio.volume = 0.5;
     
     try {
       await audio.play();
-      console.log(`Playing timeline song: ${song.deezer_title}`);
+      console.log(`✅ Playing timeline song: ${song.deezer_title}`);
       
       // Stop after 30 seconds
       setTimeout(() => {
@@ -55,7 +71,7 @@ export function PlayerTimeline({
         audio.currentTime = 0;
       }, 30000);
     } catch (error) {
-      console.error('Failed to play timeline song:', error);
+      console.error('❌ Failed to play timeline song:', error);
     }
   };
 
