@@ -124,43 +124,6 @@ export function PlayerTimeline({
           <Play className="h-8 w-8 text-white" />
         </div>
         
-        {/* FIXED: Show confirmation overlay for pending placement with working buttons */}
-        {isPendingPosition && placementPending && (
-          <div className="absolute inset-0 bg-black/80 rounded-3xl flex flex-col items-center justify-center p-3 z-10">
-            <div className="text-center mb-4">
-              <div className="text-sm text-white/90 mb-2 font-medium">Place here?</div>
-              <div className="text-xs font-semibold text-white truncate px-1">
-                {placementPending.song.deezer_title}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleConfirmClick();
-                }}
-                size="sm"
-                className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs h-7 flex items-center gap-1"
-              >
-                <Check className="h-3 w-3" />
-                Yes
-              </Button>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTryAgainClick();
-                }}
-                size="sm"
-                variant="outline"
-                className="border-white/40 text-white hover:bg-white/10 px-2 py-1 text-xs h-7 flex items-center gap-1"
-              >
-                <RotateCcw className="h-3 w-3" />
-                No
-              </Button>
-            </div>
-          </div>
-        )}
-        
         <Music className="h-8 w-8 mb-3 opacity-70" />
         <div className="text-center relative z-10 space-y-1">
           <div className="font-semibold text-sm leading-tight tracking-tight">
@@ -233,6 +196,55 @@ export function PlayerTimeline({
         opacity: transitioningTurn ? 0.6 : 1
       }}
     >
+      {/* ENHANCED: Highly visible confirmation dialog positioned prominently */}
+      {placementPending && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-600/50 max-w-md w-full mx-4 transform scale-100 animate-in fade-in-0 zoom-in-95 duration-300">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Music className="h-8 w-8 text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
+              <p className="text-slate-300 mb-2">Place this song in your timeline?</p>
+              <div className="bg-slate-700/50 rounded-2xl p-4">
+                <div className="font-semibold text-white text-lg mb-1">
+                  {placementPending.song.deezer_title}
+                </div>
+                <div className="text-slate-400 text-sm">
+                  by {placementPending.song.deezer_artist} • {placementPending.song.release_year}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConfirmClick();
+                }}
+                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-green-500/25 transition-all duration-200 transform hover:scale-105"
+                size="lg"
+              >
+                <Check className="h-5 w-5 mr-2" />
+                Confirm
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTryAgainClick();
+                }}
+                variant="outline"
+                className="flex-1 border-2 border-slate-500 text-white hover:bg-slate-700/50 font-bold py-4 px-6 rounded-xl text-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+                size="lg"
+              >
+                <RotateCcw className="h-5 w-5 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto">
         {player.timeline.map((song, index) => (
           <React.Fragment key={`${song.deezer_title}-${index}`}>

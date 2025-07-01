@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -35,6 +34,7 @@ export function GamePlay({
   const [startingCardsAssigned, setStartingCardsAssigned] = useState(false);
   const [currentSongWithPreview, setCurrentSongWithPreview] = useState<Song | null>(null);
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -78,6 +78,7 @@ export function GamePlay({
     const fetchFreshPreview = async () => {
       if (gameState.currentSong && gameState.currentSong.id) {
         console.log('🎵 Fetching FRESH preview for mystery card:', gameState.currentSong.deezer_title);
+        setIsLoadingPreview(true);
         try {
           // Always fetch a fresh preview URL to avoid expired ones
           const freshPreviewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.id);
@@ -95,6 +96,8 @@ export function GamePlay({
         } catch (error) {
           console.error('❌ Failed to fetch fresh preview URL:', error);
           setCurrentSongWithPreview(gameState.currentSong);
+        } finally {
+          setIsLoadingPreview(false);
         }
       } else {
         setCurrentSongWithPreview(gameState.currentSong);
@@ -203,57 +206,38 @@ export function GamePlay({
     };
   }, [currentSongWithPreview?.id]);
 
+  // FIXED: Simplified and reliable host audio preview
   const handlePlayPause = async () => {
     console.log('🎵 Play/Pause for mystery card:', { 
       isHost, 
       isPlaying, 
       currentSong: currentSongWithPreview?.deezer_title,
       currentTurnPlayer: currentTurnPlayer?.name,
-      previewUrl: currentSongWithPreview?.preview_url
+      previewUrl: currentSongWithPreview?.preview_url,
+      isLoadingPreview
     });
     
-    if (!currentTurnPlayer || !currentSongWithPreview) {
-      console.log('⚠️ No current turn player or mystery card');
+    if (!currentTurnPlayer || !currentSongWithPreview || isLoadingPreview) {
+      console.log('⚠️ Cannot play: missing data or loading preview');
       return;
     }
 
-    // If no preview URL, try to fetch a fresh one
-    if (!currentSongWithPreview?.preview_url && currentSongWithPreview.id) {
-      console.log('🔍 No preview URL, fetching fresh one...');
-      try {
-        const freshUrl = await DeezerAudioService.getPreviewUrl(currentSongWithPreview.id);
-        if (freshUrl) {
-          setCurrentSongWithPreview(prev => prev ? { ...prev, preview_url: freshUrl } : null);
-        } else {
-          console.log('❌ Could not get fresh preview URL');
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to fetch fresh preview URL:', error);
-        return;
+    // If already playing, just pause
+    if (isPlaying) {
+      console.log('🎵 Pausing audio');
+      setIsPlaying(false);
+      setGameIsPlaying(false);
+      
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
       }
-    }
-    
-    // Stop any currently playing audio before starting new one
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
-      currentAudioRef.current = null;
-    }
-    
-    // FIXED: Simplified logic - don't toggle, just set the opposite state
-    const newIsPlaying = !isPlaying;
-    console.log(`🎵 Host controlling mystery card audio: ${newIsPlaying}`);
-    
-    if (!isHost) {
+      
       if (audioChannelRef.current) {
-        const action = newIsPlaying ? 'play' : 'pause';
-        console.log(`🔊 Sending audio control: ${action}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
           payload: { 
-            action,
+            action: 'pause',
             currentTurnPlayerId: currentTurnPlayer.id,
             songId: currentSongWithPreview.id
           }
@@ -262,17 +246,51 @@ export function GamePlay({
       return;
     }
 
-    // Host controls - set the state once and broadcast
-    setIsPlaying(newIsPlaying);
-    setGameIsPlaying(newIsPlaying);
+    // Need fresh preview URL before playing
+    let previewUrl = currentSongWithPreview.preview_url;
+    
+    if (!previewUrl && currentSongWithPreview.id) {
+      console.log('🔍 No preview URL, fetching fresh one for host play...');
+      setIsLoadingPreview(true);
+      try {
+        previewUrl = await DeezerAudioService.getPreviewUrl(currentSongWithPreview.id);
+        if (previewUrl) {
+          setCurrentSongWithPreview(prev => prev ? { ...prev, preview_url: previewUrl } : null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch fresh preview URL:', error);
+        setIsLoadingPreview(false);
+        return;
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    }
+
+    if (!previewUrl) {
+      console.log('❌ No preview URL available for host playback');
+      return;
+    }
+    
+    // Stop any currently playing audio before starting new one
+    const allAudio = document.querySelectorAll('audio');
+    allAudio.forEach(audio => {
+      if (!audio.paused) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
+    
+    console.log('🎵 Starting audio playback for host');
+    setIsPlaying(true);
+    setGameIsPlaying(true);
 
     if (audioChannelRef.current) {
-      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'}`);
+      console.log('🔊 Broadcasting audio control: play');
       await audioChannelRef.current.send({
         type: 'broadcast',
         event: 'audio-control',
         payload: { 
-          action: newIsPlaying ? 'play' : 'pause',
+          action: 'play',
           currentTurnPlayerId: currentTurnPlayer.id,
           songId: currentSongWithPreview.id
         }
@@ -428,7 +446,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
         />
         
-        {/* Hidden audio player for host - only plays current mystery card */}
+        {/* ENHANCED: Host audio player with better error handling */}
         {currentSongWithPreview?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
@@ -437,6 +455,7 @@ export function GamePlay({
               onPlayPause={handlePlayPause}
               className="bg-black/50 p-2 rounded"
               ref={currentAudioRef}
+              disabled={isLoadingPreview}
             />
           </div>
         )}
@@ -478,7 +497,7 @@ export function GamePlay({
         cardPlacementResult={cardPlacementResult}
       />
       
-      {/* Hidden audio player for player - only plays if it's their turn and it's the mystery card */}
+      {/* Player audio player - only plays if it's their turn and it's the mystery card */}
       {currentSongWithPreview?.preview_url && isMyTurn && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer
@@ -487,6 +506,7 @@ export function GamePlay({
             onPlayPause={handlePlayPause}
             className="bg-black/50 p-2 rounded"
             ref={currentAudioRef}
+            disabled={isLoadingPreview}
           />
         </div>
       )}

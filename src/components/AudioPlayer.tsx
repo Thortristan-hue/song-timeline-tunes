@@ -26,12 +26,14 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
   // Expose audio element via ref for external control
   useImperativeHandle(ref, () => audioRef.current!, []);
 
+  // ENHANCED: Better audio handling with fresh URL validation and error recovery
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !src || disabled) return;
 
-    // Set volume
+    // Set volume and CORS
     audio.volume = volume;
+    audio.crossOrigin = 'anonymous';
     
     if (isPlaying) {
       // Stop any other playing audio before starting
@@ -43,48 +45,77 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         }
       });
 
-      // Test if the URL is valid before attempting to play
-      audio.load();
+      // Set source and attempt to play
+      if (audio.src !== src) {
+        audio.src = src;
+        audio.load();
+      }
+      
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error('Audio play failed:', error);
-          // Reset playing state if audio fails
-          onPlayPause();
-        });
+        playPromise
+          .then(() => {
+            console.log('✅ Audio playback started successfully');
+          })
+          .catch(error => {
+            console.error('❌ Audio play failed:', error);
+            // Reset playing state if audio fails
+            if (error.name === 'AbortError') {
+              console.log('🔄 Audio aborted, likely due to source change');
+            } else if (error.name === 'NotSupportedError') {
+              console.log('🔄 Audio format not supported or URL expired');
+              onPlayPause(); // Reset state
+            } else {
+              console.log('🔄 Other audio error, resetting state');
+              onPlayPause(); // Reset state
+            }
+          });
       }
     } else {
       audio.pause();
     }
   }, [isPlaying, volume, src, disabled, onPlayPause]);
 
-  // Handle audio ending and errors
+  // Handle audio events
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const handleEnded = () => {
+      console.log('🎵 Audio ended naturally');
       onPlayPause(); // This will set isPlaying to false
     };
 
-    const handleError = () => {
-      console.error('Audio error occurred - resetting play state');
+    const handleError = (e: Event) => {
+      const target = e.target as HTMLAudioElement;
+      const error = target.error;
+      console.error('❌ Audio error occurred:', {
+        code: error?.code,
+        message: error?.message,
+        src: target.src
+      });
       onPlayPause(); // Stop playing on error
     };
 
     const handleLoadError = () => {
-      console.error('Audio load error - invalid or expired URL');
+      console.error('❌ Audio load error - invalid or expired URL');
       onPlayPause(); // Stop playing on load error
+    };
+
+    const handleCanPlay = () => {
+      console.log('✅ Audio can play - ready for playback');
     };
 
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     audio.addEventListener('abort', handleLoadError);
+    audio.addEventListener('canplay', handleCanPlay);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('abort', handleLoadError);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
   }, [onPlayPause]);
 
@@ -96,7 +127,8 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     // Stop current audio when src changes
     audio.pause();
     audio.currentTime = 0;
-    if (src) {
+    if (src && src !== audio.src) {
+      console.log('🔄 Setting new audio source:', src);
       audio.src = src;
       audio.load();
     }
@@ -106,8 +138,8 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     <div className={cn("flex items-center gap-2", className)}>
       <audio
         ref={audioRef}
-        src={src || undefined}
         preload="metadata"
+        crossOrigin="anonymous"
         style={{ display: 'none' }}
       />
       <Button
@@ -118,6 +150,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         disabled={disabled || !src}
       >
         {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+        {disabled && <span className="text-xs">Loading...</span>}
       </Button>
       <Volume2 className="h-3 w-3 text-muted-foreground" />
     </div>
