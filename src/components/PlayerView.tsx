@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ export function PlayerView({
   onDragStart,
   onDragEnd
 }: PlayerViewProps) {
-  const [confirmingPlacement, setConfirmingPlacement] = useState<{ song: Song; position: number } | null>(null);
+  const [placementPending, setPlacementPending] = useState<{ song: Song; position: number } | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -63,23 +64,7 @@ export function PlayerView({
     if (!isMyTurn || !draggedSong) return;
     
     setHoveredPosition(null);
-    setConfirmingPlacement({ song: draggedSong, position });
-  };
-
-  const confirmPlacement = async () => {
-    if (!confirmingPlacement) return;
-    
-    try {
-      await onPlaceCard(confirmingPlacement.position);
-    } catch (error) {
-      console.error('Failed to place card:', error);
-    } finally {
-      setConfirmingPlacement(null);
-    }
-  };
-
-  const cancelPlacement = () => {
-    setConfirmingPlacement(null);
+    setPlacementPending({ song: draggedSong, position });
   };
 
   return (
@@ -218,38 +203,12 @@ export function PlayerView({
           isDarkMode={true}
           draggedSong={draggedSong}
           hoveredPosition={hoveredPosition}
-          confirmingPlacement={confirmingPlacement}
+          placementPending={placementPending}
           handleDragOver={handleDragOver}
           handleDragLeave={handleDragLeave}
           handleDrop={handleDrop}
-          confirmPlacement={confirmPlacement}
-          cancelPlacement={cancelPlacement}
         />
       </div>
-
-      {/* Confirmation Buttons */}
-      {confirmingPlacement && (
-        <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 z-30">
-          <div className="flex gap-4 bg-black/20 backdrop-blur-3xl p-5 rounded-3xl border border-white/10">
-            <Button
-              onClick={confirmPlacement}
-              className="bg-white text-black hover:bg-white/90 rounded-2xl px-8 py-3 font-semibold
-                       transition-all duration-200 hover:scale-105 active:scale-95 border-0"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Place it here
-            </Button>
-            <Button
-              onClick={cancelPlacement}
-              className="bg-white/10 hover:bg-white/20 text-white rounded-2xl px-8 py-3 font-semibold 
-                       border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Never mind
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Card Placement Result */}
       {gameState.cardPlacementCorrect !== null && (
