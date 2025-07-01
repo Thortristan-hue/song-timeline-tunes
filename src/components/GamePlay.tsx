@@ -241,9 +241,13 @@ export function GamePlay({
       currentAudioRef.current = null;
     }
     
+    // FIXED: Simplified logic - don't toggle, just set the opposite state
+    const newIsPlaying = !isPlaying;
+    console.log(`🎵 Host controlling mystery card audio: ${newIsPlaying}`);
+    
     if (!isHost) {
       if (audioChannelRef.current) {
-        const action = isPlaying ? 'pause' : 'play';
+        const action = newIsPlaying ? 'play' : 'pause';
         console.log(`🔊 Sending audio control: ${action}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
@@ -258,8 +262,7 @@ export function GamePlay({
       return;
     }
 
-    const newIsPlaying = !isPlaying;
-    console.log(`🎵 Host controlling mystery card audio: ${newIsPlaying}`);
+    // Host controls - set the state once and broadcast
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 

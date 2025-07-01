@@ -124,12 +124,12 @@ export function PlayerTimeline({
           <Play className="h-8 w-8 text-white" />
         </div>
         
-        {/* Show confirmation overlay for pending placement */}
+        {/* FIXED: Show confirmation overlay for pending placement with working buttons */}
         {isPendingPosition && placementPending && (
-          <div className="absolute inset-0 bg-black/60 rounded-3xl flex flex-col items-center justify-center p-2 z-10">
-            <div className="text-center mb-3">
-              <div className="text-xs text-white/80 mb-1">Place here?</div>
-              <div className="text-xs font-semibold text-white truncate">
+          <div className="absolute inset-0 bg-black/80 rounded-3xl flex flex-col items-center justify-center p-3 z-10">
+            <div className="text-center mb-4">
+              <div className="text-sm text-white/90 mb-2 font-medium">Place here?</div>
+              <div className="text-xs font-semibold text-white truncate px-1">
                 {placementPending.song.deezer_title}
               </div>
             </div>
@@ -140,9 +140,9 @@ export function PlayerTimeline({
                   handleConfirmClick();
                 }}
                 size="sm"
-                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs h-6"
+                className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs h-7 flex items-center gap-1"
               >
-                <Check className="h-3 w-3 mr-1" />
+                <Check className="h-3 w-3" />
                 Yes
               </Button>
               <Button
@@ -152,9 +152,9 @@ export function PlayerTimeline({
                 }}
                 size="sm"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 px-3 py-1 text-xs h-6"
+                className="border-white/40 text-white hover:bg-white/10 px-2 py-1 text-xs h-7 flex items-center gap-1"
               >
-                <RotateCcw className="h-3 w-3 mr-1" />
+                <RotateCcw className="h-3 w-3" />
                 No
               </Button>
             </div>
