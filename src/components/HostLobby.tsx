@@ -104,7 +104,7 @@ export function HostLobby({
           <div className="text-white/70 animate-fade-in" style={{animationDelay: '0.2s'}}>This'll just take a second...</div>
         </div>
         
-        <style jsx>{`
+        <style>{`
           @keyframes flow {
             0%, 100% { 
               background: linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3), rgba(236, 72, 153, 0.3));
@@ -338,7 +338,7 @@ export function HostLobby({
         </div>
       </div>
       
-      <style jsx>{`
+      <style>{`
         @keyframes flow {
           0%, 100% { 
             background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2), rgba(236, 72, 153, 0.2));
