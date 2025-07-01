@@ -123,8 +123,19 @@ export class GameService {
     }
   }
 
-  // Set current song for the room
+  // Set current song for the room - CRITICAL FIX: Ensure mystery card is always set
   static async setCurrentSong(roomId: string, song: Song): Promise<void> {
+    if (!song) {
+      console.error('❌ CRITICAL: Cannot set undefined song as mystery card');
+      throw new Error('Song cannot be undefined');
+    }
+
+    console.log('🎵 SYNC: Setting mystery card in database:', {
+      roomId,
+      songTitle: song.deezer_title,
+      songId: song.id
+    });
+
     const { error } = await supabase
       .from('game_rooms')
       .update({
@@ -134,12 +145,44 @@ export class GameService {
       .eq('id', roomId);
 
     if (error) {
-      console.error('Failed to set current song:', error);
+      console.error('❌ CRITICAL: Failed to set current song:', error);
       throw error;
     }
+
+    console.log('✅ SYNC: Mystery card successfully set in database');
   }
 
-  // Place card and advance turn
+  // Initialize game with mystery card - NEW METHOD
+  static async initializeGameWithMysteryCard(roomId: string, availableSongs: Song[]): Promise<Song> {
+    if (!availableSongs || availableSongs.length === 0) {
+      throw new Error('No available songs to initialize mystery card');
+    }
+
+    const initialMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+    console.log('🎯 INIT: Initializing game with mystery card:', initialMysteryCard.deezer_title);
+
+    // Set the mystery card in the database
+    await this.setCurrentSong(roomId, initialMysteryCard);
+
+    // Set current turn to 0 and initialize turn tracking
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({
+        current_turn: 0,
+        phase: 'playing',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', roomId);
+
+    if (error) {
+      console.error('Failed to initialize game state:', error);
+      throw error;
+    }
+
+    return initialMysteryCard;
+  }
+
+  // Place card and advance turn - ENHANCED with better mystery card handling
   static async placeCard(
     roomId: string,
     playerId: string,
@@ -148,6 +191,8 @@ export class GameService {
     availableSongs: Song[]
   ): Promise<{ success: boolean; correct?: boolean; error?: string }> {
     try {
+      console.log('🃏 MANDATORY: Starting card placement with turn advancement');
+
       // Get current player data
       const { data: playerData, error: playerError } = await supabase
         .from('players')
@@ -197,23 +242,51 @@ export class GameService {
       // Advance turn
       const currentTurn = roomData.current_turn || 0;
       const nextTurn = (currentTurn + 1) % allPlayers.length;
+      const nextPlayerId = allPlayers[nextTurn]?.id;
       
-      // Get next mystery card
-      const nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+      // CRITICAL FIX: Always ensure we have a valid next mystery card
+      let nextMysteryCard: Song;
+      if (availableSongs && availableSongs.length > 0) {
+        nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+      } else {
+        // Fallback: use the current song if no available songs
+        nextMysteryCard = song;
+      }
+
+      console.log('🎯 MANDATORY: Advancing to next turn with new mystery card:', {
+        nextTurn,
+        nextPlayerId,
+        mysteryCard: nextMysteryCard.deezer_title
+      });
       
-      // Update room with new turn and mystery card
-      await this.updateGameTurn(roomId, nextTurn, nextMysteryCard, 0);
+      // Update room with new turn, mystery card, and current player
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({
+          current_turn: nextTurn,
+          current_song: nextMysteryCard as any,
+          current_player_id: nextPlayerId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('❌ MANDATORY: Failed to advance turn:', updateError);
+        throw updateError;
+      }
 
       // Record the move
       await this.recordGameMove(roomId, playerId, 'card_placement', {
         song,
         position,
-        correct: isCorrect
+        correct: isCorrect,
+        nextMysteryCard: nextMysteryCard.id
       });
 
+      console.log('✅ MANDATORY: Card placed and turn advanced successfully');
       return { success: true, correct: isCorrect };
     } catch (error) {
-      console.error('Failed to place card:', error);
+      console.error('❌ MANDATORY: Failed to place card:', error);
       return { success: false, error: 'Failed to place card' };
     }
   }

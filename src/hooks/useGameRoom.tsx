@@ -99,6 +99,11 @@ export function useGameRoom() {
       }, (payload) => {
         console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
         const roomData = payload.new as any;
+        
+        // CRITICAL FIX: Ensure current_song is properly handled
+        const currentSong = roomData.current_song || null;
+        console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
+        
         setRoom({
           id: roomData.id,
           lobby_code: roomData.lobby_code,
@@ -109,7 +114,7 @@ export function useGameRoom() {
           created_at: roomData.created_at,
           updated_at: roomData.updated_at,
           current_turn: roomData.current_turn,
-          current_song: roomData.current_song || null,
+          current_song: currentSong,
           current_player_id: roomData.current_player_id || null
         });
       })
@@ -265,7 +270,7 @@ export function useGameRoom() {
         created_at: roomData.created_at,
         updated_at: roomData.updated_at,
         current_turn: roomData.current_turn,
-        current_song: null
+        current_song: roomData.current_song || null
       });
       
       setCurrentPlayer(convertPlayer(playerData));
@@ -349,19 +354,28 @@ export function useGameRoom() {
     }
   }, [room, isHost]);
 
-  const startGame = useCallback(async (): Promise<boolean> => {
+  const startGame = useCallback(async (availableSongs?: Song[]): Promise<boolean> => {
     if (!room || !isHost) return false;
 
     try {
-      const { error } = await supabase
-        .from('game_rooms')
-        .update({ 
-          phase: 'playing',
-          current_turn: 0
-        })
-        .eq('id', room.id);
+      console.log('🎯 INIT: Starting game with mystery card initialization');
+      
+      // CRITICAL FIX: Initialize game with mystery card
+      if (availableSongs && availableSongs.length > 0) {
+        await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
+      } else {
+        // Fallback: just set phase to playing
+        const { error } = await supabase
+          .from('game_rooms')
+          .update({ 
+            phase: 'playing',
+            current_turn: 0
+          })
+          .eq('id', room.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
+      
       return true;
     } catch (error) {
       console.error('Failed to start game:', error);

@@ -54,6 +54,8 @@ export type Database = {
       game_rooms: {
         Row: {
           created_at: string
+          current_player_id: string | null
+          current_song: Json | null
           current_song_index: number | null
           current_turn: number | null
           host_id: string
@@ -66,6 +68,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_player_id?: string | null
+          current_song?: Json | null
           current_song_index?: number | null
           current_turn?: number | null
           host_id: string
@@ -78,6 +82,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_player_id?: string | null
+          current_song?: Json | null
           current_song_index?: number | null
           current_turn?: number | null
           host_id?: string

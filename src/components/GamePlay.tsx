@@ -48,13 +48,29 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Initialize game on mount
+  // Initialize game on mount - CRITICAL FIX: Ensure mystery card is always set
   useEffect(() => {
-    if (room?.phase === 'playing' && gameState.phase === 'loading') {
-      console.log('🎯 Initializing game...');
-      initializeGame();
-    }
-  }, [room?.phase, gameState.phase, initializeGame]);
+    const initializeGameWithMysteryCard = async () => {
+      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
+        console.log('🎯 INIT: Host initializing game with mystery card...');
+        
+        // Ensure we have available songs
+        if (gameState.availableSongs.length > 0) {
+          try {
+            // Initialize the game with a mystery card using GameService
+            await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
+            console.log('✅ INIT: Game initialized with mystery card successfully');
+          } catch (error) {
+            console.error('❌ INIT: Failed to initialize game with mystery card:', error);
+          }
+        }
+        
+        initializeGame();
+      }
+    };
+
+    initializeGameWithMysteryCard();
+  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id]);
 
   // Check for game end condition
   useEffect(() => {
@@ -71,7 +87,7 @@ export function GamePlay({
     }
   }, [players, room?.host_id, gameEnded, soundEffects]);
 
-  // CRITICAL FIX: Use synchronized mystery card from room state
+  // CRITICAL FIX: Use synchronized mystery card from room state with validation
   const currentMysteryCard = room?.current_song;
   const currentTurnPlayerId = room?.current_player_id;
   
@@ -83,14 +99,24 @@ export function GamePlay({
   
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
 
-  console.log('🎯 SYNC: Game state synchronized:', {
-    mysteryCard: currentMysteryCard?.deezer_title,
-    currentTurnPlayer: currentTurnPlayer?.name,
-    currentPlayerId: currentTurnPlayerId,
-    currentTurn: room?.current_turn,
-    isHost,
-    gameEnded
-  });
+  // CRITICAL VALIDATION: Log mystery card state
+  useEffect(() => {
+    console.log('🎯 SYNC: Mystery card validation:', {
+      mysteryCard: currentMysteryCard?.deezer_title || 'UNDEFINED',
+      mysteryCardExists: !!currentMysteryCard,
+      currentTurnPlayer: currentTurnPlayer?.name || 'UNDEFINED',
+      currentPlayerId: currentTurnPlayerId,
+      currentTurn: room?.current_turn,
+      roomPhase: room?.phase,
+      isHost,
+      gameEnded
+    });
+
+    // ALERT if mystery card is undefined in playing phase
+    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
+      console.error('🚨 CRITICAL: Mystery card is undefined during gameplay!');
+    }
+  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -363,6 +389,20 @@ export function GamePlay({
       return { success: false };
     }
   };
+
+  // CRITICAL FIX: Show error if mystery card is undefined
+  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white relative z-10">
+          <div className="text-6xl mb-6">🚨</div>
+          <div className="text-4xl font-bold mb-4">Mystery Card Error</div>
+          <div className="text-xl mb-6">The mystery card is not loading properly.</div>
+          <div className="text-lg text-white/60">Please refresh the page or rejoin the game.</div>
+        </div>
+      </div>
+    );
+  }
 
   // FIX 4: Show game over screen if game has ended
   if (gameEnded) {
