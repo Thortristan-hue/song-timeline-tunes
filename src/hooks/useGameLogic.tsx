@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -84,7 +83,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.current_turn]);
 
-  // Initialize game with default playlist
+  // Initialize game with default playlist - but don't fetch previews yet
   const initializeGame = useCallback(async () => {
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
@@ -97,7 +96,7 @@ export function useGameLogic(
         throw new Error(`Not enough valid songs (${validSongs.length}/10 minimum)`);
       }
 
-      console.log(`✅ Loaded ${validSongs.length} valid songs`);
+      console.log(`✅ Loaded ${validSongs.length} valid songs (previews will be fetched per turn)`);
       
       setGameState(prev => ({
         ...prev,
@@ -137,13 +136,14 @@ export function useGameLogic(
       // Set transitioning state
       setGameState(prev => ({ ...prev, transitioningTurn: true }));
 
-      // Pick a random song from available songs
+      // Pick a random song from available songs and fetch its preview fresh
       let attempts = 0;
       let selectedSong: Song | null = null;
 
       while (attempts < 5 && !selectedSong) {
         const randomIndex = Math.floor(Math.random() * songsToUse.length);
         const candidateSong = songsToUse[randomIndex];
+        console.log(`🎵 Attempting to fetch fresh preview for: ${candidateSong.deezer_title}`);
         selectedSong = await fetchSongPreview(candidateSong);
         attempts++;
       }
@@ -153,7 +153,7 @@ export function useGameLogic(
       }
 
       console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
-      console.log(`🎵 Song preview URL: ${selectedSong.preview_url}`);
+      console.log(`🎵 Fresh preview URL: ${selectedSong.preview_url}`);
 
       // Update local state
       setGameState(prev => ({
@@ -187,18 +187,13 @@ export function useGameLogic(
     await startNewTurnWithSongs(songsToUse);
   }, [gameState.availableSongs, startNewTurnWithSongs]);
 
-  // Fetch song preview with fallback
+  // Fetch song preview with fallback - always fetch fresh
   const fetchSongPreview = async (song: Song): Promise<Song | null> => {
     try {
-      if (song.preview_url) {
-        console.log(`🎵 Song already has preview URL: ${song.preview_url}`);
-        return song;
-      }
-      
-      console.log(`🔍 Fetching preview URL for: ${song.deezer_title}`);
+      console.log(`🔍 Fetching fresh preview URL for: ${song.deezer_title}`);
       const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(song);
       if (songWithPreview.preview_url) {
-        console.log(`✅ Found preview URL: ${songWithPreview.preview_url}`);
+        console.log(`✅ Found fresh preview URL: ${songWithPreview.preview_url}`);
         return songWithPreview;
       } else {
         console.warn(`❌ No preview URL found for: ${song.deezer_title}`);

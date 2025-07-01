@@ -111,7 +111,7 @@ export function GamePlay({
 
   // Audio setup - only for current turn player's song
   useEffect(() => {
-    if (!room?.id) return;
+    if (!room?.id || !currentTurnPlayer) return;
 
     if (audioChannelRef.current) {
       audioChannelRef.current.unsubscribe();
@@ -123,8 +123,8 @@ export function GamePlay({
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
           console.log('🔊 Audio control received:', payload.payload);
-          // Only play/pause if this is for the current turn player's song
-          if (payload.payload?.currentTurnPlayerId === currentTurnPlayer?.id) {
+          // Only respond to audio controls for the current turn player
+          if (payload.payload?.currentTurnPlayerId === currentTurnPlayer.id) {
             if (payload.payload?.action === 'play') {
               setIsPlaying(true);
             } else if (payload.payload?.action === 'pause') {

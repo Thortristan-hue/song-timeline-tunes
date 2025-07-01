@@ -4,6 +4,7 @@ import { Song, Player } from '@/types/game';
 import { PlayerMysteryCard } from '@/components/player/PlayerMysteryCard';
 import { PlayerResultDisplay } from '@/components/player/PlayerResultDisplay';
 import { PlayerTimeline } from '@/components/PlayerTimeline';
+import { PlacementConfirmationDialog } from '@/components/PlacementConfirmationDialog';
 import { Button } from '@/components/ui/button';
 import { Home, Users, Crown } from 'lucide-react';
 
@@ -214,6 +215,16 @@ export function PlayerGameView({
           />
         </div>
       </div>
+
+      {/* Placement Confirmation Dialog */}
+      <PlacementConfirmationDialog
+        isOpen={!!confirmingPlacement}
+        song={confirmingPlacement?.song || null}
+        position={confirmingPlacement?.position || 0}
+        timeline={currentPlayer.timeline}
+        onConfirm={confirmPlacement}
+        onCancel={cancelPlacement}
+      />
 
       {/* Result Display */}
       {cardPlacementResult && (
