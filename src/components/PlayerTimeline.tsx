@@ -13,12 +13,10 @@ interface PlayerTimelineProps {
   isDarkMode: boolean;
   draggedSong: Song | null;
   hoveredPosition: number | null;
-  confirmingPlacement: { song: Song; position: number } | null;
+  placementPending: { song: Song; position: number } | null;
   handleDragOver: (e: React.DragEvent, position: number) => void;
   handleDragLeave: () => void;
   handleDrop: (e: React.DragEvent | React.MouseEvent | React.TouchEvent, position: number) => void;
-  confirmPlacement: (song: Song, position: number) => Promise<void>;
-  cancelPlacement: () => void;
   transitioningTurn?: boolean;
 }
 
@@ -28,21 +26,19 @@ export function PlayerTimeline({
   isDarkMode,
   draggedSong,
   hoveredPosition,
-  confirmingPlacement,
+  placementPending,
   handleDragOver,
   handleDragLeave,
   handleDrop,
-  confirmPlacement,
-  cancelPlacement,
   transitioningTurn = false
 }: PlayerTimelineProps) {
-  // FIXED: Optimized timeline song playback with just-in-time preview fetching
+  // Optimized timeline song playback with just-in-time preview fetching
   const playTimelineSong = async (song: Song) => {
     console.log('🎵 Playing timeline song:', song.deezer_title);
     
     let previewUrl = song.preview_url;
     
-    // FIXED: Fetch preview just-in-time if not available or if it might be expired
+    // Fetch preview just-in-time if not available or if it might be expired
     if (!previewUrl && song.id) {
       try {
         console.log('🔍 Fetching preview URL just-in-time for timeline song');
@@ -111,7 +107,7 @@ export function PlayerTimeline({
 
   const renderDropZone = (position: number) => {
     const isHovered = hoveredPosition === position;
-    const isConfirming = confirmingPlacement?.position === position;
+    const isPending = placementPending?.position === position;
     
     return (
       <div
@@ -119,8 +115,8 @@ export function PlayerTimeline({
         className={cn(
           "w-20 h-36 rounded-3xl transition-all duration-300 mx-3 flex items-center justify-center",
           "touch-manipulation cursor-pointer backdrop-blur-xl border",
-          isConfirming
-            ? 'bg-blue-500/30 border-blue-400/50 shadow-lg shadow-blue-400/25 scale-110 animate-pulse'
+          isPending
+            ? 'bg-blue-500/30 border-blue-400/50 shadow-lg shadow-blue-400/25 scale-110'
             : isHovered 
             ? 'bg-white/15 border-white/20 shadow-lg scale-105' 
             : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -143,6 +139,11 @@ export function PlayerTimeline({
         {draggedSong && isCurrent && (
           <div className="text-white/80 text-xs font-medium text-center leading-tight">
             Drop<br />here
+          </div>
+        )}
+        {isPending && (
+          <div className="text-blue-200 text-xs font-medium text-center leading-tight">
+            Pending<br />placement
           </div>
         )}
       </div>

@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import { Song, Player } from '@/types/game';
 import { PlayerMysteryCard } from '@/components/player/PlayerMysteryCard';
 import { PlayerResultDisplay } from '@/components/player/PlayerResultDisplay';
 import { PlayerTimeline } from '@/components/PlayerTimeline';
-import { PlacementConfirmationDialog } from '@/components/PlacementConfirmationDialog';
 import { Button } from '@/components/ui/button';
-import { Home, Users, Crown } from 'lucide-react';
+import { Home, Users, Crown, Check, RotateCcw } from 'lucide-react';
 
 interface PlayerGameViewProps {
   currentPlayer: Player;
@@ -33,7 +33,7 @@ export function PlayerGameView({
   cardPlacementResult
 }: PlayerGameViewProps) {
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
-  const [confirmingPlacement, setConfirmingPlacement] = useState<{ song: Song; position: number } | null>(null);
+  const [placementPending, setPlacementPending] = useState<{ song: Song; position: number } | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 
   const handleDragStart = (song: Song) => {
@@ -62,29 +62,30 @@ export function PlayerGameView({
     if (!isMyTurn || !draggedSong) return;
     
     setHoveredPosition(null);
-    setConfirmingPlacement({ song: draggedSong, position });
+    setPlacementPending({ song: draggedSong, position });
+    setDraggedSong(null);
   };
 
-  const confirmPlacement = async (song: Song, position: number) => {
+  const confirmPlacement = async () => {
+    if (!placementPending) return;
+    
     try {
-      console.log('Confirming placement:', { song: song.deezer_title, position });
-      const result = await onPlaceCard(song, position);
+      console.log('Confirming placement:', { song: placementPending.song.deezer_title, position: placementPending.position });
+      const result = await onPlaceCard(placementPending.song, placementPending.position);
       console.log('Card placement result:', result);
       
-      // Close dialog and reset state
-      setConfirmingPlacement(null);
-      setDraggedSong(null);
+      setPlacementPending(null);
     } catch (error) {
       console.error('Failed to place card:', error);
-      // Still close dialog on error
-      setConfirmingPlacement(null);
-      setDraggedSong(null);
+      setPlacementPending(null);
     }
   };
 
-  const cancelPlacement = () => {
-    setConfirmingPlacement(null);
-    setDraggedSong(null);
+  const tryAgain = () => {
+    if (placementPending) {
+      setDraggedSong(placementPending.song);
+    }
+    setPlacementPending(null);
   };
 
   return (
@@ -161,7 +162,7 @@ export function PlayerGameView({
       </div>
 
       {/* Mystery Card */}
-      {currentSong && isMyTurn && (
+      {currentSong && isMyTurn && !placementPending && (
         <PlayerMysteryCard
           currentSong={currentSong}
           mysteryCardRevealed={mysteryCardRevealed}
@@ -208,25 +209,44 @@ export function PlayerGameView({
             isDarkMode={true}
             draggedSong={draggedSong}
             hoveredPosition={hoveredPosition}
-            confirmingPlacement={confirmingPlacement}
+            placementPending={placementPending}
             handleDragOver={handleDragOver}
             handleDragLeave={handleDragLeave}
             handleDrop={handleDrop}
-            confirmPlacement={confirmPlacement}
-            cancelPlacement={cancelPlacement}
           />
         </div>
       </div>
 
-      {/* Placement Confirmation Dialog */}
-      <PlacementConfirmationDialog
-        isOpen={!!confirmingPlacement}
-        song={confirmingPlacement?.song || null}
-        position={confirmingPlacement?.position || 0}
-        timeline={currentPlayer.timeline}
-        onConfirm={confirmPlacement}
-        onCancel={cancelPlacement}
-      />
+      {/* Placement Confirmation Overlay */}
+      {placementPending && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <div className="bg-white/20 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl text-center">
+            <div className="text-white text-xl font-semibold mb-4">
+              Confirm your placement?
+            </div>
+            <div className="text-white/70 text-sm mb-6">
+              Place "{placementPending.song.deezer_title}" at position {placementPending.position + 1}
+            </div>
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={confirmPlacement}
+                className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl flex items-center gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Confirm Placement
+              </Button>
+              <Button
+                onClick={tryAgain}
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 px-6 py-3 rounded-xl flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Result Display */}
       {cardPlacementResult && (
