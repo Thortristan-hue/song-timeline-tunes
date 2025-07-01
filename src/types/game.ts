@@ -19,6 +19,7 @@ export interface GameState {
   cardPlacementConfirmed: boolean;
   cardPlacementCorrect: boolean | null;
   mysteryCardRevealed: boolean;
+  gameEnded: boolean;
 }
 
 export interface Song {
@@ -53,4 +54,5 @@ export interface GameRoom {
   updated_at: string;
   current_turn?: number;
   current_song?: Song | null;
+  current_player_id?: string;
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
+import { gameService } from '@/services/gameService';
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost]);
 
-  // Subscribe to room changes
+  // Subscribe to room changes with synchronized turn state
   useEffect(() => {
     if (!room?.id) return;
 
@@ -96,7 +97,7 @@ export function useGameRoom() {
         table: 'game_rooms',
         filter: `id=eq.${room.id}`
       }, (payload) => {
-        console.log('🔄 Room updated:', payload.new);
+        console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
         const roomData = payload.new as any;
         setRoom({
           id: roomData.id,
@@ -108,7 +109,8 @@ export function useGameRoom() {
           created_at: roomData.created_at,
           updated_at: roomData.updated_at,
           current_turn: roomData.current_turn,
-          current_song: roomData.current_song || null
+          current_song: roomData.current_song || null,
+          current_player_id: roomData.current_player_id || null
         });
       })
       .on('postgres_changes', {
@@ -279,76 +281,30 @@ export function useGameRoom() {
     }
   }, [convertPlayer]);
 
-  const placeCard = useCallback(async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean }> => {
+  const placeCard = useCallback(async (song: Song, position: number, availableSongs: Song[] = []): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {
       console.error('Cannot place card: missing currentPlayer or room');
       return { success: false };
     }
 
     try {
-      console.log('🎯 Placing card:', { song: song.deezer_title, position, currentTimeline: currentPlayer.timeline });
+      console.log('🃏 MANDATORY: Placing card with centralized turn advancement');
       
-      // Get current timeline
-      const currentTimeline = [...currentPlayer.timeline];
+      // Use gameService for centralized card placement and turn advancement
+      const result = await gameService.placeCard(room.id, currentPlayer.id, song, position, availableSongs);
       
-      // Insert song at position
-      currentTimeline.splice(position, 0, song);
-      
-      // Check if placement is correct (chronological order)
-      let isCorrect = true;
-      for (let i = 0; i < currentTimeline.length - 1; i++) {
-        const current = parseInt(currentTimeline[i].release_year);
-        const next = parseInt(currentTimeline[i + 1].release_year);
-        if (current > next) {
-          isCorrect = false;
-          break;
-        }
-      }
-
-      let finalTimeline = currentTimeline;
-      let newScore = currentPlayer.score;
-
-      if (isCorrect) {
-        // Correct placement - keep the card and increment score
-        newScore = currentPlayer.score + 1;
-        console.log('✅ Correct placement! New score:', newScore);
+      if (result.success) {
+        console.log('✅ MANDATORY: Card placed and turn advanced successfully');
+        return { success: true, correct: result.correct };
       } else {
-        // Incorrect placement - remove the card (destroy it)
-        finalTimeline = currentPlayer.timeline; // Keep original timeline without the new card
-        console.log('❌ Incorrect placement - card destroyed');
+        console.error('❌ MANDATORY: Card placement failed:', result.error);
+        return { success: false };
       }
-
-      // Skip database update if this is the host (since host isn't in the database)
-      if (!isHost) {
-        // Update player in database
-        const { error } = await supabase
-          .from('players')
-          .update({
-            timeline: finalTimeline as any,
-            score: newScore
-          })
-          .eq('id', currentPlayer.id);
-
-        if (error) {
-          console.error('Database update error:', error);
-          throw error;
-        }
-      }
-
-      // Update local state immediately
-      setCurrentPlayer(prev => prev ? {
-        ...prev,
-        timeline: finalTimeline,
-        score: newScore
-      } : null);
-
-      console.log('🎯 Card placement completed successfully');
-      return { success: true, correct: isCorrect };
     } catch (error) {
       console.error('Failed to place card:', error);
       return { success: false };
     }
-  }, [currentPlayer, room, isHost]);
+  }, [currentPlayer, room]);
 
   const updatePlayer = useCallback(async (updates: Partial<Player>): Promise<boolean> => {
     if (!currentPlayer) return false;
@@ -434,9 +390,8 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      console.log('🎵 Setting current song:', song.deezer_title);
-      // Update room state locally since we don't have current_song in database
-      setRoom(prev => prev ? { ...prev, current_song: song } : null);
+      console.log('🎵 SYNC: Host setting synchronized mystery card:', song.deezer_title);
+      await gameService.setCurrentSong(room.id, song);
     } catch (error) {
       console.error('Failed to set current song:', error);
     }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Song, Player } from '@/types/game';
 import { PlayerMysteryCard } from '@/components/player/PlayerMysteryCard';
@@ -39,17 +38,16 @@ export function PlayerGameView({
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 
   const handleDragStart = (song: Song) => {
-    // FIX 4: Prevent all interactions if game has ended
-    if (gameEnded) {
-      console.log('🚫 Game ended - no drag interactions allowed');
+    if (gameEnded || !isMyTurn) {
+      console.log('🚫 MANDATORY: Cannot drag - game ended or not your turn');
       return;
     }
-    console.log('🎯 FIXED: Starting drag for mystery card:', song.deezer_title);
+    console.log('🎯 MANDATORY: Starting drag for mystery card (validated turn):', song.deezer_title);
     setDraggedSong(song);
   };
 
   const handleDragEnd = () => {
-    console.log('🎯 FIXED: Ending drag for mystery card');
+    console.log('🎯 MANDATORY: Ending drag for mystery card');
     setDraggedSong(null);
   };
 
@@ -68,37 +66,39 @@ export function PlayerGameView({
       e.preventDefault();
     }
     
-    if (!isMyTurn || !draggedSong || gameEnded) return;
+    if (!isMyTurn || !draggedSong || gameEnded) {
+      console.log('🚫 MANDATORY: Cannot drop - not your turn, no dragged song, or game ended');
+      return;
+    }
     
-    console.log('🎯 FIXED: Mystery card dropped at position:', position);
+    console.log('🎯 MANDATORY: Mystery card dropped at position (validated turn):', position);
     setHoveredPosition(null);
     setPlacementPending({ song: draggedSong, position });
     setDraggedSong(null);
   };
 
   const handleConfirmPlacement = async (song: Song, position: number): Promise<{ success: boolean }> => {
-    // FIX 4: Prevent all interactions if game has ended
-    if (gameEnded) {
-      console.log('🚫 Game ended - no card placement allowed');
+    if (gameEnded || !isMyTurn) {
+      console.log('🚫 MANDATORY: Cannot confirm placement - game ended or not your turn');
       return { success: false };
     }
 
-    console.log('🎯 FIXED: Confirming placement of mystery card:', { song: song.deezer_title, position });
+    console.log('🎯 MANDATORY: Confirming placement with turn validation:', { song: song.deezer_title, position });
     
     try {
       const result = await onPlaceCard(song, position);
       setPlacementPending(null);
       return result;
     } catch (error) {
-      console.error('FIXED: Failed to confirm placement:', error);
+      console.error('MANDATORY: Failed to confirm placement:', error);
       setPlacementPending(null);
       return { success: false };
     }
   };
 
   const handleCancelPlacement = () => {
-    if (placementPending && !gameEnded) {
-      console.log('🔄 FIXED: Canceling placement, allowing try again for mystery card');
+    if (placementPending && !gameEnded && isMyTurn) {
+      console.log('🔄 MANDATORY: Canceling placement (turn validated)');
       setDraggedSong(placementPending.song);
     }
     setPlacementPending(null);
@@ -113,12 +113,13 @@ export function PlayerGameView({
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/3 rounded-full blur-2xl" />
       </div>
 
-      {/* Disclaimer */}
+      {/* Disclaimer - enhanced with turn information */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
         <div className="bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
           <p className="text-white/70 text-sm font-medium">
             {gameEnded ? "Game Over!" : 
-             isMyTurn ? "Your turn to play • Drag the mystery card to your timeline" : `${currentTurnPlayer.name}'s turn`}
+             isMyTurn ? "Your turn to play • Drag the mystery card to your timeline" : 
+             `${currentTurnPlayer.name}'s turn • Wait for your turn`}
           </p>
         </div>
       </div>
@@ -160,8 +161,9 @@ export function PlayerGameView({
       </div>
 
       <div className="absolute top-32 right-6 z-30">
-        <div className={`bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-xl ${
-          isMyTurn && !gameEnded ? 'ring-2 ring-blue-400/50' : ''
+        <div className={`bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-xl border-2 ${
+          isMyTurn && !gameEnded ? 'border-green-400/50 ring-2 ring-green-400/30' : 
+          gameEnded ? 'border-gray-500/50' : 'border-red-400/50'
         }`}>
           <div className="text-center">
             <div className="text-white/60 text-sm mb-1">Current Turn</div>
@@ -170,15 +172,22 @@ export function PlayerGameView({
                 className="w-4 h-4 rounded-full shadow-sm" 
                 style={{ backgroundColor: currentTurnPlayer.color }}
               />
-              <div className="text-white font-semibold">
-                {gameEnded ? 'Game Over' : isMyTurn ? 'Your turn!' : currentTurnPlayer.name}
+              <div className={`font-semibold ${
+                isMyTurn && !gameEnded ? 'text-green-200' : 
+                gameEnded ? 'text-gray-200' : 'text-white'
+              }`}>
+                {gameEnded ? 'Game Over' : 
+                 isMyTurn ? 'Your turn!' : currentTurnPlayer.name}
               </div>
             </div>
+            {isMyTurn && !gameEnded && (
+              <div className="text-xs text-green-300 mt-1">Click to place card!</div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mystery Card - only show if it's the player's turn, no placement pending, and game hasn't ended */}
+      {/* Mystery Card - only show if it's the player's turn, validated */}
       {currentSong && isMyTurn && !placementPending && !gameEnded && (
         <PlayerMysteryCard
           currentSong={currentSong}
@@ -190,20 +199,25 @@ export function PlayerGameView({
         />
       )}
 
-      {/* Waiting State */}
+      {/* Waiting State - enhanced messaging */}
       {(!isMyTurn || gameEnded) && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
           <div className="text-center">
-            <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <div className={`w-24 h-24 backdrop-blur-xl rounded-full flex items-center justify-center mb-6 mx-auto border ${
+              gameEnded ? 'bg-gray-500/10 border-gray-500/20' : 'bg-white/10 border-white/20'
+            }`}>
               <div className="text-4xl animate-pulse">
                 {gameEnded ? '🏆' : '⏳'}
               </div>
             </div>
             <div className="text-2xl font-semibold text-white mb-2">
-              {gameEnded ? 'Game Over!' : `${currentTurnPlayer.name}'s turn`}
+              {gameEnded ? 'Game Over!' : 
+               `${currentTurnPlayer.name}'s turn`}
             </div>
             <div className="text-white/60">
-              {gameEnded ? 'Thanks for playing!' : 'Hang tight while they think...'}
+              {gameEnded ? 'Thanks for playing!' : 
+               isMyTurn ? 'Get ready to place your card...' : 
+               'Hang tight while they think...'}
             </div>
           </div>
         </div>
@@ -220,6 +234,11 @@ export function PlayerGameView({
             <h3 className="text-white text-xl font-semibold">
               Your Timeline
             </h3>
+            {isMyTurn && !gameEnded && (
+              <div className="ml-auto text-sm text-green-300 font-medium">
+                Your turn - place a card!
+              </div>
+            )}
           </div>
           
           <PlayerTimeline
