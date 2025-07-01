@@ -42,10 +42,10 @@ export function PlayerTimeline({
     let previewUrl = song.preview_url;
     
     // Fetch preview just-in-time if not available or if it might be expired
-    if (!previewUrl && song.deezer_id) {
+    if (!previewUrl && song.id) {
       try {
         console.log('🔍 Fetching preview URL just-in-time for timeline song');
-        previewUrl = await DeezerAudioService.getPreviewUrl(song.deezer_id);
+        previewUrl = await DeezerAudioService.getPreviewUrl(song.id);
       } catch (error) {
         console.error('❌ Failed to fetch preview URL for timeline song:', error);
         return;

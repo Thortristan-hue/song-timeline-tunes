@@ -73,10 +73,10 @@ export function GamePlay({
   // Fetch preview URL just-in-time when current song changes
   useEffect(() => {
     const fetchPreviewForCurrentSong = async () => {
-      if (gameState.currentSong && gameState.currentSong.deezer_id) {
+      if (gameState.currentSong && gameState.currentSong.id) {
         console.log('🎵 Fetching preview just-in-time for current song:', gameState.currentSong.deezer_title);
         try {
-          const previewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.deezer_id);
+          const previewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.id);
           const songWithPreview = {
             ...gameState.currentSong,
             preview_url: previewUrl
