@@ -50,11 +50,11 @@ export function useGameRoom() {
 
       console.log('👥 All players from DB - raw data:', data);
       
-      // CRITICAL: Filter out ANY host players completely
+      // CRITICAL: Filter out host players by checking is_host field, not session ID
       const nonHostPlayers = data?.filter(dbPlayer => {
-        // Never include host in the players array
-        const isHostPlayer = dbPlayer.is_host === true || 
-                           (hostSessionId.current && dbPlayer.player_session_id === hostSessionId.current);
+        // Only exclude players that are explicitly marked as host
+        const isHostPlayer = dbPlayer.is_host === true;
+        console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
         return !isHostPlayer;
       }) || [];
       
@@ -211,7 +211,7 @@ export function useGameRoom() {
 
       console.log('🎮 Joining room as player with session ID:', sessionId);
 
-      // Create player (NEVER as host - is_host should be null/false)
+      // Create player (NEVER as host - is_host should be explicitly false)
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
