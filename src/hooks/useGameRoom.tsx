@@ -20,6 +20,11 @@ export function useGameRoom() {
     return Math.random().toString(36).substring(2, 15);
   };
 
+  // Generate lobby code
+  const generateLobbyCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
   // Convert database player to frontend player
   const convertPlayer = useCallback((dbPlayer: any): Player => {
     return {
@@ -120,6 +125,7 @@ export function useGameRoom() {
       setError(null);
 
       const sessionId = generateSessionId();
+      const lobbyCode = generateLobbyCode();
       hostSessionId.current = sessionId;
 
       console.log('🏠 Creating room with host session ID:', sessionId);
@@ -127,6 +133,7 @@ export function useGameRoom() {
       const { data, error } = await supabase
         .from('game_rooms')
         .insert({
+          lobby_code: lobbyCode,
           host_id: sessionId,
           host_name: hostName,
           phase: 'lobby'
