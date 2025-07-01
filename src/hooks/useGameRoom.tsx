@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
-import { gameService } from '@/services/gameService';
+import { GameService } from '@/services/gameService';
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -290,8 +290,8 @@ export function useGameRoom() {
     try {
       console.log('🃏 MANDATORY: Placing card with centralized turn advancement');
       
-      // Use gameService for centralized card placement and turn advancement
-      const result = await gameService.placeCard(room.id, currentPlayer.id, song, position, availableSongs);
+      // Use GameService for centralized card placement and turn advancement
+      const result = await GameService.placeCard(room.id, currentPlayer.id, song, position, availableSongs);
       
       if (result.success) {
         console.log('✅ MANDATORY: Card placed and turn advanced successfully');
@@ -391,7 +391,7 @@ export function useGameRoom() {
 
     try {
       console.log('🎵 SYNC: Host setting synchronized mystery card:', song.deezer_title);
-      await gameService.setCurrentSong(room.id, song);
+      await GameService.setCurrentSong(room.id, song);
     } catch (error) {
       console.error('Failed to set current song:', error);
     }

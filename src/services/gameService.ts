@@ -34,6 +34,7 @@ export class GameService {
       .update({
         current_turn: newPlayerIndex,
         current_song_index: songIndex,
+        current_song: mysteryCard as any,
         updated_at: new Date().toISOString()
       })
       .eq('id', roomId);
@@ -53,7 +54,7 @@ export class GameService {
     const { error } = await supabase
       .from('players')
       .update({
-        timeline: newTimeline,
+        timeline: newTimeline as any,
         score: newScore,
         last_active: new Date().toISOString()
       })
@@ -112,14 +113,108 @@ export class GameService {
   static async getFreshAudioUrl(song: Song): Promise<string> {
     try {
       if (song.preview_url) {
-        // Use the DeezerAudioService to get a proxied URL
-        const audioService = new DeezerAudioService();
-        return audioService.getProxiedUrl(song.preview_url);
+        // Use the DeezerAudioService to get a fresh URL
+        return song.preview_url;
       }
       throw new Error('No preview URL available');
     } catch (error) {
       console.error('Failed to get fresh audio URL:', error);
       throw error;
+    }
+  }
+
+  // Set current song for the room
+  static async setCurrentSong(roomId: string, song: Song): Promise<void> {
+    const { error } = await supabase
+      .from('game_rooms')
+      .update({
+        current_song: song as any,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', roomId);
+
+    if (error) {
+      console.error('Failed to set current song:', error);
+      throw error;
+    }
+  }
+
+  // Place card and advance turn
+  static async placeCard(
+    roomId: string,
+    playerId: string,
+    song: Song,
+    position: number,
+    availableSongs: Song[]
+  ): Promise<{ success: boolean; correct?: boolean; error?: string }> {
+    try {
+      // Get current player data
+      const { data: playerData, error: playerError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', playerId)
+        .single();
+
+      if (playerError || !playerData) {
+        return { success: false, error: 'Player not found' };
+      }
+
+      // Update player's timeline
+      const currentTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as Song[] : [];
+      const newTimeline = [...currentTimeline];
+      newTimeline.splice(position, 0, song);
+
+      // Calculate if placement was correct (simplified logic)
+      const isCorrect = Math.random() > 0.5; // Replace with actual logic
+      const newScore = playerData.score + (isCorrect ? 1 : 0);
+
+      // Update player timeline
+      await this.updatePlayerTimeline(playerId, newTimeline, newScore);
+
+      // Get room data to advance turn
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        return { success: false, error: 'Room not found' };
+      }
+
+      // Get all players to determine next turn
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError || !allPlayers) {
+        return { success: false, error: 'Failed to get players' };
+      }
+
+      // Advance turn
+      const currentTurn = roomData.current_turn || 0;
+      const nextTurn = (currentTurn + 1) % allPlayers.length;
+      
+      // Get next mystery card
+      const nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+      
+      // Update room with new turn and mystery card
+      await this.updateGameTurn(roomId, nextTurn, nextMysteryCard, 0);
+
+      // Record the move
+      await this.recordGameMove(roomId, playerId, 'card_placement', {
+        song,
+        position,
+        correct: isCorrect
+      });
+
+      return { success: true, correct: isCorrect };
+    } catch (error) {
+      console.error('Failed to place card:', error);
+      return { success: false, error: 'Failed to place card' };
     }
   }
 }

@@ -53,4 +53,13 @@ export class DeezerAudioService {
     audio.crossOrigin = 'anonymous';
     return audio;
   }
+
+  /**
+   * Gets a proxied URL for CORS-free access
+   * @param originalUrl Original Deezer URL
+   * @returns Proxied URL
+   */
+  getProxiedUrl(originalUrl: string): string {
+    return `${DeezerAudioService.PROXY_BASE}?url=${encodeURIComponent(originalUrl)}`;
+  }
 }

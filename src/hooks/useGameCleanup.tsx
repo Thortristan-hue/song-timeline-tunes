@@ -1,6 +1,6 @@
 
 import { useEffect } from 'react';
-import { gameService } from '@/services/gameService';
+import { GameService } from '@/services/gameService';
 
 interface UseGameCleanupProps {
   roomId?: string;
@@ -20,7 +20,7 @@ export function useGameCleanup({
 
     const cleanupTimer = setTimeout(async () => {
       try {
-        await gameService.cleanupRoom(roomId);
+        await GameService.endGame(roomId);
         onRoomClosed();
       } catch (error) {
         console.error('Failed to cleanup room:', error);
