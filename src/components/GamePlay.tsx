@@ -77,15 +77,21 @@ export function GamePlay({
   useEffect(() => {
     const fetchPreviewForCurrentSong = async () => {
       if (gameState.currentSong && gameState.currentSong.id) {
-        console.log('🎵 FIXED: Fetching preview for CURRENT MYSTERY CARD only:', gameState.currentSong.deezer_title);
+        console.log('🎵 FIXED: Fetching fresh preview for CURRENT MYSTERY CARD:', gameState.currentSong.deezer_title);
         try {
+          // FIXED: Always fetch fresh preview URL to avoid expired URLs
           const previewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.id);
-          const songWithPreview = {
-            ...gameState.currentSong,
-            preview_url: previewUrl
-          };
-          setCurrentSongWithPreview(songWithPreview);
-          console.log('✅ FIXED: Preview URL fetched for current mystery card:', previewUrl);
+          if (previewUrl) {
+            const songWithPreview = {
+              ...gameState.currentSong,
+              preview_url: previewUrl
+            };
+            setCurrentSongWithPreview(songWithPreview);
+            console.log('✅ FIXED: Fresh preview URL fetched for current mystery card:', previewUrl);
+          } else {
+            console.error('❌ No preview URL returned for mystery card');
+            setCurrentSongWithPreview(gameState.currentSong);
+          }
         } catch (error) {
           console.error('❌ Failed to fetch preview URL:', error);
           setCurrentSongWithPreview(gameState.currentSong);
@@ -202,11 +208,17 @@ export function GamePlay({
       isHost, 
       isPlaying, 
       currentSong: currentSongWithPreview?.deezer_title,
-      currentTurnPlayer: currentTurnPlayer?.name
+      currentTurnPlayer: currentTurnPlayer?.name,
+      previewUrl: currentSongWithPreview?.preview_url
     });
     
     if (!currentTurnPlayer || !currentSongWithPreview) {
       console.log('⚠️ No current turn player or mystery card, ignoring play/pause');
+      return;
+    }
+
+    if (!currentSongWithPreview?.preview_url) {
+      console.log('⚠️ No preview URL available for mystery card');
       return;
     }
     

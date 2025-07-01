@@ -47,12 +47,14 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error('Audio play failed:', error);
+          // FIXED: If audio fails, notify parent to stop playing state
+          onPlayPause();
         });
       }
     } else {
       audio.pause();
     }
-  }, [isPlaying, volume, src, disabled]);
+  }, [isPlaying, volume, src, disabled, onPlayPause]);
 
   // FIXED: Handle audio ending to update state
   useEffect(() => {
@@ -63,8 +65,17 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
       onPlayPause(); // This will set isPlaying to false
     };
 
+    const handleError = () => {
+      console.error('Audio error occurred');
+      onPlayPause(); // Stop playing on error
+    };
+
     audio.addEventListener('ended', handleEnded);
-    return () => audio.removeEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+    };
   }, [onPlayPause]);
 
   // FIXED: Update src and reset audio when it changes
