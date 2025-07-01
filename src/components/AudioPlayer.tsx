@@ -28,12 +28,12 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src || disabled) return;
+    if (!audio || !src) return;
 
     // FIXED: Set volume and ensure no overlapping audio
     audio.volume = volume;
     
-    if (isPlaying) {
+    if (isPlaying && !disabled) {
       // FIXED: Stop any other playing audio before starting
       const allAudio = document.querySelectorAll('audio');
       allAudio.forEach(otherAudio => {
