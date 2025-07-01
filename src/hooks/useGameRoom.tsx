@@ -40,26 +40,31 @@ export function useGameRoom() {
   // Fetch players for a room (ONLY non-host players)
   const fetchPlayers = useCallback(async (roomId: string) => {
     try {
+      console.log('🔍 Fetching players for room:', roomId);
+      
       const { data, error } = await supabase
         .from('players')
         .select('*')
         .eq('room_id', roomId)
         .order('joined_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching players:', error);
+        throw error;
+      }
 
-      console.log('👥 All players from DB - raw data:', data);
+      console.log('👥 Raw players from DB:', data);
       
-      // CRITICAL: Filter out host players by checking is_host field, not session ID
+      // Filter out host players - only include players where is_host is false or null
       const nonHostPlayers = data?.filter(dbPlayer => {
-        // Only exclude players that are explicitly marked as host
         const isHostPlayer = dbPlayer.is_host === true;
         console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
         return !isHostPlayer;
       }) || [];
       
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
-      console.log('👥 Non-host players only - converted:', convertedPlayers);
+      console.log('👥 Converted non-host players:', convertedPlayers);
+      
       setPlayers(convertedPlayers);
 
       // Update current player if we have one (only for non-host players)
@@ -68,17 +73,20 @@ export function useGameRoom() {
           nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
         );
         if (current) {
+          console.log('🎯 Updated current player:', current);
           setCurrentPlayer(current);
         }
       }
     } catch (error) {
-      console.error('Failed to fetch players:', error);
+      console.error('❌ Failed to fetch players:', error);
     }
   }, [convertPlayer, isHost]);
 
   // Subscribe to room changes
   useEffect(() => {
     if (!room?.id) return;
+
+    console.log('🔄 Setting up real-time subscriptions for room:', room.id);
 
     const channel = supabase
       .channel(`room-${room.id}`)
@@ -89,7 +97,6 @@ export function useGameRoom() {
         filter: `id=eq.${room.id}`
       }, (payload) => {
         console.log('🔄 Room updated:', payload.new);
-        // Convert the database record to match our GameRoom type
         const roomData = payload.new as any;
         setRoom({
           id: roomData.id,
@@ -109,12 +116,19 @@ export function useGameRoom() {
         schema: 'public',
         table: 'players',
         filter: `room_id=eq.${room.id}`
-      }, () => {
+      }, (payload) => {
+        console.log('🎮 Player change detected:', payload);
         fetchPlayers(room.id);
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status);
+      });
+
+    // Initial fetch
+    fetchPlayers(room.id);
 
     return () => {
+      console.log('🔄 Cleaning up subscriptions');
       channel.unsubscribe();
     };
   }, [room?.id, fetchPlayers]);
@@ -162,7 +176,7 @@ export function useGameRoom() {
       const hostPlayer: Player = {
         id: `host-${sessionId}`,
         name: hostName,
-        color: '#FF6B6B', // Host gets the first color
+        color: '#FF6B6B',
         timelineColor: '#FF8E8E',
         score: 0,
         timeline: []
@@ -172,7 +186,7 @@ export function useGameRoom() {
       setIsHost(true);
       return data.lobby_code;
     } catch (error) {
-      console.error('Failed to create room:', error);
+      console.error('❌ Failed to create room:', error);
       setError('Failed to create room');
       return null;
     } finally {
@@ -185,6 +199,8 @@ export function useGameRoom() {
       setIsLoading(true);
       setError(null);
 
+      console.log('🎮 Attempting to join room:', lobbyCode);
+
       // First, find the room
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
@@ -193,8 +209,11 @@ export function useGameRoom() {
         .single();
 
       if (roomError || !roomData) {
+        console.error('❌ Room not found:', roomError);
         throw new Error('Room not found');
       }
+
+      console.log('✅ Room found:', roomData);
 
       // Generate colors for the player
       const colors = [
@@ -209,9 +228,9 @@ export function useGameRoom() {
       const sessionId = generateSessionId();
       playerSessionId.current = sessionId;
 
-      console.log('🎮 Joining room as player with session ID:', sessionId);
+      console.log('🎮 Creating player with session ID:', sessionId);
 
-      // Create player (NEVER as host - is_host should be explicitly false)
+      // Create player (explicitly set is_host to false)
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
@@ -222,12 +241,15 @@ export function useGameRoom() {
           timeline_color: timelineColors[Math.floor(Math.random() * timelineColors.length)],
           score: 0,
           timeline: [],
-          is_host: false // Explicitly set to false to ensure no confusion
+          is_host: false // Explicitly set to false
         })
         .select()
         .single();
 
-      if (playerError) throw playerError;
+      if (playerError) {
+        console.error('❌ Failed to create player:', playerError);
+        throw playerError;
+      }
 
       console.log('✅ Player created successfully:', playerData);
 
@@ -243,21 +265,19 @@ export function useGameRoom() {
         current_turn: roomData.current_turn,
         current_song: null
       });
+      
       setCurrentPlayer(convertPlayer(playerData));
       setIsHost(false);
       
-      // Fetch all non-host players
-      await fetchPlayers(roomData.id);
-      
       return true;
     } catch (error) {
-      console.error('Failed to join room:', error);
+      console.error('❌ Failed to join room:', error);
       setError(error instanceof Error ? error.message : 'Failed to join room');
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [convertPlayer, fetchPlayers]);
+  }, [convertPlayer]);
 
   const placeCard = useCallback(async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {

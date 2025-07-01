@@ -2,77 +2,119 @@
 import { useCallback } from 'react';
 
 export function useSoundEffects() {
-  // Web Audio API for generating softer, more natural sound effects
+  // Improved sound effect system with actual audio files and better fallbacks
+  const playAudioFile = useCallback(async (filename: string, volume: number = 0.3) => {
+    try {
+      const audio = new Audio(`/sounds/${filename}`);
+      audio.volume = volume;
+      await audio.play();
+      return true;
+    } catch (error) {
+      console.warn(`Audio file ${filename} not found or failed to play:`, error);
+      return false;
+    }
+  }, []);
+
+  // Web Audio API for generating softer, more polished fallback sounds
   const createAudioContext = useCallback(() => {
     return new (window.AudioContext || (window as any).webkitAudioContext)();
   }, []);
 
-  const playTone = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.1) => {
+  const playPolishedTone = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.1) => {
     try {
       const audioContext = createAudioContext();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
+      const filterNode = audioContext.createBiquadFilter();
 
-      oscillator.connect(gainNode);
+      // Add filtering for smoother sound
+      filterNode.type = 'lowpass';
+      filterNode.frequency.setValueAtTime(2000, audioContext.currentTime);
+
+      oscillator.connect(filterNode);
+      filterNode.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       oscillator.type = type;
 
-      // Softer volume and smoother fade out
-      gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+      // Smooth envelope for professional sound
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.05);
       gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + duration);
     } catch (error) {
-      console.warn('Sound effect failed:', error);
+      console.warn('Polished tone generation failed:', error);
     }
   }, [createAudioContext]);
 
-  const playCardSuccess = useCallback(() => {
-    // Gentle ascending chime - like wind chimes
-    playTone(523, 0.15, 'triangle', 0.08); // C5
-    setTimeout(() => playTone(659, 0.15, 'triangle', 0.06), 80); // E5
-    setTimeout(() => playTone(784, 0.2, 'triangle', 0.04), 160); // G5
-  }, [playTone]);
+  const playCardSuccess = useCallback(async () => {
+    // Try to play audio file first, fallback to generated sound
+    const played = await playAudioFile('card-success.mp3', 0.4);
+    if (!played) {
+      // Gentle ascending chime - more professional
+      playPolishedTone(523, 0.15, 'sine', 0.06); // C5
+      setTimeout(() => playPolishedTone(659, 0.15, 'sine', 0.05), 80); // E5
+      setTimeout(() => playPolishedTone(784, 0.2, 'sine', 0.04), 160); // G5
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playCardError = useCallback(() => {
-    // Soft descending tone - not harsh
-    playTone(330, 0.2, 'sine', 0.06); // E4
-    setTimeout(() => playTone(293, 0.25, 'sine', 0.04), 120); // D4
-  }, [playTone]);
+  const playCardError = useCallback(async () => {
+    const played = await playAudioFile('card-error.mp3', 0.3);
+    if (!played) {
+      // Soft descending tone - professional "oops"
+      playPolishedTone(330, 0.2, 'sine', 0.05);
+      setTimeout(() => playPolishedTone(293, 0.25, 'sine', 0.03), 120);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playTurnTransition = useCallback(() => {
-    // Gentle transition whoosh
-    playTone(440, 0.08, 'triangle', 0.05);
-    setTimeout(() => playTone(523, 0.1, 'triangle', 0.03), 40);
-  }, [playTone]);
+  const playTurnTransition = useCallback(async () => {
+    const played = await playAudioFile('turn-transition.mp3', 0.3);
+    if (!played) {
+      // Gentle transition sound
+      playPolishedTone(440, 0.08, 'triangle', 0.04);
+      setTimeout(() => playPolishedTone(523, 0.1, 'triangle', 0.03), 40);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playGameStart = useCallback(() => {
-    // Celebratory but gentle fanfare
-    playTone(392, 0.15, 'triangle', 0.06); // G4
-    setTimeout(() => playTone(523, 0.15, 'triangle', 0.05), 150); // C5
-    setTimeout(() => playTone(659, 0.15, 'triangle', 0.04), 300); // E5
-    setTimeout(() => playTone(784, 0.25, 'triangle', 0.03), 450); // G5
-  }, [playTone]);
+  const playGameStart = useCallback(async () => {
+    const played = await playAudioFile('game-start.mp3', 0.5);
+    if (!played) {
+      // Professional fanfare
+      playPolishedTone(392, 0.15, 'triangle', 0.05);
+      setTimeout(() => playPolishedTone(523, 0.15, 'triangle', 0.04), 150);
+      setTimeout(() => playPolishedTone(659, 0.15, 'triangle', 0.04), 300);
+      setTimeout(() => playPolishedTone(784, 0.25, 'triangle', 0.03), 450);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playPlayerJoin = useCallback(() => {
-    // Friendly notification - like a soft bell
-    playTone(880, 0.12, 'triangle', 0.04);
-    setTimeout(() => playTone(1046, 0.15, 'triangle', 0.03), 80);
-  }, [playTone]);
+  const playPlayerJoin = useCallback(async () => {
+    const played = await playAudioFile('player-join.mp3', 0.3);
+    if (!played) {
+      // Friendly notification bell
+      playPolishedTone(880, 0.12, 'triangle', 0.03);
+      setTimeout(() => playPolishedTone(1046, 0.15, 'triangle', 0.02), 80);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playButtonClick = useCallback(() => {
-    // Very subtle click - like a soft tap
-    playTone(1000, 0.04, 'triangle', 0.03);
-  }, [playTone]);
+  const playButtonClick = useCallback(async () => {
+    const played = await playAudioFile('button-click.mp3', 0.2);
+    if (!played) {
+      // Very subtle click
+      playPolishedTone(1000, 0.04, 'triangle', 0.02);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
-  const playCardPlace = useCallback(() => {
-    // Soft placement sound - like placing a card on felt
-    playTone(220, 0.08, 'triangle', 0.04);
-    setTimeout(() => playTone(196, 0.1, 'sine', 0.02), 30);
-  }, [playTone]);
+  const playCardPlace = useCallback(async () => {
+    const played = await playAudioFile('card-place.mp3', 0.3);
+    if (!played) {
+      // Soft placement sound
+      playPolishedTone(220, 0.08, 'triangle', 0.03);
+      setTimeout(() => playPolishedTone(196, 0.1, 'sine', 0.02), 30);
+    }
+  }, [playAudioFile, playPolishedTone]);
 
   return {
     playCardSuccess,
