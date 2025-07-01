@@ -5,11 +5,12 @@ import { Play, Pause, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AudioPlayerProps {
-  src: string;
+  src: string | null;
   isPlaying: boolean;
   onPlayPause: () => void;
   className?: string;
   volume?: number;
+  disabled?: boolean;
 }
 
 export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
@@ -17,7 +18,8 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
   isPlaying,
   onPlayPause,
   className,
-  volume = 0.5
+  volume = 0.5,
+  disabled = false
 }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -26,7 +28,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !src || disabled) return;
 
     // FIXED: Set volume and ensure no overlapping audio
     audio.volume = volume;
@@ -50,7 +52,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     } else {
       audio.pause();
     }
-  }, [isPlaying, volume]);
+  }, [isPlaying, volume, src, disabled]);
 
   // FIXED: Handle audio ending to update state
   useEffect(() => {
@@ -73,15 +75,17 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     // FIXED: Stop current audio when src changes
     audio.pause();
     audio.currentTime = 0;
-    audio.src = src;
-    audio.load();
+    if (src) {
+      audio.src = src;
+      audio.load();
+    }
   }, [src]);
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <audio
         ref={audioRef}
-        src={src}
+        src={src || undefined}
         preload="metadata"
         style={{ display: 'none' }}
       />
@@ -90,6 +94,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         size="sm"
         variant="outline"
         className="flex items-center gap-1"
+        disabled={disabled || !src}
       >
         {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
       </Button>
