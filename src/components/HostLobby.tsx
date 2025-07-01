@@ -37,6 +37,7 @@ export function HostLobby({
   // Debug logging for player updates
   useEffect(() => {
     console.log('🧍 HostLobby: Players updated:', players);
+    console.log('🧍 HostLobby: Player count:', players.length);
   }, [players]);
 
   useEffect(() => {
@@ -85,60 +86,16 @@ export function HostLobby({
 
   if (!roomCreated || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden flex items-center justify-center">
-        {/* Animated flowing background */}
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse" 
-               style={{
-                 background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3), rgba(236, 72, 153, 0.3))',
-                 animation: 'flow 8s ease-in-out infinite'
-               }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-        </div>
+      <div className="min-h-screen bg-gray-900 relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 bg-gray-800"></div>
         
         <div className="text-center text-white relative z-10">
-          <div className="w-20 h-20 bg-white/10 backdrop-blur-2xl rounded-3xl flex items-center justify-center mx-auto mb-8 border border-white/20 animate-pulse">
+          <div className="w-20 h-20 bg-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-gray-600">
             <Music2 className="h-10 w-10 text-white animate-bounce" />
           </div>
-          <div className="text-3xl font-semibold mb-3 animate-fade-in">Setting up your room</div>
-          <div className="text-white/70 animate-fade-in" style={{animationDelay: '0.2s'}}>This'll just take a second...</div>
+          <div className="text-3xl font-semibold mb-3">Setting up your room</div>
+          <div className="text-gray-400">This'll just take a second...</div>
         </div>
-        
-        <style>{`
-          @keyframes flow {
-            0%, 100% { 
-              background: linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3), rgba(236, 72, 153, 0.3));
-              transform: scale(1) rotate(0deg);
-            }
-            25% { 
-              background: linear-gradient(135deg, rgba(147, 51, 234, 0.4), rgba(236, 72, 153, 0.3), rgba(59, 130, 246, 0.2));
-              transform: scale(1.05) rotate(1deg);
-            }
-            50% { 
-              background: linear-gradient(225deg, rgba(236, 72, 153, 0.4), rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.2));
-              transform: scale(1.02) rotate(-0.5deg);
-            }
-            75% { 
-              background: linear-gradient(315deg, rgba(59, 130, 246, 0.3), rgba(236, 72, 153, 0.4), rgba(147, 51, 234, 0.2));
-              transform: scale(1.03) rotate(0.5deg);
-            }
-          }
-          
-          @keyframes fade-in {
-            from { 
-              opacity: 0; 
-              transform: translateY(20px);
-            }
-            to { 
-              opacity: 1; 
-              transform: translateY(0);
-            }
-          }
-          
-          .animate-fade-in {
-            animation: fade-in 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          }
-        `}</style>
       </div>
     );
   }
@@ -146,29 +103,19 @@ export function HostLobby({
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
-      {/* Animated flowing background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-full h-full"
-             style={{
-               background: 'linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2), rgba(236, 72, 153, 0.2))',
-               animation: 'flow 12s ease-in-out infinite'
-             }} />
-        <div className="absolute top-20 right-20 w-96 h-96 bg-white/[0.03] rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-32 left-16 w-80 h-80 bg-white/[0.02] rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '4s'}} />
-      </div>
+    <div className="min-h-screen bg-gray-900 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gray-800"></div>
       
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 sm:p-8 animate-fade-in">
+        <div className="flex justify-between items-center p-6 sm:p-8">
           <Button
             onClick={() => {
               soundEffects.playButtonClick();
               onBackToMenu();
             }}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10 rounded-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95"
+            className="border-gray-600 text-white hover:bg-gray-700 rounded-2xl transition-all duration-300 hover:scale-105 active:scale-95"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -176,24 +123,24 @@ export function HostLobby({
           
           <div className="text-center">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Room Setup</h1>
-            <p className="text-white/60 text-sm">Get ready to play with friends</p>
+            <p className="text-gray-400 text-sm">Get ready to play with friends</p>
           </div>
           
-          <div className="w-20" /> {/* Spacer for centering */}
+          <div className="w-20" />
         </div>
 
         <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl w-full">
             
             {/* Left Column - Room Info & Controls */}
-            <div className="space-y-6 animate-fade-in" style={{animationDelay: '0.2s'}}>
+            <div className="space-y-6">
               
               {/* Room Code Card */}
-              <Card className="bg-white/10 border-white/20 backdrop-blur-2xl p-6 sm:p-8 rounded-3xl shadow-2xl hover:bg-white/15 transition-all duration-500 hover:scale-[1.02] hover:shadow-3xl">
+              <Card className="bg-gray-800 border-gray-700 p-6 sm:p-8 rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500 hover:scale-[1.02]">
                 <div className="text-center space-y-6">
                   <div>
                     <h2 className="text-xl font-semibold text-white mb-2">Room Code</h2>
-                    <p className="text-white/60 text-sm">Your friends need this to join</p>
+                    <p className="text-gray-400 text-sm">Your friends need this to join</p>
                   </div>
                   
                   <div className="relative group">
@@ -204,7 +151,7 @@ export function HostLobby({
                     <Button
                       onClick={copyToClipboard}
                       size="sm"
-                      className="absolute -top-2 -right-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-10 h-10 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95"
+                      className="absolute -top-2 -right-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
@@ -219,18 +166,18 @@ export function HostLobby({
                       />
                     </div>
                   </div>
-                  <p className="text-white/50 text-xs">Or scan to join instantly</p>
+                  <p className="text-gray-500 text-xs">Or scan to join instantly</p>
                 </div>
               </Card>
 
               {/* Playlist Section */}
-              <Card className="bg-white/10 border-white/20 backdrop-blur-2xl p-6 rounded-3xl shadow-2xl hover:bg-white/15 transition-all duration-500">
+              <Card className="bg-gray-800 border-gray-700 p-6 rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500">
                 <div className="flex items-center gap-3 mb-4">
                   <Music2 className="h-5 w-5 text-white" />
                   <h3 className="text-lg font-semibold text-white">Music</h3>
                 </div>
                 
-                <div className="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 backdrop-blur-xl">
+                <div className="bg-green-900/30 border border-green-700/50 rounded-2xl p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                     <div>
@@ -251,7 +198,7 @@ export function HostLobby({
                     isDarkMode={true}
                   />
                 </div>
-                <p className="text-xs text-white/50 mt-2">
+                <p className="text-xs text-gray-500 mt-2">
                   Custom playlists coming in a future update
                 </p>
               </Card>
@@ -264,7 +211,7 @@ export function HostLobby({
                   onStartGame();
                 }}
                 disabled={players.length < 1}
-                className="w-full bg-white text-black hover:bg-white/90 h-16 text-lg font-semibold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+                className="w-full bg-white text-black hover:bg-gray-200 h-16 text-lg font-semibold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
               >
                 <Play className="h-5 w-5 mr-3" />
                 {players.length < 1 ? 'Waiting for players to join...' : `Start game with ${players.length} ${players.length === 1 ? 'player' : 'players'}`}
@@ -272,8 +219,8 @@ export function HostLobby({
             </div>
 
             {/* Right Column - Players */}
-            <div className="animate-fade-in" style={{animationDelay: '0.4s'}}>
-              <Card className="bg-white/10 border-white/20 backdrop-blur-2xl p-6 h-full rounded-3xl shadow-2xl hover:bg-white/15 transition-all duration-500">
+            <div>
+              <Card className="bg-gray-800 border-gray-700 p-6 h-full rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500">
                 <div className="flex items-center gap-3 mb-6">
                   <Users className="h-5 w-5 text-white" />
                   <h3 className="text-lg font-semibold text-white">
@@ -287,11 +234,11 @@ export function HostLobby({
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {players.length === 0 ? (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <Users className="h-8 w-8 text-white/60" />
+                      <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="h-8 w-8 text-gray-500" />
                       </div>
-                      <p className="text-white/70 text-lg mb-2">Waiting for friends to join</p>
-                      <p className="text-white/50 text-sm">
+                      <p className="text-gray-300 text-lg mb-2">Waiting for friends to join</p>
+                      <p className="text-gray-500 text-sm">
                         Share the room code above
                       </p>
                     </div>
@@ -299,10 +246,9 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-4 p-4 bg-white/10 rounded-2xl transition-all duration-300 hover:bg-white/20 backdrop-blur-xl transform hover:scale-[1.02] animate-fade-in"
-                        style={{animationDelay: `${0.1 * index}s`}}
+                        className="flex items-center gap-4 p-4 bg-gray-700 rounded-2xl transition-all duration-300 hover:bg-gray-600 transform hover:scale-[1.02]"
                       >
-                        <div className="text-lg font-semibold text-white/60">
+                        <div className="text-lg font-semibold text-gray-400">
                           {index + 1}
                         </div>
                         
@@ -315,7 +261,7 @@ export function HostLobby({
                           <div className="text-white font-medium">
                             {player.name}
                           </div>
-                          <div className="text-white/60 text-sm">
+                          <div className="text-gray-400 text-sm">
                             Ready to play
                           </div>
                         </div>
@@ -331,49 +277,12 @@ export function HostLobby({
         </div>
 
         {/* Footer disclaimer */}
-        <div className="p-6 text-center animate-fade-in" style={{animationDelay: '0.6s'}}>
-          <p className="text-white/40 text-xs max-w-md mx-auto">
+        <div className="p-6 text-center">
+          <p className="text-gray-500 text-xs max-w-md mx-auto">
             Independent project for friends • Not affiliated with any music service
           </p>
         </div>
       </div>
-      
-      <style>{`
-        @keyframes flow {
-          0%, 100% { 
-            background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2), rgba(236, 72, 153, 0.2));
-            transform: scale(1) rotate(0deg);
-          }
-          25% { 
-            background: linear-gradient(135deg, rgba(147, 51, 234, 0.3), rgba(236, 72, 153, 0.2), rgba(59, 130, 246, 0.15));
-            transform: scale(1.02) rotate(0.5deg);
-          }
-          50% { 
-            background: linear-gradient(225deg, rgba(236, 72, 153, 0.3), rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.15));
-            transform: scale(1.01) rotate(-0.3deg);
-          }
-          75% { 
-            background: linear-gradient(315deg, rgba(59, 130, 246, 0.25), rgba(236, 72, 153, 0.3), rgba(147, 51, 234, 0.15));
-            transform: scale(1.015) rotate(0.2deg);
-          }
-        }
-        
-        @keyframes fade-in {
-          from { 
-            opacity: 0; 
-            transform: translateY(30px);
-          }
-          to { 
-            opacity: 1; 
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          opacity: 0;
-        }
-      `}</style>
     </div>
   );
 }
