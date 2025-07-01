@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -82,7 +81,7 @@ export function GamePlay({
             preview_url: previewUrl
           };
           setCurrentSongWithPreview(songWithPreview);
-          console.log('✅ Preview URL fetched:', previewUrl);
+          console.log('✅ Preview URL fetched for current turn player song:', previewUrl);
         } catch (error) {
           console.error('❌ Failed to fetch preview URL:', error);
           setCurrentSongWithPreview(gameState.currentSong);
@@ -150,8 +149,9 @@ export function GamePlay({
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
           console.log('🔊 Audio control received:', payload.payload);
-          // Only respond to audio controls for the current turn player
-          if (payload.payload?.currentTurnPlayerId === currentTurnPlayer.id) {
+          // FIXED: Only respond to audio controls for the current turn player's song
+          if (payload.payload?.currentTurnPlayerId === currentTurnPlayer.id && 
+              payload.payload?.songId === currentSongWithPreview?.id) {
             if (payload.payload?.action === 'play') {
               setIsPlaying(true);
             } else if (payload.payload?.action === 'pause') {
@@ -173,7 +173,7 @@ export function GamePlay({
         audioChannelRef.current = null;
       }
     };
-  }, [room?.id, currentTurnPlayer?.id]);
+  }, [room?.id, currentTurnPlayer?.id, currentSongWithPreview?.id]);
 
   const handlePlayPause = async () => {
     console.log('🎵 Play/Pause clicked:', { 
@@ -191,13 +191,14 @@ export function GamePlay({
     if (!isHost) {
       if (audioChannelRef.current) {
         const action = isPlaying ? 'pause' : 'play';
-        console.log(`🔊 Sending audio control: ${action} for player ${currentTurnPlayer.name}`);
+        console.log(`🔊 Sending audio control: ${action} for player ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
         await audioChannelRef.current.send({
           type: 'broadcast',
           event: 'audio-control',
           payload: { 
             action,
-            currentTurnPlayerId: currentTurnPlayer.id
+            currentTurnPlayerId: currentTurnPlayer.id,
+            songId: currentSongWithPreview.id // FIXED: Include specific song ID
           }
         });
       }
@@ -205,18 +206,19 @@ export function GamePlay({
     }
 
     const newIsPlaying = !isPlaying;
-    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying} for ${currentTurnPlayer.name}`);
+    console.log(`🎵 Host setting isPlaying to: ${newIsPlaying} for ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
     setIsPlaying(newIsPlaying);
     setGameIsPlaying(newIsPlaying);
 
     if (audioChannelRef.current) {
-      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'} for player ${currentTurnPlayer.name}`);
+      console.log(`🔊 Broadcasting audio control: ${newIsPlaying ? 'play' : 'pause'} for player ${currentTurnPlayer.name}, song ${currentSongWithPreview.id}`);
       await audioChannelRef.current.send({
         type: 'broadcast',
         event: 'audio-control',
         payload: { 
           action: newIsPlaying ? 'play' : 'pause',
-          currentTurnPlayerId: currentTurnPlayer.id
+          currentTurnPlayerId: currentTurnPlayer.id,
+          songId: currentSongWithPreview.id // FIXED: Include specific song ID
         }
       });
     }
@@ -345,7 +347,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
         />
         
-        {/* Hidden audio player for host - only plays current turn player's song */}
+        {/* FIXED: Hidden audio player for host - only plays current turn player's song */}
         {currentSongWithPreview?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
@@ -394,7 +396,7 @@ export function GamePlay({
         cardPlacementResult={cardPlacementResult}
       />
       
-      {/* Hidden audio player for player - only plays if it's their turn */}
+      {/* FIXED: Hidden audio player for player - only plays if it's their turn */}
       {currentSongWithPreview?.preview_url && isMyTurn && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer

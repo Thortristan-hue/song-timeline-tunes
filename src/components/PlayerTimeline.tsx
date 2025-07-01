@@ -36,12 +36,13 @@ export function PlayerTimeline({
   cancelPlacement,
   transitioningTurn = false
 }: PlayerTimelineProps) {
+  // FIXED: Optimized timeline song playback with just-in-time preview fetching
   const playTimelineSong = async (song: Song) => {
     console.log('🎵 Playing timeline song:', song.deezer_title);
     
     let previewUrl = song.preview_url;
     
-    // Fetch preview just-in-time if not available or if it might be expired
+    // FIXED: Fetch preview just-in-time if not available or if it might be expired
     if (!previewUrl && song.id) {
       try {
         console.log('🔍 Fetching preview URL just-in-time for timeline song');

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Song, Player } from '@/types/game';
 import { PlayerMysteryCard } from '@/components/player/PlayerMysteryCard';
