@@ -10,6 +10,7 @@ import { AudioPlayer } from '@/components/AudioPlayer';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 import { GameService } from '@/services/gameService';
 import { useGameState } from '@/hooks/useGameState';
+import { useToast } from '@/hooks/use-toast';
 
 interface GamePlayProps {
   room: any;
@@ -32,6 +33,7 @@ export function GamePlay({
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
   const gameLoadingState = useGameState({ timeout: 30000 });
+  const { toast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
@@ -40,11 +42,13 @@ export function GamePlay({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<any>(null);
   const initializationAttempted = useRef<boolean>(false);
+  const maxInitializationAttempts = 3;
 
   const {
     gameState,
@@ -54,38 +58,85 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Initialize game on mount with robust error handling
+  // Enhanced initialization with robust error handling and retry logic
   useEffect(() => {
     const initializeGameWithMysteryCard = async () => {
-      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost && !initializationAttempted.current) {
+      if (
+        room?.phase === 'playing' && 
+        gameState.phase === 'loading' && 
+        isHost && 
+        !initializationAttempted.current &&
+        initializationAttempts < maxInitializationAttempts
+      ) {
         initializationAttempted.current = true;
-        console.log('🎯 INIT: Host initializing game with mystery card...');
+        const currentAttempt = initializationAttempts + 1;
+        setInitializationAttempts(currentAttempt);
+        
+        console.log(`🎯 INIT: Host initializing game (attempt ${currentAttempt}/${maxInitializationAttempts})...`);
         
         gameLoadingState.startLoading('Initializing game');
         
         try {
           // Ensure we have available songs
-          if (gameState.availableSongs.length > 0) {
-            // Initialize the game with a mystery card using GameService
-            await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
-            console.log('✅ INIT: Game initialized with mystery card successfully');
-            gameLoadingState.stopLoading();
-          } else {
-            throw new Error('No songs available to start the game');
+          if (gameState.availableSongs.length === 0) {
+            throw new Error('No songs available to start the game. Please add songs to your playlist.');
           }
+
+          // Initialize the game with a mystery card using GameService
+          console.log('🎯 INIT: Starting initialization with GameService...');
+          await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
+          console.log('✅ INIT: Game initialized with mystery card successfully');
           
+          // Initialize local game state
           initializeGame();
+          
+          // Clear any previous errors
+          setInitializationError(null);
+          gameLoadingState.stopLoading();
+          
+          toast({
+            title: "Game Started!",
+            description: "The mystery card has been set. Let the game begin!",
+          });
+          
         } catch (error) {
           console.error('❌ INIT: Failed to initialize game with mystery card:', error);
-          const errorMessage = 'Failed to initialize game. Please try refreshing.';
+          const errorMessage = error instanceof Error ? error.message : 'Failed to initialize game. Please try again.';
+          
           setInitializationError(errorMessage);
           gameLoadingState.stopLoading(false, errorMessage);
+          
+          // Reset the attempt flag for potential retry
+          initializationAttempted.current = false;
+          
+          toast({
+            title: "Game Initialization Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+
+          // Auto-retry with exponential backoff if we haven't reached max attempts
+          if (currentAttempt < maxInitializationAttempts) {
+            const retryDelay = Math.min(2000 * Math.pow(2, currentAttempt - 1), 10000); // Cap at 10 seconds
+            console.log(`🔄 INIT: Auto-retrying in ${retryDelay}ms (attempt ${currentAttempt + 1}/${maxInitializationAttempts})`);
+            
+            setTimeout(() => {
+              initializationAttempted.current = false;
+            }, retryDelay);
+          } else {
+            console.error('❌ INIT: Max initialization attempts reached. Manual retry required.');
+            toast({
+              title: "Initialization Failed",
+              description: "Maximum retry attempts reached. Please use the retry button.",
+              variant: "destructive",
+            });
+          }
         }
       }
     };
 
     initializeGameWithMysteryCard();
-  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState]);
+  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState, initializationAttempts, toast]);
 
   // Check for game end condition
   useEffect(() => {
@@ -124,15 +175,22 @@ export function GamePlay({
       currentTurn: room?.current_turn,
       roomPhase: room?.phase,
       isHost,
-      gameEnded
+      gameEnded,
+      initializationError,
+      initializationAttempts
     });
 
-    // ALERT if mystery card is undefined in playing phase
-    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading) {
+    // ALERT if mystery card is undefined in playing phase and we're not in error state
+    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading && !initializationError) {
       console.error('🚨 CRITICAL: Mystery card is undefined during gameplay!');
-      setInitializationError('Mystery card not loaded. Please refresh the game.');
+      if (isHost && initializationAttempts < maxInitializationAttempts) {
+        setInitializationError('Mystery card not loaded. Retrying initialization...');
+        initializationAttempted.current = false; // Allow retry
+      } else {
+        setInitializationError('Mystery card not loaded. Please refresh the game.');
+      }
     }
-  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, gameLoadingState.isLoading]);
+  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, gameLoadingState.isLoading, initializationError, initializationAttempts]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -407,12 +465,19 @@ export function GamePlay({
   };
 
   const handleRetryInitialization = () => {
+    console.log('🔄 INIT: Manual retry requested');
     setInitializationError(null);
+    setInitializationAttempts(0);
     initializationAttempted.current = false;
     gameLoadingState.clearError();
+    
+    toast({
+      title: "Retrying Game Initialization",
+      description: "Attempting to start the game again...",
+    });
   };
 
-  // Show initialization error screen
+  // Show initialization error screen with enhanced retry options
   if (initializationError) {
     return (
       <LoadingErrorBoundary
@@ -421,17 +486,38 @@ export function GamePlay({
         onRetry={handleRetryInitialization}
         loadingMessage="Initializing game..."
       >
-        <div />
+        <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
+          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+            <div className="text-6xl mb-6">⚠️</div>
+            <div className="text-3xl font-bold mb-4">Game Initialization Failed</div>
+            <div className="text-lg mb-4 text-red-200">{initializationError}</div>
+            <div className="text-sm mb-6 text-red-300">
+              Attempts: {initializationAttempts}/{maxInitializationAttempts}
+            </div>
+            <div className="space-y-4">
+              <button
+                onClick={handleRetryInitialization}
+                className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold"
+                disabled={gameLoadingState.isLoading}
+              >
+                {gameLoadingState.isLoading ? 'Retrying...' : 'Retry Initialization'}
+              </button>
+              <div className="text-xs text-red-400">
+                If this keeps failing, try refreshing the page or check your internet connection.
+              </div>
+            </div>
+          </div>
+        </div>
       </LoadingErrorBoundary>
     );
   }
 
   // CRITICAL FIX: Show error if mystery card is undefined after loading
-  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading) {
+  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading && !initializationError) {
     return (
       <LoadingErrorBoundary
         isLoading={false}
-        error="Mystery card not loaded. Please refresh the game."
+        error="Mystery card not loaded. The game may not have initialized properly."
         onRetry={handleRetryInitialization}
         loadingMessage="Loading mystery card..."
       >
