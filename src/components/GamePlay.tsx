@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
 import { HostGameView } from '@/components/HostGameView';
+import { LoadingErrorBoundary } from '@/components/LoadingErrorBoundary';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 import { GameService } from '@/services/gameService';
+import { useGameState } from '@/hooks/useGameState';
 
 interface GamePlayProps {
   room: any;
@@ -29,6 +31,7 @@ export function GamePlay({
   customSongs
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
+  const gameLoadingState = useGameState({ timeout: 30000 });
   const [isPlaying, setIsPlaying] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
@@ -36,10 +39,12 @@ export function GamePlay({
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<any>(null);
+  const initializationAttempted = useRef<boolean>(false);
 
   const {
     gameState,
@@ -49,29 +54,38 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Initialize game on mount - CRITICAL FIX: Ensure mystery card is always set
+  // Initialize game on mount with robust error handling
   useEffect(() => {
     const initializeGameWithMysteryCard = async () => {
-      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
+      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost && !initializationAttempted.current) {
+        initializationAttempted.current = true;
         console.log('🎯 INIT: Host initializing game with mystery card...');
         
-        // Ensure we have available songs
-        if (gameState.availableSongs.length > 0) {
-          try {
+        gameLoadingState.startLoading('Initializing game');
+        
+        try {
+          // Ensure we have available songs
+          if (gameState.availableSongs.length > 0) {
             // Initialize the game with a mystery card using GameService
             await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
             console.log('✅ INIT: Game initialized with mystery card successfully');
-          } catch (error) {
-            console.error('❌ INIT: Failed to initialize game with mystery card:', error);
+            gameLoadingState.stopLoading();
+          } else {
+            throw new Error('No songs available to start the game');
           }
+          
+          initializeGame();
+        } catch (error) {
+          console.error('❌ INIT: Failed to initialize game with mystery card:', error);
+          const errorMessage = 'Failed to initialize game. Please try refreshing.';
+          setInitializationError(errorMessage);
+          gameLoadingState.stopLoading(false, errorMessage);
         }
-        
-        initializeGame();
       }
     };
 
     initializeGameWithMysteryCard();
-  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id]);
+  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState]);
 
   // Check for game end condition
   useEffect(() => {
@@ -114,10 +128,11 @@ export function GamePlay({
     });
 
     // ALERT if mystery card is undefined in playing phase
-    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
+    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading) {
       console.error('🚨 CRITICAL: Mystery card is undefined during gameplay!');
+      setInitializationError('Mystery card not loaded. Please refresh the game.');
     }
-  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded]);
+  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, gameLoadingState.isLoading]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -391,21 +406,41 @@ export function GamePlay({
     }
   };
 
-  // CRITICAL FIX: Show error if mystery card is undefined
-  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
+  const handleRetryInitialization = () => {
+    setInitializationError(null);
+    initializationAttempted.current = false;
+    gameLoadingState.clearError();
+  };
+
+  // Show initialization error screen
+  if (initializationError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10">
-          <div className="text-6xl mb-6">🚨</div>
-          <div className="text-4xl font-bold mb-4">Mystery Card Error</div>
-          <div className="text-xl mb-6">The mystery card is not loading properly.</div>
-          <div className="text-lg text-white/60">Please refresh the page or rejoin the game.</div>
-        </div>
-      </div>
+      <LoadingErrorBoundary
+        isLoading={false}
+        error={initializationError}
+        onRetry={handleRetryInitialization}
+        loadingMessage="Initializing game..."
+      >
+        <div />
+      </LoadingErrorBoundary>
     );
   }
 
-  // FIX 4: Show game over screen if game has ended
+  // CRITICAL FIX: Show error if mystery card is undefined after loading
+  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading) {
+    return (
+      <LoadingErrorBoundary
+        isLoading={false}
+        error="Mystery card not loaded. Please refresh the game."
+        onRetry={handleRetryInitialization}
+        loadingMessage="Loading mystery card..."
+      >
+        <div />
+      </LoadingErrorBoundary>
+    );
+  }
+
+  // Show game over screen if game has ended
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.score >= 10);
     return (
@@ -424,22 +459,16 @@ export function GamePlay({
     );
   }
 
-  // Modern loading state
-  if (gameState.phase === 'loading') {
+  // Loading state with proper error boundary
+  if (gameState.phase === 'loading' || gameLoadingState.isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        </div>
-        <div className="text-center text-white relative z-10">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
-            <div className="text-3xl animate-spin">🎵</div>
-          </div>
-          <div className="text-2xl font-semibold mb-2">Getting the tunes ready...</div>
-          <div className="text-white/60 max-w-md mx-auto">We're setting up some great music for you</div>
-        </div>
-      </div>
+      <LoadingErrorBoundary
+        isLoading={true}
+        error={null}
+        loadingMessage="Getting the tunes ready..."
+      >
+        <div />
+      </LoadingErrorBoundary>
     );
   }
 
