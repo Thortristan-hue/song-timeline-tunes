@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -35,6 +36,7 @@ export function GamePlay({
   const [currentSongWithPreview, setCurrentSongWithPreview] = useState<Song | null>(null);
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [gameEnded, setGameEnded] = useState(false);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -56,6 +58,21 @@ export function GamePlay({
     }
   }, [room?.phase, gameState.phase, initializeGame]);
 
+  // Check for game end condition
+  useEffect(() => {
+    const activePlayers = players.filter(p => {
+      const isHostPlayer = p.id.includes(room?.host_id) || p.id === room?.host_id;
+      return !isHostPlayer;
+    });
+
+    const winningPlayer = activePlayers.find(player => player.score >= 10);
+    if (winningPlayer && !gameEnded) {
+      console.log('🎯 Game ended - winner found:', winningPlayer.name);
+      setGameEnded(true);
+      soundEffects.playGameStart(); // Victory sound
+    }
+  }, [players, room?.host_id, gameEnded, soundEffects]);
+
   // Get current turn player - this will only be from active players (non-host)
   const currentTurnPlayer = getCurrentPlayer();
   // Filter out host from active players for display and turn logic
@@ -70,17 +87,25 @@ export function GamePlay({
     currentTurnPlayer: currentTurnPlayer?.name,
     isHost,
     hostId: room?.host_id,
-    hostFilteredOut: players.filter(p => p.id.includes(room?.host_id) || p.id === room?.host_id).length
+    hostFilteredOut: players.filter(p => p.id.includes(room?.host_id) || p.id === room?.host_id).length,
+    gameEnded
   });
+
+  // FIX 2: Sync mystery card from room state to ensure host and player see the same card
+  useEffect(() => {
+    if (room?.current_song && room.current_song !== currentSongWithPreview) {
+      console.log('🎯 SYNC: Setting mystery card from room state:', room.current_song.deezer_title);
+      setCurrentSongWithPreview(room.current_song);
+    }
+  }, [room?.current_song, currentSongWithPreview]);
 
   // Fetch fresh preview URL when current song changes
   useEffect(() => {
     const fetchFreshPreview = async () => {
-      if (gameState.currentSong && gameState.currentSong.id) {
+      if (gameState.currentSong && gameState.currentSong.id && !gameEnded) {
         console.log('🎵 Fetching FRESH preview for mystery card:', gameState.currentSong.deezer_title);
         setIsLoadingPreview(true);
         try {
-          // Always fetch a fresh preview URL to avoid expired ones
           const freshPreviewUrl = await DeezerAudioService.getPreviewUrl(gameState.currentSong.id);
           if (freshPreviewUrl) {
             const songWithFreshPreview = {
@@ -105,7 +130,7 @@ export function GamePlay({
     };
 
     fetchFreshPreview();
-  }, [gameState.currentSong?.id]);
+  }, [gameState.currentSong?.id, gameEnded]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -115,7 +140,8 @@ export function GamePlay({
         gameState.phase === 'playing' &&
         gameState.availableSongs.length > 0 &&
         activePlayers.length > 0 &&
-        isHost
+        isHost &&
+        !gameEnded
       ) {
         console.log('🃏 Assigning starting cards to all players');
         
@@ -146,11 +172,11 @@ export function GamePlay({
     };
 
     assignStartingCards();
-  }, [gameState.phase, gameState.availableSongs, activePlayers, isHost, startingCardsAssigned]);
+  }, [gameState.phase, gameState.availableSongs, activePlayers, isHost, startingCardsAssigned, gameEnded]);
 
   // Audio setup - only for current turn player's mystery card
   useEffect(() => {
-    if (!room?.id || !currentTurnPlayer) return;
+    if (!room?.id || !currentTurnPlayer || gameEnded) return;
 
     if (audioChannelRef.current) {
       audioChannelRef.current.unsubscribe();
@@ -162,7 +188,6 @@ export function GamePlay({
         .channel(`audio-${room.id}`)
         .on('broadcast', { event: 'audio-control' }, (payload) => {
           console.log('🔊 Audio control received:', payload.payload);
-          // Only respond to audio controls for the current mystery card
           if (payload.payload?.currentTurnPlayerId === currentTurnPlayer.id && 
               payload.payload?.songId === currentSongWithPreview?.id) {
             if (payload.payload?.action === 'play') {
@@ -171,7 +196,6 @@ export function GamePlay({
               setIsPlaying(false);
             } else if (payload.payload?.action === 'stop') {
               setIsPlaying(false);
-              // Stop any currently playing audio
               if (currentAudioRef.current) {
                 currentAudioRef.current.pause();
                 currentAudioRef.current.currentTime = 0;
@@ -193,7 +217,7 @@ export function GamePlay({
         audioChannelRef.current = null;
       }
     };
-  }, [room?.id, currentTurnPlayer?.id, currentSongWithPreview?.id]);
+  }, [room?.id, currentTurnPlayer?.id, currentSongWithPreview?.id, gameEnded]);
 
   // Stop any playing audio when song changes to prevent overlaps
   useEffect(() => {
@@ -206,8 +230,13 @@ export function GamePlay({
     };
   }, [currentSongWithPreview?.id]);
 
-  // FIXED: Simplified and reliable host audio preview
   const handlePlayPause = async () => {
+    // FIX 4: Prevent all interactions if game has ended
+    if (gameEnded) {
+      console.log('🚫 Game ended - no audio interactions allowed');
+      return;
+    }
+
     console.log('🎵 Play/Pause for mystery card:', { 
       isHost, 
       isPlaying, 
@@ -222,7 +251,6 @@ export function GamePlay({
       return;
     }
 
-    // If already playing, just pause
     if (isPlaying) {
       console.log('🎵 Pausing audio');
       setIsPlaying(false);
@@ -246,7 +274,6 @@ export function GamePlay({
       return;
     }
 
-    // Need fresh preview URL before playing
     let previewUrl = currentSongWithPreview.preview_url;
     
     if (!previewUrl && currentSongWithPreview.id) {
@@ -271,7 +298,6 @@ export function GamePlay({
       return;
     }
     
-    // Stop any currently playing audio before starting new one
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
       if (!audio.paused) {
@@ -299,12 +325,17 @@ export function GamePlay({
   };
 
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
+    // FIX 4: Prevent all interactions if game has ended
+    if (gameEnded) {
+      console.log('🚫 Game ended - no card placement allowed');
+      return { success: false };
+    }
+
     if (!currentPlayer || isProcessingTurn) {
       console.error('Cannot place card: missing player or turn in progress');
       return { success: false };
     }
 
-    // Prevent multiple concurrent turn processing
     setIsProcessingTurn(true);
 
     try {
@@ -312,7 +343,6 @@ export function GamePlay({
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
-      // Stop any playing audio when card is placed
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
         currentAudioRef.current.currentTime = 0;
@@ -336,13 +366,12 @@ export function GamePlay({
           soundEffects.playCardError();
         }
 
-        // ALWAYS advance turn after showing result, regardless of correctness
+        // FIX 1: ALWAYS advance turn after card placement
         setTimeout(async () => {
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
           setIsPlaying(false);
           
-          // Stop any audio before turn transition
           if (audioChannelRef.current) {
             await audioChannelRef.current.send({
               type: 'broadcast',
@@ -351,10 +380,10 @@ export function GamePlay({
             });
           }
           
-          // Update turn in database - ALWAYS advance to next player
+          // CRITICAL FIX 1: Force turn advancement regardless of correctness
           if (isHost) {
             const nextTurnIndex = (gameState.currentTurnIndex + 1) % activePlayers.length;
-            console.log(`🔄 Advancing turn from ${gameState.currentTurnIndex} to ${nextTurnIndex}`);
+            console.log(`🔄 MANDATORY: Advancing turn from ${gameState.currentTurnIndex} to ${nextTurnIndex}`);
             
             try {
               const { error } = await supabase
@@ -374,8 +403,10 @@ export function GamePlay({
           
           // Start new turn with new mystery card after brief delay
           setTimeout(() => {
-            console.log('🎯 Starting new turn with new mystery card');
-            startNewTurn();
+            if (!gameEnded) {
+              console.log('🎯 Starting new turn with new mystery card');
+              startNewTurn();
+            }
             setIsProcessingTurn(false);
           }, 1000);
         }, 3000);
@@ -393,6 +424,25 @@ export function GamePlay({
       return { success: false };
     }
   };
+
+  // FIX 4: Show game over screen if game has ended
+  if (gameEnded) {
+    const winningPlayer = activePlayers.find(player => player.score >= 10);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white relative z-10">
+          <div className="text-6xl mb-6">🏆</div>
+          <div className="text-4xl font-bold mb-4">Game Over!</div>
+          {winningPlayer && (
+            <div className="text-2xl mb-6">
+              <span style={{ color: winningPlayer.color }}>{winningPlayer.name}</span> wins!
+            </div>
+          )}
+          <div className="text-lg text-white/60">Thanks for playing!</div>
+        </div>
+      </div>
+    );
+  }
 
   // Modern loading state
   if (gameState.phase === 'loading') {
@@ -446,7 +496,6 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
         />
         
-        {/* ENHANCED: Host audio player with better error handling */}
         {currentSongWithPreview?.preview_url && (
           <div className="fixed bottom-4 right-4 opacity-50">
             <AudioPlayer
@@ -495,10 +544,10 @@ export function GamePlay({
         onPlaceCard={handlePlaceCard}
         mysteryCardRevealed={mysteryCardRevealed}
         cardPlacementResult={cardPlacementResult}
+        gameEnded={gameEnded}
       />
       
-      {/* Player audio player - only plays if it's their turn and it's the mystery card */}
-      {currentSongWithPreview?.preview_url && isMyTurn && (
+      {currentSongWithPreview?.preview_url && isMyTurn && !gameEnded && (
         <div className="fixed bottom-4 right-4 opacity-50">
           <AudioPlayer
             src={currentSongWithPreview.preview_url}

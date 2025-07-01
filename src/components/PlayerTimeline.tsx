@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ interface PlayerTimelineProps {
   transitioningTurn?: boolean;
   onConfirmPlacement?: (song: Song, position: number) => Promise<{ success: boolean }>;
   onCancelPlacement?: () => void;
+  gameEnded?: boolean;
 }
 
 export function PlayerTimeline({
@@ -35,13 +36,30 @@ export function PlayerTimeline({
   handleDrop,
   transitioningTurn = false,
   onConfirmPlacement,
-  onCancelPlacement
+  onCancelPlacement,
+  gameEnded = false
 }: PlayerTimelineProps) {
-  // Optimized timeline song playback with just-in-time preview fetching
+  // FIX 5: Single audio ref to prevent spam and overlapping audio
+  const currentlyPlayingAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // FIX 5: Improved timeline song playback with spam prevention
   const playTimelineSong = async (song: Song) => {
+    // FIX 4: Prevent interactions if game has ended
+    if (gameEnded) {
+      console.log('🚫 Game ended - no timeline audio allowed');
+      return;
+    }
+
     console.log('🎵 Playing timeline song:', song.deezer_title);
     
-    // Stop any currently playing audio before starting new one
+    // FIX 5: Stop any currently playing audio before starting new one
+    if (currentlyPlayingAudioRef.current && !currentlyPlayingAudioRef.current.paused) {
+      console.log('🔇 Stopping currently playing timeline audio');
+      currentlyPlayingAudioRef.current.pause();
+      currentlyPlayingAudioRef.current.currentTime = 0;
+    }
+
+    // Also stop any other audio elements on the page
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
       if (!audio.paused) {
@@ -68,9 +86,11 @@ export function PlayerTimeline({
       return;
     }
     
-    // Create and play audio element with overlap prevention
+    // FIX 5: Create and manage single audio element
     const audio = new Audio(previewUrl);
     audio.volume = 0.5;
+    audio.crossOrigin = 'anonymous';
+    currentlyPlayingAudioRef.current = audio;
     
     try {
       await audio.play();
@@ -78,19 +98,25 @@ export function PlayerTimeline({
       
       // Stop after 30 seconds
       setTimeout(() => {
-        audio.pause();
-        audio.currentTime = 0;
+        if (currentlyPlayingAudioRef.current === audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          currentlyPlayingAudioRef.current = null;
+        }
       }, 30000);
     } catch (error) {
       console.error('❌ Failed to play timeline song:', error);
+      if (currentlyPlayingAudioRef.current === audio) {
+        currentlyPlayingAudioRef.current = null;
+      }
     }
   };
 
   const handleConfirmClick = async () => {
-    if (!placementPending || !onConfirmPlacement) return;
+    if (!placementPending || !onConfirmPlacement || gameEnded) return;
     
     try {
-      console.log('🎯 Confirming placement:', placementPending.song.deezer_title);
+      console.log('🎯 Confirming placement');
       const result = await onConfirmPlacement(placementPending.song, placementPending.position);
       console.log('🎯 Placement confirmed, result:', result);
     } catch (error) {
@@ -99,7 +125,7 @@ export function PlayerTimeline({
   };
 
   const handleTryAgainClick = () => {
-    if (!onCancelPlacement) return;
+    if (!onCancelPlacement || gameEnded) return;
     console.log('🔄 Player choosing to try again with placement');
     onCancelPlacement();
   };
@@ -113,16 +139,19 @@ export function PlayerTimeline({
         className={cn(
           "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1 cursor-pointer group",
           "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl",
-          isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50"
+          isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50",
+          gameEnded && "opacity-50 pointer-events-none"
         )}
-        onClick={() => playTimelineSong(song)}
+        onClick={() => !gameEnded && playTimelineSong(song)}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
         
-        {/* Play button overlay */}
-        <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <Play className="h-8 w-8 text-white" />
-        </div>
+        {/* Play button overlay - hide when game ended */}
+        {!gameEnded && (
+          <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <Play className="h-8 w-8 text-white" />
+          </div>
+        )}
         
         <Music className="h-8 w-8 mb-3 opacity-70" />
         <div className="text-center relative z-10 space-y-1">
@@ -150,33 +179,34 @@ export function PlayerTimeline({
         className={cn(
           "w-20 h-36 rounded-3xl transition-all duration-300 mx-3 flex items-center justify-center",
           "touch-manipulation cursor-pointer backdrop-blur-xl border",
+          gameEnded ? "opacity-50 pointer-events-none" :
           isPending
             ? 'bg-blue-500/30 border-blue-400/50 shadow-lg shadow-blue-400/25 scale-110'
             : isHovered 
             ? 'bg-white/15 border-white/20 shadow-lg scale-105' 
             : 'bg-white/5 border-white/10 hover:bg-white/10'
         )}
-        onDragOver={(e) => handleDragOver(e, position)}
+        onDragOver={(e) => !gameEnded && handleDragOver(e, position)}
         onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, position)}
+        onDrop={(e) => !gameEnded && handleDrop(e, position)}
         onClick={(e) => {
-          if (draggedSong && isCurrent) {
+          if (draggedSong && isCurrent && !gameEnded) {
             handleDrop(e, position);
           }
         }}
         onTouchStart={(e) => {
-          if (draggedSong && isCurrent) {
+          if (draggedSong && isCurrent && !gameEnded) {
             e.preventDefault();
             handleDrop(e, position);
           }
         }}
       >
-        {draggedSong && isCurrent && !isPending && (
+        {draggedSong && isCurrent && !isPending && !gameEnded && (
           <div className="text-white/80 text-xs font-medium text-center leading-tight">
             Drop<br />here
           </div>
         )}
-        {isPending && (
+        {isPending && !gameEnded && (
           <div className="text-blue-200 text-xs font-medium text-center leading-tight">
             Confirm<br />placement
           </div>
@@ -196,8 +226,8 @@ export function PlayerTimeline({
         opacity: transitioningTurn ? 0.6 : 1
       }}
     >
-      {/* ENHANCED: Highly visible confirmation dialog positioned prominently */}
-      {placementPending && (
+      {/* FIX 3: Confirmation dialog without song information leakage */}
+      {placementPending && !gameEnded && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-600/50 max-w-md w-full mx-4 transform scale-100 animate-in fade-in-0 zoom-in-95 duration-300">
             <div className="text-center mb-8">
@@ -205,15 +235,8 @@ export function PlayerTimeline({
                 <Music className="h-8 w-8 text-blue-400" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
-              <p className="text-slate-300 mb-2">Place this song in your timeline?</p>
-              <div className="bg-slate-700/50 rounded-2xl p-4">
-                <div className="font-semibold text-white text-lg mb-1">
-                  {placementPending.song.deezer_title}
-                </div>
-                <div className="text-slate-400 text-sm">
-                  by {placementPending.song.deezer_artist} • {placementPending.song.release_year}
-                </div>
-              </div>
+              {/* FIX 3: Generic confirmation without song details */}
+              <p className="text-slate-300 mb-4">Are you sure you want to place the card in this position?</p>
             </div>
             
             <div className="flex gap-4">
@@ -259,9 +282,9 @@ export function PlayerTimeline({
           <div className="text-center py-12 px-20 flex-1">
             <Music className="h-16 w-16 text-white/30 mx-auto mb-6" />
             <p className="text-white/70 text-lg font-medium mb-2">
-              {isCurrent ? "Your timeline starts here" : "Building timeline..."}
+              {gameEnded ? "Game Over" : isCurrent ? "Your timeline starts here" : "Building timeline..."}
             </p>
-            {isCurrent && (
+            {isCurrent && !gameEnded && (
               <p className="text-white/50 text-sm font-normal">
                 Drag the mystery card to create your chronological timeline
               </p>

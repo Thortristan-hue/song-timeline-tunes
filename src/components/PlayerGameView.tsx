@@ -18,6 +18,7 @@ interface PlayerGameViewProps {
   onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
   mysteryCardRevealed: boolean;
   cardPlacementResult: { correct: boolean; song: Song } | null;
+  gameEnded?: boolean;
 }
 
 export function PlayerGameView({
@@ -30,13 +31,19 @@ export function PlayerGameView({
   onPlayPause,
   onPlaceCard,
   mysteryCardRevealed,
-  cardPlacementResult
+  cardPlacementResult,
+  gameEnded = false
 }: PlayerGameViewProps) {
   const [draggedSong, setDraggedSong] = useState<Song | null>(null);
   const [placementPending, setPlacementPending] = useState<{ song: Song; position: number } | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
 
   const handleDragStart = (song: Song) => {
+    // FIX 4: Prevent all interactions if game has ended
+    if (gameEnded) {
+      console.log('🚫 Game ended - no drag interactions allowed');
+      return;
+    }
     console.log('🎯 FIXED: Starting drag for mystery card:', song.deezer_title);
     setDraggedSong(song);
   };
@@ -47,7 +54,7 @@ export function PlayerGameView({
   };
 
   const handleDragOver = (e: React.DragEvent, position: number) => {
-    if (!isMyTurn || !draggedSong) return;
+    if (!isMyTurn || !draggedSong || gameEnded) return;
     e.preventDefault();
     setHoveredPosition(position);
   };
@@ -61,7 +68,7 @@ export function PlayerGameView({
       e.preventDefault();
     }
     
-    if (!isMyTurn || !draggedSong) return;
+    if (!isMyTurn || !draggedSong || gameEnded) return;
     
     console.log('🎯 FIXED: Mystery card dropped at position:', position);
     setHoveredPosition(null);
@@ -69,8 +76,13 @@ export function PlayerGameView({
     setDraggedSong(null);
   };
 
-  // FIXED: Handle confirmation of placement
   const handleConfirmPlacement = async (song: Song, position: number): Promise<{ success: boolean }> => {
+    // FIX 4: Prevent all interactions if game has ended
+    if (gameEnded) {
+      console.log('🚫 Game ended - no card placement allowed');
+      return { success: false };
+    }
+
     console.log('🎯 FIXED: Confirming placement of mystery card:', { song: song.deezer_title, position });
     
     try {
@@ -84,11 +96,10 @@ export function PlayerGameView({
     }
   };
 
-  // FIXED: Handle cancellation of placement (try again)
   const handleCancelPlacement = () => {
-    if (placementPending) {
+    if (placementPending && !gameEnded) {
       console.log('🔄 FIXED: Canceling placement, allowing try again for mystery card');
-      setDraggedSong(placementPending.song); // Allow dragging again
+      setDraggedSong(placementPending.song);
     }
     setPlacementPending(null);
   };
@@ -106,7 +117,8 @@ export function PlayerGameView({
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
         <div className="bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-white/10">
           <p className="text-white/70 text-sm font-medium">
-            {isMyTurn ? "Your turn to play • Drag the mystery card to your timeline" : `${currentTurnPlayer.name}'s turn`}
+            {gameEnded ? "Game Over!" : 
+             isMyTurn ? "Your turn to play • Drag the mystery card to your timeline" : `${currentTurnPlayer.name}'s turn`}
           </p>
         </div>
       </div>
@@ -149,7 +161,7 @@ export function PlayerGameView({
 
       <div className="absolute top-32 right-6 z-30">
         <div className={`bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-xl ${
-          isMyTurn ? 'ring-2 ring-blue-400/50' : ''
+          isMyTurn && !gameEnded ? 'ring-2 ring-blue-400/50' : ''
         }`}>
           <div className="text-center">
             <div className="text-white/60 text-sm mb-1">Current Turn</div>
@@ -159,15 +171,15 @@ export function PlayerGameView({
                 style={{ backgroundColor: currentTurnPlayer.color }}
               />
               <div className="text-white font-semibold">
-                {isMyTurn ? 'Your turn!' : currentTurnPlayer.name}
+                {gameEnded ? 'Game Over' : isMyTurn ? 'Your turn!' : currentTurnPlayer.name}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* FIXED: Mystery Card - only show if it's the player's turn and no placement pending */}
-      {currentSong && isMyTurn && !placementPending && (
+      {/* Mystery Card - only show if it's the player's turn, no placement pending, and game hasn't ended */}
+      {currentSong && isMyTurn && !placementPending && !gameEnded && (
         <PlayerMysteryCard
           currentSong={currentSong}
           mysteryCardRevealed={mysteryCardRevealed}
@@ -179,17 +191,19 @@ export function PlayerGameView({
       )}
 
       {/* Waiting State */}
-      {!isMyTurn && (
+      {(!isMyTurn || gameEnded) && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
           <div className="text-center">
             <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center mb-6 mx-auto border border-white/20">
-              <div className="text-4xl animate-pulse">⏳</div>
+              <div className="text-4xl animate-pulse">
+                {gameEnded ? '🏆' : '⏳'}
+              </div>
             </div>
             <div className="text-2xl font-semibold text-white mb-2">
-              {currentTurnPlayer.name}'s turn
+              {gameEnded ? 'Game Over!' : `${currentTurnPlayer.name}'s turn`}
             </div>
             <div className="text-white/60">
-              Hang tight while they think...
+              {gameEnded ? 'Thanks for playing!' : 'Hang tight while they think...'}
             </div>
           </div>
         </div>
@@ -210,7 +224,7 @@ export function PlayerGameView({
           
           <PlayerTimeline
             player={currentPlayer}
-            isCurrent={isMyTurn}
+            isCurrent={isMyTurn && !gameEnded}
             isDarkMode={true}
             draggedSong={draggedSong}
             hoveredPosition={hoveredPosition}
@@ -220,6 +234,7 @@ export function PlayerGameView({
             handleDrop={handleDrop}
             onConfirmPlacement={handleConfirmPlacement}
             onCancelPlacement={handleCancelPlacement}
+            gameEnded={gameEnded}
           />
         </div>
       </div>

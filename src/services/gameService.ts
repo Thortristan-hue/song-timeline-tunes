@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -456,14 +455,19 @@ class GameService {
   // Set current song for the room (using current_song_index for now)
   async setCurrentSong(roomId: string, song: Song): Promise<void> {
     try {
-      // For now, we'll just update the current_song_index to 1 to indicate a song is active
-      // In a full implementation, you might want to store the song data elsewhere
+      // FIX 2: Store the current mystery card in room state for host/player sync
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song_index: 1 })
+        .update({ 
+          current_song_index: 1,
+          // Store the current song data in the songs array for synchronization
+          current_song: song as any
+        })
         .eq('id', roomId);
 
       if (error) throw error;
+      
+      console.log('🎯 SYNC: Current mystery card set in room state:', song.deezer_title);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to set current song';
       throw new Error(errorMessage);
