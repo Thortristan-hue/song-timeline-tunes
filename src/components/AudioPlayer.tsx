@@ -23,18 +23,18 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
 }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // FIXED: Expose audio element via ref for external control
+  // Expose audio element via ref for external control
   useImperativeHandle(ref, () => audioRef.current!, []);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src) return;
+    if (!audio || !src || disabled) return;
 
-    // FIXED: Set volume and ensure no overlapping audio
+    // Set volume
     audio.volume = volume;
     
-    if (isPlaying && !disabled) {
-      // FIXED: Stop any other playing audio before starting
+    if (isPlaying) {
+      // Stop any other playing audio before starting
       const allAudio = document.querySelectorAll('audio');
       allAudio.forEach(otherAudio => {
         if (otherAudio !== audio && !otherAudio.paused) {
@@ -43,11 +43,13 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         }
       });
 
+      // Test if the URL is valid before attempting to play
+      audio.load();
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error('Audio play failed:', error);
-          // FIXED: If audio fails, notify parent to stop playing state
+          // Reset playing state if audio fails
           onPlayPause();
         });
       }
@@ -56,7 +58,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     }
   }, [isPlaying, volume, src, disabled, onPlayPause]);
 
-  // FIXED: Handle audio ending to update state
+  // Handle audio ending and errors
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -66,24 +68,32 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     };
 
     const handleError = () => {
-      console.error('Audio error occurred');
+      console.error('Audio error occurred - resetting play state');
       onPlayPause(); // Stop playing on error
+    };
+
+    const handleLoadError = () => {
+      console.error('Audio load error - invalid or expired URL');
+      onPlayPause(); // Stop playing on load error
     };
 
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
+    audio.addEventListener('abort', handleLoadError);
+    
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
+      audio.removeEventListener('abort', handleLoadError);
     };
   }, [onPlayPause]);
 
-  // FIXED: Update src and reset audio when it changes
+  // Update src and reset audio when it changes
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // FIXED: Stop current audio when src changes
+    // Stop current audio when src changes
     audio.pause();
     audio.currentTime = 0;
     if (src) {

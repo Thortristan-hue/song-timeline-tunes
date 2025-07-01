@@ -41,7 +41,7 @@ export function PlayerTimeline({
   const playTimelineSong = async (song: Song) => {
     console.log('🎵 Playing timeline song:', song.deezer_title);
     
-    // FIXED: Stop any currently playing audio before starting new one
+    // Stop any currently playing audio before starting new one
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
       if (!audio.paused) {
@@ -68,7 +68,7 @@ export function PlayerTimeline({
       return;
     }
     
-    // FIXED: Create and play audio element with overlap prevention
+    // Create and play audio element with overlap prevention
     const audio = new Audio(previewUrl);
     audio.volume = 0.5;
     
@@ -90,8 +90,9 @@ export function PlayerTimeline({
     if (!placementPending || !onConfirmPlacement) return;
     
     try {
-      console.log('🎯 FIXED: Confirming placement for mystery card:', placementPending.song.deezer_title);
-      await onConfirmPlacement(placementPending.song, placementPending.position);
+      console.log('🎯 Confirming placement:', placementPending.song.deezer_title);
+      const result = await onConfirmPlacement(placementPending.song, placementPending.position);
+      console.log('🎯 Placement confirmed, result:', result);
     } catch (error) {
       console.error('Failed to confirm placement:', error);
     }
@@ -99,7 +100,7 @@ export function PlayerTimeline({
 
   const handleTryAgainClick = () => {
     if (!onCancelPlacement) return;
-    console.log('🔄 FIXED: Player choosing to try again with placement');
+    console.log('🔄 Player choosing to try again with placement');
     onCancelPlacement();
   };
 
@@ -123,7 +124,7 @@ export function PlayerTimeline({
           <Play className="h-8 w-8 text-white" />
         </div>
         
-        {/* FIXED: Show confirmation overlay for pending placement */}
+        {/* Show confirmation overlay for pending placement */}
         {isPendingPosition && placementPending && (
           <div className="absolute inset-0 bg-black/60 rounded-3xl flex flex-col items-center justify-center p-2 z-10">
             <div className="text-center mb-3">
