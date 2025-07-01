@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
+import { GameService } from '@/services/gameService';
 
 interface GamePlayProps {
   room: any;

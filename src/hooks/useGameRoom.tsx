@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -34,7 +35,7 @@ export function useGameRoom() {
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
-      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : []
+      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as unknown as Song[] : []
     };
   }, []);
 
@@ -100,8 +101,12 @@ export function useGameRoom() {
         console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
         const roomData = payload.new as any;
         
-        // CRITICAL FIX: Ensure current_song is properly handled
-        const currentSong = roomData.current_song || null;
+        // CRITICAL FIX: Properly cast current_song from Json to Song
+        let currentSong: Song | null = null;
+        if (roomData.current_song) {
+          // Cast from Json to Song with proper type assertion
+          currentSong = roomData.current_song as unknown as Song;
+        }
         console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
         
         setRoom({
