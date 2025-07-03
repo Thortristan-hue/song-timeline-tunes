@@ -19,6 +19,9 @@ export function useGameRoom() {
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
   const subscriptionRef = useRef<any>(null);
+  const reconnectionAttempts = useRef<number>(0);
+  const maxReconnectionAttempts = 3;
+  const reconnectionTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -112,6 +115,14 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost, gameState]);
 
+  // Clear reconnection timeout
+  const clearReconnectionTimeout = useCallback(() => {
+    if (reconnectionTimeout.current) {
+      clearTimeout(reconnectionTimeout.current);
+      reconnectionTimeout.current = null;
+    }
+  }, []);
+
   // Enhanced subscription management with connection recovery
   useEffect(() => {
     if (!room?.id) return;
@@ -123,6 +134,9 @@ export function useGameRoom() {
       subscriptionRef.current.unsubscribe();
       subscriptionRef.current = null;
     }
+
+    // Clear any pending reconnection
+    clearReconnectionTimeout();
 
     const setupSubscription = () => {
       const channel = supabase
@@ -183,17 +197,39 @@ export function useGameRoom() {
             console.log('✅ Successfully subscribed to room updates');
             gameState.stopLoading(true);
             setError(null); // Clear any connection errors
+            reconnectionAttempts.current = 0; // Reset reconnection attempts on successful connection
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('❌ Subscription error:', status);
-            const errorMessage = 'Lost connection to game. Attempting to reconnect...';
-            setError(errorMessage);
-            gameState.stopLoading(false, errorMessage);
             
-            // Attempt to reconnect after a delay
-            setTimeout(() => {
-              console.log('🔄 Attempting to reconnect...');
-              setupSubscription();
-            }, 3000);
+            // Only attempt reconnection if we haven't exceeded max attempts
+            if (reconnectionAttempts.current < maxReconnectionAttempts) {
+              reconnectionAttempts.current++;
+              console.log(`🔄 Attempting reconnection ${reconnectionAttempts.current}/${maxReconnectionAttempts}`);
+              
+              const errorMessage = `Connection lost (attempt ${reconnectionAttempts.current}/${maxReconnectionAttempts}). Reconnecting...`;
+              setError(errorMessage);
+              gameState.stopLoading(false, errorMessage);
+              
+              // Exponential backoff for reconnection
+              const delay = Math.min(3000 * Math.pow(2, reconnectionAttempts.current - 1), 15000);
+              
+              reconnectionTimeout.current = setTimeout(() => {
+                console.log('🔄 Attempting to reconnect...');
+                setupSubscription();
+              }, delay);
+            } else {
+              // Max reconnection attempts reached
+              console.error('❌ Max reconnection attempts reached');
+              const errorMessage = 'Connection lost. Please refresh the page or try again.';
+              setError(errorMessage);
+              gameState.stopLoading(false, errorMessage);
+              
+              toast({
+                title: "Connection Lost",
+                description: errorMessage,
+                variant: "destructive",
+              });
+            }
           }
         });
 
@@ -209,13 +245,14 @@ export function useGameRoom() {
 
     return () => {
       console.log('🔄 Cleaning up subscriptions');
+      clearReconnectionTimeout();
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
         subscriptionRef.current = null;
       }
       gameState.forceStopLoading();
     };
-  }, [room?.id, fetchPlayers, gameState]);
+  }, [room?.id, fetchPlayers, gameState, clearReconnectionTimeout, toast]);
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
     try {
@@ -470,6 +507,9 @@ export function useGameRoom() {
         .eq('id', currentPlayer.id);
     }
 
+    // Clear reconnection timeout
+    clearReconnectionTimeout();
+
     setRoom(null);
     setPlayers([]);
     setCurrentPlayer(null);
@@ -477,8 +517,9 @@ export function useGameRoom() {
     setError(null);
     hostSessionId.current = null;
     playerSessionId.current = null;
+    reconnectionAttempts.current = 0;
     gameState.stopLoading();
-  }, [currentPlayer, isHost, gameState]);
+  }, [currentPlayer, isHost, gameState, clearReconnectionTimeout]);
 
   const setCurrentSong = useCallback(async (song: Song): Promise<void> => {
     if (!room || !isHost) return;
@@ -549,11 +590,16 @@ export function useGameRoom() {
       setError(null);
       gameState.clearError();
       gameState.forceStopLoading();
+      reconnectionAttempts.current = 0;
+      clearReconnectionTimeout();
     },
     retryConnection: () => {
       if (room?.id) {
         retryCount.current = 0;
+        reconnectionAttempts.current = 0;
+        clearReconnectionTimeout();
         gameState.clearError();
+        setError(null);
         fetchPlayers(room.id);
       }
     }
