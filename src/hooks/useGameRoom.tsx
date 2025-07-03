@@ -18,6 +18,7 @@ export function useGameRoom() {
   const playerSessionId = useRef<string | null>(null);
   const retryCount = useRef<number>(0);
   const maxRetries = 3;
+  const subscriptionRef = useRef<any>(null);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -41,7 +42,7 @@ export function useGameRoom() {
     };
   }, []);
 
-  // Fetch players with retry logic
+  // Enhanced fetch players with better error recovery
   const fetchPlayers = useCallback(async (roomId: string, isRetry: boolean = false) => {
     try {
       if (!isRetry) {
@@ -90,6 +91,11 @@ export function useGameRoom() {
 
       // Reset retry count on success
       retryCount.current = 0;
+      
+      // Clear any loading state if this was triggered by a retry
+      if (gameState.isLoading) {
+        gameState.stopLoading(true);
+      }
     } catch (error) {
       console.error('❌ Failed to fetch players:', error);
       
@@ -99,89 +105,115 @@ export function useGameRoom() {
         console.log(`🔄 Retrying fetch players (${retryCount.current}/${maxRetries})...`);
         setTimeout(() => fetchPlayers(roomId, true), 2000 * retryCount.current);
       } else {
-        setError('Failed to load players. Please refresh the page.');
-        gameState.stopLoading(false, 'Failed to load players');
+        const errorMessage = 'Failed to load players. Please refresh the page.';
+        setError(errorMessage);
+        gameState.stopLoading(false, errorMessage);
       }
     }
   }, [convertPlayer, isHost, gameState]);
 
-  // Subscribe to room changes with error handling
+  // Enhanced subscription management with connection recovery
   useEffect(() => {
     if (!room?.id) return;
 
     console.log('🔄 Setting up real-time subscriptions for room:', room.id);
 
-    const channel = supabase
-      .channel(`room-${room.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'game_rooms',
-        filter: `id=eq.${room.id}`
-      }, (payload) => {
-        try {
-          console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
-          const roomData = payload.new as any;
-          
-          // CRITICAL FIX: Properly cast current_song from Json to Song
-          let currentSong: Song | null = null;
-          if (roomData.current_song) {
-            currentSong = roomData.current_song as unknown as Song;
-          }
-          console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
-          
-          setRoom({
-            id: roomData.id,
-            lobby_code: roomData.lobby_code,
-            host_id: roomData.host_id,
-            host_name: roomData.host_name || '',
-            phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-            songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
-            created_at: roomData.created_at,
-            updated_at: roomData.updated_at,
-            current_turn: roomData.current_turn,
-            current_song: currentSong,
-            current_player_id: roomData.current_player_id || null
-          });
+    // Clean up existing subscription
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
 
-          // Clear loading if we were waiting for room updates
-          if (gameState.isLoading) {
-            gameState.stopLoading();
-          }
-        } catch (error) {
-          console.error('❌ Error processing room update:', error);
-          setError('Failed to process game update');
-        }
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'players',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🎮 Player change detected:', payload);
-        fetchPlayers(room.id);
-      })
-      .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          // Clear loading once subscribed
-          gameState.stopLoading();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('❌ Subscription error:', status);
-          setError('Lost connection to game. Please refresh.');
-          gameState.stopLoading(false, 'Connection lost');
-        }
-      });
+    const setupSubscription = () => {
+      const channel = supabase
+        .channel(`room-${room.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'game_rooms',
+          filter: `id=eq.${room.id}`
+        }, (payload) => {
+          try {
+            console.log('🔄 SYNC: Room updated:', payload.new);
+            const roomData = payload.new as any;
+            
+            // CRITICAL FIX: Properly cast current_song from Json to Song
+            let currentSong: Song | null = null;
+            if (roomData.current_song) {
+              currentSong = roomData.current_song as unknown as Song;
+            }
+            
+            setRoom({
+              id: roomData.id,
+              lobby_code: roomData.lobby_code,
+              host_id: roomData.host_id,
+              host_name: roomData.host_name || '',
+              phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+              songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
+              created_at: roomData.created_at,
+              updated_at: roomData.updated_at,
+              current_turn: roomData.current_turn,
+              current_song: currentSong,
+              current_player_id: roomData.current_player_id || null
+            });
 
-    // Initial fetch with loading
-    gameState.startLoading('Loading game state');
+            // Clear loading if we were waiting for room updates
+            if (gameState.isLoading) {
+              console.log('✅ Room update received, clearing loading state');
+              gameState.stopLoading(true);
+            }
+          } catch (error) {
+            console.error('❌ Error processing room update:', error);
+            setError('Failed to process game update');
+            gameState.stopLoading(false, 'Failed to process game update');
+          }
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `room_id=eq.${room.id}`
+        }, (payload) => {
+          console.log('🎮 Player change detected:', payload);
+          fetchPlayers(room.id);
+        })
+        .subscribe((status) => {
+          console.log('📡 Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to room updates');
+            gameState.stopLoading(true);
+            setError(null); // Clear any connection errors
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('❌ Subscription error:', status);
+            const errorMessage = 'Lost connection to game. Attempting to reconnect...';
+            setError(errorMessage);
+            gameState.stopLoading(false, errorMessage);
+            
+            // Attempt to reconnect after a delay
+            setTimeout(() => {
+              console.log('🔄 Attempting to reconnect...');
+              setupSubscription();
+            }, 3000);
+          }
+        });
+
+      subscriptionRef.current = channel;
+    };
+
+    // Start loading and setup subscription
+    gameState.startLoading('Connecting to game');
+    setupSubscription();
+
+    // Initial fetch
     fetchPlayers(room.id);
 
     return () => {
       console.log('🔄 Cleaning up subscriptions');
-      channel.unsubscribe();
-      gameState.stopLoading();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      gameState.forceStopLoading();
     };
   }, [room?.id, fetchPlayers, gameState]);
 
@@ -236,7 +268,7 @@ export function useGameRoom() {
 
       setCurrentPlayer(hostPlayer);
       setIsHost(true);
-      gameState.stopLoading();
+      gameState.stopLoading(true);
       return data.lobby_code;
     } catch (error) {
       console.error('❌ Failed to create room:', error);
@@ -321,8 +353,7 @@ export function useGameRoom() {
       
       setCurrentPlayer(convertPlayer(playerData));
       setIsHost(false);
-      gameState.stopLoading();
-      
+      gameState.stopLoading(true);
       return true;
     } catch (error) {
       console.error('❌ Failed to join room:', error);
@@ -517,10 +548,12 @@ export function useGameRoom() {
     clearError: () => {
       setError(null);
       gameState.clearError();
+      gameState.forceStopLoading();
     },
     retryConnection: () => {
       if (room?.id) {
         retryCount.current = 0;
+        gameState.clearError();
         fetchPlayers(room.id);
       }
     }

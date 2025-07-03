@@ -58,9 +58,23 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
+  // Clear loading states when component unmounts or game ends
+  useEffect(() => {
+    return () => {
+      gameLoadingState.forceStopLoading();
+      setIsProcessingTurn(false);
+      setIsLoadingPreview(false);
+    };
+  }, [gameLoadingState]);
+
   // Enhanced initialization with robust error handling and retry logic
   useEffect(() => {
     const initializeGameWithMysteryCard = async () => {
+      // Don't initialize if already ended or error exists
+      if (gameEnded || initializationError) {
+        return;
+      }
+
       if (
         room?.phase === 'playing' && 
         gameState.phase === 'loading' && 
@@ -92,7 +106,7 @@ export function GamePlay({
           
           // Clear any previous errors
           setInitializationError(null);
-          gameLoadingState.stopLoading();
+          gameLoadingState.stopLoading(true);
           
           toast({
             title: "Game Started!",
@@ -136,7 +150,27 @@ export function GamePlay({
     };
 
     initializeGameWithMysteryCard();
-  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState, initializationAttempts, toast]);
+  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState, initializationAttempts, toast, gameEnded, initializationError]);
+
+  // Auto-clear loading states if they get stuck
+  useEffect(() => {
+    const checkStuckStates = () => {
+      // Clear processing turn if it's been stuck for too long
+      if (isProcessingTurn) {
+        console.log('🔄 Auto-clearing stuck processing turn state');
+        setIsProcessingTurn(false);
+      }
+      
+      // Clear preview loading if stuck
+      if (isLoadingPreview) {
+        console.log('🔄 Auto-clearing stuck preview loading state');
+        setIsLoadingPreview(false);
+      }
+    };
+
+    const interval = setInterval(checkStuckStates, 15000); // Check every 15 seconds
+    return () => clearInterval(interval);
+  }, [isProcessingTurn, isLoadingPreview]);
 
   // Check for game end condition
   useEffect(() => {
@@ -470,6 +504,7 @@ export function GamePlay({
     setInitializationAttempts(0);
     initializationAttempted.current = false;
     gameLoadingState.clearError();
+    gameLoadingState.forceStopLoading(); // Force clear any stuck loading
     
     toast({
       title: "Retrying Game Initialization",
@@ -545,13 +580,19 @@ export function GamePlay({
     );
   }
 
-  // Loading state with proper error boundary
+  // Loading state with enhanced timeout handling
   if (gameState.phase === 'loading' || gameLoadingState.isLoading) {
     return (
       <LoadingErrorBoundary
         isLoading={true}
         error={null}
-        loadingMessage="Getting the tunes ready..."
+        loadingMessage={gameLoadingState.loadingOperation || "Getting the tunes ready..."}
+        onRetry={() => {
+          gameLoadingState.forceStopLoading();
+          if (isHost) {
+            handleRetryInitialization();
+          }
+        }}
       >
         <div />
       </LoadingErrorBoundary>
