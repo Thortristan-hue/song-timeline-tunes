@@ -74,7 +74,7 @@ export function HostLobby({
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(lobbyCode);
-      await soundEffects.playSound('button-click');
+      await soundEffects.playButtonClick();
       toast({
         title: "Copied!",
         description: "Room code copied to clipboard",
@@ -121,7 +121,7 @@ export function HostLobby({
 
     setIsStartingGame(true);
     try {
-      await soundEffects.playSound('button-click');
+      await soundEffects.playButtonClick();
       await onStartGame();
     } catch (error) {
       console.error('Failed to start game:', error);
@@ -202,7 +202,7 @@ export function HostLobby({
                 <div className="text-center">
                   <div className="text-white/80 text-sm mb-4">Scan to Join</div>
                   <div className="flex justify-center">
-                    <QRCodeGenerator lobbyCode={lobbyCode} />
+                    <QRCodeGenerator value={lobbyCode} />
                   </div>
                 </div>
               </Card>
