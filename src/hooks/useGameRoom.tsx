@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -20,8 +21,9 @@ export function useGameRoom() {
   const maxRetries = 3;
   const subscriptionRef = useRef<any>(null);
   const reconnectionAttempts = useRef<number>(0);
-  const maxReconnectionAttempts = 3;
+  const maxReconnectionAttempts = 2; // Reduced from 3
   const reconnectionTimeout = useRef<NodeJS.Timeout | null>(null);
+  const connectionStable = useRef<boolean>(false);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -195,49 +197,57 @@ export function useGameRoom() {
           console.log('📡 Subscription status:', status);
           if (status === 'SUBSCRIBED') {
             console.log('✅ Successfully subscribed to room updates');
+            connectionStable.current = true;
             gameState.stopLoading(true);
             setError(null); // Clear any connection errors
             reconnectionAttempts.current = 0; // Reset reconnection attempts on successful connection
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('❌ Subscription error:', status);
+            connectionStable.current = false;
             
-            // Only attempt reconnection if we haven't exceeded max attempts
+            // Only attempt reconnection if we haven't exceeded max attempts and had a stable connection before
             if (reconnectionAttempts.current < maxReconnectionAttempts) {
               reconnectionAttempts.current++;
               console.log(`🔄 Attempting reconnection ${reconnectionAttempts.current}/${maxReconnectionAttempts}`);
               
-              const errorMessage = `Connection lost (attempt ${reconnectionAttempts.current}/${maxReconnectionAttempts}). Reconnecting...`;
+              const errorMessage = `Connection unstable. Reconnecting... (${reconnectionAttempts.current}/${maxReconnectionAttempts})`;
               setError(errorMessage);
-              gameState.stopLoading(false, errorMessage);
               
-              // Exponential backoff for reconnection
-              const delay = Math.min(3000 * Math.pow(2, reconnectionAttempts.current - 1), 15000);
+              // Exponential backoff for reconnection (but don't start loading immediately)
+              const delay = Math.min(2000 * Math.pow(1.5, reconnectionAttempts.current - 1), 8000);
               
               reconnectionTimeout.current = setTimeout(() => {
-                console.log('🔄 Attempting to reconnect...');
-                setupSubscription();
+                if (!connectionStable.current) {
+                  console.log('🔄 Attempting to reconnect...');
+                  setupSubscription();
+                }
               }, delay);
             } else {
               // Max reconnection attempts reached
               console.error('❌ Max reconnection attempts reached');
-              const errorMessage = 'Connection lost. Please refresh the page or try again.';
+              const errorMessage = 'Connection lost. Please refresh the page to reconnect.';
               setError(errorMessage);
               gameState.stopLoading(false, errorMessage);
               
               toast({
                 title: "Connection Lost",
-                description: errorMessage,
+                description: "Please refresh the page to reconnect to the game.",
                 variant: "destructive",
               });
             }
+          } else if (status === 'CLOSED') {
+            console.log('📡 Subscription closed');
+            connectionStable.current = false;
           }
         });
 
       subscriptionRef.current = channel;
     };
 
-    // Start loading and setup subscription
-    gameState.startLoading('Connecting to game');
+    // Only start loading if we don't have a stable connection
+    if (!connectionStable.current) {
+      gameState.startLoading('Connecting to game');
+    }
     setupSubscription();
 
     // Initial fetch
@@ -246,6 +256,7 @@ export function useGameRoom() {
     return () => {
       console.log('🔄 Cleaning up subscriptions');
       clearReconnectionTimeout();
+      connectionStable.current = false;
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
         subscriptionRef.current = null;
@@ -469,34 +480,64 @@ export function useGameRoom() {
     }
   }, [room, isHost]);
 
+  // CRITICAL FIX: Enhanced startGame with proper validation
   const startGame = useCallback(async (availableSongs?: Song[]): Promise<boolean> => {
-    if (!room || !isHost) return false;
+    if (!room || !isHost) {
+      console.error('❌ Cannot start game: not host or no room');
+      return false;
+    }
 
     try {
-      console.log('🎯 INIT: Starting game with mystery card initialization');
+      console.log('🎯 VALIDATION: Starting game validation...');
       
-      // CRITICAL FIX: Initialize game with mystery card
-      if (availableSongs && availableSongs.length > 0) {
-        await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
-      } else {
-        // Fallback: just set phase to playing
-        const { error } = await supabase
-          .from('game_rooms')
-          .update({ 
-            phase: 'playing',
-            current_turn: 0
-          })
-          .eq('id', room.id);
-
-        if (error) throw error;
+      // CRITICAL: Validate we have enough songs before starting
+      const songsToUse = availableSongs || room.songs || [];
+      console.log('🎯 VALIDATION: Available songs count:', songsToUse.length);
+      
+      if (!songsToUse || songsToUse.length < 10) {
+        const errorMsg = `Not enough songs to start the game. Found ${songsToUse.length} songs, need at least 10. Please load a playlist first.`;
+        console.error('❌ VALIDATION:', errorMsg);
+        setError(errorMsg);
+        
+        toast({
+          title: "Cannot Start Game",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        
+        return false;
       }
+
+      console.log('🎯 VALIDATION: Validation passed, starting game...');
+      gameState.startLoading('Starting game');
+      
+      // Initialize game with mystery card
+      await GameService.initializeGameWithMysteryCard(room.id, songsToUse);
+      
+      console.log('✅ VALIDATION: Game started successfully');
+      gameState.stopLoading(true);
+      
+      toast({
+        title: "Game Started!",
+        description: "Let the guessing begin!",
+      });
       
       return true;
     } catch (error) {
-      console.error('Failed to start game:', error);
+      console.error('❌ Failed to start game:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to start game. Please try again.';
+      setError(errorMsg);
+      gameState.stopLoading(false, errorMsg);
+      
+      toast({
+        title: "Game Start Failed",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      
       return false;
     }
-  }, [room, isHost]);
+  }, [room, isHost, gameState, toast]);
 
   const leaveRoom = useCallback(async () => {
     // Only delete player record if this is a non-host player
@@ -518,6 +559,7 @@ export function useGameRoom() {
     hostSessionId.current = null;
     playerSessionId.current = null;
     reconnectionAttempts.current = 0;
+    connectionStable.current = false;
     gameState.stopLoading();
   }, [currentPlayer, isHost, gameState, clearReconnectionTimeout]);
 
@@ -591,12 +633,14 @@ export function useGameRoom() {
       gameState.clearError();
       gameState.forceStopLoading();
       reconnectionAttempts.current = 0;
+      connectionStable.current = false;
       clearReconnectionTimeout();
     },
     retryConnection: () => {
       if (room?.id) {
         retryCount.current = 0;
         reconnectionAttempts.current = 0;
+        connectionStable.current = false;
         clearReconnectionTimeout();
         gameState.clearError();
         setError(null);
