@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -55,7 +56,7 @@ export function GamePlay({
   // Initialize game ONCE per room/game session
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
-                           gameState.phase === 'loading' && 
+                           (gameState.phase === 'loading' || gameState.phase === 'ready') && 
                            !gameInitialized &&
                            !gameState.playlistInitialized;
 
@@ -87,13 +88,14 @@ export function GamePlay({
               throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
             }
 
-            // Set up initial mystery card from available songs
+            // Initialize game with mystery card and ensure all players have starting cards
             const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
-            const initialMysteryCard = shuffledSongs.find(song => song.preview_url) || shuffledSongs[0];
+            await GameService.initializeGameWithMysteryCard(room.id, shuffledSongs.slice(0, 10));
             
-            await GameService.initializeGameWithMysteryCard(room.id, availableSongs.slice(0, 10));
-            
-            console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
+            console.log('✅ INIT: Game initialized successfully');
+          } else {
+            // Player initialization - minimal setup
+            console.log('🎯 INIT: Player initializing game logic');
           }
           
           // Both host and player initialize game logic
@@ -110,25 +112,33 @@ export function GamePlay({
     }
   }, [room?.phase, gameState.phase, gameState.playlistInitialized, gameInitialized, isHost, initializeGame, room?.id]);
 
-  // Check for game end condition
+  // ENHANCED: Check for game end condition after every turn
   useEffect(() => {
     const activePlayers = players.filter(p => {
       const isHostPlayer = p.id.includes(room?.host_id) || p.id === room?.host_id;
       return !isHostPlayer;
     });
 
-    const winningPlayer = activePlayers.find(player => player.score >= 10);
+    // Check if any player has reached 10 cards (game end condition)
+    const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
     if (winningPlayer && !gameEnded) {
-      console.log('🎯 Game ended - winner found:', winningPlayer.name);
+      console.log('🎯 GAME END: Player reached 10 cards:', winningPlayer.name);
       setGameEnded(true);
-      // Use a try-catch for sound effects to prevent blocking gameplay
+      
+      // End the game in database
+      if (isHost) {
+        GameService.endGame(room.id).catch(error => {
+          console.error('Failed to end game in database:', error);
+        });
+      }
+      
       try {
         soundEffects.playGameStart(); // Victory sound
       } catch (error) {
         console.warn('Could not play victory sound:', error);
       }
     }
-  }, [players, room?.host_id, gameEnded, soundEffects]);
+  }, [players, room?.host_id, gameEnded, soundEffects, room?.id, isHost]);
 
   // Use synchronized mystery card from room state with validation
   const currentMysteryCard = room?.current_song;
@@ -142,7 +152,7 @@ export function GamePlay({
   
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
 
-  // Mystery card validation - only log warnings, don't block gameplay
+  // ENHANCED: Mystery card validation with better error handling
   useEffect(() => {
     console.log('🎯 SYNC: Mystery card validation:', {
       mysteryCard: currentMysteryCard?.deezer_title || 'UNDEFINED',
@@ -161,7 +171,7 @@ export function GamePlay({
     }
   }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, initializationError]);
 
-  // Assign starting cards to players when game starts
+  // ENHANCED: Assign starting cards to players when game starts - with validation
   useEffect(() => {
     const assignStartingCards = async () => {
       if (
@@ -172,12 +182,12 @@ export function GamePlay({
         isHost &&
         !gameEnded
       ) {
-        console.log('🃏 Assigning starting cards to all players');
+        console.log('🃏 STARTING CARDS: Assigning to all players');
         
         for (const player of activePlayers) {
           if (player.timeline.length === 0) {
             const randomSong = gameState.availableSongs[Math.floor(Math.random() * gameState.availableSongs.length)];
-            console.log(`🃏 Assigning starting card to ${player.name}:`, randomSong.deezer_title);
+            console.log(`🃏 STARTING CARD: Assigned to ${player.name}:`, randomSong.deezer_title);
             
             try {
               const { error } = await supabase
@@ -259,9 +269,16 @@ export function GamePlay({
     };
   }, [currentMysteryCard?.id]);
 
+  // ENHANCED: Audio control with better turn validation
   const handlePlayPause = async () => {
     if (gameEnded) {
       console.log('🚫 Game ended - no audio interactions allowed');
+      return;
+    }
+
+    // STRICT TURN VALIDATION: Only current turn player can control audio
+    if (currentPlayer && currentPlayer.id !== currentTurnPlayerId) {
+      console.log('🚫 TURN VALIDATION: Not your turn - audio control blocked');
       return;
     }
 
@@ -310,7 +327,6 @@ export function GamePlay({
       try {
         previewUrl = await DeezerAudioService.getPreviewUrl(currentMysteryCard.id);
         if (previewUrl) {
-          // Update the room's current song with fresh preview URL
           const updatedSong = { ...currentMysteryCard, preview_url: previewUrl };
           await onSetCurrentSong(updatedSong);
         }
@@ -354,6 +370,7 @@ export function GamePlay({
     }
   };
 
+  // ENHANCED: Card placement with strict turn validation and proper turn advancement
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (gameEnded) {
       console.log('🚫 Game ended - no card placement allowed');
@@ -365,28 +382,29 @@ export function GamePlay({
       return { success: false };
     }
 
-    // CRITICAL FIX: Enforce turn validation
+    // CRITICAL: STRICT TURN VALIDATION - Only current turn player can place cards
     if (currentPlayer.id !== currentTurnPlayerId) {
-      console.error('❌ MANDATORY: Not your turn! Current turn belongs to:', currentTurnPlayerId);
+      console.error('❌ STRICT TURN VALIDATION: Not your turn! Current turn belongs to:', currentTurnPlayerId, 'You are:', currentPlayer.id);
       return { success: false };
     }
 
     setIsProcessingTurn(true);
 
     try {
-      console.log('🃏 MANDATORY: Placing card with turn advancement enforcement');
+      console.log('🃏 CARD PLACEMENT: Processing with strict turn validation');
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
+      // Stop audio when placing card
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
         currentAudioRef.current.currentTime = 0;
       }
       setIsPlaying(false);
 
-      // Pass available songs for new mystery card selection
+      // Place card with available songs for new mystery card selection
       const result = await onPlaceCard(song, position, gameState.availableSongs);
-      console.log('🃏 MANDATORY: Card placement result with turn advancement:', result);
+      console.log('🃏 CARD PLACEMENT: Result with turn advancement:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -417,6 +435,13 @@ export function GamePlay({
           }
           
           setIsProcessingTurn(false);
+          
+          // Check game end condition after card placement
+          const updatedPlayer = players.find(p => p.id === currentPlayer.id);
+          if (updatedPlayer && updatedPlayer.timeline.length >= 10) {
+            console.log('🎯 GAME END: Player reached 10 cards after placement');
+            setGameEnded(true);
+          }
         }, 3000);
 
         return { success: true };
@@ -449,7 +474,7 @@ export function GamePlay({
 
   // Show game over screen if game has ended
   if (gameEnded) {
-    const winningPlayer = activePlayers.find(player => player.score >= 10);
+    const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
         <div className="text-center text-white relative z-10">
@@ -466,7 +491,7 @@ export function GamePlay({
     );
   }
 
-  // Enhanced data readiness check
+  // ENHANCED: Data readiness check with better conditions
   const allEssentialDataReady = 
     room?.phase === 'playing' &&
     (gameState.phase === 'playing' || gameState.phase === 'ready') &&
