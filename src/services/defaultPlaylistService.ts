@@ -1,3 +1,4 @@
+
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
@@ -15,15 +16,24 @@ class DefaultPlaylistService {
   async loadDefaultPlaylist(): Promise<Song[]> {
     console.log('🎵 Loading default playlist...');
     
-    // Initial processing
+    // Initial processing - get all valid songs regardless of preview status
     this.songs = defaultPlaylist
       .filter(item => this.validateSong(item))
       .map(item => this.mapToSong(item));
 
-    // Enrich with preview URLs and filter out songs without previews
-    this.songs = await this.enrichWithPreviews(this.songs);
+    console.log(`📋 Total valid songs in playlist: ${this.songs.length}`);
     
-    console.log(`✅ Loaded ${this.songs.length} valid songs with previews`);
+    // Try to enrich with preview URLs but don't filter out songs without previews yet
+    const enrichedSongs = await this.enrichWithPreviews(this.songs);
+    
+    // Count songs with previews
+    const songsWithPreviews = enrichedSongs.filter(song => song.preview_url);
+    console.log(`🎵 Songs with previews: ${songsWithPreviews.length}/${enrichedSongs.length}`);
+    
+    // Return all songs (with and without previews) - let the game logic decide what to do
+    this.songs = enrichedSongs;
+    
+    console.log(`✅ Loaded ${this.songs.length} total songs (${songsWithPreviews.length} with previews)`);
     return this.songs;
   }
 
@@ -47,6 +57,15 @@ class DefaultPlaylistService {
       
       return true;
     });
+  }
+
+  /**
+   * Filters songs that have valid preview URLs
+   * @param songs Array of songs to filter
+   * @returns Array of songs with valid previews
+   */
+  filterSongsWithPreviews(songs: Song[]): Song[] {
+    return songs.filter(song => song.preview_url && song.preview_url.trim() !== '');
   }
 
   /**
@@ -107,13 +126,13 @@ class DefaultPlaylistService {
   }
 
   private async enrichWithPreviews(songs: Song[]): Promise<Song[]> {
-    const songsWithPreviews: Song[] = [];
+    const enrichedSongs: Song[] = [];
     
     for (const song of songs) {
       try {
         // If song already has preview_url, keep it
         if (song.preview_url) {
-          songsWithPreviews.push(song);
+          enrichedSongs.push(song);
           continue;
         }
 
@@ -122,23 +141,30 @@ class DefaultPlaylistService {
           const trackId = song.deezer_url.match(/track\/(\d+)/)?.[1];
           if (trackId) {
             console.log(`🎵 Fetching preview for: ${song.deezer_title}`);
-            const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
-            song.preview_url = previewUrl;
-            songsWithPreviews.push(song);
-            console.log(`✅ Got preview for: ${song.deezer_title}`);
+            try {
+              const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+              song.preview_url = previewUrl;
+              console.log(`✅ Got preview for: ${song.deezer_title}`);
+            } catch (error) {
+              console.log(`⏭️ No preview available for: ${song.deezer_title}`);
+            }
           } else {
             console.log(`⏭️ No track ID found for: ${song.deezer_title}`);
           }
         } else {
           console.log(`⏭️ No Deezer URL for: ${song.deezer_title}`);
         }
+        
+        // Add the song regardless of whether we got a preview or not
+        enrichedSongs.push(song);
       } catch (error) {
-        console.log(`⏭️ Skipping ${song.deezer_title} - no preview available:`, error instanceof Error ? error.message : 'Unknown error');
-        // Don't add songs without previews to the final list
+        console.log(`⏭️ Error processing ${song.deezer_title}:`, error instanceof Error ? error.message : 'Unknown error');
+        // Still add the song even if there was an error
+        enrichedSongs.push(song);
       }
     }
 
-    return songsWithPreviews;
+    return enrichedSongs;
   }
 
   private generateCardColor(): string {
@@ -156,6 +182,17 @@ class DefaultPlaylistService {
   getRandomSong(): Song | null {
     return this.songs.length > 0 
       ? this.songs[Math.floor(Math.random() * this.songs.length)]
+      : null;
+  }
+
+  /**
+   * Get a random song that has a valid preview URL
+   * @returns Song with preview URL or null if none available
+   */
+  getRandomSongWithPreview(): Song | null {
+    const songsWithPreviews = this.songs.filter(song => song.preview_url);
+    return songsWithPreviews.length > 0 
+      ? songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)]
       : null;
   }
 }

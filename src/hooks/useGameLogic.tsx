@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -84,7 +83,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.current_turn]);
 
-  // Initialize game with default playlist - filter songs with valid previews
+  // Initialize game with default playlist - ensure we have songs with previews
   const initializeGame = useCallback(async () => {
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
@@ -99,10 +98,18 @@ export function useGameLogic(
         throw new Error(`Not enough valid songs (${validSongs.length}/10 minimum)`);
       }
 
-      console.log(`✅ Loaded ${validSongs.length} valid songs from playlist`);
+      // CRITICAL FIX: Check for songs with previews specifically
+      const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
       
-      // Don't filter by preview here - let the GamePlay component handle preview validation
-      // This allows the game to start even if some songs don't have previews
+      console.log(`✅ Loaded ${validSongs.length} valid songs from playlist`);
+      console.log(`🎵 Songs with previews: ${songsWithPreviews.length}/${validSongs.length}`);
+      
+      // Only throw error if there are NO songs with previews
+      if (songsWithPreviews.length === 0) {
+        throw new Error(`No songs in the playlist have valid audio previews. Cannot start the game.`);
+      }
+
+      // Use all valid songs (the game will filter for previews when needed)
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
@@ -141,33 +148,17 @@ export function useGameLogic(
       // Set transitioning state
       setGameState(prev => ({ ...prev, transitioningTurn: true }));
 
-      // Try to find a song with a valid preview
-      let selectedSong: Song | null = null;
-      let attempts = 0;
-      const maxAttempts = Math.min(5, songsToUse.length);
-
-      while (attempts < maxAttempts && !selectedSong) {
-        const randomIndex = Math.floor(Math.random() * songsToUse.length);
-        const candidateSong = songsToUse[randomIndex];
-        
-        console.log(`🎵 Attempting song ${attempts + 1}/${maxAttempts}: ${candidateSong.deezer_title}`);
-        
-        // Try to fetch preview for this song
-        const songWithPreview = await fetchSongPreview(candidateSong);
-        if (songWithPreview) {
-          selectedSong = songWithPreview;
-          break;
-        }
-        
-        attempts++;
+      // CRITICAL FIX: Only try songs that have previews
+      const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(songsToUse);
+      
+      if (songsWithPreviews.length === 0) {
+        console.error('❌ No songs with previews available for new turn');
+        setGameState(prev => ({ ...prev, transitioningTurn: false }));
+        return;
       }
 
-      if (!selectedSong) {
-        // If no song with preview found, just use a random song and let the UI handle it
-        const randomIndex = Math.floor(Math.random() * songsToUse.length);
-        selectedSong = songsToUse[randomIndex];
-        console.warn(`⚠️ Using song without preview: ${selectedSong.deezer_title}`);
-      }
+      // Pick a random song from those with previews
+      const selectedSong = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
 
       console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
       console.log(`🎵 Preview URL: ${selectedSong.preview_url || 'None'}`);

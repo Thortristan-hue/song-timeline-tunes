@@ -8,6 +8,7 @@ import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 import { GameService } from '@/services/gameService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 
 interface GamePlayProps {
   room: any;
@@ -50,29 +51,6 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Helper function to find valid songs with previews
-  const findValidSongsWithPreviews = async (songs: Song[]): Promise<Song[]> => {
-    const validSongs: Song[] = [];
-    
-    for (const song of songs) {
-      try {
-        if (song.preview_url) {
-          validSongs.push(song);
-        } else if (song.id) {
-          // Try to fetch preview URL for songs without one
-          const previewUrl = await DeezerAudioService.getPreviewUrl(song.id);
-          if (previewUrl) {
-            validSongs.push({ ...song, preview_url: previewUrl });
-          }
-        }
-      } catch (error) {
-        console.warn(`Could not get preview for song: ${song.deezer_title}`, error);
-      }
-    }
-    
-    return validSongs;
-  };
-
   // Initialize game on mount with proper preview validation
   useEffect(() => {
     const initializeGameWithValidation = async () => {
@@ -82,32 +60,41 @@ export function GamePlay({
         setInitializationError(null);
         
         try {
-          // First, validate that we have songs with valid previews
-          if (gameState.availableSongs.length === 0) {
+          // Load the playlist
+          let availableSongs = gameState.availableSongs;
+          if (availableSongs.length === 0) {
+            console.log('📥 Loading default playlist for game initialization...');
+            availableSongs = await defaultPlaylistService.loadDefaultPlaylist();
+          }
+
+          if (availableSongs.length === 0) {
             throw new Error('No songs available in playlist');
           }
 
-          console.log(`🔍 Checking ${gameState.availableSongs.length} songs for valid previews...`);
-          const validSongs = await findValidSongsWithPreviews(gameState.availableSongs);
+          // CRITICAL FIX: Check for songs with previews, not just any songs
+          const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(availableSongs);
           
-          if (validSongs.length === 0) {
+          console.log(`🔍 Playlist validation: ${availableSongs.length} total songs, ${songsWithPreviews.length} with previews`);
+
+          if (songsWithPreviews.length === 0) {
             throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
           }
 
-          console.log(`✅ Found ${validSongs.length} songs with valid previews out of ${gameState.availableSongs.length} total songs`);
+          console.log(`✅ Found ${songsWithPreviews.length} songs with valid previews - game can proceed`);
 
-          // Pick the first valid song as the initial mystery card
-          const initialMysteryCard = validSongs[0];
-          await GameService.initializeGameWithMysteryCard(room.id, validSongs);
+          // Pick a random song with preview as the initial mystery card
+          const initialMysteryCard = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
+          await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
           
           console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
+          
+          // Initialize the game logic with the full song list (game logic will handle preview filtering)
+          initializeGame();
         } catch (error) {
           console.error('❌ INIT: Failed to initialize game:', error);
           setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game');
           return;
         }
-        
-        initializeGame();
       }
     };
 
