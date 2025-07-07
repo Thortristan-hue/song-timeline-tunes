@@ -104,8 +104,9 @@ export function MobilePlayerTimeline({
     const timeline = timelineRef.current;
     if (!timeline) return;
     
-    // iOS-specific touch optimizations
-    timeline.style.webkitOverflowScrolling = 'touch';
+    // iOS-specific touch optimizations using proper TypeScript casting
+    const style = timeline.style as any;
+    style.webkitOverflowScrolling = 'touch';
     timeline.style.touchAction = 'pan-x';
     
     timeline.addEventListener('scroll', handleScroll, { passive: true });
@@ -312,7 +313,6 @@ export function MobilePlayerTimeline({
             style={{
               scrollSnapType: 'x mandatory',
               scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x',
               minHeight: '160px'
             }}
