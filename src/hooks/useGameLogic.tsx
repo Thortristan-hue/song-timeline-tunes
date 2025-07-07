@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
-import { GameService } from '@/services/gameService';
 
 interface GameLogicState {
   phase: 'loading' | 'ready' | 'playing' | 'finished';
@@ -51,13 +50,6 @@ export function useGameLogic(
         return !isHostLike;
       });
       
-      console.log('🎯 Game Logic - Active Players (NO HOST):', {
-        allPlayersCount: allPlayers.length,
-        activePlayersCount: activePlayers.length,
-        activePlayerNames: activePlayers.map(p => p.name),
-        hostId: roomData?.host_id
-      });
-      
       setGameState(prev => ({
         ...prev,
         players: activePlayers
@@ -74,93 +66,20 @@ export function useGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // CRITICAL: Force mystery card change when current player changes
-  useEffect(() => {
-    const forceCardChangeOnPlayerChange = async () => {
-      if (!roomId || !roomData || gameState.phase !== 'playing' || !gameState.availableSongs.length) {
-        return;
-      }
-
-      const currentTurnIndex = roomData.current_turn || 0;
-      const previousTurnIndex = gameState.currentTurnIndex;
-      
-      // FORCE mystery card change when turn index changes
-      if (currentTurnIndex !== previousTurnIndex && gameState.playlistInitialized) {
-        console.log('🔄 PLAYER CHANGE DETECTED: Forcing mystery card change', {
-          previousTurn: previousTurnIndex,
-          currentTurn: currentTurnIndex,
-          roomId
-        });
-
-        try {
-          setGameState(prev => ({ ...prev, transitioningTurn: true }));
-          
-          // Force a fresh mystery card for the new player
-          const newMysteryCard = await GameService.forceMysteryCardChange(
-            roomId,
-            gameState.availableSongs,
-            currentTurnIndex
-          );
-
-          if (newMysteryCard) {
-            console.log('✅ MYSTERY CARD CHANGED FOR NEW PLAYER:', {
-              newPlayer: currentTurnIndex,
-              newCard: newMysteryCard.deezer_title
-            });
-
-            setGameState(prev => ({
-              ...prev,
-              currentSong: newMysteryCard,
-              currentTurnIndex: currentTurnIndex,
-              transitioningTurn: false
-            }));
-
-            // Sync to callback if provided
-            if (onSetCurrentSong) {
-              await onSetCurrentSong(newMysteryCard);
-            }
-          } else {
-            console.error('❌ Failed to get fresh mystery card for player change');
-            setGameState(prev => ({ ...prev, transitioningTurn: false }));
-          }
-        } catch (error) {
-          console.error('❌ Error forcing mystery card change:', error);
-          setGameState(prev => ({ ...prev, transitioningTurn: false }));
-        }
-      } else {
-        // Just update the turn index if no change needed
-        setGameState(prev => ({
-          ...prev,
-          currentTurnIndex: currentTurnIndex
-        }));
-      }
-    };
-
-    forceCardChangeOnPlayerChange();
-  }, [roomData?.current_turn, roomId, gameState.availableSongs, gameState.phase, gameState.playlistInitialized, onSetCurrentSong]);
-
   // Phase synchronization from room data
   useEffect(() => {
     if (roomData) {
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
-        phase: roomData.phase === 'playing' ? 
-          (prev.phase === 'loading' ? 'ready' : prev.phase === 'ready' ? 'playing' : prev.phase) : 
-          prev.phase
+        currentTurnIndex: roomData.current_turn || 0,
+        phase: roomData.phase === 'playing' ? 'playing' : prev.phase
       }));
-      
-      console.log('🎯 PHASE SYNC:', {
-        roomPhase: roomData.phase,
-        currentGamePhase: gameState.phase,
-        playlistInitialized: gameState.playlistInitialized
-      });
     }
-  }, [roomData?.current_song, roomData?.phase]);
+  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
 
-  // Initialize game with playlist - ONLY ONCE
+  // PERFORMANCE FIX: Initialize game with only 10 songs
   const initializeGame = useCallback(async () => {
-    // Prevent multiple initializations
     if (gameState.playlistInitialized) {
       console.log('🎵 Playlist already initialized, skipping...');
       setGameState(prev => ({ ...prev, phase: 'ready' }));
@@ -170,38 +89,42 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log('🎵 Loading playlist for the first time...');
-      const songs = await defaultPlaylistService.loadDefaultPlaylist();
+      console.log('🎵 Loading optimized playlist (10 songs only)...');
+      const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
       
-      const validSongs = defaultPlaylistService.filterValidSongs(songs);
+      if (allSongs.length === 0) {
+        throw new Error('No songs available in playlist');
+      }
+
+      // CRITICAL PERFORMANCE FIX: Use only 10 random songs
+      const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
+      const optimizedSongs = shuffledSongs.slice(0, 10);
       
-      if (validSongs.length < 10) {
-        throw new Error(`Not enough valid songs (${validSongs.length}/10 minimum)`);
+      const validSongs = defaultPlaylistService.filterValidSongs(optimizedSongs);
+      
+      if (validSongs.length < 5) {
+        throw new Error(`Not enough valid songs (${validSongs.length}/5 minimum)`);
       }
 
       const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
       
-      console.log(`✅ Loaded ${validSongs.length} valid songs (${songsWithPreviews.length} with previews)`);
+      console.log(`✅ PERFORMANCE: Loaded ${optimizedSongs.length} songs instead of ${allSongs.length} (${songsWithPreviews.length} with previews)`);
       
-      if (songsWithPreviews.length === 0) {
-        throw new Error(`No songs in the playlist have valid audio previews. Cannot start the game.`);
+      if (songsWithPreviews.length < 3) {
+        throw new Error(`Not enough songs with valid audio previews (${songsWithPreviews.length}/3 minimum)`);
       }
-
-      // Shuffle and take larger pool of songs for fresh mystery card selection
-      const shuffledSongs = [...validSongs].sort(() => Math.random() - 0.5);
-      const gameSongs = shuffledSongs.slice(0, Math.min(100, shuffledSongs.length)); // Take up to 100 songs for maximum variety
 
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
-        availableSongs: gameSongs,
+        availableSongs: validSongs,
         usedSongs: [],
         currentTurnIndex: 0,
         timeLeft: 30,
         playlistInitialized: true
       }));
 
-      console.log(`🎯 Game initialized with ${gameSongs.length} songs ready for GUARANTEED fresh mystery card selection`);
+      console.log(`🎯 Game initialized with optimized ${validSongs.length} songs`);
 
     } catch (error) {
       console.error('❌ Game initialization failed:', error);
@@ -219,31 +142,22 @@ export function useGameLogic(
   return {
     gameState,
     setIsPlaying: (playing: boolean) => {
-      console.log(`🎵 Setting isPlaying to: ${playing}`);
       setGameState(prev => ({ ...prev, isPlaying: playing }));
     },
     getCurrentPlayer: () => {
       const activePlayers = gameState.players;
       if (activePlayers.length === 0) {
-        console.log('🎯 No active players available');
         return null;
       }
       
       const currentIndex = Math.min(gameState.currentTurnIndex, activePlayers.length - 1);
       const currentPlayer = activePlayers[currentIndex];
       
-      console.log('🎯 Getting current player:', {
-        currentIndex,
-        currentPlayer: currentPlayer?.name,
-        totalActivePlayers: activePlayers.length,
-        allActivePlayerNames: activePlayers.map(p => p.name)
-      });
-      
       return currentPlayer || null;
     },
     initializeGame,
     startNewTurn: () => {
-      console.log('🎯 Start new turn called - mystery card change handled by player change effect');
+      console.log('🎯 Turn management handled by GameService');
     }
   };
 }
