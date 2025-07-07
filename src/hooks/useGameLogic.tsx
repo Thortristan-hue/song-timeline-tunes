@@ -71,17 +71,28 @@ export function useGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Sync current song and turn from room data
+  // CRITICAL FIX: Enhanced phase synchronization from room data
   useEffect(() => {
     if (roomData) {
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
-        // Ensure turn index is always within bounds of active (non-host) players
-        currentTurnIndex: Math.min(roomData.current_turn || 0, Math.max(0, prev.players.length - 1))
+        currentTurnIndex: Math.min(roomData.current_turn || 0, Math.max(0, prev.players.length - 1)),
+        // Enhanced phase sync - allow transition from loading to ready/playing based on room phase
+        phase: roomData.phase === 'playing' ? 
+          (prev.phase === 'loading' ? 'ready' : prev.phase === 'ready' ? 'playing' : prev.phase) : 
+          prev.phase
       }));
+      
+      console.log('🎯 PHASE SYNC:', {
+        roomPhase: roomData.phase,
+        currentGamePhase: gameState.phase,
+        newPhase: roomData.phase === 'playing' ? 
+          (gameState.phase === 'loading' ? 'ready' : gameState.phase === 'ready' ? 'playing' : gameState.phase) : 
+          gameState.phase
+      });
     }
-  }, [roomData?.current_song, roomData?.current_turn]);
+  }, [roomData?.current_song, roomData?.current_turn, roomData?.phase]);
 
   // Initialize game with default playlist - ensure we have songs with previews
   const initializeGame = useCallback(async () => {
@@ -226,7 +237,7 @@ export function useGameLogic(
     if (roomData?.phase === 'playing' && 
         !gameState.currentSong && 
         gameState.availableSongs.length > 0 && 
-        gameState.phase === 'ready') {
+        (gameState.phase === 'ready' || gameState.phase === 'loading')) {
       console.log('🎯 Room phase is playing but no current song - starting turn...');
       startNewTurn();
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -52,47 +51,50 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Initialize game on mount with proper preview validation
+  // CRITICAL FIX: Initialize game for both host AND players
   useEffect(() => {
     const initializeGameWithValidation = async () => {
-      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
-        console.log('🎯 INIT: Host initializing game with preview validation...');
+      if (room?.phase === 'playing' && gameState.phase === 'loading') {
+        console.log(`🎯 INIT: ${isHost ? 'Host' : 'Player'} initializing game...`);
         
         setInitializationError(null);
         
         try {
-          // Load the playlist
-          let availableSongs = gameState.availableSongs;
-          if (availableSongs.length === 0) {
-            console.log('📥 Loading default playlist for game initialization...');
-            availableSongs = await defaultPlaylistService.loadDefaultPlaylist();
+          if (isHost) {
+            // Host initialization - full playlist validation and setup
+            let availableSongs = gameState.availableSongs;
+            if (availableSongs.length === 0) {
+              console.log('📥 Loading default playlist for game initialization...');
+              availableSongs = await defaultPlaylistService.loadDefaultPlaylist();
+            }
+
+            if (availableSongs.length === 0) {
+              throw new Error('No songs available in playlist');
+            }
+
+            const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(availableSongs);
+            
+            console.log(`🔍 Playlist validation: ${availableSongs.length} total songs, ${songsWithPreviews.length} with previews`);
+
+            if (songsWithPreviews.length === 0) {
+              throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
+            }
+
+            console.log(`✅ Found ${songsWithPreviews.length} songs with valid previews - game can proceed`);
+
+            const initialMysteryCard = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
+            await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
+            
+            console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
+            
+            initializeGame();
+          } else {
+            // Player initialization - minimal setup to sync with host
+            console.log('🎯 INIT: Player initializing game logic');
+            initializeGame();
           }
-
-          if (availableSongs.length === 0) {
-            throw new Error('No songs available in playlist');
-          }
-
-          // CRITICAL FIX: Check for songs with previews, not just any songs
-          const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(availableSongs);
-          
-          console.log(`🔍 Playlist validation: ${availableSongs.length} total songs, ${songsWithPreviews.length} with previews`);
-
-          if (songsWithPreviews.length === 0) {
-            throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
-          }
-
-          console.log(`✅ Found ${songsWithPreviews.length} songs with valid previews - game can proceed`);
-
-          // Pick a random song with preview as the initial mystery card
-          const initialMysteryCard = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
-          await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
-          
-          console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
-          
-          // Initialize the game logic with the full song list (game logic will handle preview filtering)
-          initializeGame();
         } catch (error) {
-          console.error('❌ INIT: Failed to initialize game:', error);
+          console.error(`❌ INIT: Failed to initialize game for ${isHost ? 'host' : 'player'}:`, error);
           setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game');
           return;
         }
@@ -148,7 +150,6 @@ export function GamePlay({
       initializationError
     });
 
-    // Only show warning if we're in playing phase, no initialization error, and no mystery card
     if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !initializationError) {
       console.warn('⚠️ Mystery card is missing during gameplay - this may cause issues');
     }
@@ -459,27 +460,25 @@ export function GamePlay({
     );
   }
 
-  // CRITICAL FIX: Enhanced data validation - only show loading if truly essential data is missing
+  // CRITICAL FIX: Adjusted data readiness conditions for players vs hosts
   const allEssentialDataReady = 
     room?.phase === 'playing' &&
-    gameState.phase === 'playing' &&
+    (gameState.phase === 'playing' || gameState.phase === 'ready') &&
     activePlayers.length > 0 &&
-    gameState.availableSongs.length > 0 &&
+    (isHost ? gameState.availableSongs.length > 0 : true) &&
     currentMysteryCard &&
     currentTurnPlayer &&
     !isLoadingPreview &&
     !initializationError;
 
-  console.log('🎯 DATA VALIDATION:', {
+  console.log('🎯 RENDER STATE:', {
     roomPhase: room?.phase,
-    gameStatePhase: gameState.phase,
-    playersCount: activePlayers.length,
-    songsCount: gameState.availableSongs.length,
-    hasMysteryCard: !!currentMysteryCard,
-    hasTurnPlayer: !!currentTurnPlayer,
-    isLoadingPreview,
-    initializationError,
-    allEssentialDataReady
+    gamePhase: gameState.phase,
+    players: activePlayers.length,
+    mysteryCard: !!currentMysteryCard,
+    turnPlayer: !!currentTurnPlayer,
+    allDataReady: allEssentialDataReady,
+    isHost
   });
 
   if (!allEssentialDataReady) {
