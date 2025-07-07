@@ -208,4 +208,4 @@ export function useGameLogic(
       console.log('🎯 Turn management handled by GameService');
     }
   };
-}, []);
+}
