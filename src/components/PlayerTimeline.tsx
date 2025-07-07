@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +6,7 @@ import { Trophy, Music, Check, X, Sparkles, Calendar, Play, RotateCcw, Loader2 }
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
 import { DeezerAudioService } from "@/services/DeezerAudioService";
+import { MobilePlayerTimeline } from "./MobilePlayerTimeline";
 
 interface PlayerTimelineProps {
   player: Player;
@@ -39,7 +39,49 @@ export function PlayerTimeline({
   onCancelPlacement,
   gameEnded = false
 }: PlayerTimelineProps) {
-  // FIX 5: Single audio ref to prevent spam and overlapping audio
+  // CRITICAL FIX 3: Detect mobile device
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           window.innerWidth <= 768;
+  });
+
+  // Update mobile detection on resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   window.innerWidth <= 768;
+      setIsMobile(mobile);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // CRITICAL FIX 3: Use mobile timeline for iPhone/mobile devices
+  if (isMobile) {
+    return (
+      <MobilePlayerTimeline
+        player={player}
+        isCurrent={isCurrent}
+        isDarkMode={isDarkMode}
+        draggedSong={draggedSong}
+        placementPending={placementPending}
+        onConfirmPlacement={onConfirmPlacement}
+        onCancelPlacement={onCancelPlacement}
+        gameEnded={gameEnded}
+        onDrop={(position) => {
+          // Convert position to fake event for compatibility
+          const fakeEvent = {
+            preventDefault: () => {},
+            stopPropagation: () => {}
+          } as any;
+          handleDrop(fakeEvent, position);
+        }}
+      />
+    );
+  }
+
   const currentlyPlayingAudioRef = useRef<HTMLAudioElement | null>(null);
   
   // ANTI-SPAM: State management for card placement

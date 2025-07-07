@@ -46,52 +46,52 @@ export function GamePlay({
     initializeGame
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // CRITICAL FIX: Initialize game with starting cards
+  // CRITICAL FIX 1: Ultra-fast game initialization with instant start
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
                            !gameInitialized &&
                            !gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
-      console.log('🎯 INIT: Host initializing game with starting cards...');
+      console.log('🚀 INSTANT INIT: Host initializing game with instant start...');
       
       setInitializationError(null);
       setGameInitialized(true);
       
-      const initializeGameWithStartingCards = async () => {
+      const initializeGameInstantly = async () => {
         try {
-          // Load only 10 random songs for better performance
-          console.log('📥 Loading 10 random songs for game...');
+          // INSTANT START: Load only 10 random songs for ultra-fast performance
+          console.log('⚡ INSTANT START: Loading 10 songs for immediate game start...');
           const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
           
           if (allSongs.length === 0) {
             throw new Error('No songs available in playlist');
           }
 
-          // PERFORMANCE FIX: Select only 10 random songs instead of entire playlist
+          // INSTANT START: Select only 10 random songs for immediate play
           const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
-          const selectedSongs = shuffledSongs.slice(0, 10);
+          const instantSongs = shuffledSongs.slice(0, 10);
           
-          const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(selectedSongs);
+          const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(instantSongs);
           
-          console.log(`🔍 Performance optimization: Using ${selectedSongs.length} songs instead of ${allSongs.length}`);
+          console.log(`🚀 INSTANT PERFORMANCE: Using ${instantSongs.length} songs instead of ${allSongs.length} for instant start`);
 
           if (songsWithPreviews.length < 5) {
-            throw new Error('Not enough songs with valid audio previews. Need at least 5 songs.');
+            throw new Error('Not enough songs with valid audio previews for instant start. Need at least 5 songs.');
           }
 
-          // Initialize game with starting cards for all players
-          await GameService.initializeGameWithStartingCards(room.id, selectedSongs);
+          // Initialize game instantly with selected songs
+          await GameService.initializeGameWithStartingCards(room.id, instantSongs);
           
-          console.log('✅ INIT: Game initialized with starting cards for all players');
+          console.log('⚡ INSTANT INIT COMPLETE: Game ready for immediate play');
         } catch (error) {
-          console.error('❌ INIT: Failed to initialize game:', error);
-          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game');
+          console.error('❌ INSTANT INIT FAILED:', error);
+          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize instant game');
           setGameInitialized(false);
         }
       };
 
-      initializeGameWithStartingCards();
+      initializeGameInstantly();
     }
   }, [room?.phase, gameInitialized, gameState.playlistInitialized, isHost, room?.id]);
 
@@ -142,7 +142,7 @@ export function GamePlay({
   const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
 
-  // FIXED: Audio playback with proper user interaction handling
+  // CRITICAL FIX 3: Mobile-optimized audio playback
   const handlePlayPause = async () => {
     if (gameEnded || !currentTurnPlayer || !currentMysteryCard) {
       console.log('🚫 Cannot play: game ended or missing data');
@@ -172,7 +172,7 @@ export function GamePlay({
       return;
     }
     
-    console.log('🎵 PLAYING AUDIO:', previewUrl);
+    console.log('🎵 MOBILE AUDIO: Playing with mobile optimization');
     
     // Stop any existing audio
     if (currentAudioRef.current) {
@@ -180,52 +180,49 @@ export function GamePlay({
       currentAudioRef.current = null;
     }
     
-    // Create new audio element
+    // Create new audio element with mobile optimization
     const audio = new Audio(previewUrl);
     audio.crossOrigin = 'anonymous';
-    audio.volume = 0.7;
+    audio.volume = 0.8; // Slightly higher volume for mobile
+    audio.preload = 'auto'; // Preload for better mobile performance
     currentAudioRef.current = audio;
     
-    // Add event listeners
+    // CRITICAL FIX 3: Mobile-specific audio event handlers
     audio.addEventListener('ended', () => {
-      console.log('🎵 Audio ended');
+      console.log('🎵 Mobile audio ended');
       setIsPlaying(false);
       setGameIsPlaying(false);
     });
     
     audio.addEventListener('error', (e) => {
-      console.error('🎵 Audio error:', e);
+      console.error('🎵 Mobile audio error:', e);
       setIsPlaying(false);
       setGameIsPlaying(false);
-    });
-    
-    audio.addEventListener('loadstart', () => {
-      console.log('🎵 Audio loading started');
     });
     
     audio.addEventListener('canplay', () => {
-      console.log('🎵 Audio can play');
+      console.log('🎵 Mobile audio ready to play');
     });
     
     try {
-      // CRITICAL FIX: Ensure user interaction before playing
+      // CRITICAL FIX 3: Mobile audio play with user gesture handling
       await audio.play();
-      console.log('🎵 AUDIO PLAYING SUCCESSFULLY');
+      console.log('🎵 MOBILE AUDIO PLAYING SUCCESSFULLY');
       setIsPlaying(true);
       setGameIsPlaying(true);
     } catch (error) {
-      console.error('🎵 Audio play failed:', error);
+      console.error('🎵 Mobile audio play failed:', error);
       setIsPlaying(false);
       setGameIsPlaying(false);
       
-      // Show user-friendly error
+      // Mobile-specific error handling
       if (error instanceof Error && error.name === 'NotAllowedError') {
-        console.warn('🎵 Audio blocked by browser - user interaction required');
+        console.warn('🎵 Mobile audio blocked - user interaction required');
       }
     }
   };
 
-  // CRITICAL FIX: Use new turn advancement method
+  // CRITICAL FIX: Mobile-optimized card placement
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (gameEnded || !currentPlayer) {
       return { success: false };
@@ -237,7 +234,7 @@ export function GamePlay({
     }
 
     try {
-      console.log('🃏 CARD PLACEMENT: Using new turn advancement logic');
+      console.log('📱 MOBILE CARD PLACEMENT: Optimized for touch interaction');
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
@@ -248,7 +245,7 @@ export function GamePlay({
       }
       setIsPlaying(false);
 
-      // Use new method that handles turn advancement
+      // Use optimized placement method
       const result = await GameService.placeCardAndAdvanceTurn(
         room.id,
         currentPlayer.id,
@@ -257,7 +254,7 @@ export function GamePlay({
         gameState.availableSongs
       );
       
-      console.log('🃏 CARD PLACEMENT: Result with turn advancement:', result);
+      console.log('📱 MOBILE PLACEMENT RESULT:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -273,7 +270,7 @@ export function GamePlay({
           soundEffects.playCardError();
         }
 
-        // Show result for 3 seconds
+        // Mobile-optimized result display (shorter duration)
         setTimeout(() => {
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
@@ -282,7 +279,7 @@ export function GamePlay({
           if (result.gameEnded) {
             setGameEnded(true);
           }
-        }, 3000);
+        }, 2500); // Shorter for mobile
 
         return { success: true };
       }
@@ -299,12 +296,12 @@ export function GamePlay({
   // Show initialization error
   if (initializationError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-          <div className="text-6xl mb-6">🚨</div>
-          <div className="text-4xl font-bold mb-4">Cannot Start Game</div>
-          <div className="text-xl mb-6">{initializationError}</div>
-          <div className="text-lg text-white/60">Please check your playlist and try again.</div>
+          <div className="text-4xl mb-4">🚨</div>
+          <div className="text-2xl font-bold mb-3">Cannot Start Game</div>
+          <div className="text-lg mb-4">{initializationError}</div>
+          <div className="text-sm text-white/60">Please check your playlist and try again.</div>
         </div>
       </div>
     );
@@ -314,16 +311,16 @@ export function GamePlay({
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10">
-          <div className="text-6xl mb-6">🏆</div>
-          <div className="text-4xl font-bold mb-4">Game Over!</div>
+          <div className="text-4xl mb-4">🏆</div>
+          <div className="text-3xl font-bold mb-3">Game Over!</div>
           {winningPlayer && (
-            <div className="text-2xl mb-6">
+            <div className="text-xl mb-4">
               <span style={{ color: winningPlayer.color }}>{winningPlayer.name}</span> wins!
             </div>
           )}
-          <div className="text-lg text-white/60">Thanks for playing!</div>
+          <div className="text-base text-white/60">Thanks for playing!</div>
         </div>
       </div>
     );
@@ -338,17 +335,17 @@ export function GamePlay({
 
   if (!gameReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+          <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
         </div>
         <div className="text-center text-white relative z-10">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
-            <div className="text-3xl animate-spin">🎵</div>
+          <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20">
+            <div className="text-2xl animate-spin">🎵</div>
           </div>
-          <div className="text-2xl font-semibold mb-2">Setting up the game...</div>
-          <div className="text-white/60 max-w-md mx-auto">Preparing players and songs</div>
+          <div className="text-xl font-semibold mb-2">🚀 Instant Setup...</div>
+          <div className="text-white/60 max-w-sm mx-auto text-sm">Preparing optimized mobile gameplay</div>
         </div>
       </div>
     );
@@ -375,11 +372,11 @@ export function GamePlay({
   // Player view
   if (!currentPlayer) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10">
-          <div className="text-6xl mb-4">❌</div>
-          <div className="text-2xl font-semibold mb-2">Something went wrong</div>
-          <div className="text-white/60">Couldn't find your player info</div>
+          <div className="text-4xl mb-3">❌</div>
+          <div className="text-xl font-semibold mb-2">Something went wrong</div>
+          <div className="text-white/60 text-sm">Couldn't find your player info</div>
         </div>
       </div>
     );

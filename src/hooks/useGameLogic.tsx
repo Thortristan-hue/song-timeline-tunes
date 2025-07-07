@@ -20,11 +20,14 @@ interface GameLogicState {
   backgroundLoadingComplete: boolean;
 }
 
+// CRITICAL FIX 1: Only load 10 songs upfront for instant game start
+const INSTANT_START_SONGS = 10;
+
 export function useGameLogic(
   roomId: string | null, 
   allPlayers: Player[],
   roomData: any = null,
-  onSetCurrentSong?: (song: Song) => Promise<void>
+  onSetCurrentSong?: (Song: Song) => Promise<void>
 ) {
   const { toast } = useToast();
   const [gameState, setGameState] = useState<GameLogicState>({
@@ -80,7 +83,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
 
-  // OPTIMIZATION: Initialize game with quick start approach
+  // CRITICAL FIX 1: Ultra-fast game initialization - only 10 songs
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
       console.log('🎵 Playlist already initialized, skipping...');
@@ -91,19 +94,18 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log('🎵 Loading optimized playlist (quick start mode)...');
+      console.log(`🚀 INSTANT START: Loading only ${INSTANT_START_SONGS} songs for immediate game start`);
       const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
       
       if (allSongs.length === 0) {
         throw new Error('No songs available in playlist');
       }
 
-      // OPTIMIZATION: Quick start with 10 songs, expand later
-      const INITIAL_LOAD_COUNT = 10;
+      // INSTANT START: Only take first 10 songs, shuffle them
       const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
-      const initialSongs = shuffledSongs.slice(0, INITIAL_LOAD_COUNT);
+      const instantStartSongs = shuffledSongs.slice(0, INSTANT_START_SONGS);
       
-      const validSongs = defaultPlaylistService.filterValidSongs(initialSongs);
+      const validSongs = defaultPlaylistService.filterValidSongs(instantStartSongs);
       
       if (validSongs.length < 5) {
         throw new Error(`Not enough valid songs (${validSongs.length}/5 minimum)`);
@@ -111,7 +113,7 @@ export function useGameLogic(
 
       const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
       
-      console.log(`✅ QUICK START: Loaded ${initialSongs.length} songs instead of ${allSongs.length} (${songsWithPreviews.length} with previews)`);
+      console.log(`⚡ INSTANT START COMPLETE: ${songsWithPreviews.length} songs ready immediately`);
       
       if (songsWithPreviews.length < 3) {
         throw new Error(`Not enough songs with valid audio previews (${songsWithPreviews.length}/3 minimum)`);
@@ -127,13 +129,7 @@ export function useGameLogic(
         playlistInitialized: true
       }));
 
-      console.log(`🎯 Game initialized with optimized ${validSongs.length} songs`);
-
-      // OPTIMIZATION: Background load remaining songs
-      if (shuffledSongs.length > INITIAL_LOAD_COUNT) {
-        console.log('🔄 Starting background loading of remaining songs...');
-        backgroundLoadRemainingSongs(shuffledSongs, INITIAL_LOAD_COUNT);
-      }
+      console.log(`🎯 INSTANT GAME START: Ready with ${validSongs.length} songs`);
 
     } catch (error) {
       console.error('❌ Game initialization failed:', error);
@@ -147,45 +143,6 @@ export function useGameLogic(
       });
     }
   }, [toast, gameState.playlistInitialized]);
-
-  // OPTIMIZATION: Background loading function
-  const backgroundLoadRemainingSongs = useCallback(async (allSongs: Song[], startIndex: number) => {
-    try {
-      const remainingSongs = allSongs.slice(startIndex);
-      console.log(`🔄 Background loading ${remainingSongs.length} additional songs...`);
-      
-      // Process in batches to avoid blocking
-      const BATCH_SIZE = 5;
-      const processedSongs: Song[] = [];
-      
-      for (let i = 0; i < remainingSongs.length; i += BATCH_SIZE) {
-        const batch = remainingSongs.slice(i, i + BATCH_SIZE);
-        const validBatch = defaultPlaylistService.filterValidSongs(batch);
-        processedSongs.push(...validBatch);
-        
-        // Small delay to prevent blocking
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-      
-      // Update available songs with background loaded songs
-      setGameState(prev => ({
-        ...prev,
-        availableSongs: [...prev.availableSongs, ...processedSongs],
-        backgroundLoadingComplete: true
-      }));
-      
-      console.log(`✅ Background loading completed: ${processedSongs.length} additional songs loaded`);
-      
-      toast({
-        title: "More Songs Loaded!",
-        description: `${processedSongs.length} additional songs now available`,
-      });
-      
-    } catch (error) {
-      console.warn('⚠️ Background loading failed:', error);
-      setGameState(prev => ({ ...prev, backgroundLoadingComplete: true }));
-    }
-  }, [toast]);
 
   return {
     gameState,
