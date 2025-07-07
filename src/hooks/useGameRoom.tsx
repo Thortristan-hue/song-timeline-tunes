@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -297,16 +298,16 @@ export function useGameRoom() {
     }
 
     try {
-      console.log('🃏 MANDATORY: Placing card with centralized turn advancement');
+      console.log('🃏 FIXED: Using correct GameService method for card placement');
       
-      // Use GameService for centralized card placement and turn advancement
-      const result = await GameService.placeCard(room.id, currentPlayer.id, song, position, availableSongs);
+      // FIXED: Use the correct method name
+      const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position, availableSongs);
       
       if (result.success) {
-        console.log('✅ MANDATORY: Card placed and turn advanced successfully');
+        console.log('✅ FIXED: Card placed and turn advanced successfully');
         return { success: true, correct: result.correct };
       } else {
-        console.error('❌ MANDATORY: Card placement failed:', result.error);
+        console.error('❌ FIXED: Card placement failed:', result.error);
         return { success: false };
       }
     } catch (error) {
@@ -362,11 +363,11 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
-      console.log('🎯 INIT: Starting game with mystery card initialization');
+      console.log('🎯 FIXED: Starting game with correct initialization method');
       
-      // CRITICAL FIX: Initialize game with mystery card
+      // FIXED: Use the correct method name
       if (availableSongs && availableSongs.length > 0) {
-        await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
+        await GameService.initializeGameWithStartingCards(room.id, availableSongs);
       } else {
         // Fallback: just set phase to playing
         const { error } = await supabase
