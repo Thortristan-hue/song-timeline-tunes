@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -39,8 +40,9 @@ export function GamePlay({
   const [gameEnded, setGameEnded] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [gameInitialized, setGameInitialized] = useState(false);
+  const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
 
-  // Single audio instance management to prevent overlaps
+  // Audio management
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<any>(null);
 
@@ -109,6 +111,46 @@ export function GamePlay({
       initializeGameWithValidation();
     }
   }, [room?.phase, gameState.phase, gameState.playlistInitialized, gameInitialized, isHost, initializeGame, room?.id]);
+
+  // CRITICAL FIX: Force mystery card change when current turn changes
+  useEffect(() => {
+    const currentTurn = room?.current_turn || 0;
+    
+    // Only trigger change if turn actually changed and we have a room
+    if (room?.id && currentTurn !== lastTurnIndex && lastTurnIndex !== -1 && gameState.availableSongs.length > 0) {
+      console.log('🔄 CRITICAL: Player turn changed - forcing new mystery card', {
+        oldTurn: lastTurnIndex,
+        newTurn: currentTurn,
+        roomId: room.id
+      });
+      
+      const forceMysteryCardChange = async () => {
+        try {
+          const newMysteryCard = await GameService.forceMysteryCardChange(
+            room.id,
+            gameState.availableSongs,
+            currentTurn
+          );
+          
+          if (newMysteryCard) {
+            console.log('✅ CRITICAL: Mystery card changed successfully:', newMysteryCard.deezer_title);
+            await onSetCurrentSong(newMysteryCard);
+          } else {
+            console.error('❌ CRITICAL: Failed to get new mystery card');
+          }
+        } catch (error) {
+          console.error('❌ CRITICAL: Error forcing mystery card change:', error);
+        }
+      };
+      
+      forceMysteryCardChange();
+    }
+    
+    // Update last turn index
+    if (currentTurn !== lastTurnIndex) {
+      setLastTurnIndex(currentTurn);
+    }
+  }, [room?.current_turn, room?.id, gameState.availableSongs, lastTurnIndex, onSetCurrentSong]);
 
   // ENHANCED: Check for game end condition after every turn
   useEffect(() => {
@@ -268,7 +310,7 @@ export function GamePlay({
     };
   }, [currentMysteryCard?.id]);
 
-  // ENHANCED: Audio control with better turn validation
+  // FIXED: Proper audio playback with actual HTML audio element
   const handlePlayPause = async () => {
     if (gameEnded) {
       console.log('🚫 Game ended - no audio interactions allowed');
@@ -281,28 +323,17 @@ export function GamePlay({
       return;
     }
 
-    console.log('🎵 SYNC: Play/Pause for synchronized mystery card:', { 
-      isHost, 
-      isPlaying, 
-      currentSong: currentMysteryCard?.deezer_title,
-      currentTurnPlayer: currentTurnPlayer?.name,
-      previewUrl: currentMysteryCard?.preview_url,
-      isLoadingPreview
-    });
-    
-    if (!currentTurnPlayer || !currentMysteryCard || isLoadingPreview) {
-      console.log('⚠️ Cannot play: missing data or loading preview');
+    if (!currentTurnPlayer || !currentMysteryCard) {
+      console.log('⚠️ Cannot play: missing data');
       return;
     }
 
-    if (isPlaying) {
-      console.log('🎵 Pausing synchronized audio');
+    // If already playing, pause it
+    if (isPlaying && currentAudioRef.current) {
+      console.log('🎵 Pausing audio');
+      currentAudioRef.current.pause();
       setIsPlaying(false);
       setGameIsPlaying(false);
-      
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-      }
       
       if (audioChannelRef.current) {
         await audioChannelRef.current.send({
@@ -318,10 +349,11 @@ export function GamePlay({
       return;
     }
 
+    // Get preview URL
     let previewUrl = currentMysteryCard.preview_url;
     
     if (!previewUrl && currentMysteryCard.id) {
-      console.log('🔍 No preview URL, fetching fresh one for synchronized playback...');
+      console.log('🔍 No preview URL, fetching fresh one...');
       setIsLoadingPreview(true);
       try {
         previewUrl = await DeezerAudioService.getPreviewUrl(currentMysteryCard.id);
@@ -339,10 +371,11 @@ export function GamePlay({
     }
 
     if (!previewUrl) {
-      console.log('❌ No preview URL available for synchronized playback');
+      console.log('❌ No preview URL available');
       return;
     }
     
+    // Stop any other playing audio
     const allAudio = document.querySelectorAll('audio');
     allAudio.forEach(audio => {
       if (!audio.paused) {
@@ -351,21 +384,53 @@ export function GamePlay({
       }
     });
     
-    console.log('🎵 SYNC: Starting synchronized audio playback');
-    setIsPlaying(true);
-    setGameIsPlaying(true);
+    // Create and play new audio
+    console.log('🎵 FIXED: Creating and playing audio element');
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    
+    const audio = new Audio(previewUrl);
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 0.7;
+    currentAudioRef.current = audio;
+    
+    // Add event listeners
+    audio.addEventListener('ended', () => {
+      console.log('🎵 Audio ended');
+      setIsPlaying(false);
+      setGameIsPlaying(false);
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.error('🎵 Audio error:', e);
+      setIsPlaying(false);
+      setGameIsPlaying(false);
+    });
+    
+    try {
+      await audio.play();
+      console.log('🎵 FIXED: Audio playing successfully');
+      setIsPlaying(true);
+      setGameIsPlaying(true);
 
-    if (audioChannelRef.current) {
-      console.log('🔊 SYNC: Broadcasting synchronized audio control: play');
-      await audioChannelRef.current.send({
-        type: 'broadcast',
-        event: 'audio-control',
-        payload: { 
-          action: 'play',
-          currentTurnPlayerId: currentTurnPlayer.id,
-          songId: currentMysteryCard.id
-        }
-      });
+      if (audioChannelRef.current) {
+        console.log('🔊 SYNC: Broadcasting audio play');
+        await audioChannelRef.current.send({
+          type: 'broadcast',
+          event: 'audio-control',
+          payload: { 
+            action: 'play',
+            currentTurnPlayerId: currentTurnPlayer.id,
+            songId: currentMysteryCard.id
+          }
+        });
+      }
+    } catch (error) {
+      console.error('🎵 FIXED: Audio play failed:', error);
+      setIsPlaying(false);
+      setGameIsPlaying(false);
     }
   };
 
@@ -562,7 +627,7 @@ export function GamePlay({
           players={activePlayers}
           mysteryCardRevealed={mysteryCardRevealed}
           isPlaying={isPlaying}
-          onPlayPause={() => {}} // Audio handled by player
+          onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
         />
       </div>
@@ -597,7 +662,7 @@ export function GamePlay({
         roomCode={room.lobby_code}
         isMyTurn={isMyTurn}
         isPlaying={isPlaying}
-        onPlayPause={() => {}} // Audio handled separately
+        onPlayPause={handlePlayPause}
         onPlaceCard={handlePlaceCard}
         mysteryCardRevealed={mysteryCardRevealed}
         cardPlacementResult={cardPlacementResult}
