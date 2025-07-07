@@ -19,6 +19,7 @@ function Index() {
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [playerName, setPlayerName] = useState('');
   const [winner, setWinner] = useState<any>(null);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
   const {
     room,
@@ -48,7 +49,8 @@ function Index() {
     playersCount: players.length,
     currentPlayer: currentPlayer?.name,
     isLoading,
-    error
+    error,
+    isCreatingRoom
   });
 
   // Check for auto-join from URL parameters (QR code)
@@ -91,20 +93,37 @@ function Index() {
     }
   }, [players, winner, soundEffects]);
 
-  const handleCreateRoom = async (): Promise<boolean> => {
+  // FIXED: Proper room creation with phase management
+  const handleCreateRoom = async () => {
+    if (isCreatingRoom) return; // Prevent double creation
+    
     try {
+      console.log('🏠 Starting room creation process...');
+      setIsCreatingRoom(true);
+      clearError(); // Clear any previous errors
+      
       const lobbyCode = await createRoom('Host');
       if (lobbyCode) {
+        console.log('✅ Room created successfully, transitioning to lobby');
         setGamePhase('hostLobby');
         soundEffects.playGameStart();
-        return true;
+      } else {
+        console.error('❌ Room creation failed');
+        setIsCreatingRoom(false);
       }
-      return false;
     } catch (error) {
-      console.error('Failed to create room:', error);
-      return false;
+      console.error('❌ Room creation error:', error);
+      setIsCreatingRoom(false);
     }
   };
+
+  // FIXED: Clean up room creation state when room is successfully created
+  useEffect(() => {
+    if (room && isCreatingRoom) {
+      console.log('✅ Room creation completed, clearing creation state');
+      setIsCreatingRoom(false);
+    }
+  }, [room, isCreatingRoom]);
 
   const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
     try {
@@ -140,6 +159,7 @@ function Index() {
     setCustomSongs([]);
     setPlayerName('');
     setWinner(null);
+    setIsCreatingRoom(false);
     clearError();
     soundEffects.playButtonClick();
   };
@@ -157,17 +177,19 @@ function Index() {
   const handleRetry = () => {
     clearError();
     retryConnection();
+    setIsCreatingRoom(false);
   };
 
   return (
     <ErrorBoundary>
       <GameErrorBoundary>
         <LoadingErrorBoundary
-          isLoading={isLoading && gamePhase !== 'menu'}
+          isLoading={(isLoading && gamePhase !== 'menu') || isCreatingRoom}
           error={error}
           onRetry={handleRetry}
           onBackToMenu={handleBackToMenu}
           loadingMessage={
+            isCreatingRoom ? 'Creating your room...' :
             gamePhase === 'hostLobby' ? 'Setting up your room...' :
             gamePhase === 'mobileJoin' ? 'Joining room...' :
             gamePhase === 'mobileLobby' ? 'Loading lobby...' :
@@ -178,20 +200,20 @@ function Index() {
           <div className="min-h-screen">
             {gamePhase === 'menu' && (
               <MainMenu
-                onCreateRoom={() => setGamePhase('hostLobby')}
+                onCreateRoom={handleCreateRoom}
                 onJoinRoom={() => setGamePhase('mobileJoin')}
               />
             )}
 
-            {gamePhase === 'hostLobby' && (
+            {gamePhase === 'hostLobby' && room && (
               <HostLobby
-                lobbyCode={room?.lobby_code || ''}
+                lobbyCode={room.lobby_code}
                 players={players}
                 onStartGame={handleStartGame}
                 onBackToMenu={handleBackToMenu}
                 setCustomSongs={setCustomSongs}
                 isLoading={isLoading}
-                createRoom={handleCreateRoom}
+                // FIXED: Remove createRoom prop to prevent double creation
               />
             )}
 

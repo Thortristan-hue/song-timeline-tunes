@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -21,9 +20,10 @@ export function useGameRoom() {
   const maxRetries = 3;
   const subscriptionRef = useRef<any>(null);
   const reconnectionAttempts = useRef<number>(0);
-  const maxReconnectionAttempts = 2; // Reduced from 3
+  const maxReconnectionAttempts = 2;
   const reconnectionTimeout = useRef<NodeJS.Timeout | null>(null);
   const connectionStable = useRef<boolean>(false);
+  const roomCreationInProgress = useRef<boolean>(false);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -125,7 +125,7 @@ export function useGameRoom() {
     }
   }, []);
 
-  // Enhanced subscription management with connection recovery
+  // IMPROVED: Enhanced subscription management with connection recovery
   useEffect(() => {
     if (!room?.id) return;
 
@@ -153,7 +153,7 @@ export function useGameRoom() {
             console.log('🔄 SYNC: Room updated:', payload.new);
             const roomData = payload.new as any;
             
-            // CRITICAL FIX: Properly cast current_song from Json to Song
+            // Properly cast current_song from Json to Song
             let currentSong: Song | null = null;
             if (roomData.current_song) {
               currentSong = roomData.current_song as unknown as Song;
@@ -199,13 +199,13 @@ export function useGameRoom() {
             console.log('✅ Successfully subscribed to room updates');
             connectionStable.current = true;
             gameState.stopLoading(true);
-            setError(null); // Clear any connection errors
-            reconnectionAttempts.current = 0; // Reset reconnection attempts on successful connection
+            setError(null);
+            reconnectionAttempts.current = 0;
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('❌ Subscription error:', status);
             connectionStable.current = false;
             
-            // Only attempt reconnection if we haven't exceeded max attempts and had a stable connection before
+            // Only attempt reconnection if we haven't exceeded max attempts
             if (reconnectionAttempts.current < maxReconnectionAttempts) {
               reconnectionAttempts.current++;
               console.log(`🔄 Attempting reconnection ${reconnectionAttempts.current}/${maxReconnectionAttempts}`);
@@ -213,7 +213,7 @@ export function useGameRoom() {
               const errorMessage = `Connection unstable. Reconnecting... (${reconnectionAttempts.current}/${maxReconnectionAttempts})`;
               setError(errorMessage);
               
-              // Exponential backoff for reconnection (but don't start loading immediately)
+              // Exponential backoff for reconnection
               const delay = Math.min(2000 * Math.pow(1.5, reconnectionAttempts.current - 1), 8000);
               
               reconnectionTimeout.current = setTimeout(() => {
@@ -265,8 +265,16 @@ export function useGameRoom() {
     };
   }, [room?.id, fetchPlayers, gameState, clearReconnectionTimeout, toast]);
 
+  // FIXED: Prevent double room creation
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
+    // Prevent concurrent room creation
+    if (roomCreationInProgress.current) {
+      console.log('⚠️ Room creation already in progress, skipping');
+      return null;
+    }
+
     try {
+      roomCreationInProgress.current = true;
       gameState.startLoading('Creating room');
       setError(null);
 
@@ -324,6 +332,8 @@ export function useGameRoom() {
       setError(errorMessage);
       gameState.stopLoading(false, errorMessage);
       return null;
+    } finally {
+      roomCreationInProgress.current = false;
     }
   }, [gameState]);
 
@@ -480,7 +490,7 @@ export function useGameRoom() {
     }
   }, [room, isHost]);
 
-  // CRITICAL FIX: Enhanced startGame with proper validation
+  // ENHANCED: startGame with proper validation
   const startGame = useCallback(async (availableSongs?: Song[]): Promise<boolean> => {
     if (!room || !isHost) {
       console.error('❌ Cannot start game: not host or no room');
@@ -490,7 +500,7 @@ export function useGameRoom() {
     try {
       console.log('🎯 VALIDATION: Starting game validation...');
       
-      // CRITICAL: Validate we have enough songs before starting
+      // Validate we have enough songs before starting
       const songsToUse = availableSongs || room.songs || [];
       console.log('🎯 VALIDATION: Available songs count:', songsToUse.length);
       
@@ -560,6 +570,7 @@ export function useGameRoom() {
     playerSessionId.current = null;
     reconnectionAttempts.current = 0;
     connectionStable.current = false;
+    roomCreationInProgress.current = false;
     gameState.stopLoading();
   }, [currentPlayer, isHost, gameState, clearReconnectionTimeout]);
 
@@ -634,6 +645,7 @@ export function useGameRoom() {
       gameState.forceStopLoading();
       reconnectionAttempts.current = 0;
       connectionStable.current = false;
+      roomCreationInProgress.current = false;
       clearReconnectionTimeout();
     },
     retryConnection: () => {

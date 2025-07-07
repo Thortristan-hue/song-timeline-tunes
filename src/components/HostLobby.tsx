@@ -16,7 +16,7 @@ interface HostLobbyProps {
   onBackToMenu: () => void;
   setCustomSongs: (songs: Song[]) => void;
   isLoading: boolean;
-  createRoom: () => Promise<boolean>;
+  // REMOVED: createRoom prop to prevent double creation
 }
 
 export function HostLobby({
@@ -25,51 +25,16 @@ export function HostLobby({
   onStartGame,
   onBackToMenu,
   setCustomSongs,
-  isLoading,
-  createRoom
+  isLoading
 }: HostLobbyProps) {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
-  const [roomCreated, setRoomCreated] = useState(false);
   const [playlistLoaded, setPlaylistLoaded] = useState(false);
   const [playlistSongCount, setPlaylistSongCount] = useState(0);
-  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
 
-  // Create room on component mount if not already created
-  useEffect(() => {
-    const initializeRoom = async () => {
-      if (!roomCreated && !isCreatingRoom && lobbyCode === '') {
-        setIsCreatingRoom(true);
-        try {
-          const success = await createRoom();
-          if (success) {
-            setRoomCreated(true);
-            soundEffects.playGameStart();
-          } else {
-            toast({
-              title: "Room Creation Failed",
-              description: "Failed to create room. Please try again.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error('Failed to create room:', error);
-          toast({
-            title: "Room Creation Failed",
-            description: "Failed to create room. Please try again.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsCreatingRoom(false);
-        }
-      } else if (lobbyCode !== '') {
-        setRoomCreated(true);
-      }
-    };
-
-    initializeRoom();
-  }, [lobbyCode, roomCreated, isCreatingRoom, createRoom, soundEffects, toast]);
+  // REMOVED: Room creation logic - now handled by Index.tsx
+  // This eliminates the double creation and race condition
 
   const copyToClipboard = async () => {
     try {
@@ -135,17 +100,7 @@ export function HostLobby({
     }
   };
 
-  if (isCreatingRoom) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <div className="text-xl font-semibold">Creating your room...</div>
-        </div>
-      </div>
-    );
-  }
-
+  // SIMPLIFIED: No loading screen logic needed - handled by parent
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Background Elements */}
