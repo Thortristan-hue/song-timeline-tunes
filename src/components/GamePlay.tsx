@@ -459,13 +459,30 @@ export function GamePlay({
     );
   }
 
-  // CRITICAL FIX: Only show loading if we're truly missing essential data
-  // The game should proceed if room is playing AND we have players AND (currentMysteryCard OR we're not stuck in loading)
-  const shouldShowLoading = room?.phase === 'playing' && 
-                           activePlayers.length === 0 && 
-                           gameState.phase === 'loading';
+  // CRITICAL FIX: Enhanced data validation - only show loading if truly essential data is missing
+  const allEssentialDataReady = 
+    room?.phase === 'playing' &&
+    gameState.phase === 'playing' &&
+    activePlayers.length > 0 &&
+    gameState.availableSongs.length > 0 &&
+    currentMysteryCard &&
+    currentTurnPlayer &&
+    !isLoadingPreview &&
+    !initializationError;
 
-  if (shouldShowLoading) {
+  console.log('🎯 DATA VALIDATION:', {
+    roomPhase: room?.phase,
+    gameStatePhase: gameState.phase,
+    playersCount: activePlayers.length,
+    songsCount: gameState.availableSongs.length,
+    hasMysteryCard: !!currentMysteryCard,
+    hasTurnPlayer: !!currentTurnPlayer,
+    isLoadingPreview,
+    initializationError,
+    allEssentialDataReady
+  });
+
+  if (!allEssentialDataReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0">
