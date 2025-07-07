@@ -110,7 +110,9 @@ export function MysteryCard({
         <div className="text-4xl mb-2 relative z-10">🎵</div>
         <HelpCircle className="h-8 w-8 mb-2 relative z-10 opacity-70" />
         <div className="text-2xl font-black mb-1 relative z-10">?</div>
-        <div className="text-xs text-center px-2 opacity-90 relative z-10">Mystery Song</div>
+        <div className="text-xs text-center px-2 opacity-90 relative z-10">
+          {!song.preview_url ? "No Preview" : "Mystery Song"}
+        </div>
       </Card>
     );
   }

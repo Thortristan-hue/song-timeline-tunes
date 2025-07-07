@@ -36,6 +36,7 @@ export function GamePlay({
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -49,28 +50,68 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Initialize game on mount - CRITICAL FIX: Ensure mystery card is always set
-  useEffect(() => {
-    const initializeGameWithMysteryCard = async () => {
-      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
-        console.log('🎯 INIT: Host initializing game with mystery card...');
-        
-        // Ensure we have available songs
-        if (gameState.availableSongs.length > 0) {
-          try {
-            // Initialize the game with a mystery card using GameService
-            await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
-            console.log('✅ INIT: Game initialized with mystery card successfully');
-          } catch (error) {
-            console.error('❌ INIT: Failed to initialize game with mystery card:', error);
+  // Helper function to find valid songs with previews
+  const findValidSongsWithPreviews = async (songs: Song[]): Promise<Song[]> => {
+    const validSongs: Song[] = [];
+    
+    for (const song of songs) {
+      try {
+        if (song.preview_url) {
+          validSongs.push(song);
+        } else if (song.id) {
+          // Try to fetch preview URL for songs without one
+          const previewUrl = await DeezerAudioService.getPreviewUrl(song.id);
+          if (previewUrl) {
+            validSongs.push({ ...song, preview_url: previewUrl });
           }
+        }
+      } catch (error) {
+        console.warn(`Could not get preview for song: ${song.deezer_title}`, error);
+      }
+    }
+    
+    return validSongs;
+  };
+
+  // Initialize game on mount with proper preview validation
+  useEffect(() => {
+    const initializeGameWithValidation = async () => {
+      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
+        console.log('🎯 INIT: Host initializing game with preview validation...');
+        
+        setInitializationError(null);
+        
+        try {
+          // First, validate that we have songs with valid previews
+          if (gameState.availableSongs.length === 0) {
+            throw new Error('No songs available in playlist');
+          }
+
+          console.log(`🔍 Checking ${gameState.availableSongs.length} songs for valid previews...`);
+          const validSongs = await findValidSongsWithPreviews(gameState.availableSongs);
+          
+          if (validSongs.length === 0) {
+            throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
+          }
+
+          console.log(`✅ Found ${validSongs.length} songs with valid previews out of ${gameState.availableSongs.length} total songs`);
+
+          // Pick the first valid song as the initial mystery card
+          const initialMysteryCard = validSongs[0];
+          await GameService.initializeGameWithMysteryCard(room.id, validSongs);
+          
+          console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
+        } catch (error) {
+          console.error('❌ INIT: Failed to initialize game:', error);
+          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game');
+          return;
         }
         
         initializeGame();
       }
     };
 
-    initializeGameWithMysteryCard();
+    initializeGameWithValidation();
   }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id]);
 
   // Check for game end condition
@@ -84,11 +125,16 @@ export function GamePlay({
     if (winningPlayer && !gameEnded) {
       console.log('🎯 Game ended - winner found:', winningPlayer.name);
       setGameEnded(true);
-      soundEffects.playGameStart(); // Victory sound
+      // Use a try-catch for sound effects to prevent blocking gameplay
+      try {
+        soundEffects.playGameStart(); // Victory sound
+      } catch (error) {
+        console.warn('Could not play victory sound:', error);
+      }
     }
   }, [players, room?.host_id, gameEnded, soundEffects]);
 
-  // CRITICAL FIX: Use synchronized mystery card from room state with validation
+  // Use synchronized mystery card from room state with validation
   const currentMysteryCard = room?.current_song;
   const currentTurnPlayerId = room?.current_player_id;
   
@@ -100,7 +146,7 @@ export function GamePlay({
   
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
 
-  // CRITICAL VALIDATION: Log mystery card state
+  // Mystery card validation - only log warnings, don't block gameplay
   useEffect(() => {
     console.log('🎯 SYNC: Mystery card validation:', {
       mysteryCard: currentMysteryCard?.deezer_title || 'UNDEFINED',
@@ -110,14 +156,15 @@ export function GamePlay({
       currentTurn: room?.current_turn,
       roomPhase: room?.phase,
       isHost,
-      gameEnded
+      gameEnded,
+      initializationError
     });
 
-    // ALERT if mystery card is undefined in playing phase
-    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
-      console.error('🚨 CRITICAL: Mystery card is undefined during gameplay!');
+    // Only show warning if we're in playing phase, no initialization error, and no mystery card
+    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !initializationError) {
+      console.warn('⚠️ Mystery card is missing during gameplay - this may cause issues');
     }
-  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded]);
+  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, initializationError]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -391,21 +438,40 @@ export function GamePlay({
     }
   };
 
-  // CRITICAL FIX: Show error if mystery card is undefined
-  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
+  // Show initialization error if playlist has no valid previews
+  if (initializationError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10">
+        <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
           <div className="text-6xl mb-6">🚨</div>
-          <div className="text-4xl font-bold mb-4">Mystery Card Error</div>
-          <div className="text-xl mb-6">The mystery card is not loading properly.</div>
-          <div className="text-lg text-white/60">Please refresh the page or rejoin the game.</div>
+          <div className="text-4xl font-bold mb-4">Cannot Start Game</div>
+          <div className="text-xl mb-6">{initializationError}</div>
+          <div className="text-lg text-white/60">Please check your playlist and try again with songs that have audio previews.</div>
         </div>
       </div>
     );
   }
 
-  // FIX 4: Show game over screen if game has ended
+  // Show loading while mystery card is being set up (only if we're still loading)
+  if (room?.phase === 'playing' && !currentMysteryCard && gameState.phase === 'loading') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        </div>
+        <div className="text-center text-white relative z-10">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <div className="text-3xl animate-spin">🎵</div>
+          </div>
+          <div className="text-2xl font-semibold mb-2">Preparing your song...</div>
+          <div className="text-white/60 max-w-md mx-auto">Finding a perfect track with audio preview</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show game over screen if game has ended
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.score >= 10);
     return (
