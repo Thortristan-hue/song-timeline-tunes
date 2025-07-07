@@ -213,7 +213,6 @@ function Index() {
                 onBackToMenu={handleBackToMenu}
                 setCustomSongs={setCustomSongs}
                 isLoading={isLoading}
-                // FIXED: Remove createRoom prop to prevent double creation
               />
             )}
 
