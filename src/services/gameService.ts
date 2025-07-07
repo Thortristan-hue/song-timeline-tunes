@@ -21,6 +21,30 @@ export class GameService {
     };
   }
 
+  // Helper function to safely convert JSON to Song type
+  private static convertJsonToSong(jsonData: any): Song | null {
+    if (!jsonData || typeof jsonData !== 'object') {
+      return null;
+    }
+
+    // Validate that the object has required Song properties
+    if (!jsonData.id || !jsonData.deezer_title || !jsonData.deezer_artist) {
+      return null;
+    }
+
+    return {
+      id: jsonData.id,
+      deezer_title: jsonData.deezer_title,
+      deezer_artist: jsonData.deezer_artist,
+      deezer_album: jsonData.deezer_album || '',
+      release_year: jsonData.release_year || '',
+      genre: jsonData.genre || '',
+      cardColor: jsonData.cardColor || '',
+      preview_url: jsonData.preview_url,
+      deezer_url: jsonData.deezer_url
+    };
+  }
+
   // ENHANCED: Get all used songs from all players' timelines and previously played mystery cards
   private static getAllUsedSongs(players: Player[], currentMysteryCard?: Song): string[] {
     const usedSongIds = new Set<string>();
@@ -385,7 +409,7 @@ export class GameService {
       let nextMysteryCard: Song;
       if (availableSongs && availableSongs.length > 0) {
         // Get all used songs including the current mystery card and all timeline songs
-        const currentMysteryCard = roomData.current_song as Song;
+        const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
         const usedSongIds = this.getAllUsedSongs(players, currentMysteryCard);
         
         // GUARANTEE a fresh mystery card
@@ -406,9 +430,9 @@ export class GameService {
         nextTurn,
         nextPlayerId,
         nextPlayerName: allPlayers[nextTurn]?.name,
-        oldMysteryCard: (roomData.current_song as Song)?.deezer_title,
+        oldMysteryCard: this.convertJsonToSong(roomData.current_song)?.deezer_title,
         newMysteryCard: nextMysteryCard.deezer_title,
-        mysteryCardChanged: (roomData.current_song as Song)?.id !== nextMysteryCard.id
+        mysteryCardChanged: this.convertJsonToSong(roomData.current_song)?.id !== nextMysteryCard.id
       });
       
       // Update room with new turn, fresh mystery card, and current player
@@ -432,7 +456,7 @@ export class GameService {
         song,
         position,
         correct: isCorrect,
-        oldMysteryCard: (roomData.current_song as Song)?.id,
+        oldMysteryCard: this.convertJsonToSong(roomData.current_song)?.id,
         nextMysteryCard: nextMysteryCard.id,
         newScore,
         timelineLength: newTimeline.length
