@@ -38,6 +38,7 @@ export function GamePlay({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [gameInitialized, setGameInitialized] = useState(false);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -51,14 +52,20 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // CRITICAL FIX: Initialize game for both host AND players
+  // Initialize game ONCE per room/game session
   useEffect(() => {
-    const initializeGameWithValidation = async () => {
-      if (room?.phase === 'playing' && gameState.phase === 'loading') {
-        console.log(`🎯 INIT: ${isHost ? 'Host' : 'Player'} initializing game...`);
-        
-        setInitializationError(null);
-        
+    const shouldInitialize = room?.phase === 'playing' && 
+                           gameState.phase === 'loading' && 
+                           !gameInitialized &&
+                           !gameState.playlistInitialized;
+
+    if (shouldInitialize) {
+      console.log(`🎯 INIT: ${isHost ? 'Host' : 'Player'} initializing game once...`);
+      
+      setInitializationError(null);
+      setGameInitialized(true);
+      
+      const initializeGameWithValidation = async () => {
         try {
           if (isHost) {
             // Host initialization - full playlist validation and setup
@@ -80,29 +87,28 @@ export function GamePlay({
               throw new Error('No songs in the playlist have valid audio previews. Cannot start the game.');
             }
 
-            console.log(`✅ Found ${songsWithPreviews.length} songs with valid previews - game can proceed`);
-
-            const initialMysteryCard = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
-            await GameService.initializeGameWithMysteryCard(room.id, availableSongs);
+            // Set up initial mystery card from available songs
+            const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
+            const initialMysteryCard = shuffledSongs.find(song => song.preview_url) || shuffledSongs[0];
+            
+            await GameService.initializeGameWithMysteryCard(room.id, availableSongs.slice(0, 10));
             
             console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
-            
-            initializeGame();
-          } else {
-            // Player initialization - minimal setup to sync with host
-            console.log('🎯 INIT: Player initializing game logic');
-            initializeGame();
           }
+          
+          // Both host and player initialize game logic
+          await initializeGame();
+          
         } catch (error) {
           console.error(`❌ INIT: Failed to initialize game for ${isHost ? 'host' : 'player'}:`, error);
           setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game');
-          return;
+          setGameInitialized(false);
         }
-      }
-    };
+      };
 
-    initializeGameWithValidation();
-  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id]);
+      initializeGameWithValidation();
+    }
+  }, [room?.phase, gameState.phase, gameState.playlistInitialized, gameInitialized, isHost, initializeGame, room?.id]);
 
   // Check for game end condition
   useEffect(() => {
@@ -460,7 +466,7 @@ export function GamePlay({
     );
   }
 
-  // CRITICAL FIX: Adjusted data readiness conditions for players vs hosts
+  // Enhanced data readiness check
   const allEssentialDataReady = 
     room?.phase === 'playing' &&
     (gameState.phase === 'playing' || gameState.phase === 'ready') &&
@@ -469,7 +475,8 @@ export function GamePlay({
     currentMysteryCard &&
     currentTurnPlayer &&
     !isLoadingPreview &&
-    !initializationError;
+    !initializationError &&
+    gameState.playlistInitialized;
 
   console.log('🎯 RENDER STATE:', {
     roomPhase: room?.phase,
@@ -477,6 +484,8 @@ export function GamePlay({
     players: activePlayers.length,
     mysteryCard: !!currentMysteryCard,
     turnPlayer: !!currentTurnPlayer,
+    playlistInitialized: gameState.playlistInitialized,
+    gameInitialized,
     allDataReady: allEssentialDataReady,
     isHost
   });

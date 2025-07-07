@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -9,11 +10,13 @@ interface GameLogicState {
   currentTurnIndex: number;
   currentSong: Song | null;
   availableSongs: Song[];
+  usedSongs: Song[];
   isPlaying: boolean;
   winner: Player | null;
   loadingError: string | null;
   timeLeft: number;
   transitioningTurn: boolean;
+  playlistInitialized: boolean;
 }
 
 export function useGameLogic(
@@ -29,19 +32,19 @@ export function useGameLogic(
     currentTurnIndex: 0,
     currentSong: null,
     availableSongs: [],
+    usedSongs: [],
     isPlaying: false,
     winner: null,
     loadingError: null,
     timeLeft: 30,
-    transitioningTurn: false
+    transitioningTurn: false,
+    playlistInitialized: false
   });
 
   // Filter and sync ONLY non-host players
   useEffect(() => {
     if (allPlayers.length > 0) {
-      // NEVER include host players - they should already be filtered out, but double-check
       const activePlayers = allPlayers.filter(p => {
-        // Extra safety: exclude any potential host players
         const isHostLike = p.id.includes('host-') || 
                           (roomData?.host_id && p.id === roomData.host_id);
         return !isHostLike;
@@ -59,7 +62,6 @@ export function useGameLogic(
         players: activePlayers
       }));
       
-      // Check for winner among active players only
       const winner = activePlayers.find(player => player.score >= 10);
       if (winner && !gameState.winner) {
         setGameState(prev => ({
@@ -71,14 +73,13 @@ export function useGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // CRITICAL FIX: Enhanced phase synchronization from room data
+  // Phase synchronization from room data
   useEffect(() => {
     if (roomData) {
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
         currentTurnIndex: Math.min(roomData.current_turn || 0, Math.max(0, prev.players.length - 1)),
-        // Enhanced phase sync - allow transition from loading to ready/playing based on room phase
         phase: roomData.phase === 'playing' ? 
           (prev.phase === 'loading' ? 'ready' : prev.phase === 'ready' ? 'playing' : prev.phase) : 
           prev.phase
@@ -87,58 +88,67 @@ export function useGameLogic(
       console.log('🎯 PHASE SYNC:', {
         roomPhase: roomData.phase,
         currentGamePhase: gameState.phase,
-        newPhase: roomData.phase === 'playing' ? 
-          (gameState.phase === 'loading' ? 'ready' : gameState.phase === 'ready' ? 'playing' : gameState.phase) : 
-          gameState.phase
+        playlistInitialized: gameState.playlistInitialized
       });
     }
   }, [roomData?.current_song, roomData?.current_turn, roomData?.phase]);
 
-  // Initialize game with default playlist - ensure we have songs with previews
+  // Initialize game with playlist - ONLY ONCE
   const initializeGame = useCallback(async () => {
+    // Prevent multiple initializations
+    if (gameState.playlistInitialized) {
+      console.log('🎵 Playlist already initialized, skipping...');
+      setGameState(prev => ({ ...prev, phase: 'ready' }));
+      return;
+    }
+
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log('🎵 Loading default playlist...');
+      console.log('🎵 Loading playlist for the first time...');
       const songs = await defaultPlaylistService.loadDefaultPlaylist();
       
-      // Filter songs to only include those with valid data
       const validSongs = defaultPlaylistService.filterValidSongs(songs);
       
       if (validSongs.length < 10) {
         throw new Error(`Not enough valid songs (${validSongs.length}/10 minimum)`);
       }
 
-      // CRITICAL FIX: Check for songs with previews specifically
       const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
       
-      console.log(`✅ Loaded ${validSongs.length} valid songs from playlist`);
-      console.log(`🎵 Songs with previews: ${songsWithPreviews.length}/${validSongs.length}`);
+      console.log(`✅ Loaded ${validSongs.length} valid songs (${songsWithPreviews.length} with previews)`);
       
-      // Only throw error if there are NO songs with previews
       if (songsWithPreviews.length === 0) {
         throw new Error(`No songs in the playlist have valid audio previews. Cannot start the game.`);
       }
 
-      // Use all valid songs (the game will filter for previews when needed)
+      // Shuffle and take initial 10 songs for the game
+      const shuffledSongs = [...validSongs].sort(() => Math.random() - 0.5);
+      const initialSongs = shuffledSongs.slice(0, 10);
+      const remainingSongs = shuffledSongs.slice(10);
+
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
-        availableSongs: validSongs,
+        availableSongs: initialSongs,
+        usedSongs: [],
         currentTurnIndex: 0,
-        timeLeft: 30
+        timeLeft: 30,
+        playlistInitialized: true
       }));
 
+      console.log(`🎯 Game initialized with ${initialSongs.length} songs ready to play`);
+
       // Start first turn if game is already in playing phase
-      if (roomData?.phase === 'playing' && validSongs.length > 0) {
+      if (roomData?.phase === 'playing' && initialSongs.length > 0) {
         console.log('🎯 Room is in playing phase, starting new turn...');
-        await startNewTurnWithSongs(validSongs);
+        await startNewTurnWithSongs(initialSongs);
       }
 
     } catch (error) {
       console.error('❌ Game initialization failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to initialize game';
-      setGameState(prev => ({ ...prev, loadingError: errorMsg }));
+      setGameState(prev => ({ ...prev, loadingError: errorMsg, playlistInitialized: false }));
       
       toast({
         title: "Game Setup Failed",
@@ -146,9 +156,27 @@ export function useGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, roomData?.phase]);
+  }, [toast, roomData?.phase, gameState.playlistInitialized]);
 
-  // Helper function to start new turn with specific songs
+  // Get next available song (avoiding repeats)
+  const getNextSong = useCallback((): Song | null => {
+    const availableSongs = gameState.availableSongs.filter(song => 
+      !gameState.usedSongs.some(used => used.id === song.id)
+    );
+
+    if (availableSongs.length === 0) {
+      console.log('🎵 No more unused songs available');
+      return null;
+    }
+
+    // Prefer songs with previews
+    const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(availableSongs);
+    const songPool = songsWithPreviews.length > 0 ? songsWithPreviews : availableSongs;
+    
+    return songPool[Math.floor(Math.random() * songPool.length)];
+  }, [gameState.availableSongs, gameState.usedSongs]);
+
+  // Start new turn with song management
   const startNewTurnWithSongs = useCallback(async (songsToUse: Song[]) => {
     if (songsToUse.length === 0) {
       console.error('No available songs for new turn');
@@ -156,28 +184,23 @@ export function useGameLogic(
     }
 
     try {
-      // Set transitioning state
       setGameState(prev => ({ ...prev, transitioningTurn: true }));
 
-      // CRITICAL FIX: Only try songs that have previews
-      const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(songsToUse);
-      
-      if (songsWithPreviews.length === 0) {
-        console.error('❌ No songs with previews available for new turn');
+      const nextSong = getNextSong();
+      if (!nextSong) {
+        console.error('❌ No more songs available for new turn');
         setGameState(prev => ({ ...prev, transitioningTurn: false }));
         return;
       }
 
-      // Pick a random song from those with previews
-      const selectedSong = songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)];
+      console.log(`🎯 New turn started with song: ${nextSong.deezer_title}`);
+      console.log(`🎵 Preview URL: ${nextSong.preview_url || 'None'}`);
 
-      console.log(`🎯 New turn started with song: ${selectedSong.deezer_title}`);
-      console.log(`🎵 Preview URL: ${selectedSong.preview_url || 'None'}`);
-
-      // Update local state
+      // Mark song as used
       setGameState(prev => ({
         ...prev,
-        currentSong: selectedSong,
+        currentSong: nextSong,
+        usedSongs: [...prev.usedSongs, nextSong],
         isPlaying: false,
         phase: 'playing',
         timeLeft: 30,
@@ -186,7 +209,7 @@ export function useGameLogic(
 
       // Sync to database if we have the callback
       if (onSetCurrentSong) {
-        await onSetCurrentSong(selectedSong);
+        await onSetCurrentSong(nextSong);
       }
 
     } catch (error) {
@@ -198,50 +221,24 @@ export function useGameLogic(
         variant: "destructive",
       });
     }
-  }, [onSetCurrentSong, toast]);
+  }, [getNextSong, onSetCurrentSong, toast]);
 
   // Start a new turn
-  const startNewTurn = useCallback(async (availableSongs?: Song[]) => {
-    const songsToUse = availableSongs || gameState.availableSongs;
-    await startNewTurnWithSongs(songsToUse);
+  const startNewTurn = useCallback(async () => {
+    await startNewTurnWithSongs(gameState.availableSongs);
   }, [gameState.availableSongs, startNewTurnWithSongs]);
-
-  // Fetch song preview with fallback - don't throw errors for missing previews
-  const fetchSongPreview = async (song: Song): Promise<Song | null> => {
-    try {
-      console.log(`🔍 Checking preview for: ${song.deezer_title}`);
-      
-      // If song already has a preview URL, return it
-      if (song.preview_url) {
-        console.log(`✅ Song already has preview URL: ${song.preview_url}`);
-        return song;
-      }
-      
-      // Try to fetch preview URL
-      const songWithPreview = await defaultPlaylistService.fetchPreviewUrl(song);
-      if (songWithPreview.preview_url) {
-        console.log(`✅ Found preview URL: ${songWithPreview.preview_url}`);
-        return songWithPreview;
-      } else {
-        console.log(`❌ No preview URL found for: ${song.deezer_title}`);
-        return null;
-      }
-    } catch (error) {
-      console.warn(`Failed to fetch preview for ${song.deezer_title}:`, error);
-      return null;
-    }
-  };
 
   // Start new turn when room transitions to playing and we have no current song
   useEffect(() => {
     if (roomData?.phase === 'playing' && 
         !gameState.currentSong && 
         gameState.availableSongs.length > 0 && 
+        gameState.playlistInitialized &&
         (gameState.phase === 'ready' || gameState.phase === 'loading')) {
       console.log('🎯 Room phase is playing but no current song - starting turn...');
       startNewTurn();
     }
-  }, [roomData?.phase, gameState.currentSong, gameState.availableSongs.length, gameState.phase, startNewTurn]);
+  }, [roomData?.phase, gameState.currentSong, gameState.availableSongs.length, gameState.phase, gameState.playlistInitialized, startNewTurn]);
 
   return {
     gameState,
@@ -250,7 +247,6 @@ export function useGameLogic(
       setGameState(prev => ({ ...prev, isPlaying: playing }));
     },
     getCurrentPlayer: () => {
-      // Only return from active (non-host) players
       const activePlayers = gameState.players;
       if (activePlayers.length === 0) {
         console.log('🎯 No active players available');
