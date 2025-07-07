@@ -9,6 +9,18 @@ export type DatabaseRoom = Database['public']['Tables']['game_rooms']['Row'];
 
 // Game service functions for managing multiplayer game state
 export class GameService {
+  // Helper function to convert database player to Player type
+  private static convertDatabasePlayerToPlayer(dbPlayer: DatabasePlayer): Player {
+    return {
+      id: dbPlayer.id,
+      name: dbPlayer.name,
+      color: dbPlayer.color,
+      timelineColor: dbPlayer.timeline_color, // Convert snake_case to camelCase
+      score: dbPlayer.score || 0,
+      timeline: Array.isArray(dbPlayer.timeline) ? (dbPlayer.timeline as unknown as Song[]) : []
+    };
+  }
+
   // Get current turn player from the game state
   static getCurrentPlayer(players: Player[], currentPlayerIndex: number): Player {
     if (!players || players.length === 0) {
@@ -258,8 +270,14 @@ export class GameService {
       // Update player timeline
       await this.updatePlayerTimeline(playerId, newTimeline, newScore);
 
-      // ENHANCED: Check for game end condition before advancing turn
-      const gameEndCheck = this.shouldGameEnd([{ ...playerData, timeline: newTimeline, score: newScore } as Player]);
+      // ENHANCED: Check for game end condition before advancing turn - use proper type conversion
+      const updatedPlayer = this.convertDatabasePlayerToPlayer({
+        ...playerData,
+        timeline: newTimeline as any,
+        score: newScore
+      });
+
+      const gameEndCheck = this.shouldGameEnd([updatedPlayer]);
       if (gameEndCheck.shouldEnd && gameEndCheck.winner) {
         console.log('🎯 GAME END: Player reached 10 cards:', gameEndCheck.winner.name);
         await this.endGame(roomId, playerId);
