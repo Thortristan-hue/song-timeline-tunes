@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -152,7 +151,7 @@ export class GameService {
     console.log('✅ SYNC: Mystery card successfully set in database');
   }
 
-  // Initialize game with mystery card - NEW METHOD
+  // Initialize game with mystery card - ENHANCED to set first player turn
   static async initializeGameWithMysteryCard(roomId: string, availableSongs: Song[]): Promise<Song> {
     if (!availableSongs || availableSongs.length === 0) {
       throw new Error('No available songs to initialize mystery card');
@@ -161,24 +160,43 @@ export class GameService {
     const initialMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
     console.log('🎯 INIT: Initializing game with mystery card:', initialMysteryCard.deezer_title);
 
-    // Set the mystery card in the database
+    // Get all non-host players to determine first turn
+    const { data: allPlayers, error: playersError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('is_host', false)
+      .order('joined_at', { ascending: true });
+
+    if (playersError || !allPlayers || allPlayers.length === 0) {
+      console.error('❌ INIT: No players found for game initialization:', playersError);
+      throw new Error('No players available to start game');
+    }
+
+    // Pick first player as starting turn
+    const firstPlayerId = allPlayers[0].id;
+    console.log('🎯 INIT: Setting first turn to player:', allPlayers[0].name, 'ID:', firstPlayerId);
+
+    // Set the mystery card AND first player turn in the database
     await this.setCurrentSong(roomId, initialMysteryCard);
 
-    // Set current turn to 0 and initialize turn tracking
+    // Set current turn to 0, current player, and initialize turn tracking
     const { error } = await supabase
       .from('game_rooms')
       .update({
         current_turn: 0,
+        current_player_id: firstPlayerId,
         phase: 'playing',
         updated_at: new Date().toISOString()
       })
       .eq('id', roomId);
 
     if (error) {
-      console.error('Failed to initialize game state:', error);
+      console.error('❌ INIT: Failed to initialize game state:', error);
       throw error;
     }
 
+    console.log('✅ INIT: Game initialized with mystery card and first player turn set');
     return initialMysteryCard;
   }
 
