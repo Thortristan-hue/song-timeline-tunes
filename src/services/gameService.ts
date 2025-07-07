@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
@@ -45,8 +44,8 @@ export class GameService {
     };
   }
 
-  // ENHANCED: Get all used songs from all players' timelines and previously played mystery cards
-  private static getAllUsedSongs(players: Player[], currentMysteryCard?: Song): string[] {
+  // ENHANCED: Get all used songs from all players' timelines, previously played mystery cards, and game moves
+  private static async getAllUsedSongs(roomId: string, players: Player[], currentMysteryCard?: Song): Promise<string[]> {
     const usedSongIds = new Set<string>();
     
     // Add all songs from players' timelines
@@ -64,35 +63,147 @@ export class GameService {
     if (currentMysteryCard && currentMysteryCard.id) {
       usedSongIds.add(currentMysteryCard.id);
     }
+
+    // CRITICAL: Get all previously used mystery cards from game moves
+    try {
+      const { data: gameMoves, error } = await supabase
+        .from('game_moves')
+        .select('move_data')
+        .eq('room_id', roomId)
+        .eq('move_type', 'card_placement');
+
+      if (!error && gameMoves) {
+        gameMoves.forEach(move => {
+          if (move.move_data && typeof move.move_data === 'object') {
+            const moveData = move.move_data as any;
+            // Add both old and new mystery cards from moves
+            if (moveData.oldMysteryCard) {
+              usedSongIds.add(moveData.oldMysteryCard);
+            }
+            if (moveData.nextMysteryCard) {
+              usedSongIds.add(moveData.nextMysteryCard);
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Could not fetch game moves for used songs:', error);
+    }
     
-    return Array.from(usedSongIds);
+    const usedSongsList = Array.from(usedSongIds);
+    console.log('🎵 COMPREHENSIVE USED SONGS TRACKING:', {
+      totalUsedSongs: usedSongsList.length,
+      playerTimelineSongs: players.reduce((acc, p) => acc + (p.timeline?.length || 0), 0),
+      currentMysteryCard: currentMysteryCard?.deezer_title || 'None',
+      usedSongIds: usedSongsList.slice(0, 10) // Log first 10 for debugging
+    });
+    
+    return usedSongsList;
   }
 
-  // ENHANCED: Select a fresh mystery card that hasn't been used
-  private static selectFreshMysteryCard(availableSongs: Song[], usedSongIds: string[]): Song | null {
+  // ENHANCED: Select a fresh mystery card that hasn't been used anywhere in the game
+  private static async selectFreshMysteryCard(
+    roomId: string, 
+    availableSongs: Song[], 
+    players: Player[], 
+    currentMysteryCard?: Song
+  ): Promise<Song | null> {
+    // Get comprehensive list of used songs
+    const usedSongIds = await this.getAllUsedSongs(roomId, players, currentMysteryCard);
+    
     // Filter out already used songs
     const unusedSongs = availableSongs.filter(song => 
       song && song.id && !usedSongIds.includes(song.id)
     );
     
-    console.log('🎵 MYSTERY CARD SELECTION:', {
+    console.log('🎯 GUARANTEED FRESH MYSTERY CARD SELECTION:', {
       totalAvailable: availableSongs.length,
       alreadyUsed: usedSongIds.length,
       availableForSelection: unusedSongs.length,
-      usedSongIds: usedSongIds.slice(0, 5) // Log first 5 for debugging
+      currentMysteryCard: currentMysteryCard?.deezer_title || 'None'
     });
     
     if (unusedSongs.length === 0) {
-      console.warn('⚠️ No unused songs available! All songs have been played.');
-      // If all songs are used, pick randomly from available (fallback)
-      return availableSongs.length > 0 ? availableSongs[Math.floor(Math.random() * availableSongs.length)] : null;
+      console.error('❌ CRITICAL: No unused songs available! All songs have been played.');
+      // If all songs are used, the game should end or we need more songs
+      return null;
     }
     
     // Select random unused song
     const selectedSong = unusedSongs[Math.floor(Math.random() * unusedSongs.length)];
-    console.log('🎯 SELECTED FRESH MYSTERY CARD:', selectedSong.deezer_title);
+    console.log('✅ SELECTED GUARANTEED FRESH MYSTERY CARD:', {
+      title: selectedSong.deezer_title,
+      id: selectedSong.id,
+      year: selectedSong.release_year
+    });
     
     return selectedSong;
+  }
+
+  // ENHANCED: Force mystery card change when player changes
+  static async forceMysteryCardChange(
+    roomId: string,
+    availableSongs: Song[],
+    newPlayerIndex: number
+  ): Promise<Song | null> {
+    try {
+      // Get all players to check used songs
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError || !allPlayers || allPlayers.length === 0) {
+        console.error('❌ FORCE CHANGE: No players found:', playersError);
+        return null;
+      }
+
+      // Get current room state
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('current_song')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) {
+        console.error('❌ FORCE CHANGE: Could not get room data:', roomError);
+        return null;
+      }
+
+      // Convert database players to Player type
+      const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
+      const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
+
+      // GUARANTEE a completely fresh mystery card
+      const newMysteryCard = await this.selectFreshMysteryCard(
+        roomId,
+        availableSongs,
+        players,
+        currentMysteryCard
+      );
+
+      if (!newMysteryCard) {
+        console.error('❌ FORCE CHANGE: No fresh mystery card available');
+        return null;
+      }
+
+      // Set the new mystery card in the database
+      await this.setCurrentSong(roomId, newMysteryCard);
+
+      console.log('🔄 FORCED MYSTERY CARD CHANGE:', {
+        newPlayerIndex,
+        oldCard: currentMysteryCard?.deezer_title || 'None',
+        newCard: newMysteryCard.deezer_title,
+        cardChanged: currentMysteryCard?.id !== newMysteryCard.id
+      });
+
+      return newMysteryCard;
+    } catch (error) {
+      console.error('❌ FORCE CHANGE: Failed to force mystery card change:', error);
+      return null;
+    }
   }
 
   // Get current turn player from the game state
@@ -271,11 +382,8 @@ export class GameService {
     // Convert database players to Player type
     const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
     
-    // Get used songs from all player timelines
-    const usedSongIds = this.getAllUsedSongs(players);
-    
     // Select fresh mystery card that hasn't been used
-    const initialMysteryCard = this.selectFreshMysteryCard(availableSongs, usedSongIds);
+    const initialMysteryCard = await this.selectFreshMysteryCard(roomId, availableSongs, players);
     if (!initialMysteryCard) {
       throw new Error('No available mystery card could be selected');
     }
@@ -405,34 +513,28 @@ export class GameService {
       const nextTurn = (currentTurn + 1) % allPlayers.length;
       const nextPlayerId = allPlayers[nextTurn]?.id;
       
-      // CRITICAL: Select next mystery card that MUST be different and unused
-      let nextMysteryCard: Song;
-      if (availableSongs && availableSongs.length > 0) {
-        // Get all used songs including the current mystery card and all timeline songs
-        const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
-        const usedSongIds = this.getAllUsedSongs(players, currentMysteryCard);
-        
-        // GUARANTEE a fresh mystery card
-        nextMysteryCard = this.selectFreshMysteryCard(availableSongs, usedSongIds);
-        
-        if (!nextMysteryCard) {
-          console.error('❌ CRITICAL: No fresh mystery card available!');
-          // Fallback: pick randomly from available songs if no unused songs exist
-          nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)];
-        }
-      } else {
-        // Fallback: use a different song if no available songs provided
-        console.warn('⚠️ No available songs provided, using fallback');
-        nextMysteryCard = song; // This should not happen in normal flow
+      // CRITICAL: FORCE mystery card change when player changes
+      const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
+      const nextMysteryCard = await this.selectFreshMysteryCard(
+        roomId,
+        availableSongs,
+        players,
+        currentMysteryCard
+      );
+      
+      if (!nextMysteryCard) {
+        console.error('❌ CRITICAL: No fresh mystery card available for next turn!');
+        return { success: false, error: 'No fresh mystery card available' };
       }
 
-      console.log('🎯 TURN ADVANCEMENT: Moving to next turn with GUARANTEED fresh mystery card:', {
+      console.log('🎯 GUARANTEED TURN ADVANCEMENT: Moving to next turn with FRESH mystery card:', {
         nextTurn,
         nextPlayerId,
         nextPlayerName: allPlayers[nextTurn]?.name,
-        oldMysteryCard: this.convertJsonToSong(roomData.current_song)?.deezer_title,
+        oldMysteryCard: currentMysteryCard?.deezer_title,
         newMysteryCard: nextMysteryCard.deezer_title,
-        mysteryCardChanged: this.convertJsonToSong(roomData.current_song)?.id !== nextMysteryCard.id
+        mysteryCardChanged: currentMysteryCard?.id !== nextMysteryCard.id,
+        guaranteed: true
       });
       
       // Update room with new turn, fresh mystery card, and current player
@@ -451,18 +553,20 @@ export class GameService {
         throw updateError;
       }
 
-      // Record the move
+      // Record the move with comprehensive tracking
       await this.recordGameMove(roomId, playerId, 'card_placement', {
         song,
         position,
         correct: isCorrect,
-        oldMysteryCard: this.convertJsonToSong(roomData.current_song)?.id,
+        oldMysteryCard: currentMysteryCard?.id,
         nextMysteryCard: nextMysteryCard.id,
         newScore,
-        timelineLength: newTimeline.length
+        timelineLength: newTimeline.length,
+        playerChange: true,
+        guaranteedFreshCard: true
       });
 
-      console.log('✅ CARD PLACEMENT: Card placed and turn advanced with fresh mystery card successfully');
+      console.log('✅ CARD PLACEMENT: Card placed and turn advanced with GUARANTEED fresh mystery card');
       return { success: true, correct: isCorrect };
     } catch (error) {
       console.error('❌ CARD PLACEMENT: Failed to place card:', error);

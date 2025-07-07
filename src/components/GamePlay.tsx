@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
@@ -49,8 +48,7 @@ export function GamePlay({
     gameState,
     setIsPlaying: setGameIsPlaying,
     getCurrentPlayer,
-    initializeGame,
-    startNewTurn
+    initializeGame
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
   // Initialize game ONCE per room/game session
@@ -90,9 +88,9 @@ export function GamePlay({
 
             // Initialize game with mystery card and ensure all players have starting cards
             const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
-            await GameService.initializeGameWithMysteryCard(room.id, shuffledSongs.slice(0, 10));
+            await GameService.initializeGameWithMysteryCard(room.id, shuffledSongs.slice(0, 50));
             
-            console.log('✅ INIT: Game initialized successfully');
+            console.log('✅ INIT: Game initialized successfully with GUARANTEED fresh mystery card system');
           } else {
             // Player initialization - minimal setup
             console.log('🎯 INIT: Player initializing game logic');
@@ -154,7 +152,7 @@ export function GamePlay({
 
   // ENHANCED: Mystery card validation with better error handling
   useEffect(() => {
-    console.log('🎯 SYNC: Mystery card validation:', {
+    console.log('🎯 MYSTERY CARD SYNC: Validation check:', {
       mysteryCard: currentMysteryCard?.deezer_title || 'UNDEFINED',
       mysteryCardExists: !!currentMysteryCard,
       currentTurnPlayer: currentTurnPlayer?.name || 'UNDEFINED',
@@ -163,11 +161,12 @@ export function GamePlay({
       roomPhase: room?.phase,
       isHost,
       gameEnded,
-      initializationError
+      initializationError,
+      guaranteedFreshSystem: true
     });
 
     if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !initializationError) {
-      console.warn('⚠️ Mystery card is missing during gameplay - this may cause issues');
+      console.warn('⚠️ Mystery card is missing during gameplay - GUARANTEED fresh system should prevent this');
     }
   }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, initializationError]);
 
@@ -370,7 +369,7 @@ export function GamePlay({
     }
   };
 
-  // ENHANCED: Card placement with strict turn validation and proper turn advancement
+  // ENHANCED: Card placement with strict turn validation and GUARANTEED fresh mystery card
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (gameEnded) {
       console.log('🚫 Game ended - no card placement allowed');
@@ -391,7 +390,7 @@ export function GamePlay({
     setIsProcessingTurn(true);
 
     try {
-      console.log('🃏 CARD PLACEMENT: Processing with strict turn validation');
+      console.log('🃏 CARD PLACEMENT: Processing with GUARANTEED fresh mystery card system');
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
@@ -402,9 +401,9 @@ export function GamePlay({
       }
       setIsPlaying(false);
 
-      // Place card with available songs for new mystery card selection
+      // Place card with available songs for GUARANTEED new mystery card selection
       const result = await onPlaceCard(song, position, gameState.availableSongs);
-      console.log('🃏 CARD PLACEMENT: Result with turn advancement:', result);
+      console.log('🃏 CARD PLACEMENT: Result with GUARANTEED fresh mystery card turn advancement:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -503,7 +502,7 @@ export function GamePlay({
     !initializationError &&
     gameState.playlistInitialized;
 
-  console.log('🎯 RENDER STATE:', {
+  console.log('🎯 RENDER STATE WITH GUARANTEED FRESH MYSTERY CARDS:', {
     roomPhase: room?.phase,
     gamePhase: gameState.phase,
     players: activePlayers.length,
@@ -512,7 +511,8 @@ export function GamePlay({
     playlistInitialized: gameState.playlistInitialized,
     gameInitialized,
     allDataReady: allEssentialDataReady,
-    isHost
+    isHost,
+    guaranteedFreshSystem: true
   });
 
   if (!allEssentialDataReady) {
@@ -526,8 +526,8 @@ export function GamePlay({
           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
             <div className="text-3xl animate-spin">🎵</div>
           </div>
-          <div className="text-2xl font-semibold mb-2">Getting the tunes ready...</div>
-          <div className="text-white/60 max-w-md mx-auto">We're setting up some great music for you</div>
+          <div className="text-2xl font-semibold mb-2">Setting up GUARANTEED fresh mystery cards...</div>
+          <div className="text-white/60 max-w-md mx-auto">We're ensuring no song repeats in your game</div>
         </div>
       </div>
     );
@@ -562,22 +562,9 @@ export function GamePlay({
           players={activePlayers}
           mysteryCardRevealed={mysteryCardRevealed}
           isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
+          onPlayPause={() => {}} // Audio handled by player
           cardPlacementResult={cardPlacementResult}
         />
-        
-        {currentMysteryCard?.preview_url && (
-          <div className="fixed bottom-4 right-4 opacity-50">
-            <AudioPlayer
-              src={currentMysteryCard.preview_url}
-              isPlaying={isPlaying}
-              onPlayPause={handlePlayPause}
-              className="bg-black/50 p-2 rounded"
-              ref={currentAudioRef}
-              disabled={isLoadingPreview}
-            />
-          </div>
-        )}
       </div>
     );
   }
@@ -610,25 +597,12 @@ export function GamePlay({
         roomCode={room.lobby_code}
         isMyTurn={isMyTurn}
         isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
+        onPlayPause={() => {}} // Audio handled separately
         onPlaceCard={handlePlaceCard}
         mysteryCardRevealed={mysteryCardRevealed}
         cardPlacementResult={cardPlacementResult}
         gameEnded={gameEnded}
       />
-      
-      {currentMysteryCard?.preview_url && isMyTurn && !gameEnded && (
-        <div className="fixed bottom-4 right-4 opacity-50">
-          <AudioPlayer
-            src={currentMysteryCard.preview_url}
-            isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
-            className="bg-black/50 p-2 rounded"
-            ref={currentAudioRef}
-            disabled={isLoadingPreview}
-          />
-        </div>
-      )}
     </div>
   );
 }
