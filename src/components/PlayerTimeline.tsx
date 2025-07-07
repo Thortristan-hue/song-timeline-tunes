@@ -1,9 +1,9 @@
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Music, Check, X, Sparkles, Calendar, Play, RotateCcw } from "lucide-react";
+import { Trophy, Music, Check, X, Sparkles, Calendar, Play, RotateCcw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
 import { DeezerAudioService } from "@/services/DeezerAudioService";
@@ -41,6 +41,15 @@ export function PlayerTimeline({
 }: PlayerTimelineProps) {
   // FIX 5: Single audio ref to prevent spam and overlapping audio
   const currentlyPlayingAudioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // ANTI-SPAM: State management for card placement
+  const [isPlacingCard, setIsPlacingCard] = useState(false);
+  const [lastPlacementTime, setLastPlacementTime] = useState(0);
+  const placementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // ANTI-SPAM: Debounce settings
+  const PLACEMENT_DEBOUNCE_MS = 1000; // 1 second debounce
+  const MIN_PLACEMENT_INTERVAL = 500; // Minimum 500ms between attempts
 
   // FIX 5: Improved timeline song playback with spam prevention
   const playTimelineSong = async (song: Song) => {
@@ -112,23 +121,115 @@ export function PlayerTimeline({
     }
   };
 
+  // ANTI-SPAM: Debounced and protected confirm placement
   const handleConfirmClick = async () => {
-    if (!placementPending || !onConfirmPlacement || gameEnded) return;
+    if (!placementPending || !onConfirmPlacement || gameEnded) {
+      console.log('🚫 Confirm blocked: missing data or game ended');
+      return;
+    }
+    
+    // ANTI-SPAM: Check if already placing a card
+    if (isPlacingCard) {
+      console.log('🚫 Confirm blocked: already placing a card');
+      return;
+    }
+    
+    // ANTI-SPAM: Check minimum time interval
+    const now = Date.now();
+    if (now - lastPlacementTime < MIN_PLACEMENT_INTERVAL) {
+      console.log('🚫 Confirm blocked: too soon since last placement');
+      return;
+    }
+    
+    // ANTI-SPAM: Set placement state and update timestamp
+    setIsPlacingCard(true);
+    setLastPlacementTime(now);
+    
+    // Clear any existing timeout
+    if (placementTimeoutRef.current) {
+      clearTimeout(placementTimeoutRef.current);
+    }
     
     try {
-      console.log('🎯 Confirming placement');
+      console.log('🎯 Confirming placement with anti-spam protection');
       const result = await onConfirmPlacement(placementPending.song, placementPending.position);
       console.log('🎯 Placement confirmed, result:', result);
     } catch (error) {
-      console.error('Failed to confirm placement:', error);
+      console.error('❌ Failed to confirm placement:', error);
+    } finally {
+      // ANTI-SPAM: Reset state after debounce period
+      placementTimeoutRef.current = setTimeout(() => {
+        setIsPlacingCard(false);
+      }, PLACEMENT_DEBOUNCE_MS);
     }
   };
 
   const handleTryAgainClick = () => {
-    if (!onCancelPlacement || gameEnded) return;
+    if (!onCancelPlacement || gameEnded || isPlacingCard) return;
     console.log('🔄 Player choosing to try again with placement');
     onCancelPlacement();
   };
+
+  // TIMELINE SCROLL: Snap to gap functionality
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
+  
+  // TIMELINE SCROLL: Calculate nearest gap for snapping
+  const calculateNearestGap = () => {
+    if (!timelineRef.current) return 0;
+    
+    const timeline = timelineRef.current;
+    const scrollLeft = timeline.scrollLeft;
+    const containerWidth = timeline.clientWidth;
+    const totalWidth = timeline.scrollWidth;
+    
+    // Calculate gap positions (approximate)
+    const cardWidth = 150; // Approximate card width + gap
+    const gapPositions = [];
+    
+    for (let i = 0; i <= player.timeline.length; i++) {
+      gapPositions.push(i * cardWidth);
+    }
+    
+    // Find nearest gap
+    let nearestGap = 0;
+    let minDistance = Infinity;
+    let nearestIndex = 0;
+    
+    gapPositions.forEach((gapPos, index) => {
+      const distance = Math.abs(scrollLeft + containerWidth / 2 - gapPos);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestGap = Math.max(0, gapPos - containerWidth / 2);
+        nearestIndex = index;
+      }
+    });
+    
+    setActiveGapIndex(nearestIndex);
+    return nearestGap;
+  };
+
+  // TIMELINE SCROLL: Throttled scroll handler with snap
+  const handleTimelineScroll = React.useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          if (!gameEnded && isCurrent) {
+            const nearestGap = calculateNearestGap();
+            if (timelineRef.current) {
+              timelineRef.current.scrollTo({ 
+                left: nearestGap, 
+                behavior: 'smooth' 
+              });
+            }
+          }
+        }, 100);
+      };
+    },
+    [gameEnded, isCurrent, player.timeline.length]
+  );
 
   const renderCard = (song: Song, index: number) => {
     const isPendingPosition = placementPending?.position === index;
@@ -172,6 +273,7 @@ export function PlayerTimeline({
   const renderDropZone = (position: number) => {
     const isHovered = hoveredPosition === position;
     const isPending = placementPending?.position === position;
+    const isActiveSnap = activeGapIndex === position && isCurrent && !gameEnded;
     
     return (
       <div
@@ -182,9 +284,13 @@ export function PlayerTimeline({
           gameEnded ? "opacity-50 pointer-events-none" :
           isPending
             ? 'bg-blue-500/30 border-blue-400/50 shadow-lg shadow-blue-400/25 scale-110'
+            : isActiveSnap
+            ? 'bg-green-500/20 border-green-400/40 shadow-lg shadow-green-400/20 scale-105'
             : isHovered 
             ? 'bg-white/15 border-white/20 shadow-lg scale-105' 
-            : 'bg-white/5 border-white/10 hover:bg-white/10'
+            : 'bg-white/5 border-white/10 hover:bg-white/10',
+          // TIMELINE SCROLL: Highlight centered gap
+          isActiveSnap && 'ring-2 ring-green-400/50'
         )}
         onDragOver={(e) => !gameEnded && handleDragOver(e, position)}
         onDragLeave={handleDragLeave}
@@ -203,7 +309,7 @@ export function PlayerTimeline({
       >
         {draggedSong && isCurrent && !isPending && !gameEnded && (
           <div className="text-white/80 text-xs font-medium text-center leading-tight">
-            Drop<br />here
+            {isActiveSnap ? 'Centered\nGap' : 'Drop\nhere'}
           </div>
         )}
         {isPending && !gameEnded && (
@@ -226,7 +332,7 @@ export function PlayerTimeline({
         opacity: transitioningTurn ? 0.6 : 1
       }}
     >
-      {/* FIX 3: Confirmation dialog without song information leakage */}
+      {/* ANTI-SPAM: Enhanced confirmation dialog */}
       {placementPending && !gameEnded && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-600/50 max-w-md w-full mx-4 transform scale-100 animate-in fade-in-0 zoom-in-95 duration-300">
@@ -235,8 +341,15 @@ export function PlayerTimeline({
                 <Music className="h-8 w-8 text-blue-400" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
-              {/* FIX 3: Generic confirmation without song details */}
               <p className="text-slate-300 mb-4">Are you sure you want to place the card in this position?</p>
+              
+              {/* ANTI-SPAM: Visual feedback when processing */}
+              {isPlacingCard && (
+                <div className="flex items-center justify-center gap-2 text-blue-400 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Processing placement...</span>
+                </div>
+              )}
             </div>
             
             <div className="flex gap-4">
@@ -245,19 +358,36 @@ export function PlayerTimeline({
                   e.stopPropagation();
                   handleConfirmClick();
                 }}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-green-500/25 transition-all duration-200 transform hover:scale-105"
+                disabled={isPlacingCard}
+                className={cn(
+                  "flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-green-500/25 transition-all duration-200 transform hover:scale-105",
+                  isPlacingCard && "opacity-50 cursor-not-allowed"
+                )}
                 size="lg"
               >
-                <Check className="h-5 w-5 mr-2" />
-                Confirm
+                {isPlacingCard ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-5 w-5 mr-2" />
+                    Confirm
+                  </>
+                )}
               </Button>
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleTryAgainClick();
                 }}
+                disabled={isPlacingCard}
                 variant="outline"
-                className="flex-1 border-2 border-slate-500 text-white hover:bg-slate-700/50 font-bold py-4 px-6 rounded-xl text-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+                className={cn(
+                  "flex-1 border-2 border-slate-500 text-white hover:bg-slate-700/50 font-bold py-4 px-6 rounded-xl text-lg shadow-lg transition-all duration-200 transform hover:scale-105",
+                  isPlacingCard && "opacity-50 cursor-not-allowed"
+                )}
                 size="lg"
               >
                 <RotateCcw className="h-5 w-5 mr-2" />
@@ -268,15 +398,28 @@ export function PlayerTimeline({
         </div>
       )}
 
-      <div className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto">
+      {/* TIMELINE SCROLL: Enhanced timeline with snap functionality */}
+      <div 
+        ref={timelineRef}
+        className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
+        onScroll={handleTimelineScroll}
+        style={{
+          scrollBehavior: 'smooth',
+          scrollSnapType: 'x mandatory'
+        }}
+      >
         {player.timeline.map((song, index) => (
           <React.Fragment key={`${song.deezer_title}-${index}`}>
-            {renderDropZone(index)}
+            <div style={{ scrollSnapAlign: 'center' }}>
+              {renderDropZone(index)}
+            </div>
             {renderCard(song, index)}
           </React.Fragment>
         ))}
         
-        {renderDropZone(player.timeline.length)}
+        <div style={{ scrollSnapAlign: 'center' }}>
+          {renderDropZone(player.timeline.length)}
+        </div>
         
         {player.timeline.length === 0 && (
           <div className="text-center py-12 px-20 flex-1">
@@ -286,7 +429,7 @@ export function PlayerTimeline({
             </p>
             {isCurrent && !gameEnded && (
               <p className="text-white/50 text-sm font-normal">
-                Drag the mystery card to create your chronological timeline
+                Drag the mystery card to create your chronological timeline. Scroll to snap gaps to center.
               </p>
             )}
           </div>
