@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { PlayerGameView } from '@/components/PlayerGameView';
-import { HostGameView } from '@/components/HostGameView';
+import { PlayerGameView } from '@/components/PlayerVisuals';
+import { HostGameView } from '@/components/HostVisuals';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
