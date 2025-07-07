@@ -2,15 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerGameView';
 import { HostGameView } from '@/components/HostGameView';
-import { LoadingErrorBoundary } from '@/components/LoadingErrorBoundary';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 import { GameService } from '@/services/gameService';
-import { useGameState } from '@/hooks/useGameState';
-import { useToast } from '@/hooks/use-toast';
 
 interface GamePlayProps {
   room: any;
@@ -32,8 +29,6 @@ export function GamePlay({
   customSongs
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
-  const gameLoadingState = useGameState({ timeout: 30000 });
-  const { toast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
@@ -41,14 +36,10 @@ export function GamePlay({
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
-  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   // Single audio instance management to prevent overlaps
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<any>(null);
-  const initializationAttempted = useRef<boolean>(false);
-  const maxInitializationAttempts = 3;
 
   const {
     gameState,
@@ -58,119 +49,29 @@ export function GamePlay({
     startNewTurn
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // Clear loading states when component unmounts or game ends
-  useEffect(() => {
-    return () => {
-      gameLoadingState.forceStopLoading();
-      setIsProcessingTurn(false);
-      setIsLoadingPreview(false);
-    };
-  }, [gameLoadingState]);
-
-  // Enhanced initialization with robust error handling and retry logic
+  // Initialize game on mount - CRITICAL FIX: Ensure mystery card is always set
   useEffect(() => {
     const initializeGameWithMysteryCard = async () => {
-      // Don't initialize if already ended or error exists
-      if (gameEnded || initializationError) {
-        return;
-      }
-
-      if (
-        room?.phase === 'playing' && 
-        gameState.phase === 'loading' && 
-        isHost && 
-        !initializationAttempted.current &&
-        initializationAttempts < maxInitializationAttempts
-      ) {
-        initializationAttempted.current = true;
-        const currentAttempt = initializationAttempts + 1;
-        setInitializationAttempts(currentAttempt);
+      if (room?.phase === 'playing' && gameState.phase === 'loading' && isHost) {
+        console.log('🎯 INIT: Host initializing game with mystery card...');
         
-        console.log(`🎯 INIT: Host initializing game (attempt ${currentAttempt}/${maxInitializationAttempts})...`);
-        
-        gameLoadingState.startLoading('Initializing game');
-        
-        try {
-          // Ensure we have available songs
-          if (gameState.availableSongs.length === 0) {
-            throw new Error('No songs available to start the game. Please add songs to your playlist.');
-          }
-
-          // Initialize the game with a mystery card using GameService
-          console.log('🎯 INIT: Starting initialization with GameService...');
-          await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
-          console.log('✅ INIT: Game initialized with mystery card successfully');
-          
-          // Initialize local game state
-          initializeGame();
-          
-          // Clear any previous errors
-          setInitializationError(null);
-          gameLoadingState.stopLoading(true);
-          
-          toast({
-            title: "Game Started!",
-            description: "The mystery card has been set. Let the game begin!",
-          });
-          
-        } catch (error) {
-          console.error('❌ INIT: Failed to initialize game with mystery card:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Failed to initialize game. Please try again.';
-          
-          setInitializationError(errorMessage);
-          gameLoadingState.stopLoading(false, errorMessage);
-          
-          // Reset the attempt flag for potential retry
-          initializationAttempted.current = false;
-          
-          toast({
-            title: "Game Initialization Failed",
-            description: errorMessage,
-            variant: "destructive",
-          });
-
-          // Auto-retry with exponential backoff if we haven't reached max attempts
-          if (currentAttempt < maxInitializationAttempts) {
-            const retryDelay = Math.min(2000 * Math.pow(2, currentAttempt - 1), 10000); // Cap at 10 seconds
-            console.log(`🔄 INIT: Auto-retrying in ${retryDelay}ms (attempt ${currentAttempt + 1}/${maxInitializationAttempts})`);
-            
-            setTimeout(() => {
-              initializationAttempted.current = false;
-            }, retryDelay);
-          } else {
-            console.error('❌ INIT: Max initialization attempts reached. Manual retry required.');
-            toast({
-              title: "Initialization Failed",
-              description: "Maximum retry attempts reached. Please use the retry button.",
-              variant: "destructive",
-            });
+        // Ensure we have available songs
+        if (gameState.availableSongs.length > 0) {
+          try {
+            // Initialize the game with a mystery card using GameService
+            await GameService.initializeGameWithMysteryCard(room.id, gameState.availableSongs);
+            console.log('✅ INIT: Game initialized with mystery card successfully');
+          } catch (error) {
+            console.error('❌ INIT: Failed to initialize game with mystery card:', error);
           }
         }
+        
+        initializeGame();
       }
     };
 
     initializeGameWithMysteryCard();
-  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id, gameLoadingState, initializationAttempts, toast, gameEnded, initializationError]);
-
-  // Auto-clear loading states if they get stuck
-  useEffect(() => {
-    const checkStuckStates = () => {
-      // Clear processing turn if it's been stuck for too long
-      if (isProcessingTurn) {
-        console.log('🔄 Auto-clearing stuck processing turn state');
-        setIsProcessingTurn(false);
-      }
-      
-      // Clear preview loading if stuck
-      if (isLoadingPreview) {
-        console.log('🔄 Auto-clearing stuck preview loading state');
-        setIsLoadingPreview(false);
-      }
-    };
-
-    const interval = setInterval(checkStuckStates, 15000); // Check every 15 seconds
-    return () => clearInterval(interval);
-  }, [isProcessingTurn, isLoadingPreview]);
+  }, [room?.phase, gameState.phase, gameState.availableSongs, isHost, initializeGame, room?.id]);
 
   // Check for game end condition
   useEffect(() => {
@@ -209,22 +110,14 @@ export function GamePlay({
       currentTurn: room?.current_turn,
       roomPhase: room?.phase,
       isHost,
-      gameEnded,
-      initializationError,
-      initializationAttempts
+      gameEnded
     });
 
-    // ALERT if mystery card is undefined in playing phase and we're not in error state
-    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading && !initializationError) {
+    // ALERT if mystery card is undefined in playing phase
+    if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
       console.error('🚨 CRITICAL: Mystery card is undefined during gameplay!');
-      if (isHost && initializationAttempts < maxInitializationAttempts) {
-        setInitializationError('Mystery card not loaded. Retrying initialization...');
-        initializationAttempted.current = false; // Allow retry
-      } else {
-        setInitializationError('Mystery card not loaded. Please refresh the game.');
-      }
     }
-  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded, gameLoadingState.isLoading, initializationError, initializationAttempts]);
+  }, [currentMysteryCard, currentTurnPlayer, currentTurnPlayerId, room?.current_turn, room?.phase, isHost, gameEnded]);
 
   // Assign starting cards to players when game starts
   useEffect(() => {
@@ -498,70 +391,21 @@ export function GamePlay({
     }
   };
 
-  const handleRetryInitialization = () => {
-    console.log('🔄 INIT: Manual retry requested');
-    setInitializationError(null);
-    setInitializationAttempts(0);
-    initializationAttempted.current = false;
-    gameLoadingState.clearError();
-    gameLoadingState.forceStopLoading(); // Force clear any stuck loading
-    
-    toast({
-      title: "Retrying Game Initialization",
-      description: "Attempting to start the game again...",
-    });
-  };
-
-  // Show initialization error screen with enhanced retry options
-  if (initializationError) {
+  // CRITICAL FIX: Show error if mystery card is undefined
+  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded) {
     return (
-      <LoadingErrorBoundary
-        isLoading={false}
-        error={initializationError}
-        onRetry={handleRetryInitialization}
-        loadingMessage="Initializing game..."
-      >
-        <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
-          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-            <div className="text-6xl mb-6">⚠️</div>
-            <div className="text-3xl font-bold mb-4">Game Initialization Failed</div>
-            <div className="text-lg mb-4 text-red-200">{initializationError}</div>
-            <div className="text-sm mb-6 text-red-300">
-              Attempts: {initializationAttempts}/{maxInitializationAttempts}
-            </div>
-            <div className="space-y-4">
-              <button
-                onClick={handleRetryInitialization}
-                className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold"
-                disabled={gameLoadingState.isLoading}
-              >
-                {gameLoadingState.isLoading ? 'Retrying...' : 'Retry Initialization'}
-              </button>
-              <div className="text-xs text-red-400">
-                If this keeps failing, try refreshing the page or check your internet connection.
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white relative z-10">
+          <div className="text-6xl mb-6">🚨</div>
+          <div className="text-4xl font-bold mb-4">Mystery Card Error</div>
+          <div className="text-xl mb-6">The mystery card is not loading properly.</div>
+          <div className="text-lg text-white/60">Please refresh the page or rejoin the game.</div>
         </div>
-      </LoadingErrorBoundary>
+      </div>
     );
   }
 
-  // CRITICAL FIX: Show error if mystery card is undefined after loading
-  if (room?.phase === 'playing' && !currentMysteryCard && !gameEnded && !gameLoadingState.isLoading && !initializationError) {
-    return (
-      <LoadingErrorBoundary
-        isLoading={false}
-        error="Mystery card not loaded. The game may not have initialized properly."
-        onRetry={handleRetryInitialization}
-        loadingMessage="Loading mystery card..."
-      >
-        <div />
-      </LoadingErrorBoundary>
-    );
-  }
-
-  // Show game over screen if game has ended
+  // FIX 4: Show game over screen if game has ended
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.score >= 10);
     return (
@@ -580,22 +424,22 @@ export function GamePlay({
     );
   }
 
-  // Loading state with enhanced timeout handling
-  if (gameState.phase === 'loading' || gameLoadingState.isLoading) {
+  // Modern loading state
+  if (gameState.phase === 'loading') {
     return (
-      <LoadingErrorBoundary
-        isLoading={true}
-        error={null}
-        loadingMessage={gameLoadingState.loadingOperation || "Getting the tunes ready..."}
-        onRetry={() => {
-          gameLoadingState.forceStopLoading();
-          if (isHost) {
-            handleRetryInitialization();
-          }
-        }}
-      >
-        <div />
-      </LoadingErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        </div>
+        <div className="text-center text-white relative z-10">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <div className="text-3xl animate-spin">🎵</div>
+          </div>
+          <div className="text-2xl font-semibold mb-2">Getting the tunes ready...</div>
+          <div className="text-white/60 max-w-md mx-auto">We're setting up some great music for you</div>
+        </div>
+      </div>
     );
   }
 
