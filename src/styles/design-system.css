@@ -1,426 +1,196 @@
+
+/* Timeliner - Centralized Visual Design System */
+
+/* CSS Custom Properties for consistent design */
 :root {
-  /* Retro Color Palette - Inspired by 80s/90s cassette players */
-  --cassette-silver: #c0c0c0;
-  --cassette-dark-silver: #808080;
-  --cassette-black: #1a1a1a;
-  --cassette-charcoal: #2d2d2d;
-  --cassette-beige: #f5f5dc;
-  --cassette-cream: #faf0e6;
-  --cassette-orange: #ff6b35;
-  --cassette-red: #dc2626;
-  --cassette-green: #16a34a;
-  --cassette-blue: #2563eb;
-  --cassette-neon-green: #39ff14;
-  --cassette-neon-orange: #ff8c00;
+  /* Color Palette - Enhanced for better contrast */
+  --timeliner-primary: #8b5cf6;
+  --timeliner-secondary: #ec4899;
+  --timeliner-accent: #06b6d4;
+  --timeliner-success: #10b981;
+  --timeliner-warning: #f59e0b;
+  --timeliner-error: #ef4444;
   
-  /* Updated primary colors for cassette theme */
-  --timeliner-primary: var(--cassette-orange);
-  --timeliner-secondary: var(--cassette-red);
-  --timeliner-accent: var(--cassette-neon-green);
-  --timeliner-success: var(--cassette-green);
-  --timeliner-warning: var(--cassette-neon-orange);
-  --timeliner-error: var(--cassette-red);
+  /* Text colors with proper contrast */
+  --timeliner-text-primary: #ffffff;
+  --timeliner-text-secondary: #e2e8f0;
+  --timeliner-text-muted: #94a3b8;
+  --timeliner-text-dark: #1e293b;
   
-  /* Cassette-specific text colors */
-  --cassette-text-primary: var(--cassette-cream);
-  --cassette-text-secondary: var(--cassette-beige);
-  --cassette-text-muted: var(--cassette-dark-silver);
-  --cassette-text-contrast: var(--cassette-black);
-  --cassette-text-neon: var(--cassette-neon-green);
+  /* Background colors */
+  --timeliner-bg-primary: #0f172a;
+  --timeliner-bg-secondary: #1e293b;
+  --timeliner-bg-card: rgba(30, 41, 59, 0.8);
   
-  /* Cassette backgrounds */
-  --cassette-bg-primary: var(--cassette-black);
-  --cassette-bg-secondary: var(--cassette-charcoal);
-  --cassette-bg-silver: var(--cassette-silver);
-  --cassette-bg-dark-silver: var(--cassette-dark-silver);
+  /* Gradients */
+  --timeliner-bg-gradient: linear-gradient(135deg, #0f172a 0%, #581c87 25%, #312e81 50%, #7c3aed 100%);
+  --timeliner-card-gradient: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+  --timeliner-button-gradient: linear-gradient(135deg, var(--timeliner-primary) 0%, var(--timeliner-secondary) 100%);
   
-  /* Cassette-inspired gradients */
-  --cassette-bg-gradient: linear-gradient(135deg, 
-    var(--cassette-black) 0%, 
-    var(--cassette-charcoal) 30%, 
-    var(--cassette-dark-silver) 70%, 
-    var(--cassette-silver) 100%);
+  /* Shadows with better definition */
+  --timeliner-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --timeliner-shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --timeliner-shadow-lg: 0 10px 20px -5px rgb(0 0 0 / 0.4), 0 4px 8px -4px rgb(0 0 0 / 0.3);
+  --timeliner-shadow-glow: 0 0 30px rgba(139, 92, 246, 0.4);
   
-  --cassette-metal-gradient: linear-gradient(135deg, 
-    var(--cassette-silver) 0%, 
-    var(--cassette-dark-silver) 50%, 
-    var(--cassette-silver) 100%);
-  
-  --cassette-button-gradient: linear-gradient(135deg, 
-    var(--cassette-orange) 0%, 
-    var(--cassette-red) 100%);
-  
-  --cassette-display-gradient: linear-gradient(135deg, 
-    var(--cassette-black) 0%, 
-    #0a0a0a 100%);
-  
-  /* Cassette-style shadows and effects */
-  --cassette-shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.5);
-  --cassette-shadow-raised: 0 4px 8px rgba(0, 0, 0, 0.3), 
-                           0 2px 4px rgba(0, 0, 0, 0.2);
-  --cassette-shadow-deep: inset 0 4px 8px rgba(0, 0, 0, 0.6);
-  --cassette-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.4);
-  --cassette-shadow-neon: 0 0 15px var(--cassette-neon-green);
-  
-  /* Cassette-specific spacing and dimensions */
-  --cassette-border-radius: 8px;
-  --cassette-button-radius: 6px;
-  --cassette-display-radius: 4px;
-  --cassette-knob-size: 60px;
-  --cassette-button-size: 40px;
-  --cassette-small-button-size: 30px;
-  
-  /* Typography adjustments for retro feel */
-  --cassette-font-display: 'Courier New', monospace;
-  --cassette-font-labels: 'Arial', sans-serif;
-  --cassette-font-body: system-ui, sans-serif;
+  /* ... keep existing code (spacing, radius, typography) */
 }
 
-/* Base cassette radio styling */
-.cassette-radio-body {
-  background: var(--cassette-metal-gradient);
-  border: 2px solid var(--cassette-dark-silver);
-  border-radius: var(--cassette-border-radius);
-  box-shadow: var(--cassette-shadow-raised);
-  padding: 20px;
-  position: relative;
+/* Base Design Classes with improved contrast */
+.timeliner-bg {
+  background: var(--timeliner-bg-gradient);
+  color: var(--timeliner-text-primary);
 }
 
-.cassette-radio-body::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.1) 100%
-  );
-  border-radius: var(--cassette-border-radius);
-  pointer-events: none;
+.timeliner-card {
+  background: var(--timeliner-card-gradient);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-lg);
+  box-shadow: var(--timeliner-shadow-lg);
+  color: var(--timeliner-text-primary);
 }
 
-/* Cassette display screen */
-.cassette-display {
-  background: var(--cassette-display-gradient);
-  border: 2px solid var(--cassette-charcoal);
-  border-radius: var(--cassette-display-radius);
-  box-shadow: var(--cassette-shadow-deep);
-  padding: 16px;
-  font-family: var(--cassette-font-display);
-  color: var(--cassette-text-neon);
-  text-shadow: 0 0 8px var(--cassette-neon-green);
-  position: relative;
-  overflow: hidden;
-}
-
-.cassette-display::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(57, 255, 20, 0.05) 2px,
-    rgba(57, 255, 20, 0.05) 4px
-  );
-  pointer-events: none;
-}
-
-/* Cassette buttons */
-.cassette-button {
-  background: var(--cassette-button-gradient);
-  border: 2px solid var(--cassette-dark-silver);
-  border-radius: var(--cassette-button-radius);
-  box-shadow: var(--cassette-shadow-raised);
-  color: var(--cassette-text-primary);
-  font-family: var(--cassette-font-labels);
-  font-weight: bold;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.cassette-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.3) 0%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.2) 100%
-  );
-  border-radius: var(--cassette-button-radius);
-  pointer-events: none;
-}
-
-.cassette-button:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--cassette-shadow-glow);
-}
-
-.cassette-button:active {
-  transform: translateY(1px);
-  box-shadow: var(--cassette-shadow-inset);
-}
-
-.cassette-button:active::before {
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.2) 0%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
-}
-
-/* Cassette control knobs */
-.cassette-knob {
-  width: var(--cassette-knob-size);
-  height: var(--cassette-knob-size);
-  border-radius: 50%;
-  background: var(--cassette-metal-gradient);
-  border: 3px solid var(--cassette-dark-silver);
-  box-shadow: var(--cassette-shadow-raised);
-  position: relative;
-  cursor: pointer;
+.timeliner-button {
+  background: var(--timeliner-button-gradient);
+  border: none;
+  border-radius: var(--timeliner-radius-md);
+  color: var(--timeliner-text-primary);
+  font-weight: 600;
+  padding: var(--timeliner-space-md) var(--timeliner-space-lg);
+  box-shadow: var(--timeliner-shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.cassette-knob::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80%;
-  height: 80%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 30% 30%,
-    rgba(255, 255, 255, 0.4) 0%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.3) 100%
-  );
+.timeliner-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--timeliner-shadow-glow);
+  color: var(--timeliner-text-primary);
 }
 
-.cassette-knob::after {
-  content: '';
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 12px;
-  background: var(--cassette-charcoal);
-  border-radius: 2px;
+.timeliner-button:active {
+  transform: translateY(0);
 }
 
-.cassette-knob:hover {
+.timeliner-text-gradient {
+  background: linear-gradient(135deg, var(--timeliner-primary), var(--timeliner-secondary), var(--timeliner-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.timeliner-glow {
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-glass {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--timeliner-text-primary);
+}
+
+/* Component-specific styles with better contrast */
+.timeliner-menu-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-xl);
+  padding: var(--timeliner-space-2xl);
+  backdrop-filter: blur(20px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-menu-card:hover {
   transform: scale(1.05);
-  box-shadow: var(--cassette-shadow-glow);
+  box-shadow: var(--timeliner-shadow-glow);
 }
 
-/* Cassette tape wells */
-.cassette-tape-well {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--cassette-black);
-  border: 3px solid var(--cassette-dark-silver);
-  box-shadow: var(--cassette-shadow-deep);
-  position: relative;
-  overflow: hidden;
+.timeliner-player-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-lg);
+  padding: var(--timeliner-space-lg);
+  backdrop-filter: blur(15px);
+  color: var(--timeliner-text-primary);
 }
 
-.cassette-tape-well::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    var(--cassette-charcoal) 0deg,
-    var(--cassette-black) 90deg,
-    var(--cassette-charcoal) 180deg,
-    var(--cassette-black) 270deg
-  );
+.timeliner-song-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-md);
+  padding: var(--timeliner-space-md);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  color: var(--timeliner-text-primary);
 }
 
-.cassette-tape-well::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--cassette-dark-silver);
-  box-shadow: var(--cassette-shadow-inset);
+.timeliner-song-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
 }
 
-/* Spinning animation for tape wells */
-.cassette-tape-well.spinning::before {
-  animation: spin 2s linear infinite;
+/* Status indicators with proper contrast */
+.timeliner-status-success {
+  background: linear-gradient(135deg, var(--timeliner-success), #34d399);
+  color: var(--timeliner-text-primary);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-@keyframes spin {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
+.timeliner-status-error {
+  background: linear-gradient(135deg, var(--timeliner-error), #f87171);
+  color: var(--timeliner-text-primary);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Cassette LED indicators */
-.cassette-led {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--cassette-red);
-  border: 1px solid var(--cassette-dark-silver);
-  box-shadow: var(--cassette-shadow-inset);
-  position: relative;
+.timeliner-status-warning {
+  background: linear-gradient(135deg, var(--timeliner-warning), #fbbf24);
+  color: var(--timeliner-text-dark);
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
-.cassette-led.active {
-  background: var(--cassette-neon-green);
-  box-shadow: var(--cassette-shadow-neon);
+/* Responsive typography with better contrast */
+.timeliner-title {
+  font-size: var(--timeliner-font-size-8xl);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--timeliner-text-primary);
 }
 
-.cassette-led.active::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
+.timeliner-subtitle {
+  font-size: var(--timeliner-font-size-3xl);
+  font-weight: 500;
+  color: var(--timeliner-text-secondary);
 }
 
-/* Cassette speaker grille */
-.cassette-speaker {
-  background: var(--cassette-black);
-  border: 2px solid var(--cassette-dark-silver);
-  border-radius: var(--cassette-display-radius);
-  box-shadow: var(--cassette-shadow-deep);
-  padding: 8px;
-  background-image: 
-    radial-gradient(circle at 25% 25%, var(--cassette-charcoal) 2px, transparent 2px),
-    radial-gradient(circle at 75% 25%, var(--cassette-charcoal) 2px, transparent 2px),
-    radial-gradient(circle at 25% 75%, var(--cassette-charcoal) 2px, transparent 2px),
-    radial-gradient(circle at 75% 75%, var(--cassette-charcoal) 2px, transparent 2px);
-  background-size: 8px 8px;
-  background-position: 0 0, 4px 0, 0 4px, 4px 4px;
+.timeliner-heading {
+  font-size: var(--timeliner-font-size-2xl);
+  font-weight: 600;
+  color: var(--timeliner-text-primary);
 }
 
-/* Cassette label styling */
-.cassette-label {
-  font-family: var(--cassette-font-labels);
-  font-size: 10px;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--cassette-text-primary);
+.timeliner-body {
+  font-size: var(--timeliner-font-size-base);
+  font-weight: 400;
+  color: var(--timeliner-text-secondary);
+}
+
+.timeliner-caption {
+  font-size: var(--timeliner-font-size-sm);
+  font-weight: 400;
+  color: var(--timeliner-text-muted);
+}
+
+/* High contrast utilities */
+.timeliner-text-contrast {
+  color: var(--timeliner-text-primary);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Cassette card styling */
-.cassette-card {
-  background: var(--cassette-metal-gradient);
-  border: 2px solid var(--cassette-dark-silver);
-  border-radius: var(--cassette-border-radius);
-  box-shadow: var(--cassette-shadow-raised);
-  color: var(--cassette-text-primary);
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
+.timeliner-bg-contrast {
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.cassette-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.05) 0%,
-    transparent 50%,
-    rgba(0, 0, 0, 0.05) 100%
-  );
-  border-radius: var(--cassette-border-radius);
-  pointer-events: none;
-}
-
-/* Cassette radio layout helpers */
-.cassette-control-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  background: var(--cassette-bg-secondary);
-  border-radius: var(--cassette-border-radius);
-  box-shadow: var(--cassette-shadow-inset);
-}
-
-.cassette-display-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-  background: var(--cassette-bg-primary);
-  border-radius: var(--cassette-border-radius);
-  box-shadow: var(--cassette-shadow-deep);
-}
-
-/* Retro glow effects */
-.cassette-glow {
-  box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
-}
-
-.cassette-neon-glow {
-  box-shadow: 0 0 15px var(--cassette-neon-green);
-  text-shadow: 0 0 8px var(--cassette-neon-green);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  :root {
-    --cassette-knob-size: 50px;
-    --cassette-button-size: 35px;
-    --cassette-small-button-size: 28px;
-  }
-  
-  .cassette-radio-body {
-    padding: 16px;
-  }
-  
-  .cassette-display {
-    padding: 12px;
-  }
-  
-  .cassette-control-panel {
-    flex-direction: column;
-    gap: 12px;
-  }
-}
+/* ... keep existing code (responsive adjustments and background effects) */
