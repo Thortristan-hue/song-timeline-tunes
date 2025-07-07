@@ -194,7 +194,11 @@ export function HostGameView({
 
       {/* Players Layout */}
       <div className="absolute top-1/2 left-32 transform -translate-y-1/2 z-20">
-        <CircularPlayersLayout players={players} currentTurnPlayer={currentTurnPlayer} />
+        <CircularPlayersLayout 
+          players={players} 
+          currentPlayerId={currentTurnPlayer.id}
+          isDarkMode={true}
+        />
       </div>
 
       {/* Current Player Timeline */}
@@ -298,7 +302,11 @@ export function HostDisplay({
 
       {/* Players Stack */}
       <div className="absolute top-32 left-8 z-30">
-        <SidePlayersStack players={players} currentTurnPlayer={currentTurnPlayer} />
+        <SidePlayersStack 
+          players={players} 
+          currentId={currentTurnPlayer.id} 
+          isDarkMode={true} 
+        />
       </div>
 
       {/* Mystery Card */}
