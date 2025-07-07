@@ -93,6 +93,37 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.current_turn, roomData?.phase]);
 
+  // ENHANCED: Track used songs from all players' timelines
+  const getAllUsedSongs = useCallback((players: Player[], currentSong?: Song): Song[] => {
+    const usedSongs: Song[] = [];
+    const usedSongIds = new Set<string>();
+    
+    // Add all songs from players' timelines
+    players.forEach(player => {
+      if (Array.isArray(player.timeline)) {
+        player.timeline.forEach(song => {
+          if (song && song.id && !usedSongIds.has(song.id)) {
+            usedSongs.push(song);
+            usedSongIds.add(song.id);
+          }
+        });
+      }
+    });
+    
+    // Add current mystery card
+    if (currentSong && currentSong.id && !usedSongIds.has(currentSong.id)) {
+      usedSongs.push(currentSong);
+      usedSongIds.add(currentSong.id);
+    }
+    
+    console.log('🎵 TRACKING USED SONGS:', {
+      totalUsedSongs: usedSongs.length,
+      usedSongTitles: usedSongs.slice(0, 5).map(s => s.deezer_title) // Log first 5
+    });
+    
+    return usedSongs;
+  }, []);
+
   // Initialize game with playlist - ONLY ONCE
   const initializeGame = useCallback(async () => {
     // Prevent multiple initializations
@@ -122,27 +153,26 @@ export function useGameLogic(
         throw new Error(`No songs in the playlist have valid audio previews. Cannot start the game.`);
       }
 
-      // Shuffle and take initial 10 songs for the game
+      // Shuffle and take larger pool of songs for fresh mystery card selection
       const shuffledSongs = [...validSongs].sort(() => Math.random() - 0.5);
-      const initialSongs = shuffledSongs.slice(0, 10);
-      const remainingSongs = shuffledSongs.slice(10);
+      const gameSongs = shuffledSongs.slice(0, Math.min(50, shuffledSongs.length)); // Take up to 50 songs for variety
 
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
-        availableSongs: initialSongs,
+        availableSongs: gameSongs,
         usedSongs: [],
         currentTurnIndex: 0,
         timeLeft: 30,
         playlistInitialized: true
       }));
 
-      console.log(`🎯 Game initialized with ${initialSongs.length} songs ready to play`);
+      console.log(`🎯 Game initialized with ${gameSongs.length} songs ready for fresh mystery card selection`);
 
       // Start first turn if game is already in playing phase
-      if (roomData?.phase === 'playing' && initialSongs.length > 0) {
+      if (roomData?.phase === 'playing' && gameSongs.length > 0) {
         console.log('🎯 Room is in playing phase, starting new turn...');
-        await startNewTurnWithSongs(initialSongs);
+        await startNewTurnWithSongs(gameSongs);
       }
 
     } catch (error) {
@@ -158,14 +188,17 @@ export function useGameLogic(
     }
   }, [toast, roomData?.phase, gameState.playlistInitialized]);
 
-  // Get next available song (avoiding repeats)
+  // ENHANCED: Get next available song that hasn't been used
   const getNextSong = useCallback((): Song | null => {
+    const currentUsedSongs = getAllUsedSongs(gameState.players, gameState.currentSong);
+    const usedSongIds = currentUsedSongs.map(song => song.id);
+    
     const availableSongs = gameState.availableSongs.filter(song => 
-      !gameState.usedSongs.some(used => used.id === song.id)
+      song && song.id && !usedSongIds.includes(song.id)
     );
 
     if (availableSongs.length === 0) {
-      console.log('🎵 No more unused songs available');
+      console.log('🎵 No more unused songs available from current pool');
       return null;
     }
 
@@ -173,8 +206,16 @@ export function useGameLogic(
     const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(availableSongs);
     const songPool = songsWithPreviews.length > 0 ? songsWithPreviews : availableSongs;
     
-    return songPool[Math.floor(Math.random() * songPool.length)];
-  }, [gameState.availableSongs, gameState.usedSongs]);
+    const selectedSong = songPool[Math.floor(Math.random() * songPool.length)];
+    console.log('🎯 SELECTED FRESH SONG:', {
+      title: selectedSong.deezer_title,
+      id: selectedSong.id,
+      availableCount: songPool.length,
+      hasPreview: !!selectedSong.preview_url
+    });
+    
+    return selectedSong;
+  }, [gameState.availableSongs, gameState.players, gameState.currentSong, getAllUsedSongs]);
 
   // Start new turn with song management
   const startNewTurnWithSongs = useCallback(async (songsToUse: Song[]) => {
@@ -193,14 +234,16 @@ export function useGameLogic(
         return;
       }
 
-      console.log(`🎯 New turn started with song: ${nextSong.deezer_title}`);
+      console.log(`🎯 GUARANTEED FRESH TURN: New turn started with song: ${nextSong.deezer_title}`);
       console.log(`🎵 Preview URL: ${nextSong.preview_url || 'None'}`);
 
-      // Mark song as used
+      // Update used songs and set current song
+      const currentUsedSongs = getAllUsedSongs(gameState.players, gameState.currentSong);
+      
       setGameState(prev => ({
         ...prev,
         currentSong: nextSong,
-        usedSongs: [...prev.usedSongs, nextSong],
+        usedSongs: [...currentUsedSongs, nextSong],
         isPlaying: false,
         phase: 'playing',
         timeLeft: 30,
@@ -221,7 +264,7 @@ export function useGameLogic(
         variant: "destructive",
       });
     }
-  }, [getNextSong, onSetCurrentSong, toast]);
+  }, [getNextSong, onSetCurrentSong, toast, getAllUsedSongs, gameState.players, gameState.currentSong]);
 
   // Start a new turn
   const startNewTurn = useCallback(async () => {
