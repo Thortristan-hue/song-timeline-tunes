@@ -39,27 +39,48 @@ export function PlayerTimeline({
   onCancelPlacement,
   gameEnded = false
 }: PlayerTimelineProps) {
-  // CRITICAL FIX 3: Detect mobile device
+  // MOBILE DETECTION: Enhanced mobile/iPhone detection
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-           window.innerWidth <= 768;
+    
+    // Enhanced mobile detection for iOS specifically
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isMobileWidth = window.innerWidth <= 768;
+    const isTouchDevice = 'ontouchstart' in window;
+    
+    return isIOS || isAndroid || (isMobileWidth && isTouchDevice);
   });
 
-  // Update mobile detection on resize
+  // Enhanced resize handler for better mobile detection
   React.useEffect(() => {
     const handleResize = () => {
-      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                   window.innerWidth <= 768;
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const isMobileWidth = window.innerWidth <= 768;
+      const isTouchDevice = 'ontouchstart' in window;
+      
+      const mobile = isIOS || isAndroid || (isMobileWidth && isTouchDevice);
       setIsMobile(mobile);
+      
+      console.log('📱 MOBILE DETECTION:', { 
+        isIOS, 
+        isAndroid, 
+        isMobileWidth, 
+        isTouchDevice, 
+        finalMobile: mobile 
+      });
     };
 
     window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
+    
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // CRITICAL FIX 3: Use mobile timeline for iPhone/mobile devices
+  // MOBILE REDIRECT: Use mobile timeline for touch devices
   if (isMobile) {
+    console.log('📱 MOBILE MODE: Rendering mobile-optimized timeline');
     return (
       <MobilePlayerTimeline
         player={player}
@@ -93,9 +114,8 @@ export function PlayerTimeline({
   const PLACEMENT_DEBOUNCE_MS = 1000; // 1 second debounce
   const MIN_PLACEMENT_INTERVAL = 500; // Minimum 500ms between attempts
 
-  // FIX 5: Improved timeline song playback with spam prevention
+  // Enhanced timeline song playback with spam prevention
   const playTimelineSong = async (song: Song) => {
-    // FIX 4: Prevent interactions if game has ended
     if (gameEnded) {
       console.log('🚫 Game ended - no timeline audio allowed');
       return;
@@ -103,7 +123,7 @@ export function PlayerTimeline({
 
     console.log('🎵 Playing timeline song:', song.deezer_title);
     
-    // FIX 5: Stop any currently playing audio before starting new one
+    // Stop any currently playing audio before starting new one
     if (currentlyPlayingAudioRef.current && !currentlyPlayingAudioRef.current.paused) {
       console.log('🔇 Stopping currently playing timeline audio');
       currentlyPlayingAudioRef.current.pause();
@@ -137,7 +157,7 @@ export function PlayerTimeline({
       return;
     }
     
-    // FIX 5: Create and manage single audio element
+    // Create and manage single audio element
     const audio = new Audio(previewUrl);
     audio.volume = 0.5;
     audio.crossOrigin = 'anonymous';
@@ -216,7 +236,7 @@ export function PlayerTimeline({
   const timelineRef = useRef<HTMLDivElement>(null);
   const [activeGapIndex, setActiveGapIndex] = useState<number | null>(null);
   
-  // TIMELINE SCROLL: Calculate nearest gap for snapping
+  // Calculate nearest gap for snapping
   const calculateNearestGap = () => {
     if (!timelineRef.current) return 0;
     
@@ -251,7 +271,7 @@ export function PlayerTimeline({
     return nearestGap;
   };
 
-  // TIMELINE SCROLL: Throttled scroll handler with snap
+  // Throttled scroll handler with snap
   const handleTimelineScroll = React.useMemo(
     () => {
       let timeoutId: NodeJS.Timeout;
@@ -331,7 +351,7 @@ export function PlayerTimeline({
             : isHovered 
             ? 'bg-white/15 border-white/20 shadow-lg scale-105' 
             : 'bg-white/5 border-white/10 hover:bg-white/10',
-          // TIMELINE SCROLL: Highlight centered gap
+          // Highlight centered gap
           isActiveSnap && 'ring-2 ring-green-400/50'
         )}
         onDragOver={(e) => !gameEnded && handleDragOver(e, position)}
@@ -440,7 +460,7 @@ export function PlayerTimeline({
         </div>
       )}
 
-      {/* TIMELINE SCROLL: Enhanced timeline with snap functionality */}
+      {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
         className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"

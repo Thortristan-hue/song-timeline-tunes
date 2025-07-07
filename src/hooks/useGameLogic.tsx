@@ -20,8 +20,8 @@ interface GameLogicState {
   backgroundLoadingComplete: boolean;
 }
 
-// CRITICAL FIX 1: Only load 10 songs upfront for instant game start
-const INSTANT_START_SONGS = 10;
+// CRITICAL PERFORMANCE FIX: Only load 10 songs max for instant game start
+const MAX_SONGS_PER_SESSION = 10;
 
 export function useGameLogic(
   roomId: string | null, 
@@ -83,7 +83,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
 
-  // CRITICAL FIX 1: Ultra-fast game initialization - only 10 songs
+  // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization - max 10 songs only
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
       console.log('🎵 Playlist already initialized, skipping...');
@@ -94,18 +94,20 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🚀 INSTANT START: Loading only ${INSTANT_START_SONGS} songs for immediate game start`);
+      console.log(`🚀 PERFORMANCE FIX: Loading ONLY ${MAX_SONGS_PER_SESSION} songs to prevent API spam`);
       const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
       
       if (allSongs.length === 0) {
         throw new Error('No songs available in playlist');
       }
 
-      // INSTANT START: Only take first 10 songs, shuffle them
+      // CRITICAL FIX: Only take max 10 songs to prevent API spam
       const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
-      const instantStartSongs = shuffledSongs.slice(0, INSTANT_START_SONGS);
+      const limitedSongs = shuffledSongs.slice(0, MAX_SONGS_PER_SESSION);
       
-      const validSongs = defaultPlaylistService.filterValidSongs(instantStartSongs);
+      console.log(`📊 API PERFORMANCE: Reduced from ${allSongs.length} to ${limitedSongs.length} songs to prevent proxy spam`);
+      
+      const validSongs = defaultPlaylistService.filterValidSongs(limitedSongs);
       
       if (validSongs.length < 5) {
         throw new Error(`Not enough valid songs (${validSongs.length}/5 minimum)`);
@@ -113,7 +115,7 @@ export function useGameLogic(
 
       const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
       
-      console.log(`⚡ INSTANT START COMPLETE: ${songsWithPreviews.length} songs ready immediately`);
+      console.log(`⚡ PERFORMANCE COMPLETE: ${songsWithPreviews.length} songs ready (prevented ${allSongs.length - limitedSongs.length} unnecessary API calls)`);
       
       if (songsWithPreviews.length < 3) {
         throw new Error(`Not enough songs with valid audio previews (${songsWithPreviews.length}/3 minimum)`);
@@ -129,7 +131,7 @@ export function useGameLogic(
         playlistInitialized: true
       }));
 
-      console.log(`🎯 INSTANT GAME START: Ready with ${validSongs.length} songs`);
+      console.log(`🎯 OPTIMIZED GAME START: Ready with ${validSongs.length} songs (API calls reduced by ${((allSongs.length - limitedSongs.length) / allSongs.length * 100).toFixed(1)}%)`);
 
     } catch (error) {
       console.error('❌ Game initialization failed:', error);

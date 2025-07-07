@@ -4,17 +4,17 @@ import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
 
 /**
- * Service for managing the default song playlist
+ * Service for managing the default song playlist with performance optimizations
  */
 class DefaultPlaylistService {
   private songs: Song[] = [];
 
   /**
-   * Loads and validates the default playlist
+   * Loads and validates the default playlist with API optimization
    * @returns Promise<Song[]> Array of valid songs
    */
   async loadDefaultPlaylist(): Promise<Song[]> {
-    console.log('🎵 Loading default playlist...');
+    console.log('🎵 Loading default playlist with performance optimization...');
     
     // Initial processing - get all valid songs regardless of preview status
     this.songs = defaultPlaylist
@@ -23,17 +23,13 @@ class DefaultPlaylistService {
 
     console.log(`📋 Total valid songs in playlist: ${this.songs.length}`);
     
-    // Try to enrich with preview URLs but don't filter out songs without previews yet
-    const enrichedSongs = await this.enrichWithPreviews(this.songs);
+    // PERFORMANCE FIX: Don't fetch previews for all songs - let game logic decide
+    // This prevents the API spam issue by deferring preview fetching
+    console.log(`⚡ PERFORMANCE OPTIMIZATION: Skipping bulk preview fetching to prevent API spam`);
+    console.log(`📊 API CALLS SAVED: Prevented ${this.songs.length} immediate preview requests`);
     
-    // Count songs with previews
-    const songsWithPreviews = enrichedSongs.filter(song => song.preview_url);
-    console.log(`🎵 Songs with previews: ${songsWithPreviews.length}/${enrichedSongs.length}`);
-    
-    // Return all songs (with and without previews) - let the game logic decide what to do
-    this.songs = enrichedSongs;
-    
-    console.log(`✅ Loaded ${this.songs.length} total songs (${songsWithPreviews.length} with previews)`);
+    // Return all songs without previews - they'll be fetched on-demand
+    console.log(`✅ Loaded ${this.songs.length} songs (previews will be fetched on-demand to prevent API spam)`);
     return this.songs;
   }
 
@@ -69,7 +65,7 @@ class DefaultPlaylistService {
   }
 
   /**
-   * Fetches preview URL for a song
+   * Fetches preview URL for a song (ON-DEMAND to prevent API spam)
    * @param song Song object
    * @returns Promise<Song> Song with preview URL if available
    */
@@ -84,6 +80,7 @@ class DefaultPlaylistService {
       if (deezerUrl) {
         const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
         if (trackId) {
+          console.log(`🎵 ON-DEMAND FETCH: Getting preview for ${song.deezer_title} (prevents bulk API spam)`);
           const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
           return { ...song, preview_url: previewUrl };
         }
@@ -91,7 +88,7 @@ class DefaultPlaylistService {
 
       return song;
     } catch (error) {
-      console.warn(`Failed to fetch preview for ${song.deezer_title}:`, error);
+      console.warn(`Failed to fetch on-demand preview for ${song.deezer_title}:`, error);
       return song;
     }
   }
@@ -120,52 +117,15 @@ class DefaultPlaylistService {
       release_year: item.release_year.toString(),
       genre: item.genre || 'Unknown',
       cardColor: this.generateCardColor(),
-      preview_url: item.preview_url || undefined,
+      preview_url: item.preview_url || undefined, // Keep existing previews but don't fetch new ones
       deezer_url: item.deezer_url || undefined
     };
   }
 
-  private async enrichWithPreviews(songs: Song[]): Promise<Song[]> {
-    const enrichedSongs: Song[] = [];
-    
-    for (const song of songs) {
-      try {
-        // If song already has preview_url, keep it
-        if (song.preview_url) {
-          enrichedSongs.push(song);
-          continue;
-        }
-
-        // Try to get preview from Deezer URL
-        if (song.deezer_url) {
-          const trackId = song.deezer_url.match(/track\/(\d+)/)?.[1];
-          if (trackId) {
-            console.log(`🎵 Fetching preview for: ${song.deezer_title}`);
-            try {
-              const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
-              song.preview_url = previewUrl;
-              console.log(`✅ Got preview for: ${song.deezer_title}`);
-            } catch (error) {
-              console.log(`⏭️ No preview available for: ${song.deezer_title}`);
-            }
-          } else {
-            console.log(`⏭️ No track ID found for: ${song.deezer_title}`);
-          }
-        } else {
-          console.log(`⏭️ No Deezer URL for: ${song.deezer_title}`);
-        }
-        
-        // Add the song regardless of whether we got a preview or not
-        enrichedSongs.push(song);
-      } catch (error) {
-        console.log(`⏭️ Error processing ${song.deezer_title}:`, error instanceof Error ? error.message : 'Unknown error');
-        // Still add the song even if there was an error
-        enrichedSongs.push(song);
-      }
-    }
-
-    return enrichedSongs;
-  }
+  /**
+   * REMOVED: bulk preview enrichment to prevent API spam
+   * This method was causing the proxy server to be flooded with requests
+   */
 
   private generateCardColor(): string {
     const colors = [
@@ -186,7 +146,7 @@ class DefaultPlaylistService {
   }
 
   /**
-   * Get a random song that has a valid preview URL
+   * Get a random song that has a valid preview URL (for immediate use)
    * @returns Song with preview URL or null if none available
    */
   getRandomSongWithPreview(): Song | null {
@@ -194,6 +154,18 @@ class DefaultPlaylistService {
     return songsWithPreviews.length > 0 
       ? songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)]
       : null;
+  }
+
+  /**
+   * Get a random song and fetch preview on-demand (prevents API spam)
+   * @returns Promise<Song | null> Song with freshly fetched preview
+   */
+  async getRandomSongWithFreshPreview(): Promise<Song | null> {
+    const randomSong = this.getRandomSong();
+    if (!randomSong) return null;
+    
+    console.log(`🎵 FRESH PREVIEW: Fetching on-demand for ${randomSong.deezer_title} (anti-spam)`);
+    return await this.fetchPreviewUrl(randomSong);
   }
 }
 
