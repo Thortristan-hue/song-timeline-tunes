@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerVisuals';
@@ -138,22 +137,22 @@ export function GamePlay({
   const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
 
-  // MOBILE OPTIMIZED: Enhanced audio playback for touch devices
+  // ENHANCED: Host can now control audio too
   const handlePlayPause = async () => {
-    if (gameEnded || !currentTurnPlayer || !currentMysteryCard) {
+    if (gameEnded || !currentMysteryCard) {
       console.log('🚫 Cannot play: game ended or missing data');
       return;
     }
 
-    // Only current turn player can control audio
-    if (currentPlayer && currentPlayer.id !== currentTurnPlayerId) {
-      console.log('🚫 Not your turn - audio control blocked');
+    // Allow both host and current turn player to control audio
+    if (!isHost && currentPlayer && currentPlayer.id !== currentTurnPlayerId) {
+      console.log('🚫 Not your turn and not host - audio control blocked');
       return;
     }
 
     // Pause if already playing
     if (isPlaying && currentAudioRef.current) {
-      console.log('🎵 Pausing mobile audio');
+      console.log('🎵 Pausing audio');
       currentAudioRef.current.pause();
       setIsPlaying(false);
       setGameIsPlaying(false);
@@ -164,11 +163,11 @@ export function GamePlay({
     const previewUrl = currentMysteryCard.preview_url;
     
     if (!previewUrl) {
-      console.log('❌ No preview URL available for mobile playback');
+      console.log('❌ No preview URL available for playback');
       return;
     }
     
-    console.log('🎵 MOBILE AUDIO OPTIMIZED: Playing with enhanced mobile compatibility');
+    console.log('🎵 AUDIO: Playing with enhanced compatibility');
     
     // Stop any existing audio
     if (currentAudioRef.current) {
@@ -176,89 +175,85 @@ export function GamePlay({
       currentAudioRef.current = null;
     }
     
-    // Create new audio element with mobile optimization
+    // Create new audio element
     const audio = new Audio(previewUrl);
     audio.crossOrigin = 'anonymous';
-    audio.volume = 0.8; // Higher volume for mobile speakers
-    audio.preload = 'auto'; // Better mobile performance
+    audio.volume = 0.8;
+    audio.preload = 'auto';
     
-    // iOS/Safari specific optimizations
     audio.muted = false;
     audio.autoplay = false;
     
     currentAudioRef.current = audio;
     
-    // MOBILE SPECIFIC: Enhanced event handlers for iOS/Android
+    // Enhanced event handlers
     audio.addEventListener('ended', () => {
-      console.log('🎵 Mobile audio playback ended');
+      console.log('🎵 Audio playback ended');
       setIsPlaying(false);
       setGameIsPlaying(false);
     });
     
     audio.addEventListener('error', (e) => {
-      console.error('🎵 Mobile audio error:', e);
+      console.error('🎵 Audio error:', e);
       setIsPlaying(false);
       setGameIsPlaying(false);
     });
     
     audio.addEventListener('canplay', () => {
-      console.log('🎵 Mobile audio ready for playback');
+      console.log('🎵 Audio ready for playback');
     });
     
     audio.addEventListener('loadstart', () => {
-      console.log('🎵 Mobile audio loading started');
+      console.log('🎵 Audio loading started');
     });
     
     try {
-      // MOBILE AUDIO: Enhanced play with user gesture handling
       const playPromise = audio.play();
       
       if (playPromise !== undefined) {
         await playPromise;
-        console.log('🎵 MOBILE AUDIO SUCCESS: Playing on touch device');
+        console.log('🎵 AUDIO SUCCESS: Playing');
         setIsPlaying(true);
         setGameIsPlaying(true);
       }
     } catch (error) {
-      console.error('🎵 Mobile audio play failed:', error);
+      console.error('🎵 Audio play failed:', error);
       setIsPlaying(false);
       setGameIsPlaying(false);
       
-      // Mobile-specific error handling
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
-          console.warn('🎵 Mobile audio blocked - user interaction required');
+          console.warn('🎵 Audio blocked - user interaction required');
         } else if (error.name === 'NotSupportedError') {
-          console.warn('🎵 Mobile audio format not supported');
+          console.warn('🎵 Audio format not supported');
         }
       }
     }
   };
 
-  // MOBILE OPTIMIZED: Enhanced card placement for touch interaction
+  // ENHANCED: Handle incorrect card placement by removing from timeline
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (gameEnded || !currentPlayer) {
       return { success: false };
     }
 
     if (currentPlayer.id !== currentTurnPlayerId) {
-      console.error('❌ Not your turn for mobile placement!');
+      console.error('❌ Not your turn for placement!');
       return { success: false };
     }
 
     try {
-      console.log('📱 MOBILE CARD PLACEMENT: Optimized touch interaction processing');
+      console.log('📱 CARD PLACEMENT: Processing');
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
-      // Stop audio for mobile
+      // Stop audio
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
         currentAudioRef.current.currentTime = 0;
       }
       setIsPlaying(false);
 
-      // Use optimized placement method for mobile
       const result = await GameService.placeCardAndAdvanceTurn(
         room.id,
         currentPlayer.id,
@@ -267,7 +262,7 @@ export function GamePlay({
         gameState.availableSongs
       );
       
-      console.log('📱 MOBILE PLACEMENT RESULT:', result);
+      console.log('📱 PLACEMENT RESULT:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -280,20 +275,21 @@ export function GamePlay({
         if (isCorrect) {
           soundEffects.playCardSuccess();
           
-          // Mobile haptic feedback if available
           if ('vibrate' in navigator) {
             navigator.vibrate([100, 50, 100]);
           }
         } else {
           soundEffects.playCardError();
           
-          // Different haptic pattern for incorrect
+          // ENHANCED: Remove incorrect card from timeline
+          console.log('❌ INCORRECT PLACEMENT: Card will be removed from timeline');
+          
           if ('vibrate' in navigator) {
             navigator.vibrate([50, 50, 50, 50, 50]);
           }
         }
 
-        // Mobile-optimized result display (shorter duration for better UX)
+        // Show result display
         setTimeout(() => {
           setCardPlacementResult(null);
           setMysteryCardRevealed(false);
@@ -302,14 +298,14 @@ export function GamePlay({
           if (result.gameEnded) {
             setGameEnded(true);
           }
-        }, 2000); // Shorter for mobile attention spans
+        }, 2000);
 
         return { success: true };
       }
 
       return { success: false };
     } catch (error) {
-      console.error('❌ Mobile card placement failed:', error);
+      console.error('❌ Card placement failed:', error);
       setCardPlacementResult(null);
       setMysteryCardRevealed(false);
       return { success: false };

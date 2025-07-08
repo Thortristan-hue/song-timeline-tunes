@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Music, Play, Pause, Volume2, VolumeX, Crown, Clock, Trophy, Star, Zap, Check, X } from 'lucide-react';
+import { Music, Play, Pause, Volume2, Crown, Clock, Trophy, Star, Zap, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { PlayerTimeline } from '@/components/PlayerTimeline';
 import { GameBackground, GameHeader, PlayerMysteryCard, PlayerResultDisplay, PlayerWaitingScreen } from '@/components/GameVisuals';
@@ -245,7 +245,6 @@ export function PlayerView({
 }: PlayerViewProps) {
   const [placementPending, setPlacementPending] = useState<{ song: Song; position: number } | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
 
   const handleDragOver = (e: React.DragEvent, position: number) => {
     if (!isMyTurn || !draggedSong) return;
