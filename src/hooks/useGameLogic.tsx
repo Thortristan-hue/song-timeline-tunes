@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -83,7 +82,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
 
-  // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization - max 10 songs only
+  // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization with preview fetching
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
       console.log('🎵 Playlist already initialized, skipping...');
@@ -94,44 +93,31 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🚀 PERFORMANCE FIX: Loading ONLY ${MAX_SONGS_PER_SESSION} songs to prevent API spam`);
-      const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
+      console.log(`🚀 PERFORMANCE FIX: Loading ONLY ${MAX_SONGS_PER_SESSION} songs WITH previews to prevent API spam`);
+      const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
-      if (allSongs.length === 0) {
-        throw new Error('No songs available in playlist');
+      if (optimizedSongs.length === 0) {
+        throw new Error('No songs with valid previews available');
       }
 
-      // CRITICAL FIX: Only take max 10 songs to prevent API spam
-      const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
-      const limitedSongs = shuffledSongs.slice(0, MAX_SONGS_PER_SESSION);
-      
-      console.log(`📊 API PERFORMANCE: Reduced from ${allSongs.length} to ${limitedSongs.length} songs to prevent proxy spam`);
-      
-      const validSongs = defaultPlaylistService.filterValidSongs(limitedSongs);
-      
-      if (validSongs.length < 5) {
-        throw new Error(`Not enough valid songs (${validSongs.length}/5 minimum)`);
+      if (optimizedSongs.length < 3) {
+        throw new Error(`Not enough songs with valid audio previews (${optimizedSongs.length}/3 minimum)`);
       }
 
-      const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(validSongs);
-      
-      console.log(`⚡ PERFORMANCE COMPLETE: ${songsWithPreviews.length} songs ready (prevented ${allSongs.length - limitedSongs.length} unnecessary API calls)`);
-      
-      if (songsWithPreviews.length < 3) {
-        throw new Error(`Not enough songs with valid audio previews (${songsWithPreviews.length}/3 minimum)`);
-      }
+      console.log(`📊 API PERFORMANCE: Got ${optimizedSongs.length} songs with working previews`);
+      console.log(`⚡ PERFORMANCE COMPLETE: ${optimizedSongs.length} songs ready with previews`);
 
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
-        availableSongs: validSongs,
+        availableSongs: optimizedSongs,
         usedSongs: [],
         currentTurnIndex: 0,
         timeLeft: 30,
         playlistInitialized: true
       }));
 
-      console.log(`🎯 OPTIMIZED GAME START: Ready with ${validSongs.length} songs (API calls reduced by ${((allSongs.length - limitedSongs.length) / allSongs.length * 100).toFixed(1)}%)`);
+      console.log(`🎯 OPTIMIZED GAME START: Ready with ${optimizedSongs.length} songs with working previews`);
 
     } catch (error) {
       console.error('❌ Game initialization failed:', error);

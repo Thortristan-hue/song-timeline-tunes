@@ -34,6 +34,53 @@ class DefaultPlaylistService {
   }
 
   /**
+   * Loads a limited set of songs with previews for immediate game start
+   * @param maxSongs Maximum number of songs to load
+   * @returns Promise<Song[]> Array of songs with valid previews
+   */
+  async loadOptimizedGameSongs(maxSongs: number = 10): Promise<Song[]> {
+    console.log(`🚀 OPTIMIZED LOAD: Fetching previews for ${maxSongs} songs only`);
+    
+    // Get all valid songs first
+    if (this.songs.length === 0) {
+      await this.loadDefaultPlaylist();
+    }
+    
+    // Shuffle and take only the requested number
+    const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
+    const selectedSongs = shuffledSongs.slice(0, maxSongs);
+    
+    console.log(`📊 PREVIEW FETCH: Processing ${selectedSongs.length} songs for immediate game start`);
+    
+    // Fetch previews for selected songs only
+    const songsWithPreviews: Song[] = [];
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const song of selectedSongs) {
+      try {
+        const songWithPreview = await this.fetchPreviewUrl(song);
+        if (songWithPreview.preview_url) {
+          songsWithPreviews.push(songWithPreview);
+          successCount++;
+          console.log(`✅ Preview fetched: ${song.deezer_title} by ${song.deezer_artist}`);
+        } else {
+          failCount++;
+          console.warn(`❌ No preview available: ${song.deezer_title} by ${song.deezer_artist}`);
+        }
+      } catch (error) {
+        failCount++;
+        console.warn(`❌ Preview fetch failed: ${song.deezer_title} - ${error}`);
+      }
+    }
+    
+    console.log(`🎯 OPTIMIZED RESULT: ${successCount} songs with previews, ${failCount} failed`);
+    console.log(`📊 API EFFICIENCY: Only ${selectedSongs.length} requests instead of ${this.songs.length} (${((this.songs.length - selectedSongs.length) / this.songs.length * 100).toFixed(1)}% reduction)`);
+    
+    return songsWithPreviews;
+  }
+
+  /**
    * Filters valid songs from an array
    * @param songs Array of songs to filter
    * @returns Array of valid songs
@@ -121,11 +168,6 @@ class DefaultPlaylistService {
       deezer_url: item.deezer_url || undefined
     };
   }
-
-  /**
-   * REMOVED: bulk preview enrichment to prevent API spam
-   * This method was causing the proxy server to be flooded with requests
-   */
 
   private generateCardColor(): string {
     const colors = [

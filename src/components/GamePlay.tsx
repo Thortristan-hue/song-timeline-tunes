@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerVisuals';
@@ -61,27 +60,21 @@ export function GamePlay({
       
       const initializeGameOptimal = async () => {
         try {
-          // PERFORMANCE FIX: Load only 10 songs for ultra-fast performance
-          console.log('⚡ PERFORMANCE FIX: Loading 10 optimized songs to prevent API spam...');
-          const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
+          // PERFORMANCE FIX: Load only 10 songs WITH PREVIEWS for ultra-fast performance
+          console.log('⚡ PERFORMANCE FIX: Loading 10 optimized songs WITH previews...');
+          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(10);
           
-          if (allSongs.length === 0) {
-            throw new Error('No songs available in playlist');
+          if (optimizedSongs.length === 0) {
+            throw new Error('No songs with valid previews found');
           }
 
-          // CRITICAL FIX: Select only 10 random songs for optimal performance
-          const shuffledSongs = [...allSongs].sort(() => Math.random() - 0.5);
-          const optimizedSongs = shuffledSongs.slice(0, 10);
-          
-          const songsWithPreviews = defaultPlaylistService.filterSongsWithPreviews(optimizedSongs);
-          
-          console.log(`🚀 PERFORMANCE OPTIMIZATION: Using ${optimizedSongs.length} songs instead of ${allSongs.length} (${((allSongs.length - optimizedSongs.length) / allSongs.length * 100).toFixed(1)}% reduction in API calls)`);
-
-          if (songsWithPreviews.length < 5) {
-            throw new Error('Not enough songs with valid audio previews for optimized game start. Need at least 5 songs.');
+          if (optimizedSongs.length < 5) {
+            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 5 songs for optimized game start.`);
           }
 
-          // Initialize game optimally with selected songs
+          console.log(`🚀 PERFORMANCE OPTIMIZATION: Using ${optimizedSongs.length} songs with working previews`);
+
+          // Initialize game optimally with selected songs that have previews
           await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
           
           console.log('⚡ PERFORMANCE INIT COMPLETE: Game ready with optimized song set');
