@@ -2,27 +2,59 @@
 import { useCallback } from 'react';
 
 export function useSoundEffects() {
-  // Improved sound effect system with actual audio files and better fallbacks
+  // Enhanced sound effect system with better error handling and fallbacks
   const playAudioFile = useCallback(async (filename: string, volume: number = 0.3) => {
     try {
-      const audio = new Audio(`/sounds/${filename}`);
-      audio.volume = volume;
-      await audio.play();
-      return true;
+      // Try multiple potential paths for audio files
+      const possiblePaths = [
+        `/sounds/${filename}`,
+        `./sounds/${filename}`,
+        `../sounds/${filename}`
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          const audio = new Audio(path);
+          audio.volume = volume;
+          audio.crossOrigin = 'anonymous';
+          
+          // Wait for the audio to be loadable
+          await new Promise((resolve, reject) => {
+            audio.addEventListener('canplaythrough', resolve, { once: true });
+            audio.addEventListener('error', reject, { once: true });
+            audio.load();
+          });
+          
+          await audio.play();
+          return true;
+        } catch (pathError) {
+          console.warn(`Failed to load audio from ${path}:`, pathError);
+          continue;
+        }
+      }
+      
+      return false;
     } catch (error) {
-      console.warn(`Audio file ${filename} not found or failed to play:`, error);
+      console.warn(`Audio file ${filename} failed to play:`, error);
       return false;
     }
   }, []);
 
   // Web Audio API for generating softer, more polished fallback sounds
   const createAudioContext = useCallback(() => {
-    return new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      return new (window.AudioContext || (window as any).webkitAudioContext)();
+    } catch (error) {
+      console.warn('AudioContext not available:', error);
+      return null;
+    }
   }, []);
 
   const playPolishedTone = useCallback((frequency: number, duration: number, type: OscillatorType = 'sine', volume: number = 0.1) => {
     try {
       const audioContext = createAudioContext();
+      if (!audioContext) return;
+
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       const filterNode = audioContext.createBiquadFilter();
@@ -51,7 +83,6 @@ export function useSoundEffects() {
   }, [createAudioContext]);
 
   const playCardSuccess = useCallback(async () => {
-    // Try to play audio file first, fallback to generated sound
     const played = await playAudioFile('card-success.mp3', 0.4);
     if (!played) {
       // Gentle ascending chime - more professional

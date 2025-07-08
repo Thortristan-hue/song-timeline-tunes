@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -172,9 +171,9 @@ export function MobilePlayerTimeline({
         gameEnded && "opacity-50 pointer-events-none"
       )}
       style={{ 
-        width: CARD_WIDTH, 
-        height: 140,
-        minWidth: CARD_WIDTH,
+        width: `${CARD_WIDTH}px`, 
+        height: '140px',
+        minWidth: `${CARD_WIDTH}px`,
         touchAction: 'manipulation'
       }}
     >
@@ -210,10 +209,10 @@ export function MobilePlayerTimeline({
           "bg-white/10 border-white/30 hover:bg-white/20 active:bg-white/30"
         )}
         style={{ 
-          width: GAP_WIDTH, 
-          height: 120,
-          minWidth: GAP_WIDTH,
-          minHeight: 44, // iOS touch target minimum
+          width: `${GAP_WIDTH}px`, 
+          height: '120px',
+          minWidth: `${GAP_WIDTH}px`,
+          minHeight: '44px', // iOS touch target minimum
           touchAction: 'manipulation'
         }}
         onClick={() => handleGapTap(position)}
@@ -294,7 +293,7 @@ export function MobilePlayerTimeline({
         </div>
       )}
 
-      {/* MOBILE TIMELINE: Enhanced with iOS scroll optimization */}
+      {/* MOBILE TIMELINE: Enhanced with fixed CSS issues */}
       <div className="fixed bottom-4 left-0 right-0 z-20 px-4">
         <div className="bg-black/40 backdrop-blur-2xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
           {/* Touch instruction banner */}
@@ -306,15 +305,14 @@ export function MobilePlayerTimeline({
             </div>
           )}
           
-          {/* Scrollable timeline with iOS optimization */}
+          {/* Scrollable timeline with proper CSS */}
           <div 
             ref={timelineRef}
             className="flex items-center gap-3 p-6 overflow-x-auto scroll-smooth"
             style={{
               scrollSnapType: 'x mandatory',
               scrollBehavior: 'smooth',
-              touchAction: 'pan-x',
-              minHeight: '160px'
+              touchAction: 'pan-x'
             }}
           >
             {player.timeline.length === 0 ? (
