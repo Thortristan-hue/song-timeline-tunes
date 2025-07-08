@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerVisuals';
@@ -46,41 +47,42 @@ export function GamePlay({
     initializeGame
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // CRITICAL PERFORMANCE FIX: Ultra-optimized game initialization
+  // ENHANCED PERFORMANCE FIX: More resilient game initialization
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
                            !gameInitialized &&
                            !gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
-      console.log('🚀 PERFORMANCE INIT: Host initializing with optimized song loading...');
+      console.log('🚀 ENHANCED INIT: Host initializing with resilient song loading...');
       
       setInitializationError(null);
       setGameInitialized(true);
       
       const initializeGameOptimal = async () => {
         try {
-          // PERFORMANCE FIX: Load only 10 songs WITH PREVIEWS for ultra-fast performance
-          console.log('⚡ PERFORMANCE FIX: Loading 10 optimized songs WITH previews...');
-          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(10);
+          // ENHANCED: Try to get at least 8 songs with previews, but accept fewer if needed
+          console.log('⚡ RESILIENT LOAD: Loading songs with previews (will keep trying until we get enough)...');
+          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(8);
           
           if (optimizedSongs.length === 0) {
-            throw new Error('No songs with valid previews found');
+            throw new Error('No songs with valid previews found after trying multiple songs');
           }
 
+          // ENHANCED: Accept fewer songs if we couldn't get the full amount
           if (optimizedSongs.length < 5) {
-            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 5 songs for optimized game start.`);
+            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 5 songs for game start.`);
           }
 
-          console.log(`🚀 PERFORMANCE OPTIMIZATION: Using ${optimizedSongs.length} songs with working previews`);
+          console.log(`🚀 RESILIENT SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
 
-          // Initialize game optimally with selected songs that have previews
+          // Initialize game with whatever songs we successfully got
           await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
           
-          console.log('⚡ PERFORMANCE INIT COMPLETE: Game ready with optimized song set');
+          console.log('⚡ RESILIENT INIT COMPLETE: Game ready with optimized song set');
         } catch (error) {
-          console.error('❌ PERFORMANCE INIT FAILED:', error);
-          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize optimized game');
+          console.error('❌ RESILIENT INIT FAILED:', error);
+          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize resilient game');
           setGameInitialized(false);
         }
       };

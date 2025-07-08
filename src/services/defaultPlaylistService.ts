@@ -1,4 +1,3 @@
-
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
@@ -35,47 +34,63 @@ class DefaultPlaylistService {
 
   /**
    * Loads a limited set of songs with previews for immediate game start
-   * @param maxSongs Maximum number of songs to load
+   * ENHANCED: Keeps trying additional songs until we get enough with previews
+   * @param minSongs Minimum number of songs needed with previews
    * @returns Promise<Song[]> Array of songs with valid previews
    */
-  async loadOptimizedGameSongs(maxSongs: number = 10): Promise<Song[]> {
-    console.log(`🚀 OPTIMIZED LOAD: Fetching previews for ${maxSongs} songs only`);
+  async loadOptimizedGameSongs(minSongs: number = 8): Promise<Song[]> {
+    console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
     
     // Get all valid songs first
     if (this.songs.length === 0) {
       await this.loadDefaultPlaylist();
     }
     
-    // Shuffle and take only the requested number
+    // Shuffle all songs to get random selection
     const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
-    const selectedSongs = shuffledSongs.slice(0, maxSongs);
     
-    console.log(`📊 PREVIEW FETCH: Processing ${selectedSongs.length} songs for immediate game start`);
-    
-    // Fetch previews for selected songs only
     const songsWithPreviews: Song[] = [];
+    let songsProcessed = 0;
     let successCount = 0;
     let failCount = 0;
     
-    for (const song of selectedSongs) {
+    console.log(`🎯 RESILIENT APPROACH: Will keep trying songs until we get ${minSongs} with working previews`);
+    
+    // Keep processing songs until we have enough with previews
+    for (const song of shuffledSongs) {
+      // Stop if we have enough songs with previews
+      if (songsWithPreviews.length >= minSongs) {
+        break;
+      }
+      
+      // Stop if we've processed too many songs (safety limit)
+      if (songsProcessed >= Math.min(50, this.songs.length)) {
+        console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
+        break;
+      }
+      
       try {
+        songsProcessed++;
+        console.log(`🎵 Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
+        
         const songWithPreview = await this.fetchPreviewUrl(song);
         if (songWithPreview.preview_url) {
           songsWithPreviews.push(songWithPreview);
           successCount++;
-          console.log(`✅ Preview fetched: ${song.deezer_title} by ${song.deezer_artist}`);
+          console.log(`✅ Preview ${successCount}/${minSongs}: ${song.deezer_title} by ${song.deezer_artist}`);
         } else {
           failCount++;
-          console.warn(`❌ No preview available: ${song.deezer_title} by ${song.deezer_artist}`);
+          console.log(`❌ No preview (${failCount} failed): ${song.deezer_title} by ${song.deezer_artist}`);
         }
       } catch (error) {
         failCount++;
-        console.warn(`❌ Preview fetch failed: ${song.deezer_title} - ${error}`);
+        console.log(`❌ Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
       }
     }
     
-    console.log(`🎯 OPTIMIZED RESULT: ${successCount} songs with previews, ${failCount} failed`);
-    console.log(`📊 API EFFICIENCY: Only ${selectedSongs.length} requests instead of ${this.songs.length} (${((this.songs.length - selectedSongs.length) / this.songs.length * 100).toFixed(1)}% reduction)`);
+    console.log(`🎯 RESILIENT RESULT: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
+    console.log(`📊 SUCCESS RATE: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
+    console.log(`📊 API EFFICIENCY: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
     
     return songsWithPreviews;
   }
