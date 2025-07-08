@@ -19,8 +19,8 @@ interface GameLogicState {
   backgroundLoadingComplete: boolean;
 }
 
-// CRITICAL PERFORMANCE FIX: Only load 10 songs max for instant game start
-const MAX_SONGS_PER_SESSION = 10;
+// CRITICAL PERFORMANCE FIX: Increased to 20 songs for better success rate
+const MAX_SONGS_PER_SESSION = 20;
 
 export function useGameLogic(
   roomId: string | null, 
@@ -82,7 +82,7 @@ export function useGameLogic(
     }
   }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
 
-  // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization with preview fetching
+  // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization with 20 songs with preview fetching
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
       console.log('🎵 Playlist already initialized, skipping...');
@@ -93,15 +93,16 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🚀 PERFORMANCE FIX: Loading ONLY ${MAX_SONGS_PER_SESSION} songs WITH previews to prevent API spam`);
+      console.log(`🚀 PERFORMANCE FIX: Loading ${MAX_SONGS_PER_SESSION} songs WITH previews to prevent API spam`);
       const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
         throw new Error('No songs with valid previews available');
       }
 
-      if (optimizedSongs.length < 3) {
-        throw new Error(`Not enough songs with valid audio previews (${optimizedSongs.length}/3 minimum)`);
+      // ENHANCED: Accept fewer songs but need at least 8 for a good game experience
+      if (optimizedSongs.length < 8) {
+        throw new Error(`Not enough songs with valid audio previews (${optimizedSongs.length}/8 minimum)`);
       }
 
       console.log(`📊 API PERFORMANCE: Got ${optimizedSongs.length} songs with working previews`);

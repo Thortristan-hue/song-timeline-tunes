@@ -1,3 +1,4 @@
+
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
@@ -38,7 +39,7 @@ class DefaultPlaylistService {
    * @param minSongs Minimum number of songs needed with previews
    * @returns Promise<Song[]> Array of songs with valid previews
    */
-  async loadOptimizedGameSongs(minSongs: number = 8): Promise<Song[]> {
+  async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
     console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
     
     // Get all valid songs first
@@ -63,8 +64,8 @@ class DefaultPlaylistService {
         break;
       }
       
-      // Stop if we've processed too many songs (safety limit)
-      if (songsProcessed >= Math.min(50, this.songs.length)) {
+      // Stop if we've processed too many songs (safety limit - increased to 80)
+      if (songsProcessed >= Math.min(80, this.songs.length)) {
         console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
         break;
       }

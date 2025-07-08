@@ -47,31 +47,31 @@ export function GamePlay({
     initializeGame
   } = useGameLogic(room?.id, players, room, onSetCurrentSong);
 
-  // ENHANCED PERFORMANCE FIX: More resilient game initialization
+  // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
                            !gameInitialized &&
                            !gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
-      console.log('🚀 ENHANCED INIT: Host initializing with resilient song loading...');
+      console.log('🚀 ENHANCED INIT: Host initializing with 20 song resilient loading...');
       
       setInitializationError(null);
       setGameInitialized(true);
       
       const initializeGameOptimal = async () => {
         try {
-          // ENHANCED: Try to get at least 8 songs with previews, but accept fewer if needed
-          console.log('⚡ RESILIENT LOAD: Loading songs with previews (will keep trying until we get enough)...');
-          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(8);
+          // ENHANCED: Try to get 20 songs with previews for better success rate
+          console.log('⚡ RESILIENT LOAD: Loading 20 songs with previews (enhanced success rate)...');
+          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(20);
           
           if (optimizedSongs.length === 0) {
             throw new Error('No songs with valid previews found after trying multiple songs');
           }
 
-          // ENHANCED: Accept fewer songs if we couldn't get the full amount
-          if (optimizedSongs.length < 5) {
-            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 5 songs for game start.`);
+          // ENHANCED: Accept fewer songs if we couldn't get the full 20, but need at least 8
+          if (optimizedSongs.length < 8) {
+            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs for game start.`);
           }
 
           console.log(`🚀 RESILIENT SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
@@ -79,7 +79,7 @@ export function GamePlay({
           // Initialize game with whatever songs we successfully got
           await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
           
-          console.log('⚡ RESILIENT INIT COMPLETE: Game ready with optimized song set');
+          console.log('⚡ RESILIENT INIT COMPLETE: Game ready with enhanced song set');
         } catch (error) {
           console.error('❌ RESILIENT INIT FAILED:', error);
           setInitializationError(error instanceof Error ? error.message : 'Failed to initialize resilient game');
@@ -409,19 +409,34 @@ export function GamePlay({
 
   return (
     <div className="relative">
-      <PlayerGameView
-        currentPlayer={currentPlayer}
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={currentMysteryCard}
-        roomCode={room.lobby_code}
-        isMyTurn={isMyTurn}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onPlaceCard={handlePlaceCard}
-        mysteryCardRevealed={mysteryCardRevealed}
-        cardPlacementResult={cardPlacementResult}
-        gameEnded={gameEnded}
-      />
+      {isHost ? (
+        <HostGameView
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={currentMysteryCard}
+          roomCode={room.lobby_code}
+          players={activePlayers}
+          mysteryCardRevealed={mysteryCardRevealed}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          cardPlacementResult={cardPlacementResult}
+        />
+      ) : (
+        currentPlayer && (
+          <PlayerGameView
+            currentPlayer={currentPlayer}
+            currentTurnPlayer={currentTurnPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            isMyTurn={isMyTurn}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={handlePlaceCard}
+            mysteryCardRevealed={mysteryCardRevealed}
+            cardPlacementResult={cardPlacementResult}
+            gameEnded={gameEnded}
+          />
+        )
+      )}
     </div>
   );
 }
