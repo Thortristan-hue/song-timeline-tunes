@@ -55,15 +55,6 @@ export function PlayerMysteryCard({
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          
-          <Button
-            onClick={() => setIsMuted(!isMuted)}
-            size="sm"
-            variant="outline"
-            className="rounded-xl border-slate-600/50 bg-slate-700/80"
-          >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
         </div>
 
         <div className="text-sm text-purple-200 bg-purple-900/50 px-3 py-1 rounded-full">

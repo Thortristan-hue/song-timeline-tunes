@@ -245,13 +245,15 @@ export class GameService {
         }
       }
 
+      // CRITICAL FIX: Only add to timeline if placement is correct
+      const finalTimeline = isCorrect ? newTimeline : currentTimeline;
       const newScore = playerData.score + (isCorrect ? 1 : 0);
 
       // Update player timeline and score
       const { error: updateError } = await supabase
         .from('players')
         .update({
-          timeline: newTimeline as any,
+          timeline: finalTimeline as any,
           score: newScore,
           last_active: new Date().toISOString()
         })
@@ -263,14 +265,14 @@ export class GameService {
 
       console.log('✅ CARD PLACEMENT: Player timeline updated');
 
-      // Check for game end condition (10 cards)
-      if (newTimeline.length >= 10) {
+      // Check for game end condition (10 cards) - only if placement was correct
+      if (isCorrect && finalTimeline.length >= 10) {
         console.log('🎯 GAME END: Player reached 10 cards');
         await this.endGame(roomId, playerId);
         
         const updatedPlayer = this.convertDatabasePlayerToPlayer({
           ...playerData,
-          timeline: newTimeline as any,
+          timeline: finalTimeline as any,
           score: newScore
         });
         
@@ -356,7 +358,7 @@ export class GameService {
         oldMysteryCard: currentMysteryCard?.id,
         nextMysteryCard: nextMysteryCard.id,
         newScore,
-        timelineLength: newTimeline.length,
+        timelineLength: finalTimeline.length,
         turnAdvanced: true
       });
 
