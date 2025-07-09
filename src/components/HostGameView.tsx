@@ -107,7 +107,7 @@ export function RecordPlayerSection({
   );
 }
 
-// Timeline Display - Simplified version without blur
+// NEW: Simplified Timeline Display without blur
 interface TimelineDisplayProps {
   currentPlayer: Player;
 }
@@ -115,7 +115,7 @@ interface TimelineDisplayProps {
 export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
   return (
     <div className="absolute top-24 left-4 z-30 w-80">
-      <div className="bg-black/30 rounded-3xl p-4 border border-white/10 shadow-xl">
+      <div className="bg-slate-800/95 rounded-3xl p-4 border border-slate-700 shadow-xl">
         <div className="flex items-center gap-3 mb-4">
           <div 
             className="w-5 h-5 rounded-full shadow-lg" 
@@ -131,7 +131,7 @@ export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
             </div>
           ) : (
             currentPlayer.timeline.map((song, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl border border-white/10">
+              <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl">
                 <div className="text-white/70 font-bold text-sm w-6">{index + 1}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm font-medium truncate">{song.deezer_title}</div>
@@ -187,7 +187,7 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
 
-      {/* Timeline Display - Simplified without blur */}
+      {/* NEW: Simplified Timeline Display without blur */}
       <TimelineDisplay currentPlayer={currentTurnPlayer} />
 
       {/* Cassette Player Display - Bottom */}
