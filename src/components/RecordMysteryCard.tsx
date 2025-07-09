@@ -25,12 +25,12 @@ export function RecordMysteryCard({
         className="w-64 h-64 object-contain"
       />
       
-      {/* Record positioned at x378px, y416px of the record player (scaled down) */}
+      {/* Record positioned at top-left corner */}
       <div 
         className="absolute"
         style={{ 
-          left: '150px', // 378px scaled to 64px width ≈ 150px
-          top: '166px'   // 416px scaled to 64px height ≈ 166px
+          left: '30px',
+          top: '30px'
         }}
       >
         <img 
