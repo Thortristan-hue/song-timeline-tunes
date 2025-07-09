@@ -463,7 +463,7 @@ export function PlayerTimeline({
       {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
-        className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
+        className="flex items-center gap-4 p-8 bg-transparent rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
         onScroll={handleTimelineScroll}
         style={{
           scrollBehavior: 'smooth',
