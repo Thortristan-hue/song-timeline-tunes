@@ -65,10 +65,10 @@ export function CassettePlayerDisplay({ players, currentPlayerId }: CassettePlay
             
             {/* Player Name - positioned at x100px, y250px of original cassette (scaled down) */}
             <div 
-              className="absolute text-black font-bold text-xs"
+              className="absolute text-black font-bold text-xs whitespace-nowrap"
               style={{ 
-                left: '12px', // 100px scaled to 32px width = 12px
-                top: '10px'   // 250px scaled to 20px height = 10px
+                left: '15px', // Adjusted for better visibility on cassette
+                top: '12px'   // Adjusted for better positioning
               }}
             >
               {player.name}
@@ -78,8 +78,8 @@ export function CassettePlayerDisplay({ players, currentPlayerId }: CassettePlay
             <div 
               className="absolute text-black font-bold text-xs"
               style={{ 
-                right: '4px', // 675px from right edge scaled = 4px
-                top: '10px'   // 250px scaled to 20px height = 10px
+                right: '8px', // Adjusted for better positioning
+                top: '12px'   // Adjusted for better positioning
               }}
             >
               {player.timeline.length}/10
