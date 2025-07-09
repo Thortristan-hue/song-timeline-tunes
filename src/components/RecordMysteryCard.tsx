@@ -18,19 +18,17 @@ export function RecordMysteryCard({
 }: RecordMysteryCardProps) {
   return (
     <div className={`relative ${className}`}>
-      {/* Record Player Background */}
       <img 
         src={recordPlayerImage}
         alt="Record Player"
         className="w-64 h-64 object-contain"
       />
       
-      {/* Record positioned down and right by half its size (1.25x larger) */}
       <div 
         className="absolute"
         style={{ 
-          left: '46px', // 30px + (32px/2)
-          top: '46px'   // 30px + (32px/2)
+          left: '46px',
+          top: '46px'
         }}
       >
         <img 
@@ -48,7 +46,6 @@ export function RecordMysteryCard({
           }}
         />
         
-        {/* Song Info Overlay when revealed */}
         {isRevealed && song && (
           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
             <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap">
