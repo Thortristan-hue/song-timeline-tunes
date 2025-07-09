@@ -160,7 +160,7 @@ interface LeaderboardProps {
 export function Leaderboard({ players }: LeaderboardProps) {
   return (
     <div className="absolute top-20 right-4 z-30 w-72">
-      <div className="bg-white/12  rounded-3xl p-4 border border-white/20 shadow-2xl">
+      <div className="bg-white/12 backdrop-blur-3xl rounded-3xl p-4 border border-white/20 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <Trophy className="h-5 w-5 text-yellow-400" />
           <div className="text-white font-bold text-lg">Leaderboard</div>
@@ -170,7 +170,7 @@ export function Leaderboard({ players }: LeaderboardProps) {
           {players
             .sort((a, b) => b.score - a.score)
             .map((player, index) => (
-              <div key={player.id} className="flex items-center gap-3 p-3 bg-transparent rounded-xl border border-white/10">
+              <div key={player.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div className="text-white/70 font-bold text-sm w-4">#{index + 1}</div>
                 <div 
                   className="w-3 h-3 rounded-full shadow-sm" 
@@ -196,8 +196,8 @@ interface TimelineDisplayProps {
 
 export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
   return (
-    <div className="absolute top-40 left-4 z-30 w-80">
-      <div className="bg-transparent rounded-3xl p-4 border border-white/10 shadow-xl">
+    <div className="absolute top-80 left-4 z-30 w-80">
+      <div className="bg-white/5 rounded-3xl p-4 border border-white/10 shadow-xl">
         <div className="flex items-center gap-3 mb-4">
           <div 
             className="w-5 h-5 rounded-full shadow-lg" 
@@ -213,7 +213,7 @@ export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
             </div>
           ) : (
             currentPlayer.timeline.map((song, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-transparent rounded-xl border border-white/10">
+              <div key={index} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div className="text-white/70 font-bold text-sm w-6">{index + 1}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm font-medium truncate">{song.deezer_title}</div>
@@ -269,9 +269,7 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
 
-      {/* Timeline Display - Left Side, moved up */}
-      <TimelineDisplay currentPlayer={currentTurnPlayer} />
-
+      
       {/* Leaderboard - Right Side */}
       <Leaderboard players={players} />
 
@@ -301,7 +299,7 @@ export function HostGameView({
               {cardPlacementResult.correct ? 'PERFECT MATCH!' : 'NICE TRY!'}
             </div>
             
-            <div className="bg-white/10  rounded-3xl p-8 border border-white/20 max-w-lg">
+            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg">
               <div className="text-3xl font-bold text-white mb-3">
                 {cardPlacementResult.song.deezer_title}
               </div>
