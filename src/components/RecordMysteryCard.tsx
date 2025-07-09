@@ -25,18 +25,18 @@ export function RecordMysteryCard({
         className="w-64 h-64 object-contain"
       />
       
-      {/* Record positioned at top-left corner - 2x larger */}
+      {/* Record positioned down and right by half its size (1.25x larger) */}
       <div 
         className="absolute"
         style={{ 
-          left: '30px',
-          top: '30px'
+          left: '46px', // 30px + (32px/2)
+          top: '46px'   // 30px + (32px/2)
         }}
       >
         <img 
           src={recordImage}
           alt="Mystery Record"
-          className={`w-32 h-32 object-contain transition-all duration-500 ${
+          className={`w-20 h-20 object-contain transition-all duration-500 ${
             isDestroyed 
               ? 'opacity-0 scale-0 rotate-180' 
               : 'opacity-100 scale-100 rotate-0'
