@@ -3,7 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Music, Crown, Users, Timer, Star, Loader2, AlertTriangle } from 'lucide-react';
+import { Music, Users, Timer, Star, Loader2, AlertTriangle } from 'lucide-react';
+import { RecordMysteryCard } from '@/components/RecordMysteryCard';
+import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 
 // Mock components and types for demo
 const MysteryCard = ({ song, isRevealed, isInteractive, isDestroyed, className }) => (
@@ -53,47 +55,32 @@ export default function HostDisplay({
         </div>
       </div>
 
-      {/* Header - Cleaner, more Apple-like */}
-      <div className="absolute top-16 left-6 right-6 z-40">
-        <div className="flex justify-between items-center">
-          {/* Game title - Simplified */}
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-              <Crown className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="text-white font-semibold text-2xl tracking-tight">Timeliner</div>
-              <div className="text-white/60 text-base">Let's see how well you know music history</div>
-            </div>
+      {/* Simplified Header */}
+      <div className="absolute top-16 right-6 z-40">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 text-white">
+            <Users className="h-5 w-5 text-white/60" />
+            <span className="text-lg font-medium">{players.length} players</span>
           </div>
-
-          {/* Room info - More minimal */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 text-white">
-              <Users className="h-5 w-5 text-white/60" />
-              <span className="text-lg font-medium">{players.length} players</span>
-            </div>
-            
-            <div className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-2xl border border-white/20">
-              <div className="text-white/60 text-sm font-medium">Room Code</div>
-              <div className="text-white font-mono text-xl font-bold tracking-wider">{roomCode}</div>
-            </div>
+          
+          <div className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-2xl border border-white/20">
+            <div className="text-white/60 text-sm font-medium">Room Code</div>
+            <div className="text-white font-mono text-xl font-bold tracking-wider">{roomCode}</div>
           </div>
         </div>
       </div>
 
-      {/* Mystery Card Section - More minimal and clean */}
+      {/* Mystery Record Section */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
         <div className="text-center space-y-8">
-          {/* Mystery Card - Square and smaller */}
+          {/* Record Player with Mystery Record */}
           <div className="relative">
             <div className="absolute inset-0 bg-white/8 rounded-3xl blur-xl scale-110" />
-            <MysteryCard
+            <RecordMysteryCard
               song={gameState.currentSong}
               isRevealed={gameState.mysteryCardRevealed}
-              isInteractive={false}
               isDestroyed={gameState.cardPlacementCorrect === false}
-              className="relative w-48 h-48 bg-white/15 backdrop-blur-2xl border border-white/30 shadow-2xl"
+              className="relative"
             />
           </div>
 
@@ -177,52 +164,11 @@ export default function HostDisplay({
         </div>
       </div>
 
-      {/* All players overview - Grid layout with cleaner cards */}
-      <div className="absolute bottom-6 left-6 right-6 z-10">
-        <div className="grid grid-cols-4 gap-4">
-          {players.map((player) => (
-            <div 
-              key={player.id}
-              className={`bg-white/12 backdrop-blur-2xl rounded-2xl p-4 shadow-lg transition-all ${
-                player.id === currentTurnPlayer.id 
-                  ? 'bg-white/16 ring-2 ring-white/30' 
-                  : ''
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div 
-                  className="w-4 h-4 rounded-full shadow-sm"
-                  style={{ backgroundColor: player.color }}
-                />
-                <div className="flex-1">
-                  <div className="text-white font-semibold">{player.name}</div>
-                  <div className="text-white/60 text-sm">{player.score}/10 points</div>
-                </div>
-                {player.id === currentTurnPlayer.id && (
-                  <Crown className="h-4 w-4 text-white/60" />
-                )}
-              </div>
-              
-              <div className="flex gap-1 flex-wrap">
-                {player.timeline.slice(0, 6).map((song, index) => (
-                  <div
-                    key={index}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-semibold backdrop-blur-xl"
-                    style={{ backgroundColor: `${song.cardColor}80` }}
-                  >
-                    '{song.release_year.slice(-2)}
-                  </div>
-                ))}
-                {player.timeline.length > 6 && (
-                  <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center text-white text-xs font-semibold backdrop-blur-xl">
-                    +{player.timeline.length - 6}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Cassette Player Display */}
+      <CassettePlayerDisplay 
+        players={players} 
+        currentPlayerId={currentTurnPlayer?.id}
+      />
     </div>
   );
 }

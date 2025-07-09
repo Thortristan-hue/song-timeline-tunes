@@ -1,0 +1,64 @@
+import React from 'react';
+import { Song } from '@/types/game';
+import recordImage from '@/assets/record.png';
+import recordPlayerImage from '@/assets/record-player.png';
+
+interface RecordMysteryCardProps {
+  song: Song | null;
+  isRevealed: boolean;
+  isDestroyed?: boolean;
+  className?: string;
+}
+
+export function RecordMysteryCard({ 
+  song, 
+  isRevealed, 
+  isDestroyed = false,
+  className = "" 
+}: RecordMysteryCardProps) {
+  return (
+    <div className={`relative ${className}`}>
+      {/* Record Player Background */}
+      <img 
+        src={recordPlayerImage}
+        alt="Record Player"
+        className="w-64 h-64 object-contain"
+      />
+      
+      {/* Record positioned at x378px, y416px of the record player (scaled down) */}
+      <div 
+        className="absolute"
+        style={{ 
+          left: '150px', // 378px scaled to 64px width ≈ 150px
+          top: '166px'   // 416px scaled to 64px height ≈ 166px
+        }}
+      >
+        <img 
+          src={recordImage}
+          alt="Mystery Record"
+          className={`w-16 h-16 object-contain transition-all duration-500 ${
+            isDestroyed 
+              ? 'opacity-0 scale-0 rotate-180' 
+              : 'opacity-100 scale-100 rotate-0'
+          } ${
+            !isRevealed ? 'animate-spin' : ''
+          }`}
+          style={{
+            animationDuration: isRevealed ? '0s' : '3s'
+          }}
+        />
+        
+        {/* Song Info Overlay when revealed */}
+        {isRevealed && song && (
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+            <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap">
+              <div className="font-bold">{song.deezer_title}</div>
+              <div className="text-white/80">{song.deezer_artist}</div>
+              <div className="text-yellow-400 font-bold">{song.release_year}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
