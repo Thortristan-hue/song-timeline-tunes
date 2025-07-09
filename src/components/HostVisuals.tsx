@@ -1,198 +1,3 @@
-import React, { useEffect, useState } from 'react';
-import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
-import { Song, Player } from '@/types/game';
-import { RecordMysteryCard } from '@/components/RecordMysteryCard';
-import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
-
-export function HostGameBackground() {
-  return (
-    <div className="absolute inset-0">
-      <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/8 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-950/50 via-transparent to-slate-900/30 pointer-events-none" />
-    </div>
-  );
-}
-
-function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
-  return (
-    <div className="absolute top-4 left-4 right-4 z-40">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/15 backdrop-blur-2xl rounded-2xl flex items-center justify-center border border-white/20">
-            <Crown className="h-6 w-6 text-yellow-400" />
-          </div>
-          <div>
-            <div className="text-white font-bold text-2xl tracking-tight">Timeliner</div>
-            <div className="text-white/70 text-sm font-medium">Host Display</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="bg-white/15 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/20">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-400" />
-              <div className="text-white font-bold text-lg">{playersCount}</div>
-            </div>
-          </div>
-
-          <div className="bg-white/15 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/20">
-            <div className="text-white font-mono text-lg font-bold tracking-wider">{roomCode}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RecordPlayerSection({
-  currentSong,
-  mysteryCardRevealed,
-  isPlaying,
-  onPlayPause,
-  cardPlacementResult
-}: {
-  currentSong: Song | null;
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-}) {
-  return (
-    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30">
-      <div className="relative">
-        <div className="absolute inset-0 bg-white/8 rounded-3xl blur-xl scale-110" />
-        <div 
-          className="relative cursor-pointer transition-all duration-300 hover:scale-105"
-          onClick={onPlayPause}
-        >
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={mysteryCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-          
-          {currentSong?.preview_url && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 hover:opacity-100 transition-opacity">
-              {isPlaying ? (
-                <Pause className="h-6 w-6 text-white" />
-              ) : (
-                <Play className="h-6 w-6 text-white" />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
-  const artistHash = Array.from(song.deezer_artist).reduce(
-    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
-  );
-  const hue = Math.abs(artistHash) % 360;
-  
-  return (
-    <div 
-      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-300 hover:scale-110 cursor-pointer
-        ${isActive ? 'ring-4 ring-green-400' : ''}`}
-      style={{ 
-        backgroundColor: `hsl(${hue}, 70%, 30%)`,
-        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
-        boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-      }}
-    >
-      <div className="text-sm font-medium w-full text-center truncate">
-        {song.deezer_artist}
-      </div>
-      <div className="text-3xl font-bold my-auto">
-        {song.release_year}
-      </div>
-      <div className="text-xs italic w-full text-center truncate">
-        {song.deezer_title}
-      </div>
-    </div>
-  );
-}
-
-function HostTimelineDisplay({ 
-  currentPlayer, 
-  isActive, 
-  placementResult 
-}: { 
-  currentPlayer: Player; 
-  isActive: boolean;
-  placementResult?: { correct: boolean; song: Song };
-}) {
-  const [visibleCards, setVisibleCards] = useState(0);
-  const cardCount = currentPlayer.timeline.length;
-  const gapSize = Math.max(8, 40 - cardCount * 2);
-
-  useEffect(() => {
-    if (isActive) {
-      let count = 0;
-      const interval = setInterval(() => {
-        count++;
-        setVisibleCards(count);
-        if (count >= cardCount) clearInterval(interval);
-      }, 100);
-      return () => clearInterval(interval);
-    } else {
-      setVisibleCards(0);
-    }
-  }, [isActive, cardCount]);
-
-  return (
-    <div 
-      className="flex justify-center items-center p-4 rounded-2xl transition-all duration-500"
-      style={{
-        gap: `${gapSize}px`,
-        transform: isActive ? 'translateY(0)' : 'translateY(20px)',
-        opacity: isActive ? 1 : 0.7
-      }}
-    >
-      {currentPlayer.timeline.length === 0 ? (
-        <div className="text-white/50 italic py-6 text-lg">
-          {currentPlayer.name} hasn't placed any cards yet
-        </div>
-      ) : (
-        currentPlayer.timeline.map((song, index) => (
-          <div 
-            key={song.id}
-            className={`transition-all duration-500 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
-            style={{
-              transitionDelay: `${index * 50}ms`,
-              transformOrigin: 'bottom center'
-            }}
-          >
-            <HostTimelineCard 
-              song={song} 
-              isActive={placementResult?.song.id === song.id}
-            />
-          </div>
-        ))
-      )}
-      
-      {placementResult && (
-        <div className={`absolute top-full mt-4 text-center text-lg font-bold transition-all duration-500
-          ${placementResult.correct ? 'text-green-400' : 'text-red-400'}`}>
-          {placementResult.correct ? (
-            <div className="flex items-center gap-2">
-              <Check className="h-6 w-6" /> Correct!
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <X className="h-6 w-6" /> Incorrect
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function HostGameView({
   currentTurnPlayer,
   previousPlayer,
@@ -233,7 +38,7 @@ export function HostGameView({
   }, [currentTurnPlayer, transitioning]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-orange-100 via-orange-50 to-yellow-50 relative overflow-hidden">
       <HostGameBackground />
       <HostHeader roomCode={roomCode} playersCount={players.length} />
       <RecordPlayerSection 
@@ -262,32 +67,32 @@ export function HostGameView({
       </div>
 
       {cardPlacementResult && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-2xl flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-orange-900/80 backdrop-blur-2xl flex items-center justify-center z-50">
           <div className="text-center space-y-8 p-8">
             <div className={`text-9xl mb-6 ${
               cardPlacementResult.correct ? 'animate-bounce' : 'animate-pulse'
             }`}>
               {cardPlacementResult.correct ? '🎯' : '💫'}
             </div>
-            <div className={`text-6xl font-black tracking-tight ${
+            <div className={`text-6xl font-black tracking-tight transform -rotate-1 ${
               cardPlacementResult.correct ? 
-              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
-              'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400'
-            }`}>
+              'text-orange-500' : 
+              'text-orange-400'
+            }`} style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
               {cardPlacementResult.correct ? 'PERFECT MATCH!' : 'NICE TRY!'}
             </div>
-            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg">
-              <div className="text-3xl font-bold text-white mb-3">
+            <div className="bg-orange-200/90 backdrop-blur-3xl rounded-3xl p-8 border-4 border-orange-400 max-w-lg shadow-lg transform hover:scale-105 transition-all duration-300">
+              <div className="text-3xl font-bold text-orange-900 mb-3" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
                 {cardPlacementResult.song.deezer_title}
               </div>
-              <div className="text-2xl text-white/80 mb-6 font-medium">
+              <div className="text-2xl text-orange-800 mb-6 font-medium">
                 by {cardPlacementResult.song.deezer_artist}
               </div>
-              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-full font-bold text-2xl">
+              <div className="inline-block bg-orange-500 text-white px-6 py-3 rounded-full font-bold text-2xl border-4 border-orange-600 shadow-lg">
                 {cardPlacementResult.song.release_year}
               </div>
             </div>
-            <div className="text-white/60 text-xl">
+            <div className="text-orange-200 text-xl font-medium" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
               {cardPlacementResult.correct ? 
                 `${currentTurnPlayer.name} scored a point!` : 
                 `Better luck next time, ${currentTurnPlayer.name}!`
