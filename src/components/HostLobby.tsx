@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Crown, Users, Play, Settings, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -136,12 +135,17 @@ export function HostLobby({ onGameStart }: HostLobbyProps) {
               </DialogHeader>
               <div className="space-y-4">
                 <PlaylistLoader
-                  onSongsLoaded={(songs) => {
-                    setAvailableSongs(songs);
-                    updateRoomSongs(songs);
-                    handlePlaylistLoad(true, songs.length);
+                  onPlaylistLoaded={(success, count) => {
+                    handlePlaylistLoad(success, count);
+                    if (success) {
+                      updateRoomSongs(availableSongs);
+                    }
                   }}
-                  onError={() => handlePlaylistLoad(false)}
+                  setCustomSongs={(songs) => {
+                    setAvailableSongs(songs);
+                  }}
+                  isDarkMode={true}
+                  minSongsRequired={3}
                 />
               </div>
             </DialogContent>
