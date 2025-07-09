@@ -114,76 +114,7 @@ export function PlayerTimeline({
   const PLACEMENT_DEBOUNCE_MS = 1000; // 1 second debounce
   const MIN_PLACEMENT_INTERVAL = 500; // Minimum 500ms between attempts
 
-  // Enhanced timeline song playback with spam prevention
-  const playTimelineSong = async (song: Song) => {
-    if (gameEnded) {
-      console.log('🚫 Game ended - no timeline audio allowed');
-      return;
-    }
-
-    console.log('🎵 Playing timeline song:', song.deezer_title);
-    
-    // Stop any currently playing audio before starting new one
-    if (currentlyPlayingAudioRef.current && !currentlyPlayingAudioRef.current.paused) {
-      console.log('🔇 Stopping currently playing timeline audio');
-      currentlyPlayingAudioRef.current.pause();
-      currentlyPlayingAudioRef.current.currentTime = 0;
-    }
-
-    // Also stop any other audio elements on the page
-    const allAudio = document.querySelectorAll('audio');
-    allAudio.forEach(audio => {
-      if (!audio.paused) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    });
-    
-    let previewUrl = song.preview_url;
-    
-    // Fetch preview just-in-time if not available or if it might be expired
-    if (!previewUrl && song.id) {
-      try {
-        console.log('🔍 Fetching preview URL just-in-time for timeline song');
-        previewUrl = await DeezerAudioService.getPreviewUrl(song.id);
-      } catch (error) {
-        console.error('❌ Failed to fetch preview URL for timeline song:', error);
-        return;
-      }
-    }
-    
-    if (!previewUrl) {
-      console.log('❌ No preview URL available for this song');
-      return;
-    }
-    
-    // Create and manage single audio element
-    const audio = new Audio(previewUrl);
-    audio.volume = 0.5;
-    audio.crossOrigin = 'anonymous';
-    currentlyPlayingAudioRef.current = audio;
-    
-    try {
-      await audio.play();
-      console.log(`✅ Playing timeline song: ${song.deezer_title}`);
-      
-      // Stop after 30 seconds
-      setTimeout(() => {
-        if (currentlyPlayingAudioRef.current === audio) {
-          audio.pause();
-          audio.currentTime = 0;
-          currentlyPlayingAudioRef.current = null;
-        }
-      }, 30000);
-    } catch (error) {
-      console.error('❌ Failed to play timeline song:', error);
-      if (currentlyPlayingAudioRef.current === audio) {
-        currentlyPlayingAudioRef.current = null;
-      }
-    }
-  };
-
-  // ANTI-SPAM: Debounced and protected confirm placement
+    // ANTI-SPAM: Debounced and protected confirm placement
   const handleConfirmClick = async () => {
     if (!placementPending || !onConfirmPlacement || gameEnded) {
       console.log('🚫 Confirm blocked: missing data or game ended');
@@ -305,18 +236,10 @@ export function PlayerTimeline({
           isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50",
           gameEnded && "opacity-50 pointer-events-none"
         )}
-        onClick={() => !gameEnded && playTimelineSong(song)}
+        
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
         
-        {/* Play button overlay - hide when game ended */}
-        {!gameEnded && (
-          <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <Play className="h-8 w-8 text-white" />
-          </div>
-        )}
-        
-        <Music className="h-8 w-8 mb-3 opacity-70" />
         <div className="text-center relative z-10 space-y-1">
           <div className="font-semibold text-sm leading-tight tracking-tight">
             {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
@@ -463,7 +386,7 @@ export function PlayerTimeline({
       {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
-        className="flex items-center gap-4 p-8 bg-transparent rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
+        className="flex items-center gap-4 p-8 overflow-x-auto scroll-smooth"
         onScroll={handleTimelineScroll}
         style={{
           scrollBehavior: 'smooth',
