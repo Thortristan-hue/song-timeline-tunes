@@ -42,7 +42,7 @@ export function useGameRoom() {
     };
   }, []);
 
-  // Fetch players for a room (ONLY non-host players)
+  // Fetch players for a room (including host players)
   const fetchPlayers = useCallback(async (roomId: string) => {
     try {
       console.log('🔍 Fetching players for room:', roomId);
@@ -60,22 +60,24 @@ export function useGameRoom() {
 
       console.log('👥 Raw players from DB:', data);
       
-      // Filter out host players - only include players where is_host is false or null
-      const nonHostPlayers = data?.filter(dbPlayer => {
-        const isHostPlayer = dbPlayer.is_host === true;
-        console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
-        return !isHostPlayer;
-      }) || [];
-      
-      const convertedPlayers = nonHostPlayers.map(convertPlayer);
-      console.log('👥 Converted non-host players:', convertedPlayers);
+      // Convert all players (including host)
+      const convertedPlayers = data?.map(convertPlayer) || [];
+      console.log('👥 All converted players:', convertedPlayers);
       
       setPlayers(convertedPlayers);
 
-      // Update current player if we have one (only for non-host players)
-      if (playerSessionId.current && !isHost) {
+      // Update current player if we have one
+      if (hostSessionId.current && isHost) {
         const current = convertedPlayers.find(p => 
-          nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
+          data.find(dbP => dbP.id === p.id && dbP.player_session_id === hostSessionId.current)
+        );
+        if (current) {
+          console.log('🎯 Updated current host player:', current);
+          setCurrentPlayer(current);
+        }
+      } else if (playerSessionId.current && !isHost) {
+        const current = convertedPlayers.find(p => 
+          data.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
         );
         if (current) {
           console.log('🎯 Updated current player:', current);
@@ -229,7 +231,8 @@ export function useGameRoom() {
 
       console.log('🏠 Creating room with host session ID:', sessionId);
 
-      const { data, error } = await supabase
+      // First, create the room
+      const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
@@ -240,36 +243,53 @@ export function useGameRoom() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (roomError) throw roomError;
 
-      console.log('✅ Room created successfully:', data);
+      console.log('✅ Room created successfully:', roomData);
+
+      // Now add the host as a player in the database
+      console.log('👑 Adding host as player to database...');
+      
+      const { data: hostPlayerData, error: hostPlayerError } = await supabase
+        .from('players')
+        .insert({
+          room_id: roomData.id,
+          player_session_id: sessionId,
+          name: hostName,
+          color: '#FF6B6B',
+          timeline_color: '#FF8E8E',
+          score: 0,
+          timeline: [],
+          is_host: true
+        })
+        .select()
+        .single();
+
+      if (hostPlayerError) {
+        console.error('❌ Failed to create host player:', hostPlayerError);
+        throw hostPlayerError;
+      }
+
+      console.log('✅ Host player created successfully:', hostPlayerData);
 
       setRoom({
-        id: data.id,
-        lobby_code: data.lobby_code,
-        host_id: data.host_id,
-        host_name: data.host_name || hostName,
-        phase: data.phase as 'lobby' | 'playing' | 'finished',
-        songs: Array.isArray(data.songs) ? data.songs as unknown as Song[] : [],
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        current_turn: data.current_turn,
-        current_song: data.current_song ? data.current_song as unknown as Song : null
+        id: roomData.id,
+        lobby_code: roomData.lobby_code,
+        host_id: roomData.host_id,
+        host_name: roomData.host_name || hostName,
+        phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+        songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
+        created_at: roomData.created_at,
+        updated_at: roomData.updated_at,
+        current_turn: roomData.current_turn,
+        current_song: roomData.current_song ? roomData.current_song as unknown as Song : null
       });
 
-      // Create a virtual host player for local use only (not stored in database)
-      const hostPlayer: Player = {
-        id: `host-${sessionId}`,
-        name: hostName,
-        color: '#FF6B6B',
-        timelineColor: '#FF8E8E',
-        score: 0,
-        timeline: []
-      };
-
-      setCurrentPlayer(hostPlayer);
+      // Set the host player as current player
+      setCurrentPlayer(convertPlayer(hostPlayerData));
       setIsHost(true);
-      return data.lobby_code;
+      
+      return roomData.lobby_code;
     } catch (error) {
       console.error('❌ Failed to create room:', error);
       setError('Failed to create room');
@@ -277,7 +297,7 @@ export function useGameRoom() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [convertPlayer]);
 
   const joinRoom = useCallback(async (lobbyCode: string, playerName: string): Promise<boolean> => {
     try {
@@ -508,6 +528,7 @@ export function useGameRoom() {
       console.log('🃏 Assigning starting cards to players...');
       console.log('🎯 Players to assign cards to:', players.map(p => ({ name: p.name, timelineLength: p.timeline.length })));
       
+      // Assign starting cards to ALL players, including the host
       for (const player of players) {
         if (player.timeline.length === 0) {
           const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
