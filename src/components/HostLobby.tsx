@@ -92,11 +92,41 @@ export function HostLobby({ onGameStart }: HostLobbyProps) {
     }
   };
 
-  if (!room) {
+  // Show loading if room is not ready yet
+  if (!room && isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-xl text-gray-600">Loading lobby...</div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        </div>
+        <div className="text-center text-white relative z-10">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <Crown className="w-8 h-8 text-yellow-400 animate-pulse" />
+          </div>
+          <div className="text-2xl font-semibold mb-2">Creating your lobby...</div>
+          <div className="text-white/60 max-w-md mx-auto">Setting up the host environment</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if room creation failed
+  if (!room && !isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white relative z-10">
+          <div className="w-16 h-16 bg-red-500/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-red-500/20">
+            <Crown className="w-8 h-8 text-red-400" />
+          </div>
+          <div className="text-2xl font-semibold mb-2 text-red-400">Failed to create lobby</div>
+          <div className="text-white/60 max-w-md mx-auto mb-6">There was an issue setting up your game room</div>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="bg-red-500 hover:bg-red-600 text-white"
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
