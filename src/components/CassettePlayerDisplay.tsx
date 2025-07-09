@@ -85,14 +85,14 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
             >
               {/* Cassette Container */}
               <div
-                className={`relative cursor-pointer ${isCurrent ? 'scale-110' : 'scale-100 hover:scale-105'}`}
+                className={`relative cursor-pointer ${isCurrent ? 'scale-110' : 'scale-100 hover:scale-115'}`}
                 onClick={() => togglePlayerExpansion(player.id)}
               >
                 {/* Cassette Image */}
                 <img
                   src={getCassetteImage(player.color)}
                   alt={`${player.name}'s cassette`}
-                  className="w-32 h-20 object-contain drop-shadow-md"
+                  className="w-48 h-30 object-contain drop-shadow-md"
                 />
 
                 {/* Player Info Overlay */}
@@ -103,7 +103,7 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
                       {player.name}
                     </span>
                     <span className="text-black font-bold text-xs bg-white/80 rounded px-1">
-                      {player.timeline.length}/10
+                      {player.timeline.length}
                     </span>
                   </div>
 
