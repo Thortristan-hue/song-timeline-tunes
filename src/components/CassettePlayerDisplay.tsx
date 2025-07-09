@@ -72,7 +72,7 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
 
   return (
     <div className={`fixed bottom-4 left-0 right-0 z-20 px-4 ${className}`}>
-      <div className="flex flex-wrap justify-center gap-4 max-w-6xl mx-auto">
+      <div className="flex flex-wrap justify-center gap-2 max-w-6xl mx-auto">
         {players.map(player => {
           const isCurrent = player.id === currentPlayerId;
           const isExpanded = expandedPlayer === player.id;
@@ -83,32 +83,32 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
               key={player.id}
               className={`relative transition-all duration-200 ${isCurrent ? 'z-10' : 'z-0'}`}
             >
-              {/* Cassette Container - 1.5x larger */}
+              {/* Cassette Container - 70% size */}
               <div
-                className={`relative cursor-pointer ${isCurrent ? 'scale-125' : 'scale-100 hover:scale-125'}`}
+                className={`relative cursor-pointer ${isCurrent ? 'scale-105' : 'scale-90 hover:scale-95'}`}
                 onClick={() => togglePlayerExpansion(player.id)}
               >
-                {/* Cassette Image - 1.5x larger */}
+                {/* Cassette Image */}
                 <img
                   src={getCassetteImage(player.color)}
                   alt={`${player.name}'s cassette`}
-                  className="w-48 h-30 object-contain drop-shadow-md"
+                  className="w-36 h-24 object-contain drop-shadow-md"
                 />
 
                 {/* Player Info Overlay */}
-                <div className="absolute inset-0 p-2 flex flex-col">
+                <div className="absolute inset-0 p-1.5 flex flex-col">
                   {/* Player Name */}
                   <div className="flex justify-between items-start">
-                    <span className="text-black font-bold text-sm max-w-[90px] truncate">
+                    <span className="text-black font-bold text-xs max-w-[60px] truncate">
                       {player.name}
                     </span>
-                    <span className="text-black font-bold text-sm bg-white/80 rounded px-1">
+                    <span className="text-black font-bold text-xs bg-white/80 rounded px-0.5">
                       {player.timeline.length}
                     </span>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="absolute bottom-2 left-4 right-4 h-1.5 bg-black/20 rounded-full">
+                  <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full">
                     <div
                       className="h-full bg-black/70 rounded-full transition-all duration-500"
                       style={{ width: `${(player.timeline.length / 10) * 100}%` }}
@@ -116,32 +116,32 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
                   </div>
                 </div>
 
-                {/* Current Player Indicator - Larger */}
+                {/* Current Player Indicator */}
                 {isCurrent && (
-                  <div className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
                 )}
               </div>
 
-              {/* Expanded Card List - Larger */}
+              {/* Expanded Card List */}
               {isExpanded && hasCards && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 max-h-72 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-3 z-30">
-                  <div className="sticky top-0 bg-slate-800 py-2 border-b border-slate-700">
-                    <h3 className="text-white text-sm font-bold text-center truncate">
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 max-h-52 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 z-30">
+                  <div className="sticky top-0 bg-slate-800 py-1 border-b border-slate-700">
+                    <h3 className="text-white text-xs font-bold text-center truncate">
                       {player.name}'s Timeline
                     </h3>
                   </div>
                   <div className="divide-y divide-slate-700">
                     {player.timeline.map((song, index) => (
-                      <div key={`${player.id}-${index}`} className="py-2 px-2">
-                        <div className="flex items-start gap-2">
-                          <span className="text-sm text-slate-400 font-mono w-6 flex-shrink-0">
+                      <div key={`${player.id}-${index}`} className="py-1 px-1">
+                        <div className="flex items-start gap-1">
+                          <span className="text-xs text-slate-400 font-mono w-4 flex-shrink-0">
                             {index + 1}.
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-medium truncate">
+                            <p className="text-white text-xs font-medium truncate">
                               {song.deezer_title}
                             </p>
-                            <p className="text-slate-400 text-xs truncate">
+                            <p className="text-slate-400 text-xxs truncate">
                               {song.deezer_artist} · {song.release_year}
                             </p>
                           </div>
