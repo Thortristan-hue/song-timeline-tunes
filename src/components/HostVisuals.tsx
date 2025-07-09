@@ -1,5 +1,5 @@
-import React from 'react';
-import { Crown, Users, Play, Pause, Music } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
@@ -15,12 +15,7 @@ export function HostGameBackground() {
   );
 }
 
-interface HostHeaderProps {
-  roomCode: string;
-  playersCount: number;
-}
-
-function HostHeader({ roomCode, playersCount }: HostHeaderProps) {
+function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
@@ -51,21 +46,19 @@ function HostHeader({ roomCode, playersCount }: HostHeaderProps) {
   );
 }
 
-interface RecordPlayerSectionProps {
-  currentSong: Song | null;
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-}
-
 function RecordPlayerSection({
   currentSong,
   mysteryCardRevealed,
   isPlaying,
   onPlayPause,
   cardPlacementResult
-}: RecordPlayerSectionProps) {
+}: {
+  currentSong: Song | null;
+  mysteryCardRevealed: boolean;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  cardPlacementResult: { correct: boolean; song: Song } | null;
+}) {
   return (
     <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
@@ -95,11 +88,7 @@ function RecordPlayerSection({
   );
 }
 
-interface HostTimelineCardProps {
-  song: Song;
-}
-
-function HostTimelineCard({ song }: HostTimelineCardProps) {
+function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
   const artistHash = Array.from(song.deezer_artist).reduce(
     (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
   );
@@ -107,24 +96,20 @@ function HostTimelineCard({ song }: HostTimelineCardProps) {
   
   return (
     <div 
-      className="w-32 h-40 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-200 hover:scale-110 cursor-pointer"
+      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-300 hover:scale-110 cursor-pointer
+        ${isActive ? 'ring-4 ring-green-400' : ''}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 30%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
         boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
       }}
     >
-      {/* Artist name - top */}
       <div className="text-sm font-medium w-full text-center truncate">
         {song.deezer_artist}
       </div>
-      
-      {/* Year - center */}
       <div className="text-3xl font-bold my-auto">
         {song.release_year}
       </div>
-      
-      {/* Song title - bottom (small italic) */}
       <div className="text-xs italic w-full text-center truncate">
         {song.deezer_title}
       </div>
@@ -132,33 +117,96 @@ function HostTimelineCard({ song }: HostTimelineCardProps) {
   );
 }
 
-interface HostTimelineDisplayProps {
-  currentPlayer: Player;
-}
+function HostTimelineDisplay({ 
+  currentPlayer, 
+  isActive, 
+  placementResult 
+}: { 
+  currentPlayer: Player; 
+  isActive: boolean;
+  placementResult?: { correct: boolean; song: Song };
+}) {
+  const [visibleCards, setVisibleCards] = useState(0);
+  const cardCount = currentPlayer.timeline.length;
+  const gapSize = Math.max(8, 40 - cardCount * 2);
 
-function HostTimelineDisplay({ currentPlayer }: HostTimelineDisplayProps) {
+  useEffect(() => {
+    if (isActive) {
+      let count = 0;
+      const interval = setInterval(() => {
+        count++;
+        setVisibleCards(count);
+        if (count >= cardCount) clearInterval(interval);
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
+      setVisibleCards(0);
+    }
+  }, [isActive, cardCount]);
+
   return (
-    <div className="flex justify-center items-center gap-4 p-4">
+    <div 
+      className="flex justify-center items-center p-4 rounded-2xl transition-all duration-500"
+      style={{
+        gap: `${gapSize}px`,
+        transform: isActive ? 'translateY(0)' : 'translateY(20px)',
+        opacity: isActive ? 1 : 0.7
+      }}
+    >
       {currentPlayer.timeline.length === 0 ? (
         <div className="text-white/50 italic py-6 text-lg">
           {currentPlayer.name} hasn't placed any cards yet
         </div>
       ) : (
         currentPlayer.timeline.map((song, index) => (
-          <React.Fragment key={song.id}>
-            <HostTimelineCard song={song} />
-            {index < currentPlayer.timeline.length - 1 && (
-              <div className="w-6 h-1 bg-white/20 rounded-full" />
-            )}
-          </React.Fragment>
+          <div 
+            key={song.id}
+            className={`transition-all duration-500 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
+            style={{
+              transitionDelay: `${index * 50}ms`,
+              transformOrigin: 'bottom center'
+            }}
+          >
+            <HostTimelineCard 
+              song={song} 
+              isActive={placementResult?.song.id === song.id}
+            />
+          </div>
         ))
+      )}
+      
+      {placementResult && (
+        <div className={`absolute top-full mt-4 text-center text-lg font-bold transition-all duration-500
+          ${placementResult.correct ? 'text-green-400' : 'text-red-400'}`}>
+          {placementResult.correct ? (
+            <div className="flex items-center gap-2">
+              <Check className="h-6 w-6" /> Correct!
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <X className="h-6 w-6" /> Incorrect
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-interface HostGameViewProps {
+export function HostGameView({
+  currentTurnPlayer,
+  previousPlayer,
+  currentSong,
+  roomCode,
+  players,
+  mysteryCardRevealed,
+  isPlaying,
+  onPlayPause,
+  cardPlacementResult,
+  transitioning
+}: {
   currentTurnPlayer: Player;
+  previousPlayer?: Player;
   currentSong: Song | null;
   roomCode: string;
   players: Player[];
@@ -166,18 +214,24 @@ interface HostGameViewProps {
   isPlaying: boolean;
   onPlayPause: () => void;
   cardPlacementResult: { correct: boolean; song: Song } | null;
-}
+  transitioning: boolean;
+}) {
+  const [displayedPlayer, setDisplayedPlayer] = useState(currentTurnPlayer);
+  const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
+  
+  useEffect(() => {
+    if (transitioning) {
+      setAnimationStage('exiting');
+      setTimeout(() => {
+        setDisplayedPlayer(currentTurnPlayer);
+        setAnimationStage('entering');
+        setTimeout(() => setAnimationStage('idle'), 1000);
+      }, 800);
+    } else {
+      setDisplayedPlayer(currentTurnPlayer);
+    }
+  }, [currentTurnPlayer, transitioning]);
 
-export function HostGameView({
-  currentTurnPlayer,
-  currentSong,
-  roomCode,
-  players,
-  mysteryCardRevealed,
-  isPlaying,
-  onPlayPause,
-  cardPlacementResult
-}: HostGameViewProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
       <HostGameBackground />
@@ -190,12 +244,16 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
       
-      {/* Centered timeline without background */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 w-4/5">
-        <HostTimelineDisplay currentPlayer={currentTurnPlayer} />
+      <div className="absolute top-1/2 left-0 right-0 z-30 mt-4">
+        <div className="flex justify-center">
+          <HostTimelineDisplay 
+            currentPlayer={displayedPlayer} 
+            isActive={animationStage !== 'exiting'}
+            placementResult={cardPlacementResult}
+          />
+        </div>
       </div>
 
-      {/* Cassette player at 70% size */}
       <div className="absolute bottom-4 left-4 right-4 z-10">
         <CassettePlayerDisplay 
           players={players} 
@@ -211,7 +269,6 @@ export function HostGameView({
             }`}>
               {cardPlacementResult.correct ? '🎯' : '💫'}
             </div>
-            
             <div className={`text-6xl font-black tracking-tight ${
               cardPlacementResult.correct ? 
               'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
@@ -219,7 +276,6 @@ export function HostGameView({
             }`}>
               {cardPlacementResult.correct ? 'PERFECT MATCH!' : 'NICE TRY!'}
             </div>
-            
             <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg">
               <div className="text-3xl font-bold text-white mb-3">
                 {cardPlacementResult.song.deezer_title}
@@ -231,7 +287,6 @@ export function HostGameView({
                 {cardPlacementResult.song.release_year}
               </div>
             </div>
-
             <div className="text-white/60 text-xl">
               {cardPlacementResult.correct ? 
                 `${currentTurnPlayer.name} scored a point!` : 
