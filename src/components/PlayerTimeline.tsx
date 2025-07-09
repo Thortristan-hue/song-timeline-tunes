@@ -307,24 +307,24 @@ export function PlayerTimeline({
         )}
         onClick={() => !gameEnded && playTimelineSong(song)}
       >
-        <div className="absolute inset-0 rounded-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
         
         {/* Play button overlay - hide when game ended */}
         {!gameEnded && (
-          <div className="absolute inset-0 rounded-3xl flex items-center justify-center group-hover: duration-200">
+          <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <Play className="h-8 w-8 text-white" />
           </div>
         )}
         
-        <Music className="h-8 w-8 mb-3" />
-        <div className="text-center relative space-y-1">
+        <Music className="h-8 w-8 mb-3 opacity-70" />
+        <div className="text-center relative z-10 space-y-1">
           <div className="font-semibold text-sm leading-tight tracking-tight">
             {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
           </div>
-          <div className="text-xs font-medium">
+          <div className="text-xs opacity-60 font-medium">
             {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
           </div>
-          <div className="text-xl font-bold mt-2 rounded-full px-2 py-1">
+          <div className="text-xl font-bold mt-2 bg-white/10 rounded-full px-2 py-1">
             {song.release_year}
           </div>
         </div>
@@ -387,18 +387,19 @@ export function PlayerTimeline({
 
   return (
     <div 
-      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-7xl px-6"
+      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-25 w-full max-w-7xl px-6"
       style={{
+        transform: `translateX(-50%)`,
         transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: transitioningTurn ? 0.6 : 1
       }}
     >
       {/* ANTI-SPAM: Enhanced confirmation dialog */}
       {placementPending && !gameEnded && (
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <div className="rounded-3xl p-8 max-w-md w-full mx-4 animate-in fade-in-0 zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-600/50 max-w-md w-full mx-4 transform scale-100 animate-in fade-in-0 zoom-in-95 duration-300">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Music className="h-8 w-8 text-blue-400" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
@@ -462,7 +463,7 @@ export function PlayerTimeline({
       {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
-        className="flex items-center gap-4 p-8 rounded-3xl overflow-x-auto scroll-smooth"
+        className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
         onScroll={handleTimelineScroll}
         style={{
           scrollBehavior: 'smooth',
