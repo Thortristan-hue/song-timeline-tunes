@@ -2,26 +2,11 @@ import React, { useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Music, Check, X, Sparkles, Calendar, Play, Pause, RotateCcw, Loader2 } from "lucide-react";
+import { Trophy, Music, Check, X, Sparkles, Calendar, Play, RotateCcw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Song, Player } from "@/types/game";
 import { DeezerAudioService } from "@/services/DeezerAudioService";
 import { MobilePlayerTimeline } from "./MobilePlayerTimeline";
-
-// Function to generate consistent color from artist name
-const getArtistColor = (artist: string): string => {
-  // Simple hash function to convert string to number
-  let hash = 0;
-  for (let i = 0; i < artist.length; i++) {
-    hash = artist.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  // Convert hash to hue (0-360)
-  const hue = Math.abs(hash) % 360;
-  
-  // Return HSL color string with fixed saturation/lightness
-  return `hsl(${hue}, 70%, 60%)`;
-};
 
 interface PlayerTimelineProps {
   player: Player;
@@ -67,12 +52,6 @@ export function PlayerTimeline({
     return isIOS || isAndroid || (isMobileWidth && isTouchDevice);
   });
 
-  // State to track playing status
-  const [playingStatus, setPlayingStatus] = useState<{
-    songId: string | null;
-    isPlaying: boolean;
-  }>({ songId: null, isPlaying: false });
-
   // Enhanced resize handler for better mobile detection
   React.useEffect(() => {
     const handleResize = () => {
@@ -83,6 +62,14 @@ export function PlayerTimeline({
       
       const mobile = isIOS || isAndroid || (isMobileWidth && isTouchDevice);
       setIsMobile(mobile);
+      
+      console.log('📱 MOBILE DETECTION:', { 
+        isIOS, 
+        isAndroid, 
+        isMobileWidth, 
+        isTouchDevice, 
+        finalMobile: mobile 
+      });
     };
 
     window.addEventListener('resize', handleResize);
@@ -93,6 +80,7 @@ export function PlayerTimeline({
 
   // MOBILE REDIRECT: Use mobile timeline for touch devices
   if (isMobile) {
+    console.log('📱 MOBILE MODE: Rendering mobile-optimized timeline');
     return (
       <MobilePlayerTimeline
         player={player}
@@ -126,26 +114,18 @@ export function PlayerTimeline({
   const PLACEMENT_DEBOUNCE_MS = 1000; // 1 second debounce
   const MIN_PLACEMENT_INTERVAL = 500; // Minimum 500ms between attempts
 
-  // Function to toggle play/pause
-  const togglePlayPause = (song: Song) => {
-    if (playingStatus.songId === song.id && playingStatus.isPlaying) {
-      // Pause if same song is playing
-      currentlyPlayingAudioRef.current?.pause();
-      setPlayingStatus({ songId: song.id, isPlaying: false });
-    } else {
-      // Play new song
-      playTimelineSong(song);
-    }
-  };
-
   // Enhanced timeline song playback with spam prevention
   const playTimelineSong = async (song: Song) => {
     if (gameEnded) {
+      console.log('🚫 Game ended - no timeline audio allowed');
       return;
     }
+
+    console.log('🎵 Playing timeline song:', song.deezer_title);
     
     // Stop any currently playing audio before starting new one
     if (currentlyPlayingAudioRef.current && !currentlyPlayingAudioRef.current.paused) {
+      console.log('🔇 Stopping currently playing timeline audio');
       currentlyPlayingAudioRef.current.pause();
       currentlyPlayingAudioRef.current.currentTime = 0;
     }
@@ -164,13 +144,16 @@ export function PlayerTimeline({
     // Fetch preview just-in-time if not available or if it might be expired
     if (!previewUrl && song.id) {
       try {
+        console.log('🔍 Fetching preview URL just-in-time for timeline song');
         previewUrl = await DeezerAudioService.getPreviewUrl(song.id);
       } catch (error) {
+        console.error('❌ Failed to fetch preview URL for timeline song:', error);
         return;
       }
     }
     
     if (!previewUrl) {
+      console.log('❌ No preview URL available for this song');
       return;
     }
     
@@ -180,11 +163,9 @@ export function PlayerTimeline({
     audio.crossOrigin = 'anonymous';
     currentlyPlayingAudioRef.current = audio;
     
-    // Set new playing status
-    setPlayingStatus({ songId: song.id, isPlaying: true });
-    
     try {
       await audio.play();
+      console.log(`✅ Playing timeline song: ${song.deezer_title}`);
       
       // Stop after 30 seconds
       setTimeout(() => {
@@ -192,19 +173,10 @@ export function PlayerTimeline({
           audio.pause();
           audio.currentTime = 0;
           currentlyPlayingAudioRef.current = null;
-          setPlayingStatus(prev => 
-            prev.songId === song.id ? {...prev, isPlaying: false} : prev
-          );
         }
       }, 30000);
-      
-      // Update state when audio ends
-      audio.onended = () => {
-        setPlayingStatus(prev => 
-          prev.songId === song.id ? {...prev, isPlaying: false} : prev
-        );
-      };
     } catch (error) {
+      console.error('❌ Failed to play timeline song:', error);
       if (currentlyPlayingAudioRef.current === audio) {
         currentlyPlayingAudioRef.current = null;
       }
@@ -214,17 +186,20 @@ export function PlayerTimeline({
   // ANTI-SPAM: Debounced and protected confirm placement
   const handleConfirmClick = async () => {
     if (!placementPending || !onConfirmPlacement || gameEnded) {
+      console.log('🚫 Confirm blocked: missing data or game ended');
       return;
     }
     
     // ANTI-SPAM: Check if already placing a card
     if (isPlacingCard) {
+      console.log('🚫 Confirm blocked: already placing a card');
       return;
     }
     
     // ANTI-SPAM: Check minimum time interval
     const now = Date.now();
     if (now - lastPlacementTime < MIN_PLACEMENT_INTERVAL) {
+      console.log('🚫 Confirm blocked: too soon since last placement');
       return;
     }
     
@@ -238,8 +213,11 @@ export function PlayerTimeline({
     }
     
     try {
+      console.log('🎯 Confirming placement with anti-spam protection');
       const result = await onConfirmPlacement(placementPending.song, placementPending.position);
+      console.log('🎯 Placement confirmed, result:', result);
     } catch (error) {
+      console.error('❌ Failed to confirm placement:', error);
     } finally {
       // ANTI-SPAM: Reset state after debounce period
       placementTimeoutRef.current = setTimeout(() => {
@@ -250,6 +228,7 @@ export function PlayerTimeline({
 
   const handleTryAgainClick = () => {
     if (!onCancelPlacement || gameEnded || isPlacingCard) return;
+    console.log('🔄 Player choosing to try again with placement');
     onCancelPlacement();
   };
 
@@ -315,39 +294,40 @@ export function PlayerTimeline({
   );
 
   const renderCard = (song: Song, index: number) => {
-    const bgColor = getArtistColor(song.deezer_artist);
-    const isPlaying = playingStatus.songId === song.id && playingStatus.isPlaying;
+    const isPendingPosition = placementPending?.position === index;
     
     return (
       <div
         key={`${player.id}-card-${index}`}
         className={cn(
-          "relative w-40 h-52 rounded-xl flex flex-col items-center justify-between p-4 text-white transition-all duration-300 hover:scale-105 cursor-pointer",
-          "shadow-lg",
+          "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1 cursor-pointer group",
+          "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl",
+          isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50",
           gameEnded && "opacity-50 pointer-events-none"
         )}
-        onClick={() => !gameEnded && togglePlayPause(song)}
-        style={{ backgroundColor: bgColor }}
+        onClick={() => !gameEnded && playTimelineSong(song)}
       >
-        <div className="text-center w-full">
-          <div className="text-lg font-bold truncate">
-            {song.deezer_artist}
-          </div>
-        </div>
+        <div className="absolute inset-0 rounded-3xl" />
         
-        <div className="text-5xl font-bold my-2">
-          {song.release_year}
-        </div>
-        
-        <div className="text-center w-full italic truncate">
-          {song.deezer_title}
-        </div>
-        
-        {isPlaying && (
-          <div className="absolute bottom-2 right-2 bg-black/30 rounded-full p-1">
-            <Pause className="h-5 w-5" />
+        {/* Play button overlay - hide when game ended */}
+        {!gameEnded && (
+          <div className="absolute inset-0 rounded-3xl flex items-center justify-center group-hover: duration-200">
+            <Play className="h-8 w-8 text-white" />
           </div>
         )}
+        
+        <Music className="h-8 w-8 mb-3" />
+        <div className="text-center relative space-y-1">
+          <div className="font-semibold text-sm leading-tight tracking-tight">
+            {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
+          </div>
+          <div className="text-xs font-medium">
+            {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
+          </div>
+          <div className="text-xl font-bold mt-2 rounded-full px-2 py-1">
+            {song.release_year}
+          </div>
+        </div>
       </div>
     );
   };
@@ -361,7 +341,7 @@ export function PlayerTimeline({
       <div
         key={`drop-zone-${position}`}
         className={cn(
-          "w-12 h-52 rounded-xl transition-all duration-300 mx-3 flex items-center justify-center",
+          "w-20 h-36 rounded-3xl transition-all duration-300 mx-3 flex items-center justify-center",
           "touch-manipulation cursor-pointer backdrop-blur-xl border",
           gameEnded ? "opacity-50 pointer-events-none" :
           isPending
@@ -407,7 +387,7 @@ export function PlayerTimeline({
 
   return (
     <div 
-      className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-6xl px-4"
+      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-7xl px-6"
       style={{
         transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: transitioningTurn ? 0.6 : 1
@@ -482,7 +462,7 @@ export function PlayerTimeline({
       {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
-        className="flex items-center justify-center gap-6 p-6 rounded-3xl overflow-x-auto scroll-smooth bg-slate-800/50 backdrop-blur-lg border border-slate-700 shadow-xl"
+        className="flex items-center gap-4 p-8 rounded-3xl overflow-x-auto scroll-smooth"
         onScroll={handleTimelineScroll}
         style={{
           scrollBehavior: 'smooth',
