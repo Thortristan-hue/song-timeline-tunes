@@ -96,10 +96,6 @@ function RecordPlayerSection({
   );
 }
 
-interface TimelineDisplayProps {
-  currentPlayer: Player;
-}
-
 // Function to generate consistent color from artist name
 const getArtistColor = (artist: string): string => {
   // Simple hash function to convert string to number
@@ -115,61 +111,24 @@ const getArtistColor = (artist: string): string => {
   return `hsl(${hue}, 70%, 60%)`;
 };
 
-function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
-  return (
-    <div className="absolute top-24 left-4 z-30 w-80">
-      <div className="bg-slate-800/95 rounded-3xl p-4 border border-slate-700 shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div 
-            className="w-5 h-5 rounded-full shadow-lg" 
-            style={{ backgroundColor: currentPlayer.color }}
-          />
-          <div className="text-white font-bold text-lg">{currentPlayer.name}'s Timeline</div>
-        </div>
-
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {currentPlayer.timeline.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-white/50 text-sm">No cards placed yet</div>
-            </div>
-          ) : (
-            currentPlayer.timeline.map((song, index) => (
-              <div key={`${song.id}-${index}`} className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl">
-                <div className="text-white/70 font-bold text-sm w-6">{index + 1}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm font-medium truncate">{song.deezer_title}</div>
-                  <div className="text-white/70 text-xs truncate">{song.deezer_artist}</div>
-                </div>
-                <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full font-bold">
-                  {song.release_year}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// New component for the visual timeline
+// New centered timeline for host
 interface HostTimelineProps {
   currentPlayer: Player;
 }
 
 function HostTimeline({ currentPlayer }: HostTimelineProps) {
   return (
-    <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 w-4/5 max-w-6xl z-30">
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4/5 max-w-6xl z-30">
       <div className="bg-slate-800/80 backdrop-blur-lg rounded-3xl p-6 border border-slate-700 shadow-2xl">
         <div className="flex items-center gap-3 mb-4">
           <div 
             className="w-6 h-6 rounded-full shadow-lg" 
             style={{ backgroundColor: currentPlayer.color }}
           />
-          <div className="text-white font-bold text-xl">{currentPlayer.name}'s Visual Timeline</div>
+          <div className="text-white font-bold text-xl">{currentPlayer.name}'s Timeline</div>
         </div>
         
-        <div className="flex overflow-x-auto pb-2 space-x-4">
+        <div className="flex justify-center flex-wrap gap-4">
           {currentPlayer.timeline.length === 0 ? (
             <div className="text-center w-full py-4">
               <div className="text-white/50 text-sm">No cards placed yet</div>
@@ -178,7 +137,7 @@ function HostTimeline({ currentPlayer }: HostTimelineProps) {
             currentPlayer.timeline.map((song, index) => (
               <div 
                 key={index}
-                className="flex-shrink-0 w-32 h-44 rounded-xl flex flex-col items-center justify-between p-3 text-white shadow-lg"
+                className="w-32 h-44 rounded-xl flex flex-col items-center justify-between p-3 text-white shadow-lg"
                 style={{ backgroundColor: getArtistColor(song.deezer_artist) }}
               >
                 <div className="text-center w-full">
@@ -235,7 +194,6 @@ export function HostGameView({
         onPlayPause={onPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
-      <TimelineDisplay currentPlayer={currentTurnPlayer} />
       <HostTimeline currentPlayer={currentTurnPlayer} />
       
       <div className="absolute bottom-4 left-4 right-4 z-10">
