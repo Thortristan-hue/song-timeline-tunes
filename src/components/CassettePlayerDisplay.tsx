@@ -11,12 +11,6 @@ import cassettePurple from '@/assets/cassette-purple.png';
 import cassetteRed from '@/assets/cassetee-red.png';
 import cassetteYellow from '@/assets/cassette-yellow.png';
 
-interface CassettePlayerDisplayProps {
-  players: Player[];
-  currentPlayerId?: string;
-  className?: string;
-}
-
 const CASSETTE_IMAGES: Record<string, string> = {
   blue: cassetteBlue,
   green: cassetteGreen,
@@ -34,14 +28,12 @@ const CASSETTE_IMAGES: Record<string, string> = {
 const getCassetteImage = (playerColor: string): string => {
   const colorLower = playerColor.toLowerCase();
   
-  // Direct matches
   for (const [key, image] of Object.entries(CASSETTE_IMAGES)) {
     if (colorLower.includes(key)) {
       return image;
     }
   }
 
-  // Hex color fallback
   if (playerColor.startsWith('#')) {
     const hex = playerColor.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
@@ -56,19 +48,19 @@ const getCassetteImage = (playerColor: string): string => {
     if (g > 150 && b > 150) return cassettePurple;
   }
 
-  return cassetteBlue; // Default fallback
+  return cassetteBlue;
 };
 
-export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
+export const CassettePlayerDisplay = ({
   players,
   currentPlayerId,
-  className = '',
+  className = ''
+}: {
+  players: Player[];
+  currentPlayerId?: string;
+  className?: string;
 }) => {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
-
-  const togglePlayerExpansion = (playerId: string) => {
-    setExpandedPlayer(prev => prev === playerId ? null : playerId);
-  };
 
   return (
     <div className={`fixed bottom-4 left-0 right-0 z-20 px-4 ${className}`}>
@@ -76,29 +68,24 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
         {players.map(player => {
           const isCurrent = player.id === currentPlayerId;
           const isExpanded = expandedPlayer === player.id;
-          const hasCards = player.timeline.length > 0;
 
           return (
             <div 
               key={player.id}
               className={`relative transition-all duration-200 ${isCurrent ? 'z-10' : 'z-0'}`}
             >
-              {/* Cassette Container - 70% size */}
               <div
                 className={`relative cursor-pointer ${isCurrent ? 'scale-105' : 'scale-90 hover:scale-95'}`}
-                onClick={() => togglePlayerExpansion(player.id)}
+                onClick={() => setExpandedPlayer(prev => prev === player.id ? null : player.id)}
               >
-                {/* Cassette Image */}
                 <img
                   src={getCassetteImage(player.color)}
                   alt={`${player.name}'s cassette`}
                   className="w-36 h-24 object-contain drop-shadow-md"
                 />
 
-                {/* Player Info Overlay */}
-                <div className="absolute inset-0 p-1.5 flex flex-col">
-                  {/* Player Name */}
-                  <div className="flex justify-between items-start">
+                <div className="absolute inset-0 flex flex-col justify-end pb-4">
+                  <div className="flex justify-between items-start px-2">
                     <span className="text-black font-bold text-xs max-w-[60px] truncate">
                       {player.name}
                     </span>
@@ -106,24 +93,21 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
                       {player.timeline.length}
                     </span>
                   </div>
-
-                  {/* Progress Bar */}
-                  <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full">
-                    <div
-                      className="h-full bg-black/70 rounded-full transition-all duration-500"
-                      style={{ width: `${(player.timeline.length / 10) * 100}%` }}
-                    />
-                  </div>
                 </div>
 
-                {/* Current Player Indicator */}
+                <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full">
+                  <div
+                    className="h-full bg-black/70 rounded-full transition-all duration-500"
+                    style={{ width: `${(player.timeline.length / 10) * 100}%` }}
+                  />
+                </div>
+
                 {isCurrent && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
                 )}
               </div>
 
-              {/* Expanded Card List */}
-              {isExpanded && hasCards && (
+              {isExpanded && player.timeline.length > 0 && (
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 max-h-52 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 z-30">
                   <div className="sticky top-0 bg-slate-800 py-1 border-b border-slate-700">
                     <h3 className="text-white text-xs font-bold text-center truncate">
