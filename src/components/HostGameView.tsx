@@ -107,97 +107,15 @@ export function RecordPlayerSection({
   );
 }
 
-// Current Player Info - Positioned in center
-interface CurrentPlayerInfoProps {
-  currentPlayer: Player;
-  currentSong: Song | null;
-}
-
-export function CurrentPlayerInfo({ currentPlayer, currentSong }: CurrentPlayerInfoProps) {
-  return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-      <div className="bg-white/12 backdrop-blur-2xl rounded-3xl p-6 shadow-xl max-w-md mx-auto">
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <div 
-            className="w-6 h-6 rounded-full shadow-lg" 
-            style={{ backgroundColor: currentPlayer.color }}
-          />
-          <div className="text-white text-2xl font-semibold">
-            {currentPlayer.name}
-          </div>
-          <div className="bg-white/20 backdrop-blur-xl text-white px-4 py-2 rounded-full text-base font-semibold">
-            {currentPlayer.score}/10
-          </div>
-        </div>
-        
-        <div className="text-white/70 text-lg text-center mb-4">
-          {currentSong ? 
-            "Thinking about where this song fits..." : 
-            "Waiting for the next song..."
-          }
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-full bg-white/20 rounded-full h-2 mb-2">
-          <div 
-            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${(currentPlayer.timeline.length / 10) * 100}%` }}
-          />
-        </div>
-        <div className="text-white/60 text-sm text-center">
-          {currentPlayer.timeline.length}/10 cards placed
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Leaderboard - Positioned on the right side
-interface LeaderboardProps {
-  players: Player[];
-}
-
-export function Leaderboard({ players }: LeaderboardProps) {
-  return (
-    <div className="absolute top-20 right-4 z-30 w-72">
-      <div className="bg-white/12 backdrop-blur-3xl rounded-3xl p-4 border border-white/20 shadow-2xl">
-        <div className="flex items-center gap-3 mb-4">
-          <Trophy className="h-5 w-5 text-yellow-400" />
-          <div className="text-white font-bold text-lg">Leaderboard</div>
-        </div>
-
-        <div className="space-y-2 max-h-80 overflow-y-auto">
-          {players
-            .sort((a, b) => b.score - a.score)
-            .map((player, index) => (
-              <div key={player.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
-                <div className="text-white/70 font-bold text-sm w-4">#{index + 1}</div>
-                <div 
-                  className="w-3 h-3 rounded-full shadow-sm" 
-                  style={{ backgroundColor: player.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-white font-semibold text-sm truncate">{player.name}</div>
-                  <div className="text-white/60 text-xs">{player.timeline.length} cards</div>
-                </div>
-                <div className="text-white font-bold text-lg">{player.score}</div>
-              </div>
-            ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Timeline Display - Positioned on the left side, moved up
+// Timeline Display - Simplified version without blur
 interface TimelineDisplayProps {
   currentPlayer: Player;
 }
 
 export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
   return (
-    <div className="absolute top-80 left-4 z-30 w-80">
-      <div className="bg-white/5 rounded-3xl p-4 border border-white/10 shadow-xl">
+    <div className="absolute top-24 left-4 z-30 w-80">
+      <div className="bg-black/30 rounded-3xl p-4 border border-white/10 shadow-xl">
         <div className="flex items-center gap-3 mb-4">
           <div 
             className="w-5 h-5 rounded-full shadow-lg" 
@@ -213,7 +131,7 @@ export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
             </div>
           ) : (
             currentPlayer.timeline.map((song, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+              <div key={index} className="flex items-center gap-3 p-3 bg-black/20 rounded-xl border border-white/10">
                 <div className="text-white/70 font-bold text-sm w-6">{index + 1}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-white text-sm font-medium truncate">{song.deezer_title}</div>
@@ -231,7 +149,7 @@ export function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
   );
 }
 
-// Main Host Game View - Redesigned Layout
+// Main Host Game View - Simplified Layout
 interface HostGameViewProps {
   currentTurnPlayer: Player;
   currentSong: Song | null;
@@ -269,11 +187,8 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
 
-      {/* Timeline Display - Left Side, moved up */}
+      {/* Timeline Display - Simplified without blur */}
       <TimelineDisplay currentPlayer={currentTurnPlayer} />
-
-      {/* Leaderboard - Right Side */}
-      <Leaderboard players={players} />
 
       {/* Cassette Player Display - Bottom */}
       <div className="absolute bottom-4 left-4 right-4 z-10">
@@ -322,55 +237,6 @@ export function HostGameView({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Alternative Simplified Host Display
-interface HostDisplayProps {
-  currentTurnPlayer: Player;
-  currentSong: Song | null;
-  roomCode: string;
-  players: Player[];
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-}
-
-export function HostDisplay({
-  currentTurnPlayer,
-  currentSong,
-  roomCode,
-  players,
-  mysteryCardRevealed,
-  isPlaying,
-  onPlayPause,
-  cardPlacementResult
-}: HostDisplayProps) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
-      <HostGameBackground />
-      
-      {/* Header */}
-      <HostHeader roomCode={roomCode} playersCount={players.length} />
-
-      {/* Record Player Section - Top Center */}
-      <RecordPlayerSection 
-        currentSong={currentSong}
-        mysteryCardRevealed={mysteryCardRevealed}
-        isPlaying={isPlaying}
-        onPlayPause={onPlayPause}
-        cardPlacementResult={cardPlacementResult}
-      />
-
-      {/* Cassette Player Display - Bottom */}
-      <div className="absolute bottom-4 left-4 right-4 z-10">
-        <CassettePlayerDisplay 
-          players={players} 
-          currentPlayerId={currentTurnPlayer.id}
-        />
-      </div>
     </div>
   );
 }
