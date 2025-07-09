@@ -107,20 +107,20 @@ function HostTimelineCard({ song }: HostTimelineCardProps) {
   
   return (
     <div 
-      className="w-24 h-24 rounded-xl flex flex-col items-center justify-center p-2 text-white font-bold text-center"
+      className="w-36 h-36 rounded-xl flex flex-col items-center justify-center p-2 text-white font-bold text-center"
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 30%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
         boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
       }}
     >
-      <div className="text-xs font-medium mb-1 truncate w-full">
+      <div className="text-sm font-medium mb-1 truncate w-full">
         {song.deezer_title}
       </div>
-      <div className="text-[0.65rem] font-semibold mb-2 truncate w-full">
+      <div className="text-xs font-semibold mb-2 truncate w-full">
         {song.deezer_artist}
       </div>
-      <div className="text-xl font-bold">
+      <div className="text-2xl font-bold">
         {song.release_year}
       </div>
     </div>
@@ -133,9 +133,9 @@ interface HostTimelineDisplayProps {
 
 function HostTimelineDisplay({ currentPlayer }: HostTimelineDisplayProps) {
   return (
-    <div className="flex justify-center items-center gap-3 p-4 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10">
+    <div className="flex justify-center items-center gap-4 p-6 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10">
       {currentPlayer.timeline.length === 0 ? (
-        <div className="text-white/50 italic py-4">
+        <div className="text-white/50 italic py-6 text-lg">
           {currentPlayer.name} hasn't placed any cards yet
         </div>
       ) : (
@@ -143,7 +143,7 @@ function HostTimelineDisplay({ currentPlayer }: HostTimelineDisplayProps) {
           <React.Fragment key={song.id}>
             <HostTimelineCard song={song} />
             {index < currentPlayer.timeline.length - 1 && (
-              <div className="w-6 h-1 bg-white/20 rounded-full" />
+              <div className="w-8 h-1 bg-white/20 rounded-full" />
             )}
           </React.Fragment>
         ))
@@ -185,11 +185,13 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
       
-      <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30">
+      {/* Centered and enlarged timeline */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 w-4/5">
         <HostTimelineDisplay currentPlayer={currentTurnPlayer} />
       </div>
 
-      <div className="absolute bottom-4 left-4 right-4 z-10">
+      {/* 1.5x larger cassette player */}
+      <div className="absolute bottom-4 left-4 right-4 z-10 scale-150 origin-bottom">
         <CassettePlayerDisplay 
           players={players} 
           currentPlayerId={currentTurnPlayer.id}
