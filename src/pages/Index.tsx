@@ -182,13 +182,7 @@ function Index() {
 
           {gamePhase === 'hostLobby' && (
             <HostLobby
-              lobbyCode={room?.lobby_code || ''}
-              players={players}
-              onStartGame={handleStartGame}
-              onBackToMenu={handleBackToMenu}
-              setCustomSongs={setCustomSongs}
-              isLoading={isLoading}
-              createRoom={handleCreateRoom}
+              onGameStart={handleStartGame}
             />
           )}
 

@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player } from '@/types/game';
-import { defaultPlaylistService } from '@/services/defaultPlaylistService';
+import defaultPlaylistService from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface GameLogicState {

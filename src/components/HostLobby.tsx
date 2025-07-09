@@ -1,9 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { Crown, Users, Play, Settings, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { Song } from '@/types/game';
@@ -30,31 +30,22 @@ export function HostLobby({ onGameStart }: HostLobbyProps) {
     removePlayer
   } = useGameRoom();
 
-  const {
-    fetchSongsFromPlaylist,
-    isLoading: isPlaylistLoading,
-    error: playlistError
-  } = useGameLogic();
-
   useEffect(() => {
     if (room) {
       setQrCodeValue(`${window.location.origin}/join/${room.lobby_code}`);
     }
   }, [room]);
 
-  const handlePlaylistLoad = async (playlistUrl: string) => {
-    const songs = await fetchSongsFromPlaylist(playlistUrl);
-    if (songs) {
-      setAvailableSongs(songs);
-      await updateRoomSongs(songs);
+  const handlePlaylistLoad = async (success: boolean, count?: number) => {
+    if (success && count) {
       toast({
         title: "Playlist Loaded",
-        description: `${songs.length} songs loaded from the playlist.`,
+        description: `${count} songs loaded from the playlist.`,
       });
     } else {
       toast({
         title: "Error",
-        description: `Failed to load playlist. ${playlistError || 'Please check the URL and try again.'}`,
+        description: "Failed to load playlist. Please check and try again.",
         variant: "destructive",
       });
     }
