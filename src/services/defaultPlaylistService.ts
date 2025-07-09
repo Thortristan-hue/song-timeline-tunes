@@ -1,163 +1,176 @@
-import defaultPlaylist from '../data/defaultPlaylist.json';
 
-export interface Song {
-  id: string;
-  deezer_title: string;
-  deezer_artist: string;
-  deezer_album: string;
-  release_year: string;
-  genre: string;
-  cardColor: string;
-  preview_url?: string;
-  deezer_url?: string;
-}
+import { Song } from '@/types/game';
+import defaultPlaylist from '@/data/defaultPlaylist.json';
+import { DeezerAudioService } from './DeezerAudioService';
 
-export class defaultPlaylistService {
+/**
+ * Service for managing the default song playlist with performance optimizations
+ */
+class DefaultPlaylistService {
   private songs: Song[] = [];
 
   /**
    * Loads and validates the default playlist with API optimization
    * @returns Promise<Song[]> Array of valid songs
    */
-  async loaddefaultPlaylist(): Promise<Song[]> {
+  async loadDefaultPlaylist(): Promise<Song[]> {
     console.log('🎵 Loading default playlist with performance optimization...');
+    
+    // Initial processing - get all valid songs regardless of preview status
     this.songs = defaultPlaylist
       .filter(item => this.validateSong(item))
       .map(item => this.mapToSong(item));
-    console.log(`✅ Loaded ${this.songs.length} valid songs (previews fetched on-demand)`);
+
+    console.log(`📋 Total valid songs in playlist: ${this.songs.length}`);
+    
+    // PERFORMANCE FIX: Don't fetch previews for all songs - let game logic decide
+    // This prevents the API spam issue by deferring preview fetching
+    console.log(`⚡ PERFORMANCE OPTIMIZATION: Skipping bulk preview fetching to prevent API spam`);
+    console.log(`📊 API CALLS SAVED: Prevented ${this.songs.length} immediate preview requests`);
+    
+    // Return all songs without previews - they'll be fetched on-demand
+    console.log(`✅ Loaded ${this.songs.length} songs (previews will be fetched on-demand to prevent API spam)`);
     return this.songs;
   }
 
   /**
-   * Loads a limited set of songs with previews for immediate game start.
-   * Will keep trying additional songs until we get enough with previews.
+   * Loads a limited set of songs with previews for immediate game start
+   * ENHANCED: Keeps trying additional songs until we get enough with previews
    * @param minSongs Minimum number of songs needed with previews
    * @returns Promise<Song[]> Array of songs with valid previews
    */
   async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
+    console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
+    
+    // Get all valid songs first
     if (this.songs.length === 0) {
-      await this.loaddefaultPlaylist();
+      await this.loadDefaultPlaylist();
     }
-
+    
+    // Shuffle all songs to get random selection
     const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
+    
     const songsWithPreviews: Song[] = [];
     let songsProcessed = 0;
     let successCount = 0;
     let failCount = 0;
-
+    
+    console.log(`🎯 RESILIENT APPROACH: Will keep trying songs until we get ${minSongs} with working previews`);
+    
+    // Keep processing songs until we have enough with previews
     for (const song of shuffledSongs) {
-      if (songsWithPreviews.length >= minSongs) break;
-      if (songsProcessed >= Math.min(80, this.songs.length)) break;
-
+      // Stop if we have enough songs with previews
+      if (songsWithPreviews.length >= minSongs) {
+        break;
+      }
+      
+      // Stop if we've processed too many songs (safety limit - increased to 80)
+      if (songsProcessed >= Math.min(80, this.songs.length)) {
+        console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
+        break;
+      }
+      
       try {
         songsProcessed++;
+        console.log(`🎵 Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
+        
         const songWithPreview = await this.fetchPreviewUrl(song);
         if (songWithPreview.preview_url) {
           songsWithPreviews.push(songWithPreview);
           successCount++;
+          console.log(`✅ Preview ${successCount}/${minSongs}: ${song.deezer_title} by ${song.deezer_artist}`);
         } else {
           failCount++;
+          console.log(`❌ No preview (${failCount} failed): ${song.deezer_title} by ${song.deezer_artist}`);
         }
-      } catch {
+      } catch (error) {
         failCount++;
+        console.log(`❌ Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
       }
     }
+    
+    console.log(`🎯 RESILIENT RESULT: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
+    console.log(`📊 SUCCESS RATE: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
+    console.log(`📊 API EFFICIENCY: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
+    
     return songsWithPreviews;
   }
 
   /**
-   * Pick and remove a random song from the pool.
-   * @returns Song | null
-   */
-  pickAndRemoveRandomSong(): Song | null {
-    if (this.songs.length === 0) return null;
-    const idx = Math.floor(Math.random() * this.songs.length);
-    return this.songs.splice(idx, 1)[0];
-  }
-
-  /**
-   * Pick and remove multiple random songs from the pool.
-   * @param count Number of songs to pick
-   * @returns Song[]
-   */
-  pickAndRemoveMultipleSongs(count: number): Song[] {
-    const picked: Song[] = [];
-    for (let i = 0; i < count && this.songs.length > 0; i++) {
-      const song = this.pickAndRemoveRandomSong();
-      if (song) picked.push(song);
-    }
-    return picked;
-  }
-
-  /**
-   * Just get a random song (does not remove it).
-   * @returns Song | null
-   */
-  getRandomSong(): Song | null {
-    return this.songs.length > 0
-      ? this.songs[Math.floor(Math.random() * this.songs.length)]
-      : null;
-  }
-
-  /**
-   * Get a random song that has a valid preview URL (does not remove it).
-   * @returns Song | null
-   */
-  getRandomSongWithPreview(): Song | null {
-    const songsWithPreviews = this.songs.filter(song => song.preview_url);
-    return songsWithPreviews.length > 0
-      ? songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)]
-      : null;
-  }
-
-  /**
-   * Get the number of songs currently in the pool.
-   * @returns number
-   */
-  getSongsCount(): number {
-    return this.songs.length;
-  }
-
-  /**
-   * Filters valid songs from an array.
+   * Filters valid songs from an array
    * @param songs Array of songs to filter
    * @returns Array of valid songs
    */
   filterValidSongs(songs: Song[]): Song[] {
     return songs.filter(song => {
-      if (!song.release_year || !song.deezer_title || !song.deezer_artist) return false;
+      // Check if song has required fields
+      if (!song.release_year || !song.deezer_title || !song.deezer_artist) {
+        return false;
+      }
+      
+      // Validate release year
       const year = parseInt(song.release_year.toString());
-      return !(isNaN(year) || year < 1900 || year > new Date().getFullYear());
+      if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
+        return false;
+      }
+      
+      return true;
     });
   }
 
   /**
-   * Filters songs that have valid preview URLs.
+   * Filters songs that have valid preview URLs
    * @param songs Array of songs to filter
-   * @returns Array of songs with valid preview URLs
+   * @returns Array of songs with valid previews
    */
-  filterSongsWithPreview(songs: Song[]): Song[] {
-    return songs.filter(song => !!song.preview_url);
+  filterSongsWithPreviews(songs: Song[]): Song[] {
+    return songs.filter(song => song.preview_url && song.preview_url.trim() !== '');
   }
 
   /**
-   * Internal: Validate a song item from the raw playlist data.
-   * @param item
+   * Fetches preview URL for a song (ON-DEMAND to prevent API spam)
+   * @param song Song object
+   * @returns Promise<Song> Song with preview URL if available
    */
+  async fetchPreviewUrl(song: Song): Promise<Song> {
+    try {
+      if (song.preview_url) {
+        return song;
+      }
+
+      // Try to extract track ID from deezer_url if available
+      const deezerUrl = (song as any).deezer_url;
+      if (deezerUrl) {
+        const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
+        if (trackId) {
+          console.log(`🎵 ON-DEMAND FETCH: Getting preview for ${song.deezer_title} (prevents bulk API spam)`);
+          const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          return { ...song, preview_url: previewUrl };
+        }
+      }
+
+      return song;
+    } catch (error) {
+      console.warn(`Failed to fetch on-demand preview for ${song.deezer_title}:`, error);
+      return song;
+    }
+  }
+
   private validateSong(item: any): boolean {
-    return (
-      item &&
-      item.deezer_title &&
-      item.deezer_artist &&
-      item.release_year &&
-      !isNaN(parseInt(item.release_year.toString()))
-    );
+    if (!item.release_year?.toString().trim()) {
+      console.log('⏭️ Skipping song without release year:', item.deezer_title);
+      return false;
+    }
+    
+    const year = parseInt(item.release_year.toString());
+    if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
+      console.log('⏭️ Skipping song with invalid release year:', item.deezer_title, item.release_year);
+      return false;
+    }
+    
+    return true;
   }
 
-  /**
-   * Internal: Map raw playlist item to Song object.
-   * @param item
-   */
   private mapToSong(item: any): Song {
     return {
       id: Math.random().toString(36).substring(2, 11),
@@ -167,39 +180,51 @@ export class defaultPlaylistService {
       release_year: item.release_year.toString(),
       genre: item.genre || 'Unknown',
       cardColor: this.generateCardColor(),
-      preview_url: item.preview_url || undefined,
-      deezer_url: item.deezer_url || undefined,
+      preview_url: item.preview_url || undefined, // Keep existing previews but don't fetch new ones
+      deezer_url: item.deezer_url || undefined
     };
   }
 
-  /**
-   * Internal: Generate a random color string for cards.
-   */
   private generateCardColor(): string {
     const colors = [
-      '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
+      '#3B82F6', '#EF4444', '#10B981', '#F59E0B', 
       '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
     ];
     return colors[Math.floor(Math.random() * colors.length)];
   }
 
+  getSongsCount(): number {
+    return this.songs.length;
+  }
+
+  getRandomSong(): Song | null {
+    return this.songs.length > 0 
+      ? this.songs[Math.floor(Math.random() * this.songs.length)]
+      : null;
+  }
+
   /**
-   * Internal: Simulate fetching a preview URL.
-   * Replace this with real API as needed.
+   * Get a random song that has a valid preview URL (for immediate use)
+   * @returns Song with preview URL or null if none available
    */
-  private async fetchPreviewUrl(song: Song): Promise<Song> {
-    // Simulate async, or replace with real API call
-    return new Promise(resolve => {
-      setTimeout(() => {
-        // Simulate preview_url existing for some songs
-        if (!song.preview_url && Math.random() < 0.7) {
-          song.preview_url = `https://preview.deezer.com/${song.id}`;
-        }
-        resolve(song);
-      }, 30);
-    });
+  getRandomSongWithPreview(): Song | null {
+    const songsWithPreviews = this.songs.filter(song => song.preview_url);
+    return songsWithPreviews.length > 0 
+      ? songsWithPreviews[Math.floor(Math.random() * songsWithPreviews.length)]
+      : null;
+  }
+
+  /**
+   * Get a random song and fetch preview on-demand (prevents API spam)
+   * @returns Promise<Song | null> Song with freshly fetched preview
+   */
+  async getRandomSongWithFreshPreview(): Promise<Song | null> {
+    const randomSong = this.getRandomSong();
+    if (!randomSong) return null;
+    
+    console.log(`🎵 FRESH PREVIEW: Fetching on-demand for ${randomSong.deezer_title} (anti-spam)`);
+    return await this.fetchPreviewUrl(randomSong);
   }
 }
 
-const defaultPlaylistService = new defaultPlaylistService();
-export default defaultPlaylistService;
+export const defaultPlaylistService = new DefaultPlaylistService();
