@@ -6,7 +6,7 @@ import cassetteLightBlue from '@/assets/cassette-lightblue.png';
 import cassetteOrange from '@/assets/cassette-orange.png';
 import cassettePink from '@/assets/cassette-pink.png';
 import cassettePurple from '@/assets/cassette-purple.png';
-import cassetteRed from '@/assets/cassette-red.png';
+import cassetteRed from '@/assets/cassetee-red.png';
 import cassetteYellow from '@/assets/cassette-yellow.png';
 
 interface CassettePlayerDisplayProps {
