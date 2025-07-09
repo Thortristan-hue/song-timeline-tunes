@@ -1,73 +1,82 @@
-# Welcome to your Lovable project
+# Timeliner - Music Timeline Game
 
-## Project info
+A multiplayer music timeline game where players guess when songs were released and organize them chronologically.
 
-**URL**: https://lovable.dev/projects/f0f391ce-3307-4d50-ad92-9e1d2ad743e1
+## Project Structure
 
-## How can I edit this code?
+### Core Files
+- `src/pages/Index.tsx` - Main application entry point and game state management
+- `src/App.tsx` - Application setup with routing and global providers
 
-There are several ways of editing your application.
+### Game Components
+- `src/components/GamePlay.tsx` - Main game orchestration component
+- `src/components/HostVisuals.tsx` - Host display with record player and cassette players
+- `src/components/PlayerVisuals.tsx` - Player view for mobile devices
+- `src/components/VictoryScreen.tsx` - End game celebration screen
 
-**Use Lovable**
+### Host Components
+- `src/components/HostLobby.tsx` - Host lobby for game setup
+- `src/components/HostGameView.tsx` - Host game view wrapper
+- `src/components/CassettePlayerDisplay.tsx` - Cassette tape player icons for host
+- `src/components/RecordMysteryCard.tsx` - Record player with mystery song
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f0f391ce-3307-4d50-ad92-9e1d2ad743e1) and start prompting.
+### Player Components
+- `src/components/MobileJoin.tsx` - Mobile joining screen
+- `src/components/MobilePlayerLobby.tsx` - Mobile lobby view
+- `src/components/PlayerTimeline.tsx` - Player's timeline for placing songs
+- `src/components/MysteryCard.tsx` - Mystery song card component
 
-Changes made via Lovable will be committed automatically to this repo.
+### Game Logic
+- `src/hooks/useGameRoom.tsx` - Room management and real-time sync
+- `src/hooks/useGameLogic.tsx` - Core game mechanics
+- `src/services/gameService.ts` - Database operations
+- `src/services/defaultPlaylistService.ts` - Song playlist management
+- `src/services/DeezerAudioService.ts` - Audio preview handling
 
-**Use your preferred IDE**
+### Styling
+- `src/styles/design-system.css` - Design system with CSS variables
+- `src/styles/animations.css` - Game animations and transitions
+- `src/index.css` - Base styles and Tailwind setup
+- `tailwind.config.ts` - Tailwind configuration
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Assets
+- `src/assets/` - Game images (cassette tapes, record player, record)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Types
+- `src/types/game.ts` - TypeScript interfaces for game objects
 
-Follow these steps:
+## Development Setup
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Install dependencies
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
+
+# Build for production
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+## Technologies Used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **React** - Frontend framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling
+- **Supabase** - Real-time database and backend
+- **shadcn/ui** - UI component library
 
-**Use GitHub Codespaces**
+## Game Features
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Real-time multiplayer gameplay
+- Custom cassette tape player icons for each player
+- Record player mystery card display
+- Audio preview system with Deezer integration
+- Timeline-based song placement mechanics
+- Host/player role separation
+- QR code joining system
 
-## What technologies are used for this project?
+## Deployment
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/f0f391ce-3307-4d50-ad92-9e1d2ad743e1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Deploy via [Lovable](https://lovable.dev/projects/f0f391ce-3307-4d50-ad92-9e1d2ad743e1) by clicking Share → Publish.

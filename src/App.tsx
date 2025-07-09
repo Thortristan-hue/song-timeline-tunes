@@ -1,7 +1,6 @@
 
 import '@/styles/design-system.css';
-import '@/styles/enhanced-animations.css';
-import '@/styles/game-transitions.css';
+import '@/styles/animations.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";

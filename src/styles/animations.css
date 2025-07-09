@@ -1,0 +1,81 @@
+
+/* Consolidated Enhanced Animations & Transitions */
+
+/* Card animations */
+@keyframes card-throw {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  50% { transform: translateY(-30px) scale(1.1); opacity: 0.8; }
+  100% { transform: translateY(100vh) scale(0.8); opacity: 0; }
+}
+
+@keyframes card-placement {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes card-success {
+  0% { box-shadow: 0 0 0 0 #10b981; }
+  70% { box-shadow: 0 0 0 10px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes card-error {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+/* Player transition animations */
+@keyframes playerElevate {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes playerSwap {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  35% { transform: translateY(-30px) scale(1.1); opacity: 0.7; }
+  65% { transform: translateY(20px) scale(0.9); opacity: 0.7; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes timelineExpand {
+  0% { transform: scaleX(0.95); opacity: 0.8; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.5); }
+  100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+}
+
+/* Animation classes */
+.animate-card-throw { animation: card-throw 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-placement { animation: card-placement 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-success { animation: card-success 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-error { animation: card-error 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.player-elevate { animation: playerElevate 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.player-swap { animation: playerSwap 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.timeline-expand { animation: timelineExpand 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.glow-pulse { animation: glowPulse 2s infinite; }
+
+/* Transition utilities */
+.turn-transition { transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.quick-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.smooth-transition { transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Turn transition overlay */
+.turn-transition-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(236, 72, 153, 0.9));
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
