@@ -4,7 +4,6 @@ import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 
-// Background component remains unchanged
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0">
@@ -96,43 +95,59 @@ function RecordPlayerSection({
   );
 }
 
-interface TimelineDisplayProps {
+interface HostTimelineCardProps {
+  song: Song;
+}
+
+function HostTimelineCard({ song }: HostTimelineCardProps) {
+  const artistHash = Array.from(song.deezer_artist).reduce(
+    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
+  );
+  const hue = Math.abs(artistHash) % 360;
+  
+  return (
+    <div 
+      className="w-24 h-24 rounded-xl flex flex-col items-center justify-center p-2 text-white font-bold text-center"
+      style={{ 
+        backgroundColor: `hsl(${hue}, 70%, 30%)`,
+        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+      }}
+    >
+      <div className="text-xs font-medium mb-1 truncate w-full">
+        {song.deezer_title}
+      </div>
+      <div className="text-[0.65rem] font-semibold mb-2 truncate w-full">
+        {song.deezer_artist}
+      </div>
+      <div className="text-xl font-bold">
+        {song.release_year}
+      </div>
+    </div>
+  );
+}
+
+interface HostTimelineDisplayProps {
   currentPlayer: Player;
 }
 
-function TimelineDisplay({ currentPlayer }: TimelineDisplayProps) {
+function HostTimelineDisplay({ currentPlayer }: HostTimelineDisplayProps) {
   return (
-    <div className="absolute top-24 left-4 z-30 w-80">
-      <div className="bg-slate-800/95 rounded-3xl p-4 border border-slate-700 shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div 
-            className="w-5 h-5 rounded-full shadow-lg" 
-            style={{ backgroundColor: currentPlayer.color }}
-          />
-          <div className="text-white font-bold text-lg">{currentPlayer.name}'s Timeline</div>
+    <div className="flex justify-center items-center gap-3 p-4 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10">
+      {currentPlayer.timeline.length === 0 ? (
+        <div className="text-white/50 italic py-4">
+          {currentPlayer.name} hasn't placed any cards yet
         </div>
-
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {currentPlayer.timeline.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-white/50 text-sm">No cards placed yet</div>
-            </div>
-          ) : (
-            currentPlayer.timeline.map((song, index) => (
-              <div key={`${song.id}-${index}`} className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl">
-                <div className="text-white/70 font-bold text-sm w-6">{index + 1}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm font-medium truncate">{song.deezer_title}</div>
-                  <div className="text-white/70 text-xs truncate">{song.deezer_artist}</div>
-                </div>
-                <div className="bg-white/20 text-white text-xs px-2 py-1 rounded-full font-bold">
-                  {song.release_year}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      ) : (
+        currentPlayer.timeline.map((song, index) => (
+          <React.Fragment key={song.id}>
+            <HostTimelineCard song={song} />
+            {index < currentPlayer.timeline.length - 1 && (
+              <div className="w-6 h-1 bg-white/20 rounded-full" />
+            )}
+          </React.Fragment>
+        ))
+      )}
     </div>
   );
 }
@@ -169,8 +184,11 @@ export function HostGameView({
         onPlayPause={onPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
-      <TimelineDisplay currentPlayer={currentTurnPlayer} />
       
+      <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-30">
+        <HostTimelineDisplay currentPlayer={currentTurnPlayer} />
+      </div>
+
       <div className="absolute bottom-4 left-4 right-4 z-10">
         <CassettePlayerDisplay 
           players={players} 
