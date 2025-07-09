@@ -15,6 +15,10 @@ export function useGameRoom() {
   
   const hostSessionId = useRef<string | null>(null);
   const playerSessionId = useRef<string | null>(null);
+  const subscriptionChannel = useRef<any>(null);
+  const retryAttempts = useRef<number>(0);
+  const maxRetries = 5;
+  const retryDelay = 2000; // 2 seconds
 
   // Generate session ID
   const generateSessionId = () => {
@@ -83,66 +87,136 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost]);
 
-  // Subscribe to room changes with synchronized turn state
+  // Subscription retry logic
+  const setupSubscription = useCallback(async (roomId: string, attemptNumber: number = 0) => {
+    try {
+      console.log(`🔄 Setting up subscription attempt ${attemptNumber + 1}/${maxRetries} for room:`, roomId);
+
+      // Cleanup existing subscription
+      if (subscriptionChannel.current) {
+        console.log('🧹 Cleaning up existing subscription');
+        await supabase.removeChannel(subscriptionChannel.current);
+        subscriptionChannel.current = null;
+      }
+
+      const channel = supabase
+        .channel(`room-${roomId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'game_rooms',
+          filter: `id=eq.${roomId}`
+        }, (payload) => {
+          console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
+          const roomData = payload.new as any;
+          
+          // CRITICAL FIX: Properly cast current_song from Json to Song
+          let currentSong: Song | null = null;
+          if (roomData.current_song) {
+            // Cast from Json to Song with proper type assertion
+            currentSong = roomData.current_song as unknown as Song;
+          }
+          console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
+          
+          setRoom({
+            id: roomData.id,
+            lobby_code: roomData.lobby_code,
+            host_id: roomData.host_id,
+            host_name: roomData.host_name || '',
+            phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+            songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
+            created_at: roomData.created_at,
+            updated_at: roomData.updated_at,
+            current_turn: roomData.current_turn,
+            current_song: currentSong,
+            current_player_id: roomData.current_player_id || null
+          });
+
+          // Reset retry attempts on successful update
+          retryAttempts.current = 0;
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `room_id=eq.${roomId}`
+        }, (payload) => {
+          console.log('🎮 Player change detected:', payload);
+          fetchPlayers(roomId);
+          
+          // Reset retry attempts on successful update
+          retryAttempts.current = 0;
+        })
+        .subscribe((status, err) => {
+          console.log('📡 Subscription status:', status, err);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to room updates');
+            retryAttempts.current = 0;
+            subscriptionChannel.current = channel;
+            
+            // Initial fetch
+            fetchPlayers(roomId);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.error('❌ Subscription failed with status:', status, err);
+            
+            // Retry logic
+            if (attemptNumber < maxRetries - 1) {
+              const delay = retryDelay * Math.pow(2, attemptNumber); // Exponential backoff
+              console.log(`🔄 Retrying subscription in ${delay}ms (attempt ${attemptNumber + 2}/${maxRetries})`);
+              
+              setTimeout(() => {
+                setupSubscription(roomId, attemptNumber + 1);
+              }, delay);
+            } else {
+              console.error('❌ Max subscription retry attempts reached');
+              setError('Connection lost. Please refresh the page.');
+              toast({
+                title: "Connection Error",
+                description: "Lost connection to the game. Please refresh the page.",
+                variant: "destructive",
+              });
+            }
+          }
+        });
+
+    } catch (error) {
+      console.error('❌ Failed to setup subscription:', error);
+      
+      // Retry on error
+      if (attemptNumber < maxRetries - 1) {
+        const delay = retryDelay * Math.pow(2, attemptNumber);
+        console.log(`🔄 Retrying subscription in ${delay}ms due to error (attempt ${attemptNumber + 2}/${maxRetries})`);
+        
+        setTimeout(() => {
+          setupSubscription(roomId, attemptNumber + 1);
+        }, delay);
+      } else {
+        setError('Failed to connect to the game. Please refresh the page.');
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to the game. Please refresh the page.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [fetchPlayers, toast]);
+
+  // Subscribe to room changes with retry logic
   useEffect(() => {
     if (!room?.id) return;
 
-    console.log('🔄 Setting up real-time subscriptions for room:', room.id);
-
-    const channel = supabase
-      .channel(`room-${room.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'game_rooms',
-        filter: `id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
-        const roomData = payload.new as any;
-        
-        // CRITICAL FIX: Properly cast current_song from Json to Song
-        let currentSong: Song | null = null;
-        if (roomData.current_song) {
-          // Cast from Json to Song with proper type assertion
-          currentSong = roomData.current_song as unknown as Song;
-        }
-        console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
-        
-        setRoom({
-          id: roomData.id,
-          lobby_code: roomData.lobby_code,
-          host_id: roomData.host_id,
-          host_name: roomData.host_name || '',
-          phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-          songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
-          created_at: roomData.created_at,
-          updated_at: roomData.updated_at,
-          current_turn: roomData.current_turn,
-          current_song: currentSong,
-          current_player_id: roomData.current_player_id || null
-        });
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'players',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🎮 Player change detected:', payload);
-        fetchPlayers(room.id);
-      })
-      .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
-      });
-
-    // Initial fetch
-    fetchPlayers(room.id);
+    console.log('🔄 Initializing subscription for room:', room.id);
+    setupSubscription(room.id);
 
     return () => {
       console.log('🔄 Cleaning up subscriptions');
-      channel.unsubscribe();
+      if (subscriptionChannel.current) {
+        supabase.removeChannel(subscriptionChannel.current);
+        subscriptionChannel.current = null;
+      }
     };
-  }, [room?.id, fetchPlayers]);
+  }, [room?.id, setupSubscription]);
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
     try {
@@ -388,6 +462,13 @@ export function useGameRoom() {
   }, [room, isHost]);
 
   const leaveRoom = useCallback(async () => {
+    // Cleanup subscription
+    if (subscriptionChannel.current) {
+      console.log('🧹 Cleaning up subscription on leave');
+      await supabase.removeChannel(subscriptionChannel.current);
+      subscriptionChannel.current = null;
+    }
+
     // Only delete player record if this is a non-host player
     if (currentPlayer && !isHost) {
       await supabase
@@ -400,8 +481,10 @@ export function useGameRoom() {
     setPlayers([]);
     setCurrentPlayer(null);
     setIsHost(false);
+    setError(null);
     hostSessionId.current = null;
     playerSessionId.current = null;
+    retryAttempts.current = 0;
   }, [currentPlayer, isHost]);
 
   const setCurrentSong = useCallback(async (song: Song): Promise<void> => {
