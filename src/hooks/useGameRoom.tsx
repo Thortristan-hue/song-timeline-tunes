@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -454,6 +453,38 @@ export function useGameRoom() {
     }
   }, [room, isHost, players, fetchPlayers]);
 
+  const removePlayer = useCallback(async (playerId: string): Promise<boolean> => {
+    if (!room || !isHost) {
+      console.error('Cannot remove player: not host or no room');
+      return false;
+    }
+
+    try {
+      console.log('🗑️ Removing player:', playerId);
+      
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId)
+        .eq('room_id', room.id);
+
+      if (error) {
+        console.error('❌ Failed to remove player:', error);
+        throw error;
+      }
+
+      console.log('✅ Player removed successfully');
+      
+      // Remove from local state immediately
+      setPlayers(prev => prev.filter(p => p.id !== playerId));
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to remove player:', error);
+      return false;
+    }
+  }, [room, isHost]);
+
   return {
     room,
     players,
@@ -469,6 +500,7 @@ export function useGameRoom() {
     leaveRoom,
     placeCard,
     setCurrentSong,
-    assignStartingCards
+    assignStartingCards,
+    removePlayer
   };
 }
