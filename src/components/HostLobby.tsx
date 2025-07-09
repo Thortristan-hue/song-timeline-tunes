@@ -1,275 +1,286 @@
-import React, { useEffect, useState } from 'react';
-import { Crown, Users, Play, Settings, QrCode } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useGameRoom } from '@/hooks/useGameRoom';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Song } from '@/types/game';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2 } from 'lucide-react';
+import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface HostLobbyProps {
-  onGameStart: () => void;
+  lobbyCode: string;
+  players: Player[];
+  onStartGame: () => Promise<void>;
+  onBackToMenu: () => void;
+  setCustomSongs: (songs: Song[]) => void;
+  isLoading: boolean;
+  createRoom: () => Promise<boolean>;
 }
 
-export function HostLobby({ onGameStart }: HostLobbyProps) {
+export function HostLobby({
+  lobbyCode,
+  players,
+  onStartGame,
+  onBackToMenu,
+  setCustomSongs,
+  isLoading,
+  createRoom
+}: HostLobbyProps) {
   const { toast } = useToast();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [availableSongs, setAvailableSongs] = useState<Song[]>([]);
-  const [qrCodeValue, setQrCodeValue] = useState('');
+  const soundEffects = useSoundEffects();
+  const [copied, setCopied] = useState(false);
+  const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
 
-  const {
-    room,
-    players,
-    isLoading,
-    updateRoomSongs,
-    startGame,
-    assignStartingCards,
-    removePlayer
-  } = useGameRoom();
+  // Debug logging for player updates
+  useEffect(() => {
+    console.log('🧍 HostLobby: Players updated:', players);
+    console.log('🧍 HostLobby: Player count:', players.length);
+  }, [players]);
 
   useEffect(() => {
-    if (room) {
-      setQrCodeValue(`${window.location.origin}/join/${room.lobby_code}`);
+    if (!roomCreated && !isLoading) {
+      handleCreateRoom();
     }
-  }, [room]);
+  }, [roomCreated, isLoading]);
 
-  const handlePlaylistLoad = async (success: boolean, count?: number) => {
-    if (success && count) {
-      toast({
-        title: "Playlist Loaded",
-        description: `${count} songs loaded from the playlist.`,
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to load playlist. Please check and try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleGameStart = async () => {
-    if (availableSongs.length < 3) {
-      toast({
-        title: "Error",
-        description: "You need at least 3 songs to start the game.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const success = await startGame(availableSongs);
+  const handleCreateRoom = async () => {
+    console.log('🏠 Creating room...');
+    const success = await createRoom();
     if (success) {
-      await assignStartingCards(availableSongs);
-      toast({
-        title: "Game Started",
-        description: "The game has started!",
-      });
-      onGameStart();
+      setRoomCreated(true);
+      soundEffects.playGameStart();
+      console.log('✅ Room created successfully');
     } else {
+      console.error('❌ Failed to create room');
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(lobbyCode);
+      setCopied(true);
+      soundEffects.playButtonClick();
       toast({
-        title: "Error",
-        description: "Failed to start the game. Please try again.",
+        title: "Copied!",
+        description: "Room code copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Copy failed",
+        description: "Please copy the code manually",
         variant: "destructive",
       });
     }
   };
 
-  const handleRemovePlayer = async (playerId: string) => {
-    const success = await removePlayer(playerId);
-    if (success) {
-      toast({
-        title: "Player Removed",
-        description: "Player has been successfully removed from the lobby.",
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to remove player. Please try again.",
-        variant: "destructive",
-      });
+  // Play sound when players join
+  useEffect(() => {
+    if (players.length > 0) {
+      soundEffects.playPlayerJoin();
     }
-  };
+  }, [players.length, soundEffects]);
 
-  // Show loading if room is not ready yet
-  if (!room && isLoading) {
+  if (!roomCreated || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        </div>
+      <div className="min-h-screen bg-gray-900 relative overflow-hidden flex items-center justify-center">
+        <div className="absolute inset-0 bg-gray-800"></div>
+        
         <div className="text-center text-white relative z-10">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
-            <Crown className="w-8 h-8 text-yellow-400 animate-pulse" />
+          <div className="w-20 h-20 bg-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-gray-600">
+            <Music2 className="h-10 w-10 text-white animate-bounce" />
           </div>
-          <div className="text-2xl font-semibold mb-2">Creating your lobby...</div>
-          <div className="text-white/60 max-w-md mx-auto">Setting up the host environment</div>
+          <div className="text-3xl font-semibold mb-3">Setting up your room</div>
+          <div className="text-gray-400">This'll just take a second...</div>
         </div>
       </div>
     );
   }
 
-  // Show error state if room creation failed
-  if (!room && !isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10">
-          <div className="w-16 h-16 bg-red-500/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-red-500/20">
-            <Crown className="w-8 h-8 text-red-400" />
-          </div>
-          <div className="text-2xl font-semibold mb-2 text-red-400">Failed to create lobby</div>
-          <div className="text-white/60 max-w-md mx-auto mb-6">There was an issue setting up your game room</div>
-          <Button 
-            onClick={() => window.location.reload()}
-            className="bg-red-500 hover:bg-red-600 text-white"
-          >
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-      </div>
+    <div className="min-h-screen bg-gray-900 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gray-800"></div>
       
-      <div className="relative z-10 p-8">
+      <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-              <Crown className="w-6 h-6 text-yellow-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Host Lobby</h1>
-              <p className="text-white/60">Room Code: {room.lobby_code}</p>
-            </div>
+        <div className="flex justify-between items-center p-6 sm:p-8">
+          <Button
+            onClick={() => {
+              soundEffects.playButtonClick();
+              onBackToMenu();
+            }}
+            variant="outline"
+            className="border-gray-600 text-white hover:bg-gray-700 rounded-2xl transition-all duration-300 hover:scale-105 active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          
+          <div className="text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Room Setup</h1>
+            <p className="text-gray-400 text-sm">Get ready to play with friends</p>
           </div>
           
-          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-gray-900 border-gray-700">
-              <DialogHeader>
-                <DialogTitle className="text-white">Game Settings</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <PlaylistLoader
-                  onPlaylistLoaded={(success, count) => {
-                    handlePlaylistLoad(success, count);
-                    if (success) {
-                      updateRoomSongs(availableSongs);
-                    }
-                  }}
-                  setCustomSongs={(songs) => {
-                    setAvailableSongs(songs);
-                  }}
-                  isDarkMode={true}
-                  minSongsRequired={3}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
+          <div className="w-20" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* QR Code Section */}
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
-            <div className="text-center">
-              <QrCode className="w-8 h-8 text-blue-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-white mb-2">Join the Game</h2>
-              <p className="text-white/60 mb-6">Scan this QR code or use room code: <span className="font-mono text-white">{room.lobby_code}</span></p>
-              
-              {qrCodeValue && (
-                <div className="bg-white p-4 rounded-xl inline-block">
-                  <QRCodeGenerator value={qrCodeValue} size={200} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Players Section */}
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
-            <div className="flex items-center gap-3 mb-6">
-              <Users className="w-6 h-6 text-green-400" />
-              <h2 className="text-xl font-semibold text-white">Players ({players.length})</h2>
-            </div>
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl w-full">
             
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {players.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-white/40 mb-2">No players yet</div>
-                  <div className="text-sm text-white/30">Share the room code to get started!</div>
-                </div>
-              ) : (
-                players.map((player) => (
-                  <div key={player.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 group">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: player.color }}
-                      />
-                      <span className="text-white font-medium">{player.name}</span>
+            {/* Left Column - Room Info & Controls */}
+            <div className="space-y-6">
+              
+              {/* Room Code Card */}
+              <Card className="bg-gray-800 border-gray-700 p-6 sm:p-8 rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500 hover:scale-[1.02]">
+                <div className="text-center space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-white mb-2">Room Code</h2>
+                    <p className="text-gray-400 text-sm">Your friends need this to join</p>
+                  </div>
+                  
+                  <div className="relative group">
+                    <div className="bg-white text-black text-3xl sm:text-4xl font-bold font-mono px-6 py-4 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg">
+                      {lobbyCode}
                     </div>
+                    
                     <Button
-                      variant="ghost"
+                      onClick={copyToClipboard}
                       size="sm"
-                      onClick={() => handleRemovePlayer(player.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      className="absolute -top-2 -right-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95"
                     >
-                      ✕
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
-                ))
-              )}
+                  
+                  {/* QR Code */}
+                  <div className="flex justify-center pt-4">
+                    <div className="p-4 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105">
+                      <QRCodeGenerator 
+                        value={gameUrl}
+                        size={120}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-gray-500 text-xs">Or scan to join instantly</p>
+                </div>
+              </Card>
+
+              {/* Playlist Section */}
+              <Card className="bg-gray-800 border-gray-700 p-6 rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-4">
+                  <Music2 className="h-5 w-5 text-white" />
+                  <h3 className="text-lg font-semibold text-white">Music</h3>
+                </div>
+                
+                <div className="bg-green-900/30 border border-green-700/50 rounded-2xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <div>
+                      <div className="text-white font-medium">Default playlist ready</div>
+                      <div className="text-green-300/80 text-sm">Mix of popular songs from different eras</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 opacity-30 pointer-events-none">
+                  <PlaylistLoader
+                    onPlaylistLoaded={(success, count) => {
+                      if (success) {
+                        console.log(`Playlist loaded with ${count} songs`);
+                      }
+                    }}
+                    setCustomSongs={setCustomSongs}
+                    isDarkMode={true}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Custom playlists coming in a future update
+                </p>
+              </Card>
+
+              {/* Start Game Button */}
+              <Button
+                onClick={() => {
+                  console.log('🎮 Starting game with players:', players);
+                  soundEffects.playGameStart();
+                  onStartGame();
+                }}
+                disabled={players.length < 1}
+                className="w-full bg-white text-black hover:bg-gray-200 h-16 text-lg font-semibold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+              >
+                <Play className="h-5 w-5 mr-3" />
+                {players.length < 1 ? 'Waiting for players to join...' : `Start game with ${players.length} ${players.length === 1 ? 'player' : 'players'}`}
+              </Button>
+            </div>
+
+            {/* Right Column - Players */}
+            <div>
+              <Card className="bg-gray-800 border-gray-700 p-6 h-full rounded-3xl shadow-2xl hover:bg-gray-750 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-6">
+                  <Users className="h-5 w-5 text-white" />
+                  <h3 className="text-lg font-semibold text-white">
+                    Players joined ({players.length})
+                  </h3>
+                  {players.length > 0 && (
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  )}
+                </div>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {players.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="h-8 w-8 text-gray-500" />
+                      </div>
+                      <p className="text-gray-300 text-lg mb-2">Waiting for friends to join</p>
+                      <p className="text-gray-500 text-sm">
+                        Share the room code above
+                      </p>
+                    </div>
+                  ) : (
+                    players.map((player, index) => (
+                      <div
+                        key={player.id}
+                        className="flex items-center gap-4 p-4 bg-gray-700 rounded-2xl transition-all duration-300 hover:bg-gray-600 transform hover:scale-[1.02]"
+                      >
+                        <div className="text-lg font-semibold text-gray-400">
+                          {index + 1}
+                        </div>
+                        
+                        <div 
+                          className="w-4 h-4 rounded-full shadow-sm"
+                          style={{ backgroundColor: player.color }}
+                        />
+                        
+                        <div className="flex-1">
+                          <div className="text-white font-medium">
+                            {player.name}
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            Ready to play
+                          </div>
+                        </div>
+                        
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
             </div>
           </div>
         </div>
 
-        {/* Game Controls */}
-        <div className="mt-8 text-center">
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 inline-block">
-            <div className="mb-6">
-              <div className="text-white/60 mb-2">Songs loaded: {availableSongs.length}</div>
-              <div className="text-white/60 mb-4">Players: {players.length}</div>
-            </div>
-            
-            <div className="space-y-4">
-              <Button
-                onClick={() => setIsSettingsOpen(true)}
-                variant="outline"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 mr-4"
-              >
-                Load Playlist
-              </Button>
-              
-              <Button
-                onClick={handleGameStart}
-                disabled={availableSongs.length < 3 || players.length === 0}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Play className="w-5 h-5 mr-2" />
-                Start Game
-              </Button>
-            </div>
-            
-            {(availableSongs.length < 3 || players.length === 0) && (
-              <div className="text-sm text-white/40 mt-4">
-                {availableSongs.length < 3 && "Load at least 3 songs to start. "}
-                {players.length === 0 && "Need at least 1 player to start."}
-              </div>
-            )}
-          </div>
+        {/* Footer disclaimer */}
+        <div className="p-6 text-center">
+          <p className="text-gray-500 text-xs max-w-md mx-auto">
+            Independent project for friends • Not affiliated with any music service
+          </p>
         </div>
       </div>
     </div>

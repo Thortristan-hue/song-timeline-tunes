@@ -1,7 +1,5 @@
-
 import React, { useState } from 'react';
 import { Player } from '@/types/game';
-import { X } from 'lucide-react';
 
 // Import cassette images
 import cassetteBlue from '@/assets/cassette-blue.png';
@@ -17,8 +15,6 @@ interface CassettePlayerDisplayProps {
   players: Player[];
   currentPlayerId?: string;
   className?: string;
-  isHost?: boolean;
-  onRemovePlayer?: (playerId: string) => void;
 }
 
 const CASSETTE_IMAGES: Record<string, string> = {
@@ -67,24 +63,11 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
   players,
   currentPlayerId,
   className = '',
-  isHost = false,
-  onRemovePlayer,
 }) => {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const togglePlayerExpansion = (playerId: string) => {
     setExpandedPlayer(prev => prev === playerId ? null : playerId);
-  };
-
-  const handleRemovePlayer = (e: React.MouseEvent, player: Player) => {
-    e.stopPropagation(); // Prevent expansion toggle
-    
-    if (!onRemovePlayer) return;
-    
-    const confirmed = window.confirm(`Remove ${player.name} from the lobby?`);
-    if (confirmed) {
-      onRemovePlayer(player.id);
-    }
   };
 
   return (
@@ -111,17 +94,6 @@ export const CassettePlayerDisplay: React.FC<CassettePlayerDisplayProps> = ({
                   alt={`${player.name}'s cassette`}
                   className="w-36 h-24 object-contain drop-shadow-md"
                 />
-
-                {/* Remove Button - Only visible to host */}
-                {isHost && onRemovePlayer && (
-                  <button
-                    onClick={(e) => handleRemovePlayer(e, player)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center border-2 border-white shadow-lg transition-colors z-10"
-                    title={`Remove ${player.name}`}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
 
                 {/* Player Info Overlay */}
                 <div className="absolute inset-0 p-1.5 flex flex-col">

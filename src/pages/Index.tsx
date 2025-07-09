@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -42,8 +43,7 @@ function Index() {
     roomPhase: room?.phase,
     isHost,
     playersCount: players.length,
-    currentPlayer: currentPlayer?.name,
-    hasRoom: !!room
+    currentPlayer: currentPlayer?.name
   });
 
   // Check for auto-join from URL parameters (QR code)
@@ -88,22 +88,15 @@ function Index() {
 
   const handleCreateRoom = async (): Promise<boolean> => {
     try {
-      console.log('🏠 Starting room creation...');
       const lobbyCode = await createRoom('Host');
-      console.log('🏠 Room creation result:', { lobbyCode, hasRoom: !!room });
-      
       if (lobbyCode) {
-        // Wait a moment for room state to be set
-        setTimeout(() => {
-          setGamePhase('hostLobby');
-          soundEffects.playGameStart();
-        }, 100);
+        setGamePhase('hostLobby');
+        soundEffects.playGameStart();
         return true;
       }
-      console.error('❌ Room creation failed - no lobby code returned');
       return false;
     } catch (error) {
-      console.error('❌ Failed to create room:', error);
+      console.error('Failed to create room:', error);
       return false;
     }
   };
@@ -182,14 +175,20 @@ function Index() {
         <div className="min-h-screen">
           {gamePhase === 'menu' && (
             <MainMenu
-              onCreateRoom={handleCreateRoom}
+              onCreateRoom={() => setGamePhase('hostLobby')}
               onJoinRoom={() => setGamePhase('mobileJoin')}
             />
           )}
 
           {gamePhase === 'hostLobby' && (
             <HostLobby
-              onGameStart={handleStartGame}
+              lobbyCode={room?.lobby_code || ''}
+              players={players}
+              onStartGame={handleStartGame}
+              onBackToMenu={handleBackToMenu}
+              setCustomSongs={setCustomSongs}
+              isLoading={isLoading}
+              createRoom={handleCreateRoom}
             />
           )}
 

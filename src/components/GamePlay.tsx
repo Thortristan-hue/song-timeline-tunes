@@ -6,7 +6,7 @@ import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { GameService } from '@/services/gameService';
-import defaultPlaylistService from '@/services/defaultPlaylistService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 
 interface GamePlayProps {
   room: any;
@@ -375,8 +375,14 @@ export function GamePlay({
     return (
       <div className="relative">
         <HostGameView
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={currentMysteryCard}
           roomCode={room.lobby_code}
           players={activePlayers}
+          mysteryCardRevealed={mysteryCardRevealed}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          cardPlacementResult={cardPlacementResult}
         />
       </div>
     );
@@ -399,20 +405,33 @@ export function GamePlay({
 
   return (
     <div className="relative">
-      {currentPlayer && (
-        <PlayerGameView
-          currentPlayer={currentPlayer}
+      {isHost ? (
+        <HostGameView
           currentTurnPlayer={currentTurnPlayer}
           currentSong={currentMysteryCard}
           roomCode={room.lobby_code}
-          isMyTurn={isMyTurn}
+          players={activePlayers}
+          mysteryCardRevealed={mysteryCardRevealed}
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
-          onPlaceCard={handlePlaceCard}
-          mysteryCardRevealed={mysteryCardRevealed}
           cardPlacementResult={cardPlacementResult}
-          gameEnded={gameEnded}
         />
+      ) : (
+        currentPlayer && (
+          <PlayerGameView
+            currentPlayer={currentPlayer}
+            currentTurnPlayer={currentTurnPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            isMyTurn={isMyTurn}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={handlePlaceCard}
+            mysteryCardRevealed={mysteryCardRevealed}
+            cardPlacementResult={cardPlacementResult}
+            gameEnded={gameEnded}
+          />
+        )
       )}
     </div>
   );

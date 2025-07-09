@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Music, Loader2, AlertCircle, CheckCircle, Radio, RefreshCw } from 'lucide-react';
 import { Song } from '@/types/game';
-import defaultPlaylistService from '@/services/defaultPlaylistService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { soundEffects } from '@/lib/SoundEffects';
