@@ -12,14 +12,14 @@ export interface Song {
   deezer_url?: string;
 }
 
-export class DefaultPlaylistService {
+export class defaultPlaylistService {
   private songs: Song[] = [];
 
   /**
    * Loads and validates the default playlist with API optimization
    * @returns Promise<Song[]> Array of valid songs
    */
-  async loadDefaultPlaylist(): Promise<Song[]> {
+  async loaddefaultPlaylist(): Promise<Song[]> {
     console.log('🎵 Loading default playlist with performance optimization...');
     this.songs = defaultPlaylist
       .filter(item => this.validateSong(item))
@@ -36,7 +36,7 @@ export class DefaultPlaylistService {
    */
   async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
     if (this.songs.length === 0) {
-      await this.loadDefaultPlaylist();
+      await this.loaddefaultPlaylist();
     }
 
     const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
@@ -201,5 +201,5 @@ export class DefaultPlaylistService {
   }
 }
 
-const defaultPlaylistService = new DefaultPlaylistService();
+const defaultPlaylistService = new defaultPlaylistService();
 export default defaultPlaylistService;
