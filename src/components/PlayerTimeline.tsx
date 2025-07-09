@@ -299,7 +299,7 @@ export function PlayerTimeline({
     return (
       <div
         key={`${player.id}-card-${index}`}
-        className={cn(
+ className={cn(
           "relative w-32 h-40 rounded-3xl flex flex-col items-center justify-center p-4 text-white transition-all duration-300 hover:scale-105 hover:-translate-y-1 cursor-pointer group",
           "bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/10 shadow-2xl",
           isPendingPosition && "ring-2 ring-blue-400 ring-opacity-50",
@@ -307,24 +307,24 @@ export function PlayerTimeline({
         )}
         onClick={() => !gameEnded && playTimelineSong(song)}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl" />
+ <div className="absolute inset-0 rounded-3xl" />
         
         {/* Play button overlay - hide when game ended */}
         {!gameEnded && (
-          <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <Play className="h-8 w-8 text-white" />
+ <div className="absolute inset-0 rounded-3xl flex items-center justify-center group-hover: duration-200">
+ <Play className="h-8 w-8 text-white" />
           </div>
         )}
         
-        <Music className="h-8 w-8 mb-3 opacity-70" />
-        <div className="text-center relative z-10 space-y-1">
-          <div className="font-semibold text-sm leading-tight tracking-tight">
+ <Music className="h-8 w-8 mb-3" />
+ <div className="text-center relative space-y-1">
+ <div className="font-semibold text-sm leading-tight tracking-tight">
             {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
           </div>
-          <div className="text-xs opacity-60 font-medium">
+ <div className="text-xs font-medium">
             {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
           </div>
-          <div className="text-xl font-bold mt-2 bg-white/10 rounded-full px-2 py-1">
+ <div className="text-xl font-bold mt-2 rounded-full px-2 py-1">
             {song.release_year}
           </div>
         </div>
@@ -340,7 +340,7 @@ export function PlayerTimeline({
     return (
       <div
         key={`drop-zone-${position}`}
-        className={cn(
+ className={cn(
           "w-20 h-36 rounded-3xl transition-all duration-300 mx-3 flex items-center justify-center",
           "touch-manipulation cursor-pointer backdrop-blur-xl border",
           gameEnded ? "opacity-50 pointer-events-none" :
@@ -370,12 +370,12 @@ export function PlayerTimeline({
         }}
       >
         {draggedSong && isCurrent && !isPending && !gameEnded && (
-          <div className="text-white/80 text-xs font-medium text-center leading-tight">
+ <div className="text-white/80 text-xs font-medium text-center leading-tight">
             {isActiveSnap ? 'Centered\nGap' : 'Drop\nhere'}
           </div>
         )}
         {isPending && !gameEnded && (
-          <div className="text-blue-200 text-xs font-medium text-center leading-tight">
+ <div className="text-blue-200 text-xs font-medium text-center leading-tight">
             Confirm<br />placement
           </div>
         )}
@@ -387,7 +387,7 @@ export function PlayerTimeline({
 
   return (
     <div 
-      className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-25 w-full max-w-7xl px-6"
+ className="fixed bottom-8 left-1/2 - w-full max-w-7xl px-6"
       style={{
         transform: `translateX(-50%)`,
         transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -396,32 +396,32 @@ export function PlayerTimeline({
     >
       {/* ANTI-SPAM: Enhanced confirmation dialog */}
       {placementPending && !gameEnded && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-600/50 max-w-md w-full mx-4 transform scale-100 animate-in fade-in-0 zoom-in-95 duration-300">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Music className="h-8 w-8 text-blue-400" />
+ <div className="fixed inset-0 flex items-center justify-center p-4">
+ <div className="rounded-3xl p-8 max-w-md w-full mx-4 animate-in fade-in-0 zoom-in-95 duration-300">
+ <div className="text-center mb-8">
+ <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+ <Music className="h-8 w-8 text-blue-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
-              <p className="text-slate-300 mb-4">Are you sure you want to place the card in this position?</p>
+ <h2 className="text-2xl font-bold text-white mb-3">Confirm Placement</h2>
+ <p className="text-slate-300 mb-4">Are you sure you want to place the card in this position?</p>
               
               {/* ANTI-SPAM: Visual feedback when processing */}
               {isPlacingCard && (
-                <div className="flex items-center justify-center gap-2 text-blue-400 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+ <div className="flex items-center justify-center gap-2 text-blue-400 text-sm">
+ <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Processing placement...</span>
                 </div>
               )}
             </div>
             
-            <div className="flex gap-4">
+ <div className="flex gap-4">
               <Button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleConfirmClick();
                 }}
                 disabled={isPlacingCard}
-                className={cn(
+ className={cn(
                   "flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-lg hover:shadow-green-500/25 transition-all duration-200 transform hover:scale-105",
                   isPlacingCard && "opacity-50 cursor-not-allowed"
                 )}
@@ -429,12 +429,12 @@ export function PlayerTimeline({
               >
                 {isPlacingCard ? (
                   <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+ <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                     Processing...
                   </>
                 ) : (
                   <>
-                    <Check className="h-5 w-5 mr-2" />
+ <Check className="h-5 w-5 mr-2" />
                     Confirm
                   </>
                 )}
@@ -446,13 +446,13 @@ export function PlayerTimeline({
                 }}
                 disabled={isPlacingCard}
                 variant="outline"
-                className={cn(
+ className={cn(
                   "flex-1 border-2 border-slate-500 text-white hover:bg-slate-700/50 font-bold py-4 px-6 rounded-xl text-lg shadow-lg transition-all duration-200 transform hover:scale-105",
                   isPlacingCard && "opacity-50 cursor-not-allowed"
                 )}
                 size="lg"
               >
-                <RotateCcw className="h-5 w-5 mr-2" />
+ <RotateCcw className="h-5 w-5 mr-2" />
                 Try Again
               </Button>
             </div>
@@ -463,7 +463,7 @@ export function PlayerTimeline({
       {/* Enhanced timeline with snap functionality */}
       <div 
         ref={timelineRef}
-        className="flex items-center gap-4 p-8 bg-black/20 backdrop-blur-3xl rounded-3xl border border-white/10 shadow-2xl overflow-x-auto scroll-smooth"
+ className="flex items-center gap-4 p-8 rounded-3xl overflow-x-auto scroll-smooth"
         onScroll={handleTimelineScroll}
         style={{
           scrollBehavior: 'smooth',
@@ -484,13 +484,13 @@ export function PlayerTimeline({
         </div>
         
         {player.timeline.length === 0 && (
-          <div className="text-center py-12 px-20 flex-1">
-            <Music className="h-16 w-16 text-white/30 mx-auto mb-6" />
-            <p className="text-white/70 text-lg font-medium mb-2">
+ <div className="text-center py-12 px-20 flex-1">
+ <Music className="h-16 w-16 text-white/30 mx-auto mb-6" />
+ <p className="text-white/70 text-lg font-medium mb-2">
               {gameEnded ? "Game Over" : isCurrent ? "Your timeline starts here" : "Building timeline..."}
             </p>
             {isCurrent && !gameEnded && (
-              <p className="text-white/50 text-sm font-normal">
+ <p className="text-white/50 text-sm font-normal">
                 Drag the mystery card to create your chronological timeline. Scroll to snap gaps to center.
               </p>
             )}
