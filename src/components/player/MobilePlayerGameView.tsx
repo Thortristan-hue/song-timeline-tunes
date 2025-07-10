@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ export default function MobilePlayerGameView({
   // Create timeline from player's existing songs
   const timelineCards = currentPlayer.timeline
     .filter(song => song !== null)
-    .sort((a, b) => a.release_year - b.release_year);
+    .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
 
   // Handle scroll with snapping to gaps
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -305,7 +306,7 @@ export default function MobilePlayerGameView({
       </div>
 
       {/* Custom scrollbar styles */}
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
