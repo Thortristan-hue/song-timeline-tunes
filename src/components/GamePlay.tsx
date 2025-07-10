@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { PlayerGameView } from '@/components/PlayerVisuals';
+import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
 import { HostGameView } from '@/components/HostVisuals';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
@@ -407,35 +406,19 @@ export function GamePlay({
 
   return (
     <div className="relative">
-      {isHost ? (
-        <HostGameView
-          currentTurnPlayer={currentTurnPlayer}
-          currentSong={currentMysteryCard}
-          roomCode={room.lobby_code}
-          players={activePlayers}
-          mysteryCardRevealed={mysteryCardRevealed}
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          cardPlacementResult={cardPlacementResult}
-          transitioning={false}
-        />
-      ) : (
-        currentPlayer && (
-          <PlayerGameView
-            currentPlayer={currentPlayer}
-            currentTurnPlayer={currentTurnPlayer}
-            currentSong={currentMysteryCard}
-            roomCode={room.lobby_code}
-            isMyTurn={isMyTurn}
-            isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
-            onPlaceCard={handlePlaceCard}
-            mysteryCardRevealed={mysteryCardRevealed}
-            cardPlacementResult={cardPlacementResult}
-            gameEnded={gameEnded}
-          />
-        )
-      )}
+      <MobilePlayerGameView
+        currentPlayer={currentPlayer}
+        currentTurnPlayer={currentTurnPlayer}
+        currentSong={currentMysteryCard}
+        roomCode={room.lobby_code}
+        isMyTurn={isMyTurn}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        onPlaceCard={handlePlaceCard}
+        mysteryCardRevealed={mysteryCardRevealed}
+        cardPlacementResult={cardPlacementResult}
+        gameEnded={gameEnded}
+      />
     </div>
   );
 }
