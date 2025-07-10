@@ -1,24 +1,17 @@
+
 import React, { useState, useRef, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Music } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Music, Play, Pause, Volume2, VolumeX, Crown, Clock, Trophy, Star, Zap, Check, X } from 'lucide-react';
+import { Song, Player } from '@/types/game';
+import { MysteryCard } from '@/components/MysteryCard';
 import { cn } from '@/lib/utils';
-
-// Mock types based on the original component
-interface Song {
-  deezer_title: string;
-  release_year: number;
-}
-
-interface Player {
-  name: string;
-  score: number;
-  timeline: (Song | null)[];
-}
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
   currentTurnPlayer: Player;
-  currentSong: Song | null;
+  currentSong: Song;
   roomCode: string;
   isMyTurn: boolean;
   isPlaying: boolean;
@@ -26,360 +19,255 @@ interface MobilePlayerGameViewProps {
   onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
   mysteryCardRevealed: boolean;
   cardPlacementResult: { correct: boolean; song: Song } | null;
-  gameEnded?: boolean;
+  gameEnded: boolean;
 }
 
 export default function MobilePlayerGameView({
-  currentPlayer = { name: "Player 1", score: 3, timeline: [null, { deezer_title: "Hey Jude", release_year: 1968 }, null, { deezer_title: "Billie Jean", release_year: 1983 }, null, { deezer_title: "Smells Like Teen Spirit", release_year: 1991 }, null, { deezer_title: "Crazy", release_year: 2006 }, null] },
-  currentTurnPlayer = { name: "Player 1", score: 3, timeline: [] },
-  currentSong = { deezer_title: "Wonderwall", release_year: 1995 },
-  roomCode = "ABC123",
-  isMyTurn = true,
-  isPlaying = false,
-  onPlayPause = () => {},
-  onPlaceCard = async (song, position) => ({ success: true }),
-  mysteryCardRevealed = false,
-  cardPlacementResult = null,
-  gameEnded = false
+  currentPlayer,
+  currentTurnPlayer,
+  currentSong,
+  roomCode,
+  isMyTurn,
+  isPlaying,
+  onPlayPause,
+  onPlaceCard,
+  mysteryCardRevealed,
+  cardPlacementResult,
+  gameEnded
 }: MobilePlayerGameViewProps) {
-  const [snappedPosition, setSnappedPosition] = useState<number | null>(null);
-  const [hasPlayedAudio, setHasPlayedAudio] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [hasConfirmed, setHasConfirmed] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [draggedSong, setDraggedSong] = useState<Song | null>(null);
+  const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
+  const [placementPending, setPlacementPending] = useState<{ song: Song; position: number } | null>(null);
 
-  // Track audio playback
-  useEffect(() => {
-    if (isPlaying) {
-      setHasPlayedAudio(true);
-    }
-  }, [isPlaying]);
-
-  // Handle vinyl record play/pause
-  const handleVinylPress = () => {
-    if (!isMyTurn || !currentSong || gameEnded) return;
-    
-    // Haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate(50);
-    }
-    
-    onPlayPause();
+  // Handle drag start
+  const handleDragStart = (song: Song) => {
+    setDraggedSong(song);
   };
 
-  // Handle scroll snapping to gaps between cards
-  const handleScroll = () => {
-    if (!scrollRef.current) return;
-    
-    const scrollLeft = scrollRef.current.scrollLeft;
-    const cardWidth = 100; // Width of each card + gap
-    const gapWidth = 20; // Width of the gap between cards
-    
-    // Calculate which gap we're closest to
-    const totalWidth = cardWidth + gapWidth;
-    const position = Math.round(scrollLeft / totalWidth);
-    
-    setSnappedPosition(position);
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedSong(null);
+    setHoveredPosition(null);
   };
 
-  // Auto-snap on scroll end
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    
-    let timeoutId: NodeJS.Timeout;
-    
-    const handleScrollEnd = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (!scrollRef.current || !isMyTurn || gameEnded) return;
-        
-        const scrollLeft = scrollRef.current.scrollLeft;
-        const cardWidth = 100;
-        const gapWidth = 20;
-        const totalWidth = cardWidth + gapWidth;
-        
-        // Calculate nearest gap position
-        const nearestPosition = Math.round(scrollLeft / totalWidth);
-        const targetScrollLeft = nearestPosition * totalWidth;
-        
-        // Snap to the gap
-        scrollRef.current.scrollTo({
-          left: targetScrollLeft,
-          behavior: 'smooth'
-        });
-        
-        setSnappedPosition(nearestPosition);
-        
-        // Haptic feedback for snapping
-        if ('vibrate' in navigator) {
-          navigator.vibrate(30);
-        }
-      }, 100);
-    };
-    
-    const scrollElement = scrollRef.current;
-    scrollElement.addEventListener('scroll', handleScrollEnd);
-    
-    return () => {
-      scrollElement.removeEventListener('scroll', handleScrollEnd);
-      clearTimeout(timeoutId);
-    };
-  }, [isMyTurn, gameEnded]);
+  // Handle drag over timeline position
+  const handleDragOver = (e: React.DragEvent, position: number) => {
+    e.preventDefault();
+    setHoveredPosition(position);
+  };
 
-  // Handle confirmation
-  const handleConfirm = async () => {
-    if (!currentSong || snappedPosition === null || !isMyTurn || isConfirming || gameEnded || hasConfirmed) return;
+  // Handle drop on timeline
+  const handleDrop = async (e: React.DragEvent, position: number) => {
+    e.preventDefault();
     
-    setIsConfirming(true);
-    setHasConfirmed(true);
-    
-    // Strong haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate([100, 50, 100]);
-    }
+    if (!draggedSong || !isMyTurn) return;
+
+    setPlacementPending({ song: draggedSong, position });
     
     try {
-      await onPlaceCard(currentSong, snappedPosition);
+      await onPlaceCard(draggedSong, position);
+    } catch (error) {
+      console.error('Failed to place card:', error);
     } finally {
-      setTimeout(() => {
-        setIsConfirming(false);
-        setSnappedPosition(null);
-        setHasPlayedAudio(false);
-        setHasConfirmed(false);
-      }, 2000);
+      setPlacementPending(null);
+      setDraggedSong(null);
+      setHoveredPosition(null);
     }
   };
 
-  // Get placed songs for timeline display
-  const getPlacedSongs = () => {
-    const songs: (Song | null)[] = [];
-    for (let i = 0; i < 10; i++) {
-      songs.push(currentPlayer.timeline[i] || null);
-    }
-    return songs;
-  };
-
-  // Render timeline cards and gaps
-  const renderTimelineContent = () => {
-    const placedSongs = getPlacedSongs();
-    const content = [];
-    
-    // Add initial gap (position 0)
-    content.push(
-      <div key="gap-0" className="flex-shrink-0 w-5 flex items-center justify-center">
-        <div className={cn(
-          "w-1 h-16 rounded-full transition-all duration-300",
-          snappedPosition === 0 
-            ? "bg-yellow-400 shadow-lg shadow-yellow-400/50" 
-            : "bg-white/20"
-        )}>
-        </div>
-      </div>
-    );
-    
-    // Add cards and gaps
-    placedSongs.forEach((song, index) => {
-      // Add card
-      if (song) {
-        content.push(
-          <div key={`card-${index}`} className="flex-shrink-0 w-20 h-20">
-            <div className="w-full h-full bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex flex-col items-center justify-center text-white font-bold text-sm shadow-lg border border-white/20">
-              <Music className="h-4 w-4 mb-1" />
-              <div className="text-xs text-center leading-tight">
-                {song.release_year}
-              </div>
-            </div>
-          </div>
-        );
-      } else {
-        content.push(
-          <div key={`empty-${index}`} className="flex-shrink-0 w-20 h-20">
-            <div className="w-full h-full bg-white/5 rounded-2xl flex items-center justify-center border-2 border-dashed border-white/20">
-              <div className="text-white/30 text-2xl">?</div>
-            </div>
-          </div>
-        );
-      }
-      
-      // Add gap after card (except for last card)
-      if (index < placedSongs.length - 1) {
-        content.push(
-          <div key={`gap-${index + 1}`} className="flex-shrink-0 w-5 flex items-center justify-center">
-            <div className={cn(
-              "w-1 h-16 rounded-full transition-all duration-300",
-              snappedPosition === index + 1 
-                ? "bg-yellow-400 shadow-lg shadow-yellow-400/50" 
-                : "bg-white/20"
-            )}>
-            </div>
-          </div>
-        );
-      }
-    });
-    
-    return content;
-  };
-
-  if (gameEnded) {
+  // Show result overlay
+  if (cardPlacementResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-6">
-        <div className="text-center text-white">
-          <div className="text-4xl mb-4">🏆</div>
-          <div className="text-2xl font-bold mb-2">Game Complete!</div>
-          <div className="text-white/60">Thanks for playing Timeline Tunes!</div>
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
+        <div className="text-center space-y-6 p-8">
+          <div className={`text-9xl mb-4 ${
+            cardPlacementResult.correct ? 'text-emerald-400 animate-bounce' : 'text-rose-400 animate-pulse'
+          }`}>
+            {cardPlacementResult.correct ? '🎯' : '💥'}
+          </div>
+          
+          <div className={`text-5xl font-black ${
+            cardPlacementResult.correct ? 
+            'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
+            'text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-400'
+          }`}>
+            {cardPlacementResult.correct ? 'PERFECT!' : 'CLOSE!'}
+          </div>
+          
+          <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md">
+            <div className="text-xl font-bold text-white mb-2">
+              {cardPlacementResult.song.deezer_title}
+            </div>
+            <div className="text-lg text-slate-300 mb-3">
+              by {cardPlacementResult.song.deezer_artist}
+            </div>
+            <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full font-bold text-lg">
+              {cardPlacementResult.song.release_year}
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex flex-col">
-      {/* 1. Player Header */}
-      <div className="pt-8 pb-6 text-center">
-        <div className="text-white text-2xl font-bold tracking-wider">
-          {currentPlayer.name.toUpperCase()}
-        </div>
-        <div className="text-white/60 text-sm mt-2">
-          Room {roomCode} • {currentPlayer.score}/10 cards
-        </div>
-        <div className="text-white/40 text-xs mt-1">
-          {isMyTurn ? "YOUR TURN" : `${currentTurnPlayer.name}'s Turn`}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/3 rounded-full blur-2xl" />
+      </div>
+
+      {/* Header */}
+      <div className="absolute top-4 left-4 right-4 z-40">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 backdrop-blur-xl rounded-xl flex items-center justify-center border border-white/20">
+              <Crown className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="text-white font-semibold text-lg tracking-tight">Timeliner</div>
+              <div className="text-white/60 text-sm">Room: {roomCode}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="bg-white/12 backdrop-blur-2xl rounded-xl p-3">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-4 h-4 rounded-full shadow-sm" 
+                  style={{ backgroundColor: currentPlayer.color }}
+                />
+                <div className="text-white font-medium text-sm">{currentPlayer.name}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Mystery Song Preview Button */}
-      <div className="flex-1 flex items-center justify-center px-6 py-8">
-        <div className="text-center">
-          <button
-            onClick={handleVinylPress}
-            disabled={!isMyTurn || !currentSong || gameEnded}
-            className={cn(
-              "w-36 h-36 rounded-full flex items-center justify-center transition-all duration-300 relative",
-              "bg-gradient-to-br from-red-800 via-red-700 to-red-900 border-4 border-red-600/50 shadow-2xl",
-              isMyTurn && currentSong && !gameEnded
-                ? "hover:scale-105 active:scale-95 shadow-red-500/30"
-                : "opacity-50",
-              isPlaying && "animate-spin"
+      {/* Current Turn Indicator */}
+      <div className="absolute top-20 left-4 right-4 z-30">
+        <div className={`bg-white/12 backdrop-blur-2xl rounded-xl p-4 border-2 ${
+          isMyTurn && !gameEnded ? 'border-green-400/50 ring-2 ring-green-400/30' : 
+          gameEnded ? 'border-gray-500/50' : 'border-red-400/50'
+        }`}>
+          <div className="text-center">
+            <div className="text-white/60 text-sm mb-1">Current Turn</div>
+            <div className="flex items-center justify-center gap-2">
+              <div 
+                className="w-4 h-4 rounded-full shadow-sm" 
+                style={{ backgroundColor: currentTurnPlayer.color }}
+              />
+              <div className={`font-semibold ${
+                isMyTurn && !gameEnded ? 'text-green-200' : 
+                gameEnded ? 'text-gray-200' : 'text-white'
+              }`}>
+                {gameEnded ? 'Game Over' : 
+                 isMyTurn ? 'Your turn!' : `${currentTurnPlayer.name}'s turn`}
+              </div>
+            </div>
+            {isMyTurn && !gameEnded && (
+              <div className="text-xs text-green-300 mt-1">Drag the mystery card to your timeline!</div>
             )}
-            style={{ 
-              touchAction: 'manipulation',
-              minWidth: '144px',
-              minHeight: '144px'
-            }}
-            aria-label={isPlaying ? 'Pause mystery song' : 'Play mystery song'}
-          >
-            {/* Vinyl record rings */}
-            <div className="absolute inset-6 rounded-full border-2 border-red-500/40"></div>
-            <div className="absolute inset-10 rounded-full border border-red-400/30"></div>
-            <div className="absolute inset-14 rounded-full bg-red-950/60"></div>
-            
-            {/* Center hole */}
-            <div className="absolute inset-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 bg-red-950 rounded-full"></div>
-            
-            {/* Play/Pause icon */}
-            <div className="relative z-10">
-              {isPlaying ? (
-                <Pause className="h-10 w-10 text-white" />
-              ) : (
-                <Play className="h-10 w-10 text-white ml-1" />
-              )}
-            </div>
-          </button>
-          
-          {/* Audio status indicator */}
-          <div className="mt-6">
-            <div className={cn(
-              "inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border-2",
-              hasPlayedAudio 
-                ? "bg-green-500/20 border-green-400 text-green-200" 
-                : "bg-white/10 border-white/30 text-white/60"
-            )}>
-              {hasPlayedAudio ? '✅ Preview played' : '🎵 Tap to preview'}
-            </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Timeline Placement Interface */}
-      <div className="px-6 pb-4">
-        <div className="mb-6">
-          <h3 className="text-white text-lg font-bold text-center mb-2">
-            Choose Timeline Position
-          </h3>
-          <p className="text-white/60 text-sm text-center">
-            Scroll to place the mystery song between existing songs
-          </p>
-          {snappedPosition !== null && (
-            <p className="text-yellow-400 text-sm text-center mt-2 font-medium">
-              Position {snappedPosition + 1} selected
-            </p>
-          )}
+      {/* Mystery Card - Only show if it's my turn */}
+      {isMyTurn && !gameEnded && (
+        <div className="absolute top-40 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl blur-xl scale-110" />
+              
+              <MysteryCard
+                song={currentSong}
+                isRevealed={mysteryCardRevealed}
+                isInteractive={true}
+                className="w-32 h-40"
+                onDragStart={() => handleDragStart(currentSong)}
+                onDragEnd={handleDragEnd}
+              />
+            </div>
+
+            <div className="flex items-center justify-center gap-3 bg-slate-800/80 backdrop-blur-lg p-3 rounded-xl border border-slate-600/30">
+              <Button
+                onClick={onPlayPause}
+                size="sm"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg"
+                disabled={!currentSong?.preview_url}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </div>
-        
-        {/* Scrollable Timeline */}
-        <div 
-          ref={scrollRef}
-          className="flex gap-0 overflow-x-auto pb-4"
-          onScroll={handleScroll}
-          style={{
-            scrollBehavior: 'smooth',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
-          {renderTimelineContent()}
-        </div>
-        
-        {/* Timeline ruler */}
-        <div className="relative">
-          <div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-          <div className="absolute left-0 right-0 top-0 flex justify-between text-white/30 text-xs mt-2">
-            <span>Earlier</span>
-            <span>Later</span>
+      )}
+
+      {/* Timeline */}
+      <div className="absolute bottom-4 left-4 right-4 z-20">
+        <div className="bg-white/10 backdrop-blur-2xl rounded-2xl p-4 border border-white/20">
+          <div className="flex items-center gap-2 mb-3">
+            <div 
+              className="w-4 h-4 rounded-full shadow-sm" 
+              style={{ backgroundColor: currentPlayer.timelineColor }}
+            />
+            <div className="text-white font-medium">Your Timeline ({currentPlayer.timeline.length}/10)</div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {/* Timeline positions */}
+            {Array.from({ length: 11 }, (_, i) => {
+              const songAtPosition = currentPlayer.timeline[i];
+              const isHovered = hoveredPosition === i;
+              const isPending = placementPending?.position === i;
+
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex-shrink-0 w-16 h-20 rounded-lg border-2 border-dashed transition-all duration-200",
+                    isHovered && draggedSong ? "border-green-400 bg-green-400/10 scale-105" : "border-white/30",
+                    isPending && "border-yellow-400 bg-yellow-400/10",
+                    !songAtPosition && "bg-white/5"
+                  )}
+                  onDragOver={(e) => handleDragOver(e, i)}
+                  onDrop={(e) => handleDrop(e, i)}
+                >
+                  {songAtPosition ? (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-500 rounded-md flex flex-col items-center justify-center p-1">
+                      <div className="text-white text-xs font-bold text-center leading-tight">
+                        {songAtPosition.deezer_title.substring(0, 8)}...
+                      </div>
+                      <div className="text-white/80 text-xs mt-1">
+                        {songAtPosition.release_year}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-white/40 text-xs font-bold">{i + 1}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* 4. Confirm Placement Button */}
-      <div className="px-6 pb-6">
-        <Button
-          onClick={handleConfirm}
-          disabled={!isMyTurn || snappedPosition === null || !currentSong || isConfirming || gameEnded || hasConfirmed}
-          className={cn(
-            "w-full h-16 text-xl font-bold rounded-2xl transition-all duration-300",
-            "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600",
-            "text-white shadow-lg active:scale-95 border-2 border-green-400/50",
-            (!isMyTurn || snappedPosition === null || !currentSong || gameEnded || hasConfirmed) && "opacity-50"
-          )}
-          style={{ 
-            touchAction: 'manipulation',
-            minHeight: '64px'
-          }}
-        >
-          {isConfirming ? 'CONFIRMING...' : 'CONFIRM'}
-        </Button>
-      </div>
-
-      {/* 5. Footer Branding */}
-      <div className="text-center pb-6">
-        <div className="text-white/40 text-lg font-bold tracking-[0.3em]">
-          TIMELINER
-        </div>
-      </div>
-
-      {/* Results overlay */}
-      {cardPlacementResult && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 text-center border border-white/20 mx-6">
-            <div className="text-6xl mb-4">
-              {cardPlacementResult.correct ? '🎉' : '❌'}
-            </div>
-            <div className="text-white text-2xl font-bold mb-2">
-              {cardPlacementResult.correct ? 'Correct!' : 'Not quite!'}
-            </div>
-            <div className="text-white/60">
-              {cardPlacementResult.song.deezer_title} ({cardPlacementResult.song.release_year})
+      {/* Waiting screen when not my turn */}
+      {!isMyTurn && !gameEnded && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+          <div className="text-center space-y-4">
+            <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-8 border border-slate-600/50">
+              <Music className="h-16 w-16 text-purple-400 mx-auto mb-4" />
+              <div className="text-2xl font-bold text-white mb-2">
+                {currentTurnPlayer.name} is playing
+              </div>
+              <div className="text-slate-300">
+                Wait for your turn to place cards
+              </div>
             </div>
           </div>
         </div>

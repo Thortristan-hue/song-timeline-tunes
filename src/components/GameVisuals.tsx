@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,6 @@ import { Progress } from '@/components/ui/progress';
 import { Music, Play, Pause, Volume2, VolumeX, Crown, Clock, Trophy, Star, Zap, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from '@/components/MysteryCard';
-import { PlayerTimeline } from '@/components/PlayerTimeline';
 import { cn } from '@/lib/utils';
 
 // Mystery Card for Players
