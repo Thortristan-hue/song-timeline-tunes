@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Song, Player } from '@/types/game';
-import { PlayerGameView as ConsolidatedPlayerGameView } from '@/components/PlayerVisuals';
+import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
 
 interface PlayerGameViewProps {
   currentPlayer: Player;
@@ -18,5 +18,6 @@ interface PlayerGameViewProps {
 }
 
 export function PlayerGameView(props: PlayerGameViewProps) {
-  return <ConsolidatedPlayerGameView {...props} />;
+  // Always use mobile view
+  return <MobilePlayerGameView {...props} />;
 }
