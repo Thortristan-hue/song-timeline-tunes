@@ -430,7 +430,7 @@ export default function MobilePlayerGameView({
       <div className="relative z-10 pb-8 pt-4">
         <div className="text-center">
           <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 tracking-wide drop-shadow-xl animate-pulse">
-            ✨ TIMELINER ✨
+             Timeliner urr 
           </div>
         </div>
       </div>
