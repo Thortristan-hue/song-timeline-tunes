@@ -42,10 +42,10 @@ export default function MobilePlayerGameView({
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Card dimensions
-  const CARD_WIDTH = 160; // Much larger cards
-  const GAP_WIDTH = 8;    // Very small gaps (just a line)
+  const CARD_WIDTH = 160;
+  const GAP_WIDTH = 8;
   const TOTAL_ITEM_WIDTH = CARD_WIDTH + GAP_WIDTH;
-  const VISIBLE_CARDS = 2; // Number of fully visible cards
+  const VISIBLE_CARDS = 2;
 
   // Create timeline from player's existing songs
   const timelineCards = currentPlayer.timeline
@@ -109,7 +109,6 @@ export default function MobilePlayerGameView({
     const centerPosition = (scrollViewRef.current?.scrollLeft || 0) / TOTAL_ITEM_WIDTH;
     const distanceFromCenter = Math.abs(index - centerPosition);
     
-    // Full scale for 2 center cards, then scale down
     if (distanceFromCenter < 1) return 1.0;
     if (distanceFromCenter < 2) return 0.9;
     if (distanceFromCenter < 3) return 0.8;
@@ -187,11 +186,25 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 flex flex-col relative overflow-hidden">
-      {/* Background Effects */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900 flex flex-col relative overflow-hidden">
+      {/* Animated Background Particles */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        {[...Array(20)].map((_, i) => (
+          <div 
+            key={i}
+            className="absolute rounded-full bg-white/5"
+            style={{
+              width: `${Math.random() * 10 + 5}px`,
+              height: `${Math.random() * 10 + 5}px`,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animation: `float ${Math.random() * 20 + 10}s linear infinite`,
+              animationDelay: `${Math.random() * 5}s`
+            }}
+          />
+        ))}
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       {/* Player Header */}
@@ -200,9 +213,17 @@ export default function MobilePlayerGameView({
           <div className="text-2xl sm:text-3xl font-black text-white tracking-wide mb-2 drop-shadow-lg truncate">
             {currentPlayer.name}
           </div>
-          <div className="text-white/70 text-sm sm:text-base font-medium">
+          <div className="text-white/80 text-sm sm:text-base font-medium">
             {gameEnded ? 'Game Over' : 
-             isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
+             isMyTurn ? (
+              <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-transparent bg-clip-text animate-pulse">
+                Your Turn
+              </span>
+             ) : (
+              <span>
+                <span className="text-white/70">{currentTurnPlayer.name}'s</span> Turn
+              </span>
+             )}
           </div>
         </div>
       </div>
@@ -212,28 +233,49 @@ export default function MobilePlayerGameView({
         <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-6">
           <div className="text-center space-y-6 max-w-xs">
             <div className="relative">
-              <div className={`relative w-32 h-32 mx-auto transition-transform duration-300 ${
-                isPlaying ? 'animate-spin' : 'hover:scale-105'
+              <div className={`relative w-40 h-40 mx-auto transition-transform duration-300 ${
+                isPlaying ? 'animate-spin-slow' : 'hover:scale-105'
               }`}>
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-red-500/20 rounded-full blur-xl"></div>
-                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/30">
+                {/* Vinyl Record Glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-red-500/20 rounded-full blur-xl animate-pulse"></div>
+                
+                {/* Vinyl Record */}
+                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/30 overflow-hidden">
+                  {/* Vinyl grooves */}
+                  <div className="absolute inset-0 rounded-full border-2 border-white/5"></div>
+                  <div className="absolute inset-4 rounded-full border-2 border-white/5"></div>
+                  <div className="absolute inset-8 rounded-full border-2 border-white/5"></div>
+                  
+                  {/* Center label */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/40 shadow-lg"></div>
+                    <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/40 shadow-lg flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white/80 rounded-full"></div>
+                    </div>
                   </div>
                 </div>
+                
+                {/* Play/Pause Button */}
                 <Button
                   onClick={onPlayPause}
                   className="absolute inset-0 w-full h-full bg-black/30 hover:bg-black/50 border-0 rounded-full transition-all duration-300 group"
                   disabled={!currentSong?.preview_url}
                 >
                   <div className="text-white text-3xl group-hover:scale-110 transition-transform duration-200">
-                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+                    {isPlaying ? (
+                      <Pause className="w-8 h-8 fill-white" />
+                    ) : (
+                      <Play className="w-8 h-8 ml-1 fill-white" />
+                    )}
                   </div>
                 </Button>
               </div>
             </div>
             <div className="text-white/90 text-base font-medium">
-              Tap vinyl to preview
+              {currentSong?.preview_url ? (
+                "Tap vinyl to preview"
+              ) : (
+                <span className="text-amber-400">No preview available</span>
+              )}
             </div>
           </div>
         </div>
@@ -243,8 +285,8 @@ export default function MobilePlayerGameView({
       {!isMyTurn && !gameEnded && (
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="text-center space-y-6">
-            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-white/20 to-white/10 rounded-full flex items-center justify-center backdrop-blur-lg border border-white/30 shadow-2xl">
-              <Music className="w-12 h-12 text-white/80 animate-pulse" />
+            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-white/20 to-white/10 rounded-full flex items-center justify-center backdrop-blur-lg border border-white/30 shadow-2xl animate-pulse">
+              <Music className="w-12 h-12 text-white/80" />
             </div>
             <div className="text-xl sm:text-2xl font-bold text-white">
               {currentTurnPlayer.name} is playing
@@ -326,7 +368,7 @@ export default function MobilePlayerGameView({
                           }}
                           onClick={() => song.preview_url && playPreview(song.preview_url, song.id)}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl border-2 border-white/30 flex flex-col items-center justify-center shadow-xl">
+                          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-xl border-2 border-white/30 flex flex-col items-center justify-center shadow-xl hover:shadow-2xl transition-shadow">
                             <div className="text-white font-bold text-xl mb-2">
                               {song.release_year}
                             </div>
@@ -334,11 +376,11 @@ export default function MobilePlayerGameView({
                               {song.deezer_title.substring(0, 20)}...
                             </div>
                             {song.preview_url && (
-                              <div className="absolute bottom-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
+                              <div className="absolute bottom-2 right-2 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
                                 {playingPreviewId === song.id ? (
-                                  <Pause className="w-4 h-4 text-white" />
+                                  <Pause className="w-4 h-4 text-white fill-white" />
                                 ) : (
-                                  <Play className="w-4 h-4 text-white ml-0.5" />
+                                  <Play className="w-4 h-4 text-white fill-white ml-0.5" />
                                 )}
                               </div>
                             )}
@@ -395,10 +437,30 @@ export default function MobilePlayerGameView({
           <div className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 tracking-wide drop-shadow-lg">
             TIMELINER
           </div>
+          <div className="text-xs text-white/50 mt-1">
+            Room Code: {roomCode}
+          </div>
         </div>
       </div>
 
-      {/* Custom scrollbar styles */}
+      {/* Custom styles */}
+      <style jsx>{`
+        @keyframes float {
+          0% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(180deg); }
+          100% { transform: translateY(0) rotate(360deg); }
+        }
+        
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin-slow {
+          animation: spin-slow 3s linear infinite;
+        }
+      `}</style>
+      
       <style>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
