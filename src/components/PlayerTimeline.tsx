@@ -22,6 +22,9 @@ interface PlayerTimelineProps {
   onConfirmPlacement?: (song: Song, position: number) => Promise<{ success: boolean }>;
   onCancelPlacement?: () => void;
   gameEnded?: boolean;
+  isPlaying?: boolean;
+  onToggleAudio?: () => void;
+  hasPlayedAudio?: boolean;
 }
 
 export function PlayerTimeline({
@@ -37,7 +40,10 @@ export function PlayerTimeline({
   transitioningTurn = false,
   onConfirmPlacement,
   onCancelPlacement,
-  gameEnded = false
+  gameEnded = false,
+  isPlaying = false,
+  onToggleAudio,
+  hasPlayedAudio = false
 }: PlayerTimelineProps) {
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;

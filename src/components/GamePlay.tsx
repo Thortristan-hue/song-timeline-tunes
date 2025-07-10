@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { PlayerGameView } from '@/components/PlayerVisuals';
@@ -383,6 +384,7 @@ export function GamePlay({
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
+          transitioning={false}
         />
       </div>
     );
@@ -415,6 +417,7 @@ export function GamePlay({
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
+          transitioning={false}
         />
       ) : (
         currentPlayer && (
