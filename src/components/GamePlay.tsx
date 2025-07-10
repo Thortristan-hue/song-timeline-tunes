@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
@@ -371,7 +370,7 @@ export function GamePlay({
     );
   }
 
-  // Host view
+  // Host view - still use HostGameView for hosts
   if (isHost) {
     return (
       <div className="relative">
@@ -390,7 +389,7 @@ export function GamePlay({
     );
   }
 
-  // Player view
+  // Player view - ALWAYS use MobilePlayerGameView for all players
   if (!currentPlayer) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
@@ -405,6 +404,7 @@ export function GamePlay({
 
   const isMyTurn = currentPlayer.id === currentTurnPlayerId;
 
+  // ALL PLAYER VISUALS ARE CONTROLLED BY MobilePlayerGameView
   return (
     <div className="relative">
       <MobilePlayerGameView
