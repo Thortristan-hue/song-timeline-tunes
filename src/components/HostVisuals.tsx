@@ -1,3 +1,116 @@
+
+import React, { useState, useEffect } from 'react';
+import { Song, Player } from '@/types/game';
+import { HostGameBackground } from '@/components/host/HostGameBackground';
+import { HostHeader } from '@/components/host/HostHeader';
+import { RecordMysteryCard } from '@/components/RecordMysteryCard';
+import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
+
+interface RecordPlayerSectionProps {
+  currentSong: Song | null;
+  mysteryCardRevealed: boolean;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  cardPlacementResult: { correct: boolean; song: Song } | null;
+}
+
+function RecordPlayerSection({
+  currentSong,
+  mysteryCardRevealed,
+  isPlaying,
+  onPlayPause,
+  cardPlacementResult
+}: RecordPlayerSectionProps) {
+  return (
+    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30">
+      <div className="relative">
+        <div className="absolute inset-0 bg-white/8 rounded-3xl blur-xl scale-110" />
+        <div 
+          className="relative cursor-pointer transition-all duration-300 hover:scale-105"
+          onClick={onPlayPause}
+        >
+          <RecordMysteryCard
+            song={currentSong}
+            isRevealed={mysteryCardRevealed}
+            isDestroyed={cardPlacementResult?.correct === false}
+          />
+          
+          {currentSong?.preview_url && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 hover:opacity-100 transition-opacity">
+              {isPlaying ? (
+                <div className="h-6 w-6 text-white">⏸</div>
+              ) : (
+                <div className="h-6 w-6 text-white">▶</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface HostTimelineCardProps {
+  song: Song;
+}
+
+function HostTimelineCard({ song }: HostTimelineCardProps) {
+  const artistHash = Array.from(song.deezer_artist).reduce(
+    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
+  );
+  const hue = Math.abs(artistHash) % 360;
+  
+  return (
+    <div 
+      className="w-36 h-36 rounded-xl flex flex-col items-center justify-center p-2 text-white font-bold text-center"
+      style={{ 
+        backgroundColor: `hsl(${hue}, 70%, 30%)`,
+        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+      }}
+    >
+      <div className="text-sm font-medium mb-1 truncate w-full">
+        {song.deezer_title}
+      </div>
+      <div className="text-xs font-semibold mb-2 truncate w-full">
+        {song.deezer_artist}
+      </div>
+      <div className="text-2xl font-bold">
+        {song.release_year}
+      </div>
+    </div>
+  );
+}
+
+interface HostTimelineDisplayProps {
+  currentPlayer: Player;
+  isActive: boolean;
+  placementResult: { correct: boolean; song: Song } | null;
+}
+
+function HostTimelineDisplay({ currentPlayer, isActive, placementResult }: HostTimelineDisplayProps) {
+  return (
+    <div className={`flex justify-center items-center gap-4 p-6 bg-black/30 backdrop-blur-lg rounded-2xl border border-white/10 transition-opacity duration-800 ${
+      isActive ? 'opacity-100' : 'opacity-0'
+    }`}>
+      {currentPlayer.timeline.length === 0 ? (
+        <div className="text-white/50 italic py-6 text-lg">
+          {currentPlayer.name} hasn't placed any cards yet
+        </div>
+      ) : (
+        currentPlayer.timeline.map((song, index) => (
+          <React.Fragment key={song.id}>
+            <HostTimelineCard song={song} />
+            {index < currentPlayer.timeline.length - 1 && (
+              <div className="w-8 h-1 bg-white/20 rounded-full" />
+            )}
+          </React.Fragment>
+        ))
+      )}
+    </div>
+  );
+}
+
 export function HostGameView({
   currentTurnPlayer,
   previousPlayer,
