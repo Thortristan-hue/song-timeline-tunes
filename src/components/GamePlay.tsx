@@ -35,6 +35,7 @@ export function GamePlay({
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [gameInitialized, setGameInitialized] = useState(false);
   const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
+  const [transitioningTurn, setTransitioningTurn] = useState(false);
 
   // Audio management - MOBILE OPTIMIZED
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -383,6 +384,7 @@ export function GamePlay({
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
+          transitioning={transitioningTurn}
         />
       </div>
     );
@@ -415,6 +417,7 @@ export function GamePlay({
           isPlaying={isPlaying}
           onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
+          transitioning={transitioningTurn}
         />
       ) : (
         currentPlayer && (
