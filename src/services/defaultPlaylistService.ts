@@ -1,33 +1,32 @@
-
 import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
 
 /**
  * Service for managing the default song playlist with performance optimizations
+ * Now supports both old and new playlist formats!
  */
 class DefaultPlaylistService {
   private songs: Song[] = [];
 
   /**
    * Loads and validates the default playlist with API optimization
+   * Supports both v1 and v2 playlist formats
    * @returns Promise<Song[]> Array of valid songs
    */
   async loadDefaultPlaylist(): Promise<Song[]> {
     console.log('🎵 Loading default playlist with performance optimization...');
-    
-    // Initial processing - get all valid songs regardless of preview status
+
+    // Accept both v1 and v2 formats
     this.songs = defaultPlaylist
       .filter(item => this.validateSong(item))
       .map(item => this.mapToSong(item));
 
     console.log(`📋 Total valid songs in playlist: ${this.songs.length}`);
-    
-    // PERFORMANCE FIX: Don't fetch previews for all songs - let game logic decide
-    // This prevents the API spam issue by deferring preview fetching
+
     console.log(`⚡ PERFORMANCE OPTIMIZATION: Skipping bulk preview fetching to prevent API spam`);
     console.log(`📊 API CALLS SAVED: Prevented ${this.songs.length} immediate preview requests`);
-    
+
     // Return all songs without previews - they'll be fetched on-demand
     console.log(`✅ Loaded ${this.songs.length} songs (previews will be fetched on-demand to prevent API spam)`);
     return this.songs;
@@ -41,39 +40,39 @@ class DefaultPlaylistService {
    */
   async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
     console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
-    
+
     // Get all valid songs first
     if (this.songs.length === 0) {
       await this.loadDefaultPlaylist();
     }
-    
+
     // Shuffle all songs to get random selection
     const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
-    
+
     const songsWithPreviews: Song[] = [];
     let songsProcessed = 0;
     let successCount = 0;
     let failCount = 0;
-    
+
     console.log(`🎯 RESILIENT APPROACH: Will keep trying songs until we get ${minSongs} with working previews`);
-    
+
     // Keep processing songs until we have enough with previews
     for (const song of shuffledSongs) {
       // Stop if we have enough songs with previews
       if (songsWithPreviews.length >= minSongs) {
         break;
       }
-      
+
       // Stop if we've processed too many songs (safety limit - increased to 80)
       if (songsProcessed >= Math.min(80, this.songs.length)) {
         console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
         break;
       }
-      
+
       try {
         songsProcessed++;
         console.log(`🎵 Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
-        
+
         const songWithPreview = await this.fetchPreviewUrl(song);
         if (songWithPreview.preview_url) {
           songsWithPreviews.push(songWithPreview);
@@ -88,11 +87,11 @@ class DefaultPlaylistService {
         console.log(`❌ Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
       }
     }
-    
+
     console.log(`🎯 RESILIENT RESULT: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
     console.log(`📊 SUCCESS RATE: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
     console.log(`📊 API EFFICIENCY: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
-    
+
     return songsWithPreviews;
   }
 
@@ -107,13 +106,13 @@ class DefaultPlaylistService {
       if (!song.release_year || !song.deezer_title || !song.deezer_artist) {
         return false;
       }
-      
+
       // Validate release year
       const year = parseInt(song.release_year.toString());
       if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
         return false;
       }
-      
+
       return true;
     });
   }
@@ -156,33 +155,73 @@ class DefaultPlaylistService {
     }
   }
 
+  /**
+   * Accepts both v1 and v2 playlist formats and validates
+   */
   private validateSong(item: any): boolean {
-    if (!item.release_year?.toString().trim()) {
-      console.log('⏭️ Skipping song without release year:', item.deezer_title);
+    // Accepts both { title, artist, year, deezer_link } and { deezer_artist, deezer_title, release_year, deezer_url }
+    const hasV2 = !!item.deezer_artist && !!item.deezer_title && !!item.release_year;
+    const hasV1 = !!item.artist && !!item.title && !!item.year;
+    if (!hasV1 && !hasV2) {
       return false;
     }
-    
-    const year = parseInt(item.release_year.toString());
+
+    // Release year logic
+    const year = parseInt((item.release_year ?? item.year)?.toString());
     if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
-      console.log('⏭️ Skipping song with invalid release year:', item.deezer_title, item.release_year);
       return false;
     }
-    
+
     return true;
   }
 
+  /**
+   * Accepts both v1 and v2 playlist formats and maps to Song
+   */
   private mapToSong(item: any): Song {
-    return {
-      id: Math.random().toString(36).substring(2, 11),
-      deezer_title: item.deezer_title || 'Unknown Title',
-      deezer_artist: item.deezer_artist || 'Unknown Artist',
-      deezer_album: item.deezer_album || 'Unknown Album',
-      release_year: item.release_year.toString(),
-      genre: item.genre || 'Unknown',
-      cardColor: this.generateCardColor(),
-      preview_url: item.preview_url || undefined, // Keep existing previews but don't fetch new ones
-      deezer_url: item.deezer_url || undefined
-    };
+    // v1 legacy fields
+    const isV1 = !!item.artist && !!item.title;
+    // v2 enhanced fields
+    const isV2 = !!item.deezer_artist && !!item.deezer_title;
+
+    if (isV1) {
+      return {
+        id: Math.random().toString(36).substring(2, 11),
+        deezer_title: item.title || 'Unknown Title',
+        deezer_artist: item.artist || 'Unknown Artist',
+        deezer_album: item.album || 'Unknown Album',
+        release_year: item.year?.toString() || 'Unknown',
+        genre: item.genre || 'Unknown',
+        cardColor: this.generateCardColor(),
+        preview_url: item.preview_url || undefined,
+        deezer_url: item.deezer_link || undefined
+      };
+    } else if (isV2) {
+      return {
+        id: Math.random().toString(36).substring(2, 11),
+        deezer_title: item.deezer_title || 'Unknown Title',
+        deezer_artist: item.deezer_artist || 'Unknown Artist',
+        deezer_album: item.deezer_album || 'Unknown Album',
+        release_year: item.release_year?.toString() || 'Unknown',
+        genre: item.genre || 'Unknown',
+        cardColor: this.generateCardColor(),
+        preview_url: item.preview_url || undefined,
+        deezer_url: item.deezer_url || undefined
+      };
+    } else {
+      // Should never hit this, but fallback
+      return {
+        id: Math.random().toString(36).substring(2, 11),
+        deezer_title: 'Unknown Title',
+        deezer_artist: 'Unknown Artist',
+        deezer_album: 'Unknown Album',
+        release_year: 'Unknown',
+        genre: 'Unknown',
+        cardColor: this.generateCardColor(),
+        preview_url: undefined,
+        deezer_url: undefined
+      };
+    }
   }
 
   private generateCardColor(): string {
@@ -221,7 +260,7 @@ class DefaultPlaylistService {
   async getRandomSongWithFreshPreview(): Promise<Song | null> {
     const randomSong = this.getRandomSong();
     if (!randomSong) return null;
-    
+
     console.log(`🎵 FRESH PREVIEW: Fetching on-demand for ${randomSong.deezer_title} (anti-spam)`);
     return await this.fetchPreviewUrl(randomSong);
   }
