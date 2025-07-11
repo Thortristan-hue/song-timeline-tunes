@@ -38,25 +38,27 @@ export default function MobilePlayerGameView({
   const [isDragging, setIsDragging] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollViewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Card dimensions
-  const CARD_WIDTH = 100;
-  const GAP_WIDTH = 30;
-  const TOTAL_ITEM_WIDTH = CARD_WIDTH + GAP_WIDTH;
-  const EXTRA_SPACE = 100;
+  // Enhanced card dimensions for carousel
+  const CARD_WIDTH = 120;
+  const GAP_WIDTH = 80;
+  const ITEM_SPACING = 160; // Distance between card centers
+  const SIDE_PADDING = 300; // Extra space on both sides for edge selections
 
   // Create timeline from player's existing songs
   const timelineCards = currentPlayer.timeline
     .filter(song => song !== null)
     .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
 
-  // Calculate total width needed for scrolling
-  const totalWidth = (timelineCards.length + 1) * TOTAL_ITEM_WIDTH + 2 * EXTRA_SPACE;
+  // Calculate positions for gaps and cards
+  const totalItems = timelineCards.length + 1; // +1 for final gap
+  const totalWidth = (totalItems * ITEM_SPACING) + (2 * SIDE_PADDING);
 
   // Handle container resize
   useEffect(() => {
@@ -71,26 +73,30 @@ export default function MobilePlayerGameView({
     return () => window.removeEventListener('resize', updateContainerWidth);
   }, []);
 
-  // Enhanced scroll handling with smoother snapping
+  // Calculate which gap is centered
+  const calculateCenteredGap = (scrollLeft: number) => {
+    const center = scrollLeft + (containerWidth / 2);
+    const adjustedCenter = center - SIDE_PADDING;
+    const gapIndex = Math.round(adjustedCenter / ITEM_SPACING);
+    return Math.max(0, Math.min(gapIndex, timelineCards.length));
+  };
+
+  // Enhanced scroll handling with carousel effect
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!scrollViewRef.current || !containerRef.current) return;
+    if (!scrollViewRef.current) return;
     
+    const scrollLeft = scrollViewRef.current.scrollLeft;
+    setScrollPosition(scrollLeft);
     setIsScrolling(true);
+    
+    // Update centered position immediately
+    const centeredGap = calculateCenteredGap(scrollLeft);
+    setSnappedPosition(centeredGap);
     
     // Clear existing timeout
     if (scrollTimeout.current) {
       clearTimeout(scrollTimeout.current);
     }
-    
-    // Calculate current position during scroll
-    const scrollLeft = scrollViewRef.current.scrollLeft;
-    const centerX = containerWidth / 2;
-    const scrollCenter = scrollLeft + centerX - EXTRA_SPACE;
-    const currentGapIndex = Math.round(scrollCenter / TOTAL_ITEM_WIDTH);
-    const clampedGapIndex = Math.max(0, Math.min(currentGapIndex, timelineCards.length));
-    
-    // Update position indicator immediately for smooth feedback
-    setSnappedPosition(clampedGapIndex);
     
     // Set timeout for smooth snap after scrolling stops
     scrollTimeout.current = setTimeout(() => {
@@ -99,43 +105,60 @@ export default function MobilePlayerGameView({
     }, 150);
   };
 
-  // Handle touch start
+  // Handle touch events
   const handleTouchStart = () => {
     setIsDragging(true);
     setIsScrolling(true);
   };
 
-  // Handle touch end with snap to center
   const handleTouchEnd = () => {
     setIsDragging(false);
-    // Don't snap immediately, let the scroll handler timeout manage it
   };
 
-  // Enhanced snap function with smoother animation
+  // Enhanced snap function
   const snapToNearestGap = () => {
-    if (!scrollViewRef.current || !containerRef.current) return;
+    if (!scrollViewRef.current) return;
     
     const scrollLeft = scrollViewRef.current.scrollLeft;
-    const centerX = containerWidth / 2;
-    const scrollCenter = scrollLeft + centerX - EXTRA_SPACE;
-    
-    // Calculate which gap we're closest to
-    const gapIndex = Math.round(scrollCenter / TOTAL_ITEM_WIDTH);
-    const clampedGapIndex = Math.max(0, Math.min(gapIndex, timelineCards.length));
+    const centeredGap = calculateCenteredGap(scrollLeft);
     
     // Calculate target scroll position to center this gap
-    const targetScroll = clampedGapIndex * TOTAL_ITEM_WIDTH + EXTRA_SPACE - (containerWidth - GAP_WIDTH) / 2;
+    const targetScroll = (centeredGap * ITEM_SPACING) + SIDE_PADDING - (containerWidth / 2);
     
-    // Use requestAnimationFrame for smoother scrolling
-    const smoothScroll = () => {
+    requestAnimationFrame(() => {
       scrollViewRef.current?.scrollTo({
         left: targetScroll,
         behavior: 'smooth'
       });
-    };
+    });
     
-    requestAnimationFrame(smoothScroll);
-    setSnappedPosition(clampedGapIndex);
+    setSnappedPosition(centeredGap);
+  };
+
+  // Calculate carousel transform for items
+  const getCarouselTransform = (itemIndex: number, isGap: boolean = false) => {
+    if (!containerWidth) return { transform: 'scale(1)', opacity: 1, zIndex: 1 };
+    
+    const itemCenter = SIDE_PADDING + (itemIndex * ITEM_SPACING);
+    const screenCenter = scrollPosition + (containerWidth / 2);
+    const distance = Math.abs(itemCenter - screenCenter);
+    const maxDistance = containerWidth / 2;
+    
+    // Calculate scale based on distance from center
+    const normalizedDistance = Math.min(distance / maxDistance, 1);
+    const scale = Math.max(0.6, 1 - (normalizedDistance * 0.4));
+    const opacity = Math.max(0.4, 1 - (normalizedDistance * 0.6));
+    const translateY = normalizedDistance * 20; // Slight vertical offset
+    const rotateY = normalizedDistance * 15; // 3D rotation effect
+    
+    const zIndex = Math.round((1 - normalizedDistance) * 10);
+    
+    return {
+      transform: `scale(${scale}) translateY(${translateY}px) rotateY(${screenCenter > itemCenter ? rotateY : -rotateY}deg)`,
+      opacity,
+      zIndex,
+      filter: `blur(${normalizedDistance * 2}px)`
+    };
   };
 
   // Play song preview
@@ -181,7 +204,7 @@ export default function MobilePlayerGameView({
       setHasConfirmed(false);
       setSnappedPosition(0);
       if (scrollViewRef.current) {
-        const initialScroll = EXTRA_SPACE - (containerWidth - GAP_WIDTH) / 2;
+        const initialScroll = SIDE_PADDING - (containerWidth / 2);
         requestAnimationFrame(() => {
           scrollViewRef.current?.scrollTo({ 
             left: initialScroll,
@@ -205,143 +228,189 @@ export default function MobilePlayerGameView({
   // Show result overlay
   if (cardPlacementResult) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-slate-800/95 backdrop-blur-3xl flex items-center justify-center z-50">
-        <div className="text-center space-y-8 p-8 max-w-sm">
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950/98 via-slate-900/98 to-slate-800/98 backdrop-blur-3xl flex items-center justify-center z-50">
+        <div className="text-center space-y-8 p-8 max-w-sm animate-result-appear">
           <div className={`text-9xl mb-8 ${
-            cardPlacementResult.correct ? 'animate-bounce' : 'animate-pulse'
+            cardPlacementResult.correct ? 'animate-victory-bounce' : 'animate-gentle-float'
           }`}>
             {cardPlacementResult.correct ? '🎯' : '💫'}
           </div>
           
           <div className={`text-5xl font-black mb-6 ${
             cardPlacementResult.correct ? 
-            'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
-            'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400'
+            'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-success-glow' : 
+            'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-gentle-glow'
           }`}>
             {cardPlacementResult.correct ? 'PERFECT!' : 'NICE TRY!'}
           </div>
           
-          <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 shadow-2xl">
+          <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 shadow-2xl transform hover:scale-105 transition-all duration-300">
             <div className="text-2xl font-bold text-white mb-3">
               {cardPlacementResult.song.deezer_title}
             </div>
             <div className="text-lg text-white/80 mb-6">
               by {cardPlacementResult.song.deezer_artist}
             </div>
-            <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-full font-black text-2xl shadow-xl">
+            <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-full font-black text-2xl shadow-xl animate-year-pulse">
               {cardPlacementResult.song.release_year}
             </div>
           </div>
         </div>
+        
+        <style jsx global>{`
+          @keyframes result-appear {
+            from { opacity: 0; transform: scale(0.8) translateY(50px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+          }
+          @keyframes victory-bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) scale(1); }
+            40% { transform: translateY(-15px) scale(1.1); }
+            60% { transform: translateY(-8px) scale(1.05); }
+          }
+          @keyframes gentle-float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+          }
+          @keyframes success-glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+          }
+          @keyframes gentle-glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.1); }
+          }
+          @keyframes year-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(59, 130, 246, 0.5); }
+          }
+          .animate-result-appear { animation: result-appear 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+          .animate-victory-bounce { animation: victory-bounce 1.5s ease-in-out 3; }
+          .animate-gentle-float { animation: gentle-float 3s ease-in-out infinite; }
+          .animate-success-glow { animation: success-glow 1.5s ease-out forwards; }
+          .animate-gentle-glow { animation: gentle-glow 2s ease-in-out infinite; }
+          .animate-year-pulse { animation: year-pulse 2s ease-in-out infinite; }
+        `}</style>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col relative overflow-hidden">
-      {/* Background Effects - Matching host view */}
+      {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/8 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-950/50 via-transparent to-slate-900/30 pointer-events-none" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none" />
+        
+        {/* Additional ambient effects */}
+        <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '4s'}} />
+        <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '6s', animationDelay: '1s'}} />
       </div>
 
-      {/* Player Header */}
-      <div className="relative z-10 pt-10 pb-6 px-4">
+      {/* Enhanced Player Header */}
+      <div className="relative z-10 pt-12 pb-8 px-4">
         <div className="text-center">
-          <div className="text-2xl sm:text-3xl font-black text-white tracking-wide mb-2 drop-shadow-lg truncate">
+          <div className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-3 drop-shadow-2xl">
             {currentPlayer.name}
           </div>
-          <div className="text-white/70 text-sm sm:text-base font-medium">
+          <div className="text-white/80 text-base sm:text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-full px-6 py-2 border border-white/20 inline-block shadow-lg">
             {gameEnded ? 'Game Over' : 
              isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
           </div>
         </div>
       </div>
 
-      {/* Mystery Song Preview */}
+      {/* Enhanced Mystery Song Preview */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-6">
-          <div className="text-center space-y-6 max-w-xs">
+        <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
+          <div className="text-center space-y-8 max-w-sm">
             <div className="relative">
-              <div className={`relative w-32 h-32 mx-auto transition-transform duration-300 ${
-                isPlaying ? 'animate-spin' : 'hover:scale-105'
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
+              <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
+                isPlaying ? 'animate-spin' : 'hover:scale-110'
               }`}>
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-red-500/20 rounded-full blur-xl"></div>
-                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/30">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
+                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/40 shadow-lg"></div>
+                    <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
                   </div>
+                  
+                  {/* Vinyl grooves effect */}
+                  <div className="absolute inset-4 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-8 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-12 border border-white/10 rounded-full"></div>
                 </div>
+                
                 <Button
                   onClick={onPlayPause}
-                  className="absolute inset-0 w-full h-full bg-black/30 hover:bg-black/50 border-0 rounded-full transition-all duration-300 group"
+                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                   disabled={!currentSong?.preview_url}
                 >
-                  <div className="text-white text-3xl group-hover:scale-110 transition-transform duration-200">
-                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+                  <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
+                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
                   </div>
                 </Button>
               </div>
             </div>
-            <div className="text-white/90 text-base font-medium">
-              Tap vinyl to preview
+            <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+              Tap vinyl to preview mystery song
             </div>
           </div>
         </div>
       )}
 
-      {/* Waiting screen */}
+      {/* Enhanced Waiting screen */}
       {!isMyTurn && !gameEnded && (
         <div className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center space-y-6">
-            <div className="w-24 h-24 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/20 shadow-2xl">
-              <Music className="w-12 h-12 text-white/80 animate-pulse" />
+          <div className="text-center space-y-8">
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-2xl animate-pulse scale-150"></div>
+              <div className="relative w-32 h-32 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30 shadow-2xl">
+                <Music className="w-16 h-16 text-white/90 animate-pulse" />
+              </div>
             </div>
-            <div className="text-xl sm:text-2xl font-bold text-white">
+            <div className="text-2xl sm:text-3xl font-bold text-white mb-2">
               {currentTurnPlayer.name} is playing
             </div>
-            <div className="text-white/70 text-sm sm:text-base">
+            <div className="text-white/70 text-base sm:text-lg bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20">
               Wait for your turn to place cards
             </div>
           </div>
         </div>
       )}
 
-      {/* Timeline Placement Interface */}
+      {/* Enhanced Timeline Placement Interface with Carousel */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-2 pb-6" ref={containerRef}>
-          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl">
-            <div className="text-center text-white/90 text-base font-medium mb-4">
-              Scroll to place between years
-            </div>
-            
-            {/* Timeline Ruler with Center Line */}
-            <div className="relative mb-4 h-8">
-              <div className="h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full shadow-lg"></div>
-              <div className="absolute inset-0 flex justify-between items-center">
-                {Array.from({ length: timelineCards.length + 1 }, (_, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      "w-1 h-4 rounded-full transition-all duration-500 ease-out",
-                      snappedPosition === i ? "bg-green-400 shadow-lg scale-125 shadow-green-400/50" : "bg-white/50"
-                    )}
-                  ></div>
-                ))}
-              </div>
-              {/* Center line indicator */}
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-8 bg-yellow-400 shadow-lg z-10"></div>
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold">
+        <div className="relative z-10 px-4 pb-8" ref={containerRef}>
+          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-6 border border-white/25 shadow-2xl">
+            {/* Center line indicator */}
+            <div className="relative mb-6">
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-16 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
+              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 text-yellow-400 text-sm font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-3 py-1">
                 PLACE HERE
               </div>
             </div>
 
-            {/* Enhanced Scrollable Timeline */}
+            <div className="text-center text-white/90 text-lg font-semibold mb-6">
+              Scroll to position the gap at the center
+            </div>
+            
+            {/* Position indicator */}
+            <div className="text-center mb-4">
+              <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-4 py-2 border border-white/30">
+                <span className="text-white/80 text-sm font-medium">
+                  Position: {snappedPosition === 0 ? 'Before first card' : 
+                           snappedPosition === timelineCards.length ? 'After last card' :
+                           `Between ${timelineCards[snappedPosition - 1]?.release_year} and ${timelineCards[snappedPosition]?.release_year}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Carousel Timeline */}
             <div 
               ref={scrollViewRef}
-              className="overflow-x-auto scrollbar-hide scroll-smooth"
+              className="overflow-x-auto scrollbar-hide"
               onScroll={handleScroll}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
@@ -350,151 +419,145 @@ export default function MobilePlayerGameView({
               onMouseLeave={handleTouchEnd}
               style={{
                 WebkitOverflowScrolling: 'touch',
-                scrollSnapType: 'x mandatory',
-                scrollBehavior: isScrolling ? 'auto' : 'smooth'
+                scrollBehavior: isScrolling ? 'auto' : 'smooth',
+                perspective: '1000px'
               }}
             >
               <div 
-                className="flex items-center pb-4" 
+                className="flex items-center py-8 relative" 
                 style={{ 
                   width: `${totalWidth}px`,
-                  paddingLeft: `${EXTRA_SPACE}px`,
-                  paddingRight: `${EXTRA_SPACE}px`
+                  height: '200px'
                 }}
               >
-                {/* Left edge spacer */}
-                <div style={{ width: `${(containerWidth - GAP_WIDTH) / 2 - EXTRA_SPACE}px` }}></div>
-                
-                {timelineCards.map((song, index) => {
-                  const artistHash = Array.from(song.deezer_artist).reduce(
-                    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
-                  );
-                  const hue = Math.abs(artistHash) % 360;
+                {/* Render gaps and cards with carousel effect */}
+                {Array.from({ length: totalItems }, (_, gapIndex) => {
+                  const gapTransform = getCarouselTransform(gapIndex, true);
+                  const cardIndex = gapIndex - 1;
+                  const hasCard = cardIndex >= 0 && cardIndex < timelineCards.length;
                   
                   return (
-                    <React.Fragment key={song.id || index}>
+                    <React.Fragment key={`gap-${gapIndex}`}>
                       {/* Gap indicator */}
-                      <div 
-                        className={cn(
-                          "flex-shrink-0 h-24 rounded-xl border-2 border-dashed transition-all duration-500 ease-out flex items-center justify-center",
-                          snappedPosition === index ? 
-                          "border-green-400 bg-green-400/20 scale-110 shadow-lg shadow-green-400/30" : 
-                          "border-white/40 bg-white/5",
-                        )}
-                        style={{ 
+                      <div
+                        className="absolute flex items-center justify-center"
+                        style={{
+                          left: `${SIDE_PADDING + (gapIndex * ITEM_SPACING) - (GAP_WIDTH / 2)}px`,
                           width: `${GAP_WIDTH}px`,
-                          scrollSnapAlign: 'center'
+                          height: '120px',
+                          ...gapTransform
                         }}
-                      >
-                        <div className={cn(
-                          "w-3 h-3 rounded-full transition-all duration-500 ease-out",
-                          snappedPosition === index ? "bg-green-400 shadow-lg animate-pulse scale-125" : "bg-white/60"
-                        )}></div>
-                      </div>
-                      
-                      {/* Enhanced Year card with host view styling */}
-                      <div 
-                        className="flex-shrink-0 relative cursor-pointer group transition-all duration-300 hover:scale-105"
-                        style={{ 
-                          width: `${CARD_WIDTH}px`,
-                          height: `${CARD_WIDTH}px`
-                        }}
-                        onClick={() => song.preview_url && playPreview(song.preview_url, song.id)}
                       >
                         <div 
-                          className="absolute inset-0 rounded-xl border-2 border-white/30 flex flex-col items-center justify-between p-3 text-white shadow-xl transition-all duration-300 group-hover:shadow-2xl"
-                          style={{ 
-                            backgroundColor: `hsl(${hue}, 70%, 30%)`,
-                            backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
-                            boxShadow: '0 8px 25px rgba(0,0,0,0.4)'
-                          }}
-                        >
-                          <div className="text-xs font-medium w-full text-center truncate">
-                            {song.deezer_artist}
-                          </div>
-                          <div className="text-2xl font-bold my-auto">
-                            {song.release_year}
-                          </div>
-                          <div className="text-xs italic w-full text-center truncate">
-                            {song.deezer_title}
-                          </div>
-                          
-                          {song.preview_url && (
-                            <div className="absolute bottom-1 right-1 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
-                              {playingPreviewId === song.id ? (
-                                <Pause className="w-3 h-3 text-white" />
-                              ) : (
-                                <Play className="w-3 h-3 text-white ml-0.5" />
-                              )}
-                            </div>
+                          className={cn(
+                            "w-full h-24 rounded-2xl border-3 border-dashed transition-all duration-500 flex items-center justify-center",
+                            snappedPosition === gapIndex ? 
+                            "border-green-400 bg-green-400/25 shadow-lg shadow-green-400/50 scale-110" : 
+                            "border-white/50 bg-white/10",
                           )}
+                        >
+                          <div className={cn(
+                            "w-4 h-4 rounded-full transition-all duration-500",
+                            snappedPosition === gapIndex ? "bg-green-400 shadow-lg animate-pulse" : "bg-white/70"
+                          )}></div>
                         </div>
                       </div>
+
+                      {/* Card (if exists) */}
+                      {hasCard && (
+                        <div
+                          className="absolute flex items-center justify-center cursor-pointer"
+                          style={{
+                            left: `${SIDE_PADDING + (gapIndex * ITEM_SPACING) + (GAP_WIDTH / 2)}px`,
+                            width: `${CARD_WIDTH}px`,
+                            height: '120px',
+                            ...getCarouselTransform(gapIndex + 0.5)
+                          }}
+                          onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
+                        >
+                          {(() => {
+                            const song = timelineCards[cardIndex];
+                            const artistHash = Array.from(song.deezer_artist).reduce(
+                              (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
+                            );
+                            const hue = Math.abs(artistHash) % 360;
+                            
+                            return (
+                              <div 
+                                className="w-full h-full rounded-2xl border-2 border-white/40 flex flex-col items-center justify-between p-4 text-white shadow-2xl transition-all duration-300 hover:shadow-3xl group"
+                                style={{ 
+                                  backgroundColor: `hsl(${hue}, 70%, 25%)`,
+                                  backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
+                                }}
+                              >
+                                <div className="text-xs font-semibold text-center truncate w-full opacity-90">
+                                  {song.deezer_artist}
+                                </div>
+                                <div className="text-2xl font-black">
+                                  {song.release_year}
+                                </div>
+                                <div className="text-xs italic text-center truncate w-full opacity-90">
+                                  {song.deezer_title}
+                                </div>
+                                
+                                {song.preview_url && (
+                                  <div className="absolute bottom-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30">
+                                    {playingPreviewId === song.id ? (
+                                      <Pause className="w-3 h-3 text-white" />
+                                    ) : (
+                                      <Play className="w-3 h-3 text-white ml-0.5" />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </React.Fragment>
                   );
                 })}
-                
-                {/* Final gap */}
-                <div 
-                  className={cn(
-                    "flex-shrink-0 h-24 rounded-xl border-2 border-dashed transition-all duration-500 ease-out flex items-center justify-center",
-                    snappedPosition === timelineCards.length ? 
-                    "border-green-400 bg-green-400/20 scale-110 shadow-lg shadow-green-400/30" : 
-                    "border-white/40 bg-white/5",
-                  )}
-                  style={{ 
-                    width: `${GAP_WIDTH}px`,
-                    scrollSnapAlign: 'center'
-                  }}
-                >
-                  <div className={cn(
-                    "w-3 h-3 rounded-full transition-all duration-500 ease-out",
-                    snappedPosition === timelineCards.length ? "bg-green-400 shadow-lg animate-pulse scale-125" : "bg-white/60"
-                  )}></div>
-                </div>
-                
-                {/* Right edge spacer */}
-                <div style={{ width: `${(containerWidth - GAP_WIDTH) / 2 - EXTRA_SPACE}px` }}></div>
               </div>
             </div>
             
-            {/* Navigation hints */}
-            <div className="flex justify-between items-center mt-2 text-white/60 text-xs">
+            {/* Enhanced Navigation hints */}
+            <div className="flex justify-between items-center mt-4 text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/20">
               <div className="flex items-center">
-                <MoveLeft className="w-4 h-4 mr-1" />
-                <span>Scroll timeline</span>
+                <MoveLeft className="w-5 h-5 mr-2" />
+                <span>Scroll timeline to position</span>
               </div>
               <div className="flex items-center">
-                <span>Lift finger to snap</span>
-                <MoveRight className="w-4 h-4 ml-1" />
+                <span>Center gap to select</span>
+                <MoveRight className="w-5 h-5 ml-2" />
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirm Placement Button */}
+      {/* Enhanced Confirm Placement Button */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-4 pb-6">
+        <div className="relative z-10 px-4 pb-8">
           <Button
             onClick={handleConfirmPlacement}
             disabled={hasConfirmed || isSubmitting}
             className={cn(
-              "w-full h-16 text-white font-bold text-xl rounded-2xl border-0 shadow-xl transition-all duration-300",
+              "w-full h-20 text-white font-black text-xl rounded-3xl border-0 shadow-2xl transition-all duration-300 relative overflow-hidden",
               hasConfirmed || isSubmitting ? 
               "bg-gradient-to-r from-gray-600 to-gray-700" :
-              "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 hover:scale-105 active:scale-95"
+              "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 hover:scale-105 hover:shadow-3xl active:scale-95"
             )}
           >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
             {isSubmitting ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                <span>PLACING...</span>
+              <div className="flex items-center justify-center space-x-3">
+                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span>PLACING CARD...</span>
               </div>
             ) : hasConfirmed ? (
-              <div className="flex items-center justify-center space-x-2">
-                <Check className="w-5 h-5" />
-                <span>PLACED!</span>
+              <div className="flex items-center justify-center space-x-3">
+                <Check className="w-6 h-6" />
+                <span>CARD PLACED!</span>
               </div>
             ) : (
               'CONFIRM PLACEMENT'
@@ -503,17 +566,20 @@ export default function MobilePlayerGameView({
         </div>
       )}
 
-      {/* Footer Branding */}
-      <div className="relative z-10 pb-6">
+      {/* Enhanced Footer Branding */}
+      <div className="relative z-10 pb-8">
         <div className="text-center">
-          <div className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-purple-200 tracking-wide drop-shadow-lg">
+          <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wider drop-shadow-2xl">
             TIMELINER
+          </div>
+          <div className="text-white/50 text-sm mt-1 font-medium">
+            Timeline Music Game
           </div>
         </div>
       </div>
 
       {/* Enhanced scrollbar styles */}
-      <style>{`
+      <style jsx global>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -521,8 +587,11 @@ export default function MobilePlayerGameView({
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-        .scroll-smooth {
-          scroll-behavior: smooth;
+        .border-3 {
+          border-width: 3px;
+        }
+        .shadow-3xl {
+          box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.5);
         }
       `}</style>
     </div>
