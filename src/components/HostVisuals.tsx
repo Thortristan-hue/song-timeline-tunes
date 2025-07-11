@@ -98,20 +98,20 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
   useEffect(() => {
     if (isActive) {
       setIsDropping(true);
-      const timer = setTimeout(() => setIsDropping(false), 800);
+      const timer = setTimeout(() => setIsDropping(false), 1200);
       return () => clearTimeout(timer);
     }
   }, [isActive]);
 
   return (
     <div 
-      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-300 hover:scale-110 cursor-pointer relative
-        ${isActive ? 'ring-4 ring-green-400' : ''}
-        ${isDropping ? 'animate-bang' : ''}`}
+      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-500 hover:scale-110 cursor-pointer relative
+        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80' : ''}
+        ${isDropping ? 'animate-dramatic-bang' : ''}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 30%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
-        boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+        boxShadow: '0 8px 25px rgba(0,0,0,0.4)'
       }}
     >
       <div className="text-sm font-medium w-full text-center truncate">
@@ -125,25 +125,37 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
       </div>
       
       <style jsx global>{`
-        @keyframes bang {
+        @keyframes dramatic-bang {
           0% {
-            transform: scale(0.8);
+            transform: scale(0.6) translateY(-80px) rotateZ(-15deg);
             opacity: 0;
+            filter: blur(3px);
+          }
+          25% {
+            transform: scale(1.3) translateY(15px) rotateZ(5deg);
+            opacity: 0.8;
+            filter: blur(1px);
+            box-shadow: 0 0 0 20px rgba(255,255,255,0.15), 0 15px 40px rgba(0,0,0,0.6);
           }
           50% {
-            transform: scale(1.2);
-            box-shadow: 0 0 0 10px rgba(255,255,255,0.1);
+            transform: scale(0.9) translateY(-8px) rotateZ(-2deg);
+            opacity: 1;
+            filter: blur(0px);
+            box-shadow: 0 0 0 30px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.5);
           }
-          70% {
-            transform: scale(0.95);
+          75% {
+            transform: scale(1.05) translateY(3px) rotateZ(1deg);
+            box-shadow: 0 0 0 15px rgba(255,255,255,0.05), 0 12px 30px rgba(0,0,0,0.4);
           }
           100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(255,255,255,0);
+            transform: scale(1) translateY(0) rotateZ(0deg);
+            opacity: 1;
+            filter: blur(0px);
+            box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 8px 25px rgba(0,0,0,0.4);
           }
         }
-        .animate-bang {
-          animation: bang 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-dramatic-bang {
+          animation: dramatic-bang 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
       `}</style>
     </div>
@@ -161,20 +173,34 @@ function HostTimelineDisplay({
 }) {
   const [visibleCards, setVisibleCards] = useState(0);
   const [newCardIndex, setNewCardIndex] = useState<number | null>(null);
+  const [isEntering, setIsEntering] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const cardCount = currentPlayer.timeline.length;
   const gapSize = Math.max(8, 40 - cardCount * 2);
 
   useEffect(() => {
     if (isActive) {
+      setIsEntering(true);
+      setIsExiting(false);
       let count = 0;
       const interval = setInterval(() => {
         count++;
         setVisibleCards(count);
         if (count >= cardCount) clearInterval(interval);
-      }, 100);
-      return () => clearInterval(interval);
+      }, 120);
+      
+      const enteringTimer = setTimeout(() => setIsEntering(false), 1500);
+      
+      return () => {
+        clearInterval(interval);
+        clearTimeout(enteringTimer);
+      };
     } else {
+      setIsExiting(true);
+      setIsEntering(false);
       setVisibleCards(0);
+      const exitTimer = setTimeout(() => setIsExiting(false), 800);
+      return () => clearTimeout(exitTimer);
     }
   }, [isActive, cardCount]);
 
@@ -185,34 +211,40 @@ function HostTimelineDisplay({
       );
       if (newIndex >= 0) {
         setNewCardIndex(newIndex);
-        setTimeout(() => setNewCardIndex(null), 1000);
+        setTimeout(() => setNewCardIndex(null), 1500);
       }
     }
   }, [currentPlayer.timeline, placementResult]);
 
   return (
     <div 
-      className="flex justify-center items-center p-4 rounded-2xl transition-all duration-500"
+      className={`flex justify-center items-center p-4 rounded-2xl transition-all duration-1000 ${
+        isEntering ? 'animate-timeline-enter' : ''
+      } ${isExiting ? 'animate-timeline-exit' : ''}`}
       style={{
         gap: `${gapSize}px`,
-        transform: isActive ? 'translateY(0)' : 'translateY(20px)',
-        opacity: isActive ? 1 : 0.7
+        transform: isActive ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.9)',
+        opacity: isActive ? 1 : 0.5,
+        filter: isActive ? 'blur(0px)' : 'blur(2px)'
       }}
     >
       {currentPlayer.timeline.length === 0 ? (
-        <div className="text-white/50 italic py-6 text-lg">
+        <div className={`text-white/50 italic py-6 text-lg transition-all duration-800 ${
+          isActive ? 'animate-text-fade-in' : 'opacity-0'
+        }`}>
           {currentPlayer.name} hasn't placed any cards yet
         </div>
       ) : (
         currentPlayer.timeline.map((song, index) => (
           <div 
             key={song.id}
-            className={`transition-all duration-500 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
+            className={`transition-all duration-700 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-50'} ${
+              newCardIndex === index ? 'animate-massive-card-drop' : ''
+            }`}
             style={{
-              transitionDelay: `${index * 50}ms`,
+              transitionDelay: `${index * 80}ms`,
               transformOrigin: 'bottom center',
-              animation: newCardIndex === index ? 
-                'cardDrop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' : 'none'
+              filter: index < visibleCards ? 'blur(0px)' : 'blur(3px)'
             }}
           >
             <HostTimelineCard 
@@ -224,14 +256,14 @@ function HostTimelineDisplay({
       )}
       
       {placementResult && (
-        <div className={`absolute top-full mt-4 text-center text-lg font-bold transition-all duration-500
+        <div className={`absolute top-full mt-4 text-center text-lg font-bold transition-all duration-700 animate-result-appear
           ${placementResult.correct ? 'text-green-400' : 'text-red-400'}`}>
           {placementResult.correct ? (
-            <div className="flex items-center gap-2 animate-bounce">
+            <div className="flex items-center gap-2 animate-victory-bounce">
               <Check className="h-6 w-6" /> Correct!
             </div>
           ) : (
-            <div className="flex items-center gap-2 animate-pulse">
+            <div className="flex items-center gap-2 animate-gentle-pulse">
               <X className="h-6 w-6" /> Incorrect
             </div>
           )}
@@ -239,21 +271,143 @@ function HostTimelineDisplay({
       )}
       
       <style jsx global>{`
-        @keyframes cardDrop {
+        @keyframes massive-card-drop {
           0% {
-            transform: translateY(-100px) scale(0.8);
+            transform: translateY(-200px) scale(0.5) rotateX(90deg);
             opacity: 0;
+            filter: blur(8px);
           }
-          50% {
-            transform: translateY(20px) scale(1.1);
+          30% {
+            transform: translateY(40px) scale(1.4) rotateX(10deg);
+            opacity: 0.7;
+            filter: blur(2px);
+          }
+          60% {
+            transform: translateY(-20px) scale(1.1) rotateX(-5deg);
             opacity: 1;
+            filter: blur(0px);
           }
-          70% {
-            transform: translateY(-10px) scale(1.05);
+          80% {
+            transform: translateY(8px) scale(1.03) rotateX(2deg);
           }
           100% {
+            transform: translateY(0) scale(1) rotateX(0deg);
+            opacity: 1;
+            filter: blur(0px);
+          }
+        }
+        
+        @keyframes timeline-enter {
+          0% {
+            transform: translateX(-100vw) scale(0.8) rotateY(-20deg);
+            opacity: 0;
+            filter: blur(10px);
+          }
+          60% {
+            transform: translateX(20px) scale(1.05) rotateY(5deg);
+            opacity: 0.8;
+            filter: blur(2px);
+          }
+          100% {
+            transform: translateX(0) scale(1) rotateY(0deg);
+            opacity: 1;
+            filter: blur(0px);
+          }
+        }
+        
+        @keyframes timeline-exit {
+          0% {
+            transform: translateX(0) scale(1) rotateY(0deg);
+            opacity: 1;
+            filter: blur(0px);
+          }
+          100% {
+            transform: translateX(100vw) scale(0.7) rotateY(30deg);
+            opacity: 0;
+            filter: blur(8px);
+          }
+        }
+        
+        @keyframes text-fade-in {
+          0% {
+            opacity: 0;
+            transform: translateY(30px);
+            filter: blur(3px);
+          }
+          100% {
+            opacity: 0.5;
+            transform: translateY(0);
+            filter: blur(0px);
+          }
+        }
+        
+        @keyframes result-appear {
+          0% {
+            opacity: 0;
+            transform: scale(0.5) translateY(-20px);
+            filter: blur(5px);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.2) translateY(-10px);
+            filter: blur(1px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            filter: blur(0px);
+          }
+        }
+        
+        @keyframes victory-bounce {
+          0%, 20%, 50%, 80%, 100% {
             transform: translateY(0) scale(1);
           }
+          40% {
+            transform: translateY(-15px) scale(1.1);
+          }
+          60% {
+            transform: translateY(-8px) scale(1.05);
+          }
+        }
+        
+        @keyframes gentle-pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(0.95);
+          }
+        }
+        
+        .animate-massive-card-drop {
+          animation: massive-card-drop 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .animate-timeline-enter {
+          animation: timeline-enter 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .animate-timeline-exit {
+          animation: timeline-exit 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+        
+        .animate-text-fade-in {
+          animation: text-fade-in 0.8s ease-out forwards;
+        }
+        
+        .animate-result-appear {
+          animation: result-appear 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .animate-victory-bounce {
+          animation: victory-bounce 1.5s ease-in-out 3;
+        }
+        
+        .animate-gentle-pulse {
+          animation: gentle-pulse 2s ease-in-out infinite;
         }
       `}</style>
     </div>
@@ -290,7 +444,7 @@ export function HostGameView({
   // Handle card placement result and transitions
   useEffect(() => {
     if (cardPlacementResult) {
-      // Show the result modal for 2 seconds before starting transition
+      // Show the result modal for 3 seconds before starting transition
       setShowResultModal(true);
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
@@ -304,13 +458,13 @@ export function HostGameView({
           // Wait for enter animation to complete
           const enterTimer = setTimeout(() => {
             setAnimationStage('idle');
-          }, 1000);
+          }, 1200);
           
           return () => clearTimeout(enterTimer);
-        }, 800);
+        }, 1000);
         
         return () => clearTimeout(transitionTimer);
-      }, 2000);
+      }, 3000);
       
       return () => clearTimeout(resultTimer);
     } else if (transitioning) {
@@ -319,8 +473,8 @@ export function HostGameView({
       setTimeout(() => {
         setDisplayedPlayer(currentTurnPlayer);
         setAnimationStage('entering');
-        setTimeout(() => setAnimationStage('idle'), 1000);
-      }, 800);
+        setTimeout(() => setAnimationStage('idle'), 1200);
+      }, 1000);
     } else {
       setDisplayedPlayer(currentTurnPlayer);
     }
@@ -356,32 +510,32 @@ export function HostGameView({
       </div>
 
       {showResultModal && cardPlacementResult && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-2xl flex items-center justify-center z-50 animate-fadeIn">
-          <div className="text-center space-y-8 p-8">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-3xl flex items-center justify-center z-50 animate-modal-appear">
+          <div className="text-center space-y-8 p-8 animate-modal-content">
             <div className={`text-9xl mb-6 ${
-              cardPlacementResult.correct ? 'animate-bounce' : 'animate-pulse'
+              cardPlacementResult.correct ? 'animate-success-icon' : 'animate-gentle-float'
             }`}>
               {cardPlacementResult.correct ? '🎯' : '💫'}
             </div>
             <div className={`text-6xl font-black tracking-tight ${
               cardPlacementResult.correct ? 
-              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400' : 
-              'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400'
+              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-success-text' : 
+              'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-gentle-glow'
             }`}>
               {cardPlacementResult.correct ? 'PERFECT MATCH!' : 'NICE TRY!'}
             </div>
-            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg">
+            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg animate-card-rise">
               <div className="text-3xl font-bold text-white mb-3">
                 {cardPlacementResult.song.deezer_title}
               </div>
               <div className="text-2xl text-white/80 mb-6 font-medium">
                 by {cardPlacementResult.song.deezer_artist}
               </div>
-              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-full font-bold text-2xl">
+              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-full font-bold text-2xl animate-year-pulse">
                 {cardPlacementResult.song.release_year}
               </div>
             </div>
-            <div className="text-white/60 text-xl">
+            <div className="text-white/60 text-xl animate-text-slide-up">
               {cardPlacementResult.correct ? 
                 `${currentTurnPlayer.name} scored a point!` : 
                 `Better luck next time, ${currentTurnPlayer.name}!`
@@ -390,12 +544,145 @@ export function HostGameView({
           </div>
           
           <style jsx global>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
+            @keyframes modal-appear {
+              0% {
+                opacity: 0;
+                backdrop-filter: blur(0px);
+              }
+              100% {
+                opacity: 1;
+                backdrop-filter: blur(12px);
+              }
             }
-            .animate-fadeIn {
-              animation: fadeIn 0.3s ease-out forwards;
+            
+            @keyframes modal-content {
+              0% {
+                opacity: 0;
+                transform: scale(0.7) translateY(50px);
+                filter: blur(10px);
+              }
+              100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0px);
+              }
+            }
+            
+            @keyframes success-icon {
+              0%, 100% {
+                transform: scale(1) rotate(0deg);
+              }
+              25% {
+                transform: scale(1.2) rotate(-10deg);
+              }
+              50% {
+                transform: scale(1.1) rotate(5deg);
+              }
+              75% {
+                transform: scale(1.15) rotate(-3deg);
+              }
+            }
+            
+            @keyframes gentle-float {
+              0%, 100% {
+                transform: translateY(0) rotate(0deg);
+              }
+              50% {
+                transform: translateY(-10px) rotate(5deg);
+              }
+            }
+            
+            @keyframes success-text {
+              0% {
+                transform: scale(0.8);
+                filter: brightness(0.8);
+              }
+              50% {
+                transform: scale(1.05);
+                filter: brightness(1.3);
+              }
+              100% {
+                transform: scale(1);
+                filter: brightness(1);
+              }
+            }
+            
+            @keyframes gentle-glow {
+              0%, 100% {
+                filter: brightness(1);
+              }
+              50% {
+                filter: brightness(1.1);
+              }
+            }
+            
+            @keyframes card-rise {
+              0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+              }
+              100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+              }
+            }
+            
+            @keyframes year-pulse {
+              0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+              }
+              50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+              }
+            }
+            
+            @keyframes text-slide-up {
+              0% {
+                opacity: 0;
+                transform: translateY(20px);
+              }
+              100% {
+                opacity: 0.6;
+                transform: translateY(0);
+              }
+            }
+            
+            .animate-modal-appear {
+              animation: modal-appear 0.5s ease-out forwards;
+            }
+            
+            .animate-modal-content {
+              animation: modal-content 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            }
+            
+            .animate-success-icon {
+              animation: success-icon 2s ease-in-out infinite;
+            }
+            
+            .animate-gentle-float {
+              animation: gentle-float 3s ease-in-out infinite;
+            }
+            
+            .animate-success-text {
+              animation: success-text 1.5s ease-out forwards;
+            }
+            
+            .animate-gentle-glow {
+              animation: gentle-glow 2s ease-in-out infinite;
+            }
+            
+            .animate-card-rise {
+              animation: card-rise 0.8s ease-out 0.3s both;
+            }
+            
+            .animate-year-pulse {
+              animation: year-pulse 2s ease-in-out infinite;
+            }
+            
+            .animate-text-slide-up {
+              animation: text-slide-up 0.6s ease-out 0.5s both;
             }
           `}</style>
         </div>
