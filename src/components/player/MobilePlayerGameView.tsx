@@ -46,10 +46,10 @@ export default function MobilePlayerGameView({
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Enhanced card dimensions for carousel
-  const CARD_WIDTH = 120;
-  const GAP_WIDTH = 80;
-  const ITEM_SPACING = 160; // Distance between card centers
-  const SIDE_PADDING = 300; // Extra space on both sides for edge selections
+  const CARD_WIDTH = 100;
+  const GAP_WIDTH = 60;
+  const ITEM_SPACING = 140; // Distance between gap centers
+  const SIDE_PADDING = 250; // Extra space on both sides for edge selections
 
   // Create timeline from player's existing songs
   const timelineCards = currentPlayer.timeline
@@ -136,10 +136,10 @@ export default function MobilePlayerGameView({
   };
 
   // Calculate carousel transform for items
-  const getCarouselTransform = (itemIndex: number, isGap: boolean = false) => {
+  const getCarouselTransform = (itemPosition: number) => {
     if (!containerWidth) return { transform: 'scale(1)', opacity: 1, zIndex: 1 };
     
-    const itemCenter = SIDE_PADDING + (itemIndex * ITEM_SPACING);
+    const itemCenter = SIDE_PADDING + itemPosition;
     const screenCenter = scrollPosition + (containerWidth / 2);
     const distance = Math.abs(itemCenter - screenCenter);
     const maxDistance = containerWidth / 2;
@@ -148,8 +148,8 @@ export default function MobilePlayerGameView({
     const normalizedDistance = Math.min(distance / maxDistance, 1);
     const scale = Math.max(0.6, 1 - (normalizedDistance * 0.4));
     const opacity = Math.max(0.4, 1 - (normalizedDistance * 0.6));
-    const translateY = normalizedDistance * 20; // Slight vertical offset
-    const rotateY = normalizedDistance * 15; // 3D rotation effect
+    const translateY = normalizedDistance * 15; // Slight vertical offset
+    const rotateY = normalizedDistance * 10; // 3D rotation effect
     
     const zIndex = Math.round((1 - normalizedDistance) * 10);
     
@@ -157,7 +157,7 @@ export default function MobilePlayerGameView({
       transform: `scale(${scale}) translateY(${translateY}px) rotateY(${screenCenter > itemCenter ? rotateY : -rotateY}deg)`,
       opacity,
       zIndex,
-      filter: `blur(${normalizedDistance * 2}px)`
+      filter: `blur(${normalizedDistance * 1.5}px)`
     };
   };
 
@@ -263,10 +263,10 @@ export default function MobilePlayerGameView({
           ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-700' 
           : 'bg-gradient-to-br from-red-500 via-red-600 to-red-700'
       }`}>
-        <div className="text-center space-y-8 p-8 max-w-sm animate-result-bounce">
+        <div className="text-center space-y-6 p-6 max-w-sm animate-result-bounce">
           {/* Kahoot-style icon */}
           <div className="relative">
-            <div className={`text-8xl mb-8 animate-pulse ${
+            <div className={`text-7xl mb-6 animate-pulse ${
               isCorrect ? 'filter drop-shadow-lg' : 'animate-shake'
             }`}>
               {isCorrect ? '✓' : '✗'}
@@ -278,21 +278,21 @@ export default function MobilePlayerGameView({
           </div>
           
           {/* Kahoot-style text */}
-          <div className={`text-6xl font-black mb-6 text-white drop-shadow-2xl ${
+          <div className={`text-5xl font-black mb-4 text-white drop-shadow-2xl ${
             isCorrect ? 'animate-bounce' : 'animate-pulse'
           }`}>
             {isCorrect ? 'CORRECT!' : 'INCORRECT'}
           </div>
           
           {/* Song info card */}
-          <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 border-4 border-white shadow-2xl transform hover:scale-105 transition-all duration-300">
-            <div className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
+          <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-6 border-4 border-white shadow-2xl transform hover:scale-105 transition-all duration-300">
+            <div className="text-xl font-bold text-gray-900 mb-2 leading-tight">
               {cardPlacementResult.song.deezer_title}
             </div>
-            <div className="text-lg text-gray-700 mb-6 font-medium">
+            <div className="text-base text-gray-700 mb-4 font-medium">
               by {cardPlacementResult.song.deezer_artist}
             </div>
-            <div className={`inline-block text-white px-8 py-4 rounded-full font-black text-3xl shadow-xl ${
+            <div className={`inline-block text-white px-6 py-3 rounded-full font-black text-2xl shadow-xl ${
               isCorrect 
                 ? 'bg-gradient-to-r from-green-600 to-green-700' 
                 : 'bg-gradient-to-r from-red-600 to-red-700'
@@ -302,7 +302,7 @@ export default function MobilePlayerGameView({
           </div>
           
           {/* Points indicator */}
-          <div className="text-white text-xl font-bold">
+          <div className="text-white text-lg font-bold">
             {isCorrect ? 
               `+1 Point for ${currentPlayer.name}!` : 
               `No points this round`
@@ -339,26 +339,22 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col relative overflow-hidden">
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl" />
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none" />
-        
-        {/* Additional ambient effects */}
-        <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '4s'}} />
-        <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '6s', animationDelay: '1s'}} />
       </div>
 
       {/* Enhanced Player Header */}
-      <div className="relative z-10 pt-12 pb-8 px-4">
+      <div className="relative z-10 pt-8 pb-4 px-4 flex-shrink-0">
         <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-3 drop-shadow-2xl">
+          <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-2 drop-shadow-2xl">
             {currentPlayer.name}
           </div>
-          <div className="text-white/80 text-base sm:text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-full px-6 py-2 border border-white/20 inline-block shadow-lg">
+          <div className="text-white/80 text-sm font-semibold bg-white/10 backdrop-blur-xl rounded-full px-4 py-1 border border-white/20 inline-block shadow-lg">
             {gameEnded ? 'Game Over' : 
              isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
           </div>
@@ -367,23 +363,23 @@ export default function MobilePlayerGameView({
 
       {/* Enhanced Mystery Song Preview */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
-          <div className="text-center space-y-8 max-w-sm">
+        <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-4">
+          <div className="text-center space-y-4 max-w-xs">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
-              <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
+              <div className={`relative w-32 h-32 mx-auto transition-all duration-500 ${
                 isPlaying ? 'animate-spin' : 'hover:scale-110'
               }`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
                 <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
+                    <div className="w-10 h-10 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
                   </div>
                   
                   {/* Vinyl grooves effect */}
-                  <div className="absolute inset-4 border border-white/10 rounded-full"></div>
-                  <div className="absolute inset-8 border border-white/10 rounded-full"></div>
-                  <div className="absolute inset-12 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-3 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-6 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-9 border border-white/10 rounded-full"></div>
                 </div>
                 
                 <Button
@@ -391,13 +387,13 @@ export default function MobilePlayerGameView({
                   className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                   disabled={!currentSong?.preview_url}
                 >
-                  <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
-                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
+                  <div className="text-white text-3xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
+                    {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
                   </div>
                 </Button>
               </div>
             </div>
-            <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+            <div className="text-white/90 text-base font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-4 py-2 border border-white/20 shadow-lg">
               Tap vinyl to preview mystery song
             </div>
           </div>
@@ -407,17 +403,17 @@ export default function MobilePlayerGameView({
       {/* Enhanced Waiting screen */}
       {!isMyTurn && !gameEnded && (
         <div className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center space-y-8">
+          <div className="text-center space-y-6">
             <div className="relative">
               <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-2xl animate-pulse scale-150"></div>
-              <div className="relative w-32 h-32 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30 shadow-2xl">
-                <Music className="w-16 h-16 text-white/90 animate-pulse" />
+              <div className="relative w-24 h-24 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30 shadow-2xl">
+                <Music className="w-12 h-12 text-white/90 animate-pulse" />
               </div>
             </div>
-            <div className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            <div className="text-xl font-bold text-white mb-2">
               {currentTurnPlayer.name} is playing
             </div>
-            <div className="text-white/70 text-base sm:text-lg bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20">
+            <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-2xl px-4 py-2 border border-white/20">
               Wait for your turn to place cards
             </div>
           </div>
@@ -426,24 +422,24 @@ export default function MobilePlayerGameView({
 
       {/* Enhanced Timeline Placement Interface with Carousel */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-4 pb-8" ref={containerRef}>
-          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-6 border border-white/25 shadow-2xl">
+        <div className="relative z-10 px-4 pb-4 flex-shrink-0" ref={containerRef}>
+          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 shadow-2xl">
             {/* Center line indicator */}
-            <div className="relative mb-6">
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-16 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
-              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 text-yellow-400 text-sm font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-3 py-1">
+            <div className="relative mb-4">
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-12 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
+              <div className="absolute top-10 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
                 PLACE HERE
               </div>
             </div>
 
-            <div className="text-center text-white/90 text-lg font-semibold mb-6">
+            <div className="text-center text-white/90 text-base font-semibold mb-4">
               Scroll to position the gap at the center
             </div>
             
             {/* Position indicator */}
             <div className="text-center mb-4">
-              <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-4 py-2 border border-white/30">
-                <span className="text-white/80 text-sm font-medium">
+              <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-3 py-1 border border-white/30">
+                <span className="text-white/80 text-xs font-medium">
                   Position: {snappedPosition === 0 ? 'Before first card' : 
                            snappedPosition === timelineCards.length ? 'After last card' :
                            `Between ${timelineCards[snappedPosition - 1]?.release_year} and ${timelineCards[snappedPosition]?.release_year}`}
@@ -468,17 +464,17 @@ export default function MobilePlayerGameView({
               }}
             >
               <div 
-                className="flex items-center py-8 relative" 
+                className="flex items-center py-6 relative" 
                 style={{ 
                   width: `${totalWidth}px`,
-                  height: '200px'
+                  height: '140px'
                 }}
               >
-                {/* Render gaps and cards with carousel effect */}
+                {/* Render gaps and cards aligned properly */}
                 {Array.from({ length: totalItems }, (_, gapIndex) => {
-                  const gapTransform = getCarouselTransform(gapIndex, true);
-                  const cardIndex = gapIndex - 1;
-                  const hasCard = cardIndex >= 0 && cardIndex < timelineCards.length;
+                  const gapPosition = SIDE_PADDING + (gapIndex * ITEM_SPACING);
+                  const cardIndex = gapIndex;
+                  const hasCard = cardIndex < timelineCards.length;
                   
                   return (
                     <React.Fragment key={`gap-${gapIndex}`}>
@@ -486,36 +482,36 @@ export default function MobilePlayerGameView({
                       <div
                         className="absolute flex items-center justify-center"
                         style={{
-                          left: `${SIDE_PADDING + (gapIndex * ITEM_SPACING) - (GAP_WIDTH / 2)}px`,
+                          left: `${gapPosition - (GAP_WIDTH / 2)}px`,
                           width: `${GAP_WIDTH}px`,
-                          height: '120px',
-                          ...gapTransform
+                          height: '100px',
+                          ...getCarouselTransform(gapPosition)
                         }}
                       >
                         <div 
                           className={cn(
-                            "w-full h-24 rounded-2xl border-3 border-dashed transition-all duration-500 flex items-center justify-center",
+                            "w-full h-20 rounded-2xl border-3 border-dashed transition-all duration-500 flex items-center justify-center",
                             snappedPosition === gapIndex ? 
                             "border-green-400 bg-green-400/25 shadow-lg shadow-green-400/50 scale-110" : 
                             "border-white/50 bg-white/10",
                           )}
                         >
                           <div className={cn(
-                            "w-4 h-4 rounded-full transition-all duration-500",
+                            "w-3 h-3 rounded-full transition-all duration-500",
                             snappedPosition === gapIndex ? "bg-green-400 shadow-lg animate-pulse" : "bg-white/70"
                           )}></div>
                         </div>
                       </div>
 
-                      {/* Card (if exists) */}
+                      {/* Card (if exists) - positioned after the gap */}
                       {hasCard && (
                         <div
                           className="absolute flex items-center justify-center cursor-pointer"
                           style={{
-                            left: `${SIDE_PADDING + (gapIndex * ITEM_SPACING) + (GAP_WIDTH / 2)}px`,
+                            left: `${gapPosition + (GAP_WIDTH / 2)}px`,
                             width: `${CARD_WIDTH}px`,
-                            height: '120px',
-                            ...getCarouselTransform(gapIndex + 0.5)
+                            height: '100px',
+                            ...getCarouselTransform(gapPosition + (GAP_WIDTH / 2) + (CARD_WIDTH / 2))
                           }}
                           onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
                         >
@@ -528,7 +524,7 @@ export default function MobilePlayerGameView({
                             
                             return (
                               <div 
-                                className="w-full h-full rounded-2xl border-2 border-white/40 flex flex-col items-center justify-between p-3 text-white shadow-2xl transition-all duration-300 hover:shadow-3xl group"
+                                className="w-full h-full rounded-2xl border-2 border-white/40 flex flex-col items-center justify-between p-2 text-white shadow-2xl transition-all duration-300 hover:shadow-3xl group"
                                 style={{ 
                                   backgroundColor: `hsl(${hue}, 70%, 25%)`,
                                   backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
@@ -536,29 +532,29 @@ export default function MobilePlayerGameView({
                               >
                                 {/* Artist name with text wrapping */}
                                 <div className="text-xs font-bold text-center w-full leading-tight text-shadow-sm">
-                                  {wrapText(song.deezer_artist, 18).split('\n').map((line, i) => (
+                                  {wrapText(song.deezer_artist, 14).split('\n').map((line, i) => (
                                     <div key={i} className="mb-0.5">{line}</div>
                                   ))}
                                 </div>
                                 
                                 {/* Year - prominent display */}
-                                <div className="text-2xl font-black text-center">
+                                <div className="text-xl font-black text-center">
                                   {song.release_year}
                                 </div>
                                 
                                 {/* Song title with text wrapping */}
                                 <div className="text-xs italic text-center w-full leading-tight text-white/90 text-shadow-sm">
-                                  {wrapText(song.deezer_title, 16).split('\n').map((line, i) => (
+                                  {wrapText(song.deezer_title, 12).split('\n').map((line, i) => (
                                     <div key={i} className="mb-0.5">{line}</div>
                                   ))}
                                 </div>
                                 
                                 {song.preview_url && (
-                                  <div className="absolute bottom-1 right-1 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30">
+                                  <div className="absolute bottom-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30">
                                     {playingPreviewId === song.id ? (
-                                      <Pause className="w-3 h-3 text-white" />
+                                      <Pause className="w-2.5 h-2.5 text-white" />
                                     ) : (
-                                      <Play className="w-3 h-3 text-white ml-0.5" />
+                                      <Play className="w-2.5 h-2.5 text-white ml-0.5" />
                                     )}
                                   </div>
                                 )}
@@ -574,14 +570,14 @@ export default function MobilePlayerGameView({
             </div>
             
             {/* Enhanced Navigation hints */}
-            <div className="flex justify-between items-center mt-4 text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/20">
+            <div className="flex justify-between items-center mt-3 text-white/70 text-xs bg-white/10 backdrop-blur-xl rounded-2xl px-3 py-2 border border-white/20">
               <div className="flex items-center">
-                <MoveLeft className="w-5 h-5 mr-2" />
-                <span>Scroll timeline to position</span>
+                <MoveLeft className="w-4 h-4 mr-1" />
+                <span>Scroll timeline</span>
               </div>
               <div className="flex items-center">
                 <span>Center gap to select</span>
-                <MoveRight className="w-5 h-5 ml-2" />
+                <MoveRight className="w-4 h-4 ml-1" />
               </div>
             </div>
           </div>
@@ -590,12 +586,12 @@ export default function MobilePlayerGameView({
 
       {/* Enhanced Confirm Placement Button */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-4 pb-8">
+        <div className="relative z-10 px-4 pb-4 flex-shrink-0">
           <Button
             onClick={handleConfirmPlacement}
             disabled={hasConfirmed || isSubmitting}
             className={cn(
-              "w-full h-20 text-white font-black text-xl rounded-3xl border-0 shadow-2xl transition-all duration-300 relative overflow-hidden",
+              "w-full h-16 text-white font-black text-lg rounded-3xl border-0 shadow-2xl transition-all duration-300 relative overflow-hidden",
               hasConfirmed || isSubmitting ? 
               "bg-gradient-to-r from-gray-600 to-gray-700" :
               "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:from-green-600 hover:via-emerald-600 hover:to-green-700 hover:scale-105 hover:shadow-3xl active:scale-95"
@@ -603,13 +599,13 @@ export default function MobilePlayerGameView({
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
             {isSubmitting ? (
-              <div className="flex items-center justify-center space-x-3">
-                <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
                 <span>PLACING CARD...</span>
               </div>
             ) : hasConfirmed ? (
-              <div className="flex items-center justify-center space-x-3">
-                <Check className="w-6 h-6" />
+              <div className="flex items-center justify-center space-x-2">
+                <Check className="w-5 h-5" />
                 <span>CARD PLACED!</span>
               </div>
             ) : (
@@ -620,12 +616,12 @@ export default function MobilePlayerGameView({
       )}
 
       {/* Enhanced Footer Branding */}
-      <div className="relative z-10 pb-8">
+      <div className="relative z-10 pb-4 flex-shrink-0">
         <div className="text-center">
-          <div className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wider drop-shadow-2xl">
+          <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wider drop-shadow-2xl">
             TIMELINER
           </div>
-          <div className="text-white/50 text-sm mt-1 font-medium">
+          <div className="text-white/50 text-xs mt-1 font-medium">
             Timeline Music Game
           </div>
         </div>
