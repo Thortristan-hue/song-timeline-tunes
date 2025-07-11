@@ -413,7 +413,7 @@ export default function MobilePlayerGameView({
             <div className="relative mb-3">
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-8 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
               <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-                PLACE HERE
+                
               </div>
             </div>
 
@@ -560,10 +560,10 @@ export default function MobilePlayerGameView({
             <div className="flex justify-between items-center mt-2 text-white/70 text-xs bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1">
               <div className="flex items-center">
                 <MoveLeft className="w-3 h-3 mr-1" />
-                <span>Scroll</span>
+                <span></span>
               </div>
               <div className="flex items-center">
-                <span>Center to select</span>
+                <span></span>
                 <MoveRight className="w-3 h-3 ml-1" />
               </div>
             </div>
