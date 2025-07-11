@@ -3,6 +3,7 @@ import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
+import { Button } from '@/components/ui/button';
 
 export function HostGameBackground() {
   return (
@@ -66,26 +67,38 @@ function RecordPlayerSection({
   return (
     <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
-        <div className="absolute inset-0 bg-white/10 rounded-3xl blur-xl scale-110" />
-        <div 
-          className="relative cursor-pointer transition-all duration-500 hover:scale-105"
-          onClick={onPlayPause}
-        >
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={mysteryCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-          
-          {currentSong?.preview_url && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-sm rounded-full p-3 opacity-0 hover:opacity-100 transition-all duration-300 border border-white/30">
-              {isPlaying ? (
-                <Pause className="h-8 w-8 text-white" />
-              ) : (
-                <Play className="h-8 w-8 text-white" />
-              )}
+        <div className="text-center space-y-8 max-w-sm">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
+            <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
+              isPlaying ? 'animate-spin' : 'hover:scale-110'
+            }`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
+              <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
+                </div>
+                
+                {/* Vinyl grooves effect */}
+                <div className="absolute inset-4 border border-white/10 rounded-full"></div>
+                <div className="absolute inset-8 border border-white/10 rounded-full"></div>
+                <div className="absolute inset-12 border border-white/10 rounded-full"></div>
+              </div>
+              
+              <Button
+                onClick={onPlayPause}
+                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                disabled={!currentSong?.preview_url}
+              >
+                <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
+                  {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
+                </div>
+              </Button>
             </div>
-          )}
+          </div>
+          <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+            Mystery Song Playing
+          </div>
         </div>
       </div>
     </div>
