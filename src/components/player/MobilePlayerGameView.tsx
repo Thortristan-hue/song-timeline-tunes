@@ -45,10 +45,11 @@ export default function MobilePlayerGameView({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Enhanced card dimensions for carousel
-  const CARD_WIDTH = 120; // 1.5x larger (was 80)
-  const GAP_WIDTH = 25; // 2x thinner (was 50)
-  const ITEM_SPACING = 155; // Adjusted to prevent overlap (GAP_WIDTH + CARD_WIDTH + 10px spacing)
+  // Enhanced card dimensions for carousel - larger and square
+  const CARD_WIDTH = 110; // Square cards, larger
+  const CARD_HEIGHT = 110; // Square cards
+  const GAP_WIDTH = 25; // 2x thinner gaps
+  const ITEM_SPACING = 145; // Adjusted to prevent overlap
   const SIDE_PADDING = 200; // Extra space on both sides for edge selections
 
   // Create timeline from player's existing songs
@@ -73,7 +74,7 @@ export default function MobilePlayerGameView({
     return () => window.removeEventListener('resize', updateContainerWidth);
   }, []);
 
-  // Calculate which gap is centered - FIXED
+  // Calculate which gap is centered
   const calculateCenteredGap = (scrollLeft: number) => {
     const screenCenter = scrollLeft + (containerWidth / 2);
     const relativeCenter = screenCenter - SIDE_PADDING;
@@ -115,7 +116,7 @@ export default function MobilePlayerGameView({
     setIsDragging(false);
   };
 
-  // Enhanced snap function - FIXED
+  // Enhanced snap function
   const snapToNearestGap = () => {
     if (!scrollViewRef.current) return;
     
@@ -136,7 +137,7 @@ export default function MobilePlayerGameView({
     setSnappedPosition(centeredGap);
   };
 
-  // Calculate carousel transform for items - FIXED
+  // Calculate carousel transform for items
   const getCarouselTransform = (itemX: number) => {
     if (!containerWidth) return { transform: 'scale(1)', opacity: 1, zIndex: 1 };
     
@@ -225,15 +226,19 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // Reset state when turn changes
+  // Reset state when turn changes - center the middle gap
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
       setHasConfirmed(false);
-      setSnappedPosition(0);
+      
+      // Calculate which gap should be in the center (middle of all gaps)
+      const middleGapIndex = Math.floor(timelineCards.length / 2);
+      setSnappedPosition(middleGapIndex);
+      
       if (scrollViewRef.current && containerWidth > 0) {
-        // Start at the first gap (position 0) which should be centered
-        const firstGapCenter = SIDE_PADDING;
-        const initialScroll = firstGapCenter - (containerWidth / 2);
+        // Start at the middle gap which should be centered
+        const middleGapCenter = SIDE_PADDING + (middleGapIndex * ITEM_SPACING);
+        const initialScroll = middleGapCenter - (containerWidth / 2);
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({ 
             left: initialScroll,
@@ -252,7 +257,7 @@ export default function MobilePlayerGameView({
         clearTimeout(scrollTimeout.current);
       }
     };
-  }, [isMyTurn, gameEnded, containerWidth]);
+  }, [isMyTurn, gameEnded, containerWidth, timelineCards.length]);
 
   // Kahoot-style result overlay
   if (cardPlacementResult) {
@@ -334,7 +339,7 @@ export default function MobilePlayerGameView({
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/4 rounded-full blur-3xl" />
       </div>
 
-      {/* Player Header - SMALLER */}
+      {/* Player Header */}
       <div className="relative z-10 pt-4 pb-2 px-4 flex-shrink-0">
         <div className="text-center">
           <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-1">
@@ -347,7 +352,7 @@ export default function MobilePlayerGameView({
         </div>
       </div>
 
-      {/* Mystery Song Preview - SMALLER */}
+      {/* Mystery Song Preview */}
       {isMyTurn && !gameEnded && (
         <div className="relative z-10 flex items-center justify-center px-4 py-3 flex-shrink-0">
           <div className="text-center space-y-3">
@@ -383,7 +388,7 @@ export default function MobilePlayerGameView({
         </div>
       )}
 
-      {/* Waiting screen - SMALLER */}
+      {/* Waiting screen */}
       {!isMyTurn && !gameEnded && (
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="text-center space-y-4">
@@ -400,7 +405,7 @@ export default function MobilePlayerGameView({
         </div>
       )}
 
-      {/* Timeline Placement Interface - OPTIMIZED FOR PHONE */}
+      {/* Timeline Placement Interface */}
       {isMyTurn && !gameEnded && (
         <div className="relative z-10 px-3 flex-1 flex flex-col" ref={containerRef}>
           <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex-1 flex flex-col">
@@ -448,7 +453,7 @@ export default function MobilePlayerGameView({
                   className="flex items-center py-4 relative" 
                   style={{ 
                     width: `${totalWidth}px`,
-                    height: '120px' // Increased height for larger cards
+                    height: '130px'
                   }}
                 >
                   {/* Render gaps and cards */}
@@ -465,7 +470,7 @@ export default function MobilePlayerGameView({
                           style={{
                             left: `${gapX - (GAP_WIDTH / 2)}px`,
                             width: `${GAP_WIDTH}px`,
-                            height: '100px',
+                            height: '110px',
                             ...getCarouselTransform(gapX)
                           }}
                         >
@@ -484,14 +489,14 @@ export default function MobilePlayerGameView({
                           </div>
                         </div>
 
-                        {/* Card (if exists) */}
+                        {/* Card (if exists) - Square cards */}
                         {hasCard && (
                           <div
                             className="absolute flex items-center justify-center cursor-pointer"
                             style={{
                               left: `${gapX + (GAP_WIDTH / 2) + 5}px`,
                               width: `${CARD_WIDTH}px`,
-                              height: '100px',
+                              height: `${CARD_HEIGHT}px`,
                               ...getCarouselTransform(gapX + (GAP_WIDTH / 2) + 5 + (CARD_WIDTH / 2))
                             }}
                             onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
@@ -513,19 +518,19 @@ export default function MobilePlayerGameView({
                                 >
                                   {/* Artist name */}
                                   <div className="text-sm font-bold text-center w-full leading-tight">
-                                    {wrapText(song.deezer_artist, 15).split('\n').map((line, i) => (
+                                    {wrapText(song.deezer_artist, 16).split('\n').map((line, i) => (
                                       <div key={i}>{line}</div>
                                     ))}
                                   </div>
                                   
-                                  {/* Year */}
-                                  <div className="text-xl font-black text-center">
+                                  {/* Year - larger for square cards */}
+                                  <div className="text-2xl font-black text-center">
                                     {song.release_year}
                                   </div>
                                   
                                   {/* Song title */}
                                   <div className="text-sm italic text-center w-full leading-tight text-white/90">
-                                    {wrapText(song.deezer_title, 13).split('\n').map((line, i) => (
+                                    {wrapText(song.deezer_title, 14).split('\n').map((line, i) => (
                                       <div key={i}>{line}</div>
                                     ))}
                                   </div>
@@ -566,7 +571,7 @@ export default function MobilePlayerGameView({
         </div>
       )}
 
-      {/* Confirm Button - SMALLER */}
+      {/* Confirm Button */}
       {isMyTurn && !gameEnded && (
         <div className="relative z-10 px-3 pb-3 flex-shrink-0">
           <Button
@@ -596,7 +601,7 @@ export default function MobilePlayerGameView({
         </div>
       )}
 
-      {/* Footer - SMALLER */}
+      {/* Footer */}
       <div className="relative z-10 pb-2 flex-shrink-0">
         <div className="text-center">
           <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
