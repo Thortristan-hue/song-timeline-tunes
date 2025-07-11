@@ -7,10 +7,14 @@ import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0">
-      <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/8 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl" />
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-950/50 via-transparent to-slate-900/30 pointer-events-none" />
+      <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none" />
+      
+      {/* Additional ambient effects */}
+      <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '4s'}} />
+      <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '6s', animationDelay: '1s'}} />
     </div>
   );
 }
@@ -20,25 +24,25 @@ function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-white/15 backdrop-blur-2xl rounded-2xl flex items-center justify-center border border-white/20">
-            <Crown className="h-6 w-6 text-yellow-400" />
+          <div className="w-14 h-14 bg-white/15 backdrop-blur-2xl rounded-2xl flex items-center justify-center border-2 border-white/25 shadow-xl">
+            <Crown className="h-7 w-7 text-yellow-400" />
           </div>
           <div>
-            <div className="text-white font-bold text-2xl tracking-tight">Timeliner</div>
-            <div className="text-white/70 text-sm font-medium">Host Display</div>
+            <div className="text-white font-black text-3xl tracking-tight drop-shadow-lg">Timeliner</div>
+            <div className="text-white/80 text-base font-semibold bg-white/10 backdrop-blur-xl rounded-full px-3 py-1 border border-white/20">Host Display</div>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="bg-white/15 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/20">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-400" />
-              <div className="text-white font-bold text-lg">{playersCount}</div>
+          <div className="bg-white/15 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/25 shadow-xl">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-blue-400" />
+              <div className="text-white font-black text-xl">{playersCount}</div>
             </div>
           </div>
 
-          <div className="bg-white/15 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/20">
-            <div className="text-white font-mono text-lg font-bold tracking-wider">{roomCode}</div>
+          <div className="bg-white/15 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/25 shadow-xl">
+            <div className="text-white font-mono text-xl font-black tracking-wider">{roomCode}</div>
           </div>
         </div>
       </div>
@@ -60,11 +64,11 @@ function RecordPlayerSection({
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }) {
   return (
-    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-30">
+    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
-        <div className="absolute inset-0 bg-white/8 rounded-3xl blur-xl scale-110" />
+        <div className="absolute inset-0 bg-white/10 rounded-3xl blur-xl scale-110" />
         <div 
-          className="relative cursor-pointer transition-all duration-300 hover:scale-105"
+          className="relative cursor-pointer transition-all duration-500 hover:scale-105"
           onClick={onPlayPause}
         >
           <RecordMysteryCard
@@ -74,11 +78,11 @@ function RecordPlayerSection({
           />
           
           {currentSong?.preview_url && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 hover:opacity-100 transition-opacity">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-sm rounded-full p-3 opacity-0 hover:opacity-100 transition-all duration-300 border border-white/30">
               {isPlaying ? (
-                <Pause className="h-6 w-6 text-white" />
+                <Pause className="h-8 w-8 text-white" />
               ) : (
-                <Play className="h-6 w-6 text-white" />
+                <Play className="h-8 w-8 text-white" />
               )}
             </div>
           )}
@@ -98,64 +102,64 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
   useEffect(() => {
     if (isActive) {
       setIsDropping(true);
-      const timer = setTimeout(() => setIsDropping(false), 1200);
+      const timer = setTimeout(() => setIsDropping(false), 1500);
       return () => clearTimeout(timer);
     }
   }, [isActive]);
 
   return (
     <div 
-      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-500 hover:scale-110 cursor-pointer relative
-        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80' : ''}
-        ${isDropping ? 'animate-dramatic-bang' : ''}`}
+      className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
+        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
+        ${isDropping ? 'animate-ultimate-bang' : ''}`}
       style={{ 
-        backgroundColor: `hsl(${hue}, 70%, 30%)`,
-        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
-        boxShadow: '0 8px 25px rgba(0,0,0,0.4)'
+        backgroundColor: `hsl(${hue}, 70%, 25%)`,
+        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
+        boxShadow: '0 12px 35px rgba(0,0,0,0.5)'
       }}
     >
-      <div className="text-sm font-medium w-full text-center truncate">
+      <div className="text-sm font-semibold w-full text-center truncate">
         {song.deezer_artist}
       </div>
-      <div className="text-3xl font-bold my-auto">
+      <div className="text-4xl font-black my-auto">
         {song.release_year}
       </div>
-      <div className="text-xs italic w-full text-center truncate">
+      <div className="text-xs italic w-full text-center truncate opacity-90">
         {song.deezer_title}
       </div>
       
       <style jsx global>{`
-        @keyframes dramatic-bang {
+        @keyframes ultimate-bang {
           0% {
-            transform: scale(0.6) translateY(-80px) rotateZ(-15deg);
+            transform: scale(0.5) translateY(-120px) rotateZ(-20deg) rotateX(90deg);
             opacity: 0;
-            filter: blur(3px);
+            filter: blur(8px);
           }
           25% {
-            transform: scale(1.3) translateY(15px) rotateZ(5deg);
-            opacity: 0.8;
-            filter: blur(1px);
-            box-shadow: 0 0 0 20px rgba(255,255,255,0.15), 0 15px 40px rgba(0,0,0,0.6);
+            transform: scale(1.4) translateY(20px) rotateZ(8deg) rotateX(15deg);
+            opacity: 0.7;
+            filter: blur(3px);
+            box-shadow: 0 0 0 25px rgba(255,255,255,0.2), 0 20px 60px rgba(0,0,0,0.7);
           }
           50% {
-            transform: scale(0.9) translateY(-8px) rotateZ(-2deg);
+            transform: scale(0.9) translateY(-12px) rotateZ(-3deg) rotateX(-8deg);
             opacity: 1;
             filter: blur(0px);
-            box-shadow: 0 0 0 30px rgba(255,255,255,0.1), 0 20px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 0 40px rgba(255,255,255,0.15), 0 25px 70px rgba(0,0,0,0.6);
           }
           75% {
-            transform: scale(1.05) translateY(3px) rotateZ(1deg);
-            box-shadow: 0 0 0 15px rgba(255,255,255,0.05), 0 12px 30px rgba(0,0,0,0.4);
+            transform: scale(1.08) translateY(5px) rotateZ(2deg) rotateX(3deg);
+            box-shadow: 0 0 0 20px rgba(255,255,255,0.08), 0 15px 45px rgba(0,0,0,0.5);
           }
           100% {
-            transform: scale(1) translateY(0) rotateZ(0deg);
+            transform: scale(1) translateY(0) rotateZ(0deg) rotateX(0deg);
             opacity: 1;
             filter: blur(0px);
-            box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 8px 25px rgba(0,0,0,0.4);
+            box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 12px 35px rgba(0,0,0,0.5);
           }
         }
-        .animate-dramatic-bang {
-          animation: dramatic-bang 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-ultimate-bang {
+          animation: ultimate-bang 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
       `}</style>
     </div>
@@ -176,7 +180,7 @@ function HostTimelineDisplay({
   const [isEntering, setIsEntering] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const cardCount = currentPlayer.timeline.length;
-  const gapSize = Math.max(8, 40 - cardCount * 2);
+  const gapSize = Math.max(12, 50 - cardCount * 2);
 
   useEffect(() => {
     if (isActive) {
@@ -187,9 +191,9 @@ function HostTimelineDisplay({
         count++;
         setVisibleCards(count);
         if (count >= cardCount) clearInterval(interval);
-      }, 120);
+      }, 150);
       
-      const enteringTimer = setTimeout(() => setIsEntering(false), 1500);
+      const enteringTimer = setTimeout(() => setIsEntering(false), 2000);
       
       return () => {
         clearInterval(interval);
@@ -199,7 +203,7 @@ function HostTimelineDisplay({
       setIsExiting(true);
       setIsEntering(false);
       setVisibleCards(0);
-      const exitTimer = setTimeout(() => setIsExiting(false), 800);
+      const exitTimer = setTimeout(() => setIsExiting(false), 1000);
       return () => clearTimeout(exitTimer);
     }
   }, [isActive, cardCount]);
@@ -211,26 +215,26 @@ function HostTimelineDisplay({
       );
       if (newIndex >= 0) {
         setNewCardIndex(newIndex);
-        setTimeout(() => setNewCardIndex(null), 1500);
+        setTimeout(() => setNewCardIndex(null), 2000);
       }
     }
   }, [currentPlayer.timeline, placementResult]);
 
   return (
     <div 
-      className={`flex justify-center items-center p-4 rounded-2xl transition-all duration-1000 ${
-        isEntering ? 'animate-timeline-enter' : ''
-      } ${isExiting ? 'animate-timeline-exit' : ''}`}
+      className={`flex justify-center items-center p-6 rounded-3xl transition-all duration-1200 ${
+        isEntering ? 'animate-epic-timeline-enter' : ''
+      } ${isExiting ? 'animate-epic-timeline-exit' : ''}`}
       style={{
         gap: `${gapSize}px`,
-        transform: isActive ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.9)',
-        opacity: isActive ? 1 : 0.5,
-        filter: isActive ? 'blur(0px)' : 'blur(2px)'
+        transform: isActive ? 'translateY(0) scale(1)' : 'translateY(60px) scale(0.85)',
+        opacity: isActive ? 1 : 0.4,
+        filter: isActive ? 'blur(0px)' : 'blur(4px)'
       }}
     >
       {currentPlayer.timeline.length === 0 ? (
-        <div className={`text-white/50 italic py-6 text-lg transition-all duration-800 ${
-          isActive ? 'animate-text-fade-in' : 'opacity-0'
+        <div className={`text-white/60 italic py-8 text-xl transition-all duration-1000 ${
+          isActive ? 'animate-text-elegant-fade-in' : 'opacity-0'
         }`}>
           {currentPlayer.name} hasn't placed any cards yet
         </div>
@@ -238,13 +242,13 @@ function HostTimelineDisplay({
         currentPlayer.timeline.map((song, index) => (
           <div 
             key={song.id}
-            className={`transition-all duration-700 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-50'} ${
-              newCardIndex === index ? 'animate-massive-card-drop' : ''
+            className={`transition-all duration-900 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'} ${
+              newCardIndex === index ? 'animate-epic-card-drop' : ''
             }`}
             style={{
-              transitionDelay: `${index * 80}ms`,
+              transitionDelay: `${index * 100}ms`,
               transformOrigin: 'bottom center',
-              filter: index < visibleCards ? 'blur(0px)' : 'blur(3px)'
+              filter: index < visibleCards ? 'blur(0px)' : 'blur(5px)'
             }}
           >
             <HostTimelineCard 
@@ -256,57 +260,57 @@ function HostTimelineDisplay({
       )}
       
       {placementResult && (
-        <div className={`absolute top-full mt-4 text-center text-lg font-bold transition-all duration-700 animate-result-appear
+        <div className={`absolute top-full mt-6 text-center text-xl font-black transition-all duration-900 animate-epic-result-appear
           ${placementResult.correct ? 'text-green-400' : 'text-red-400'}`}>
           {placementResult.correct ? (
-            <div className="flex items-center gap-2 animate-victory-bounce">
-              <Check className="h-6 w-6" /> Correct!
+            <div className="flex items-center gap-3 animate-epic-victory-bounce">
+              <Check className="h-8 w-8" /> Perfect Match!
             </div>
           ) : (
-            <div className="flex items-center gap-2 animate-gentle-pulse">
-              <X className="h-6 w-6" /> Incorrect
+            <div className="flex items-center gap-3 animate-epic-gentle-pulse">
+              <X className="h-8 w-8" /> Nice Try!
             </div>
           )}
         </div>
       )}
       
       <style jsx global>{`
-        @keyframes massive-card-drop {
+        @keyframes epic-card-drop {
           0% {
-            transform: translateY(-200px) scale(0.5) rotateX(90deg);
+            transform: translateY(-300px) scale(0.4) rotateX(180deg) rotateZ(-30deg);
             opacity: 0;
-            filter: blur(8px);
+            filter: blur(15px);
           }
           30% {
-            transform: translateY(40px) scale(1.4) rotateX(10deg);
-            opacity: 0.7;
-            filter: blur(2px);
+            transform: translateY(60px) scale(1.5) rotateX(20deg) rotateZ(10deg);
+            opacity: 0.6;
+            filter: blur(5px);
           }
           60% {
-            transform: translateY(-20px) scale(1.1) rotateX(-5deg);
+            transform: translateY(-30px) scale(1.15) rotateX(-10deg) rotateZ(-5deg);
             opacity: 1;
-            filter: blur(0px);
+            filter: blur(1px);
           }
           80% {
-            transform: translateY(8px) scale(1.03) rotateX(2deg);
+            transform: translateY(15px) scale(1.05) rotateX(5deg) rotateZ(2deg);
           }
           100% {
-            transform: translateY(0) scale(1) rotateX(0deg);
+            transform: translateY(0) scale(1) rotateX(0deg) rotateZ(0deg);
             opacity: 1;
             filter: blur(0px);
           }
         }
         
-        @keyframes timeline-enter {
+        @keyframes epic-timeline-enter {
           0% {
-            transform: translateX(-100vw) scale(0.8) rotateY(-20deg);
+            transform: translateX(-150vw) scale(0.6) rotateY(-45deg);
             opacity: 0;
-            filter: blur(10px);
+            filter: blur(20px);
           }
           60% {
-            transform: translateX(20px) scale(1.05) rotateY(5deg);
-            opacity: 0.8;
-            filter: blur(2px);
+            transform: translateX(30px) scale(1.1) rotateY(8deg);
+            opacity: 0.7;
+            filter: blur(5px);
           }
           100% {
             transform: translateX(0) scale(1) rotateY(0deg);
@@ -315,42 +319,42 @@ function HostTimelineDisplay({
           }
         }
         
-        @keyframes timeline-exit {
+        @keyframes epic-timeline-exit {
           0% {
             transform: translateX(0) scale(1) rotateY(0deg);
             opacity: 1;
             filter: blur(0px);
           }
           100% {
-            transform: translateX(100vw) scale(0.7) rotateY(30deg);
+            transform: translateX(150vw) scale(0.5) rotateY(60deg);
             opacity: 0;
+            filter: blur(15px);
+          }
+        }
+        
+        @keyframes text-elegant-fade-in {
+          0% {
+            opacity: 0;
+            transform: translateY(40px);
             filter: blur(8px);
           }
-        }
-        
-        @keyframes text-fade-in {
-          0% {
-            opacity: 0;
-            transform: translateY(30px);
-            filter: blur(3px);
-          }
           100% {
-            opacity: 0.5;
+            opacity: 0.6;
             transform: translateY(0);
             filter: blur(0px);
           }
         }
         
-        @keyframes result-appear {
+        @keyframes epic-result-appear {
           0% {
             opacity: 0;
-            transform: scale(0.5) translateY(-20px);
-            filter: blur(5px);
+            transform: scale(0.3) translateY(-30px);
+            filter: blur(10px);
           }
           50% {
             opacity: 1;
-            transform: scale(1.2) translateY(-10px);
-            filter: blur(1px);
+            transform: scale(1.3) translateY(-15px);
+            filter: blur(2px);
           }
           100% {
             opacity: 1;
@@ -359,55 +363,55 @@ function HostTimelineDisplay({
           }
         }
         
-        @keyframes victory-bounce {
+        @keyframes epic-victory-bounce {
           0%, 20%, 50%, 80%, 100% {
             transform: translateY(0) scale(1);
           }
           40% {
-            transform: translateY(-15px) scale(1.1);
+            transform: translateY(-20px) scale(1.15);
           }
           60% {
-            transform: translateY(-8px) scale(1.05);
+            transform: translateY(-10px) scale(1.08);
           }
         }
         
-        @keyframes gentle-pulse {
+        @keyframes epic-gentle-pulse {
           0%, 100% {
             opacity: 1;
             transform: scale(1);
           }
           50% {
-            opacity: 0.7;
-            transform: scale(0.95);
+            opacity: 0.6;
+            transform: scale(0.92);
           }
         }
         
-        .animate-massive-card-drop {
-          animation: massive-card-drop 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-epic-card-drop {
+          animation: epic-card-drop 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         
-        .animate-timeline-enter {
-          animation: timeline-enter 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-epic-timeline-enter {
+          animation: epic-timeline-enter 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         
-        .animate-timeline-exit {
-          animation: timeline-exit 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        .animate-epic-timeline-exit {
+          animation: epic-timeline-exit 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
         }
         
-        .animate-text-fade-in {
-          animation: text-fade-in 0.8s ease-out forwards;
+        .animate-text-elegant-fade-in {
+          animation: text-elegant-fade-in 1s ease-out forwards;
         }
         
-        .animate-result-appear {
-          animation: result-appear 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-epic-result-appear {
+          animation: epic-result-appear 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         
-        .animate-victory-bounce {
-          animation: victory-bounce 1.5s ease-in-out 3;
+        .animate-epic-victory-bounce {
+          animation: epic-victory-bounce 2s ease-in-out 4;
         }
         
-        .animate-gentle-pulse {
-          animation: gentle-pulse 2s ease-in-out infinite;
+        .animate-epic-gentle-pulse {
+          animation: epic-gentle-pulse 2.5s ease-in-out infinite;
         }
       `}</style>
     </div>
@@ -444,7 +448,7 @@ export function HostGameView({
   // Handle card placement result and transitions
   useEffect(() => {
     if (cardPlacementResult) {
-      // Show the result modal for 3 seconds before starting transition
+      // Show the result modal for 4 seconds before starting transition
       setShowResultModal(true);
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
@@ -458,13 +462,13 @@ export function HostGameView({
           // Wait for enter animation to complete
           const enterTimer = setTimeout(() => {
             setAnimationStage('idle');
-          }, 1200);
+          }, 1500);
           
           return () => clearTimeout(enterTimer);
-        }, 1000);
+        }, 1200);
         
         return () => clearTimeout(transitionTimer);
-      }, 3000);
+      }, 4000);
       
       return () => clearTimeout(resultTimer);
     } else if (transitioning) {
@@ -473,8 +477,8 @@ export function HostGameView({
       setTimeout(() => {
         setDisplayedPlayer(currentTurnPlayer);
         setAnimationStage('entering');
-        setTimeout(() => setAnimationStage('idle'), 1200);
-      }, 1000);
+        setTimeout(() => setAnimationStage('idle'), 1500);
+      }, 1200);
     } else {
       setDisplayedPlayer(currentTurnPlayer);
     }
@@ -492,7 +496,7 @@ export function HostGameView({
         cardPlacementResult={cardPlacementResult}
       />
       
-      <div className="absolute top-1/2 left-0 right-0 z-30 mt-4">
+      <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
         <div className="flex justify-center">
           <HostTimelineDisplay 
             currentPlayer={displayedPlayer} 
@@ -502,7 +506,7 @@ export function HostGameView({
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 right-4 z-10">
+      <div className="absolute bottom-6 left-6 right-6 z-10">
         <CassettePlayerDisplay 
           players={players} 
           currentPlayerId={currentTurnPlayer.id}
@@ -510,32 +514,32 @@ export function HostGameView({
       </div>
 
       {showResultModal && cardPlacementResult && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-3xl flex items-center justify-center z-50 animate-modal-appear">
-          <div className="text-center space-y-8 p-8 animate-modal-content">
-            <div className={`text-9xl mb-6 ${
-              cardPlacementResult.correct ? 'animate-success-icon' : 'animate-gentle-float'
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-3xl flex items-center justify-center z-50 animate-epic-modal-appear">
+          <div className="text-center space-y-10 p-10 animate-epic-modal-content">
+            <div className={`text-9xl mb-8 ${
+              cardPlacementResult.correct ? 'animate-epic-success-icon' : 'animate-epic-gentle-float'
             }`}>
               {cardPlacementResult.correct ? '🎯' : '💫'}
             </div>
-            <div className={`text-6xl font-black tracking-tight ${
+            <div className={`text-7xl font-black tracking-tight ${
               cardPlacementResult.correct ? 
-              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-success-text' : 
-              'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-gentle-glow'
+              'text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400 animate-epic-success-text' : 
+              'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 animate-epic-gentle-glow'
             }`}>
               {cardPlacementResult.correct ? 'PERFECT MATCH!' : 'NICE TRY!'}
             </div>
-            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-8 border border-white/20 max-w-lg animate-card-rise">
-              <div className="text-3xl font-bold text-white mb-3">
+            <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-10 border border-white/20 max-w-2xl animate-epic-card-rise shadow-3xl">
+              <div className="text-4xl font-bold text-white mb-4">
                 {cardPlacementResult.song.deezer_title}
               </div>
-              <div className="text-2xl text-white/80 mb-6 font-medium">
+              <div className="text-3xl text-white/80 mb-8 font-medium">
                 by {cardPlacementResult.song.deezer_artist}
               </div>
-              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-full font-bold text-2xl animate-year-pulse">
+              <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-full font-black text-3xl animate-epic-year-pulse shadow-2xl">
                 {cardPlacementResult.song.release_year}
               </div>
             </div>
-            <div className="text-white/60 text-xl animate-text-slide-up">
+            <div className="text-white/70 text-2xl animate-epic-text-slide-up">
               {cardPlacementResult.correct ? 
                 `${currentTurnPlayer.name} scored a point!` : 
                 `Better luck next time, ${currentTurnPlayer.name}!`
@@ -544,7 +548,7 @@ export function HostGameView({
           </div>
           
           <style jsx global>{`
-            @keyframes modal-appear {
+            @keyframes epic-modal-appear {
               0% {
                 opacity: 0;
                 backdrop-filter: blur(0px);
@@ -555,11 +559,11 @@ export function HostGameView({
               }
             }
             
-            @keyframes modal-content {
+            @keyframes epic-modal-content {
               0% {
                 opacity: 0;
-                transform: scale(0.7) translateY(50px);
-                filter: blur(10px);
+                transform: scale(0.6) translateY(80px);
+                filter: blur(20px);
               }
               100% {
                 opacity: 1;
@@ -568,38 +572,38 @@ export function HostGameView({
               }
             }
             
-            @keyframes success-icon {
+            @keyframes epic-success-icon {
               0%, 100% {
                 transform: scale(1) rotate(0deg);
               }
               25% {
-                transform: scale(1.2) rotate(-10deg);
+                transform: scale(1.3) rotate(-15deg);
               }
               50% {
-                transform: scale(1.1) rotate(5deg);
+                transform: scale(1.15) rotate(8deg);
               }
               75% {
-                transform: scale(1.15) rotate(-3deg);
+                transform: scale(1.2) rotate(-5deg);
               }
             }
             
-            @keyframes gentle-float {
+            @keyframes epic-gentle-float {
               0%, 100% {
                 transform: translateY(0) rotate(0deg);
               }
               50% {
-                transform: translateY(-10px) rotate(5deg);
+                transform: translateY(-15px) rotate(8deg);
               }
             }
             
-            @keyframes success-text {
+            @keyframes epic-success-text {
               0% {
-                transform: scale(0.8);
-                filter: brightness(0.8);
+                transform: scale(0.7);
+                filter: brightness(0.7);
               }
               50% {
-                transform: scale(1.05);
-                filter: brightness(1.3);
+                transform: scale(1.1);
+                filter: brightness(1.5);
               }
               100% {
                 transform: scale(1);
@@ -607,19 +611,19 @@ export function HostGameView({
               }
             }
             
-            @keyframes gentle-glow {
+            @keyframes epic-gentle-glow {
               0%, 100% {
                 filter: brightness(1);
               }
               50% {
-                filter: brightness(1.1);
+                filter: brightness(1.2);
               }
             }
             
-            @keyframes card-rise {
+            @keyframes epic-card-rise {
               0% {
                 opacity: 0;
-                transform: translateY(30px) scale(0.95);
+                transform: translateY(50px) scale(0.9);
               }
               100% {
                 opacity: 1;
@@ -627,62 +631,66 @@ export function HostGameView({
               }
             }
             
-            @keyframes year-pulse {
+            @keyframes epic-year-pulse {
               0%, 100% {
                 transform: scale(1);
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
               }
               50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+                transform: scale(1.08);
+                box-shadow: 0 0 50px rgba(59, 130, 246, 0.7);
               }
             }
             
-            @keyframes text-slide-up {
+            @keyframes epic-text-slide-up {
               0% {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(30px);
               }
               100% {
-                opacity: 0.6;
+                opacity: 0.7;
                 transform: translateY(0);
               }
             }
             
-            .animate-modal-appear {
-              animation: modal-appear 0.5s ease-out forwards;
+            .animate-epic-modal-appear {
+              animation: epic-modal-appear 0.7s ease-out forwards;
             }
             
-            .animate-modal-content {
-              animation: modal-content 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            .animate-epic-modal-content {
+              animation: epic-modal-content 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             }
             
-            .animate-success-icon {
-              animation: success-icon 2s ease-in-out infinite;
+            .animate-epic-success-icon {
+              animation: epic-success-icon 2.5s ease-in-out infinite;
             }
             
-            .animate-gentle-float {
-              animation: gentle-float 3s ease-in-out infinite;
+            .animate-epic-gentle-float {
+              animation: epic-gentle-float 4s ease-in-out infinite;
             }
             
-            .animate-success-text {
-              animation: success-text 1.5s ease-out forwards;
+            .animate-epic-success-text {
+              animation: epic-success-text 2s ease-out forwards;
             }
             
-            .animate-gentle-glow {
-              animation: gentle-glow 2s ease-in-out infinite;
+            .animate-epic-gentle-glow {
+              animation: epic-gentle-glow 3s ease-in-out infinite;
             }
             
-            .animate-card-rise {
-              animation: card-rise 0.8s ease-out 0.3s both;
+            .animate-epic-card-rise {
+              animation: epic-card-rise 1s ease-out 0.4s both;
             }
             
-            .animate-year-pulse {
-              animation: year-pulse 2s ease-in-out infinite;
+            .animate-epic-year-pulse {
+              animation: epic-year-pulse 2.5s ease-in-out infinite;
             }
             
-            .animate-text-slide-up {
-              animation: text-slide-up 0.6s ease-out 0.5s both;
+            .animate-epic-text-slide-up {
+              animation: epic-text-slide-up 0.8s ease-out 0.6s both;
+            }
+            
+            .shadow-3xl {
+              box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.5);
             }
           `}</style>
         </div>
