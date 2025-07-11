@@ -124,7 +124,7 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
         {song.deezer_title}
       </div>
       
-        <style>{`
+      <style jsx global>{`
         @keyframes bang {
           0% {
             transform: scale(0.8);
@@ -238,7 +238,7 @@ function HostTimelineDisplay({
         </div>
       )}
       
-        <style>{`
+      <style jsx global>{`
         @keyframes cardDrop {
           0% {
             transform: translateY(-100px) scale(0.8);
@@ -389,7 +389,7 @@ export function HostGameView({
             </div>
           </div>
           
-          <style>{`
+          <style jsx global>{`
             @keyframes fadeIn {
               from { opacity: 0; }
               to { opacity: 1; }
