@@ -46,9 +46,9 @@ export default function MobilePlayerGameView({
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Enhanced card dimensions for carousel
-  const CARD_WIDTH = 80;
-  const GAP_WIDTH = 50;
-  const ITEM_SPACING = 120; // Distance between gap centers
+  const CARD_WIDTH = 120; // 1.5x larger (was 80)
+  const GAP_WIDTH = 25; // 2x thinner (was 50)
+  const ITEM_SPACING = 155; // Adjusted to prevent overlap (GAP_WIDTH + CARD_WIDTH + 10px spacing)
   const SIDE_PADDING = 200; // Extra space on both sides for edge selections
 
   // Create timeline from player's existing songs
@@ -448,7 +448,7 @@ export default function MobilePlayerGameView({
                   className="flex items-center py-4 relative" 
                   style={{ 
                     width: `${totalWidth}px`,
-                    height: '100px'
+                    height: '120px' // Increased height for larger cards
                   }}
                 >
                   {/* Render gaps and cards */}
@@ -465,13 +465,13 @@ export default function MobilePlayerGameView({
                           style={{
                             left: `${gapX - (GAP_WIDTH / 2)}px`,
                             width: `${GAP_WIDTH}px`,
-                            height: '80px',
+                            height: '100px',
                             ...getCarouselTransform(gapX)
                           }}
                         >
                           <div 
                             className={cn(
-                              "w-full h-16 rounded-xl border-2 border-dashed transition-all duration-500 flex items-center justify-center",
+                              "w-full h-20 rounded-xl border-2 border-dashed transition-all duration-500 flex items-center justify-center",
                               snappedPosition === gapIndex ? 
                               "border-green-400 bg-green-400/25 shadow-lg scale-110" : 
                               "border-white/50 bg-white/10",
@@ -491,7 +491,7 @@ export default function MobilePlayerGameView({
                             style={{
                               left: `${gapX + (GAP_WIDTH / 2) + 5}px`,
                               width: `${CARD_WIDTH}px`,
-                              height: '80px',
+                              height: '100px',
                               ...getCarouselTransform(gapX + (GAP_WIDTH / 2) + 5 + (CARD_WIDTH / 2))
                             }}
                             onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
@@ -505,37 +505,37 @@ export default function MobilePlayerGameView({
                               
                               return (
                                 <div 
-                                  className="w-full h-full rounded-xl border border-white/40 flex flex-col items-center justify-between p-1.5 text-white shadow-xl"
+                                  className="w-full h-full rounded-xl border border-white/40 flex flex-col items-center justify-between p-2 text-white shadow-xl"
                                   style={{ 
                                     backgroundColor: `hsl(${hue}, 70%, 25%)`,
                                     backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
                                   }}
                                 >
                                   {/* Artist name */}
-                                  <div className="text-xs font-bold text-center w-full leading-tight">
-                                    {wrapText(song.deezer_artist, 12).split('\n').map((line, i) => (
+                                  <div className="text-sm font-bold text-center w-full leading-tight">
+                                    {wrapText(song.deezer_artist, 15).split('\n').map((line, i) => (
                                       <div key={i}>{line}</div>
                                     ))}
                                   </div>
                                   
                                   {/* Year */}
-                                  <div className="text-lg font-black text-center">
+                                  <div className="text-xl font-black text-center">
                                     {song.release_year}
                                   </div>
                                   
                                   {/* Song title */}
-                                  <div className="text-xs italic text-center w-full leading-tight text-white/90">
-                                    {wrapText(song.deezer_title, 10).split('\n').map((line, i) => (
+                                  <div className="text-sm italic text-center w-full leading-tight text-white/90">
+                                    {wrapText(song.deezer_title, 13).split('\n').map((line, i) => (
                                       <div key={i}>{line}</div>
                                     ))}
                                   </div>
                                   
                                   {song.preview_url && (
-                                    <div className="absolute bottom-0.5 right-0.5 w-4 h-4 bg-black/70 rounded-full flex items-center justify-center">
+                                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center">
                                       {playingPreviewId === song.id ? (
-                                        <Pause className="w-2 h-2 text-white" />
+                                        <Pause className="w-2.5 h-2.5 text-white" />
                                       ) : (
-                                        <Play className="w-2 h-2 text-white" />
+                                        <Play className="w-2.5 h-2.5 text-white" />
                                       )}
                                     </div>
                                   )}
