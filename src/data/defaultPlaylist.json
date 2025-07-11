@@ -4680,19 +4680,6 @@
     "metadata_source": "musicbrainz_enhanced"
   },
   {
-    "deezer_artist": "Torfrock",
-    "deezer_title": "Beinhart (Single Version)",
-    "deezer_album": "Beinhart",
-    "deezer_duration": 198,
-    "deezer_url": "https://www.deezer.com/track/481901382",
-    "enhanced_artist": "Torfrock",
-    "enhanced_title": "Beinhart (single version)",
-    "enhanced_album": "Beinhart!",
-    "release_year": "2006",
-    "genre": "",
-    "metadata_source": "musicbrainz_enhanced"
-  },
-  {
     "deezer_artist": "Nena",
     "deezer_title": "99 Luftballons",
     "deezer_album": "Nur geträumt - Ihre größten Erfolge",
@@ -4701,7 +4688,7 @@
     "enhanced_artist": "Nena",
     "enhanced_title": "99 Luftballons",
     "enhanced_album": "Die Superhitparade im ZDF - 10 Jahre \"Ein Herz für Kinder\"",
-    "release_year": "1987",
+    "release_year": "1983",
     "genre": "",
     "metadata_source": "musicbrainz_enhanced"
   },
@@ -4766,7 +4753,7 @@
     "enhanced_artist": "T’Pau",
     "enhanced_title": "China in Your Hand (single version)",
     "enhanced_album": "The Virgin Anthology",
-    "release_year": "2017",
+    "release_year": "1987",
     "genre": "",
     "metadata_source": "musicbrainz_enhanced"
   },
