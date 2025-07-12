@@ -72,12 +72,14 @@ export function useGameRoom() {
 
       // Update current player if we have one (only for non-host players)
       if (playerSessionId.current && !isHost) {
-        const current = convertedPlayers.find(p => 
-          nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
+        // Find the current player in the original database data (before conversion)
+        const currentDbPlayer = nonHostPlayers.find(dbP => 
+          dbP.player_session_id === playerSessionId.current
         );
-        if (current) {
-          console.log('Updated current player:', current);
-          setCurrentPlayer(current);
+        if (currentDbPlayer) {
+          const currentConverted = convertPlayer(currentDbPlayer);
+          console.log('Updated current player:', currentConverted);
+          setCurrentPlayer(currentConverted);
         }
       }
     } catch (error) {
@@ -113,14 +115,17 @@ export function useGameRoom() {
     });
   }, []);
 
-  // Handle player updates from real-time subscription - FIXED VERSION
+  // Handle player updates from real-time subscription - ENHANCED VERSION
   const handlePlayerUpdate = useCallback((payload: any) => {
     console.log('Player update received:', payload);
     
     // Immediately refetch players to ensure host sees the latest state
     if (room?.id) {
       console.log('Refetching players due to player update');
-      fetchPlayers(room.id);
+      // Add a small delay to ensure database consistency
+      setTimeout(() => {
+        fetchPlayers(room.id);
+      }, 100);
     } else {
       console.log('No room ID available for player refetch');
     }
@@ -132,7 +137,7 @@ export function useGameRoom() {
     // Future: Handle specific game moves if needed
   }, []);
 
-  // Setup subscriptions with robust error handling - FIXED VERSION
+  // Setup subscriptions with enhanced error handling
   useEffect(() => {
     if (!room?.id) {
       // Clean up subscriptions if no room
@@ -143,7 +148,7 @@ export function useGameRoom() {
       return;
     }
 
-    console.log('Setting up robust real-time subscriptions for room:', room.id);
+    console.log('Setting up enhanced real-time subscriptions for room:', room.id);
 
     // Create new subscription manager
     subscriptionManager.current = new RealtimeSubscriptionManager(supabase);
@@ -184,7 +189,7 @@ export function useGameRoom() {
     fetchPlayers(room.id);
 
     return () => {
-      console.log('Cleaning up robust subscriptions');
+      console.log('Cleaning up enhanced subscriptions');
       if (subscriptionManager.current) {
         subscriptionManager.current.cleanup();
         subscriptionManager.current = null;
