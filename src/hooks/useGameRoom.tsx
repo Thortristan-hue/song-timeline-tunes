@@ -43,7 +43,7 @@ export function useGameRoom() {
   // Fetch players for a room (ONLY non-host players)
   const fetchPlayers = useCallback(async (roomId: string) => {
     try {
-      console.log('🔍 Fetching players for room:', roomId);
+      console.log('Fetching players for room:', roomId);
       
       const { data, error } = await supabase
         .from('players')
@@ -52,21 +52,21 @@ export function useGameRoom() {
         .order('joined_at', { ascending: true });
 
       if (error) {
-        console.error('❌ Error fetching players:', error);
+        console.error('Error fetching players:', error);
         throw error;
       }
 
-      console.log('👥 Raw players from DB:', data);
+      console.log('Raw players from database:', data);
       
       // Filter out host players - only include players where is_host is false or null
       const nonHostPlayers = data?.filter(dbPlayer => {
         const isHostPlayer = dbPlayer.is_host === true;
-        console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
+        console.log(`Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
         return !isHostPlayer;
       }) || [];
       
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
-      console.log('👥 Converted non-host players:', convertedPlayers);
+      console.log('Converted non-host players:', convertedPlayers);
       
       setPlayers(convertedPlayers);
 
@@ -76,18 +76,18 @@ export function useGameRoom() {
           nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
         );
         if (current) {
-          console.log('🎯 Updated current player:', current);
+          console.log('Updated current player:', current);
           setCurrentPlayer(current);
         }
       }
     } catch (error) {
-      console.error('❌ Failed to fetch players:', error);
+      console.error('Failed to fetch players:', error);
     }
   }, [convertPlayer, isHost]);
 
   // Handle room updates from real-time subscription
   const handleRoomUpdate = useCallback((payload: any) => {
-    console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
+    console.log('Room updated with turn and mystery card:', payload.new);
     const roomData = payload.new as any;
     
     // CRITICAL FIX: Properly cast current_song from Json to Song
@@ -96,7 +96,7 @@ export function useGameRoom() {
       // Cast from Json to Song with proper type assertion
       currentSong = roomData.current_song as unknown as Song;
     }
-    console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
+    console.log('Mystery card from database:', currentSong?.deezer_title || 'undefined');
     
     setRoom({
       id: roomData.id,
@@ -113,9 +113,18 @@ export function useGameRoom() {
     });
   }, []);
 
+  // Handle player updates from real-time subscription
+  const handlePlayerUpdate = useCallback((payload: any) => {
+    console.log('Player update received:', payload);
+    // Refetch players to get the latest state
+    if (room?.id) {
+      fetchPlayers(room.id);
+    }
+  }, [room?.id, fetchPlayers]);
+
   // Handle game moves updates (placeholder for future use)
   const handleGameMovesUpdate = useCallback((payload: any) => {
-    console.log('🎯 Game move update:', payload);
+    console.log('Game move update:', payload);
     // Future: Handle specific game moves if needed
   }, []);
 
@@ -124,39 +133,46 @@ export function useGameRoom() {
     if (!room?.id) {
       // Clean up subscriptions if no room
       if (subscriptionManager.current) {
-        subscriptionManager.current.destroy();
+        subscriptionManager.current.cleanup();
         subscriptionManager.current = null;
       }
       return;
     }
 
-    console.log('🔄 Setting up robust real-time subscriptions for room:', room.id);
+    console.log('Setting up robust real-time subscriptions for room:', room.id);
 
     // Create new subscription manager
-    subscriptionManager.current = new RealtimeSubscriptionManager();
+    subscriptionManager.current = new RealtimeSubscriptionManager(supabase);
 
-    // Configure subscription
-    const subscriptionConfig = {
-      roomId: room.id,
+    // Configure subscription callbacks
+    const callbacks = {
       onRoomUpdate: handleRoomUpdate,
-      onPlayersUpdate: fetchPlayers,
-      onGameMovesUpdate: handleGameMovesUpdate
+      onPlayerUpdate: handlePlayerUpdate,
+      onGameMoveUpdate: handleGameMovesUpdate,
+      onError: (error: any) => {
+        console.error('Real-time subscription error:', error);
+        setError('Connection lost. Attempting to reconnect...');
+      },
+      onReconnect: () => {
+        console.log('Successfully reconnected to real-time updates');
+        setError(null);
+      }
     };
 
     // Start subscription
-    subscriptionManager.current.subscribe(subscriptionConfig);
+    subscriptionManager.current.subscribeToRoom(room.id, callbacks);
 
     // Initial fetch
     fetchPlayers(room.id);
 
     return () => {
-      console.log('🔄 Cleaning up robust subscriptions');
+      console.log('Cleaning up robust subscriptions');
       if (subscriptionManager.current) {
-        subscriptionManager.current.destroy();
+        subscriptionManager.current.cleanup();
         subscriptionManager.current = null;
       }
     };
-  }, [room?.id, handleRoomUpdate, fetchPlayers, handleGameMovesUpdate]);
+  }, [room?.id, handleRoomUpdate, handlePlayerUpdate, handleGameMovesUpdate, fetchPlayers]);
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
     try {
@@ -224,7 +240,7 @@ export function useGameRoom() {
       setIsLoading(true);
       setError(null);
 
-      console.log('🎮 Attempting to join room:', lobbyCode);
+      console.log('Attempting to join room:', lobbyCode);
 
       // First, find the room
       const { data: roomData, error: roomError } = await supabase
@@ -234,11 +250,11 @@ export function useGameRoom() {
         .single();
 
       if (roomError || !roomData) {
-        console.error('❌ Room not found:', roomError);
+        console.error('Room not found:', roomError);
         throw new Error('Room not found');
       }
 
-      console.log('✅ Room found:', roomData);
+      console.log('Room found:', roomData);
 
       // Generate colors for the player
       const colors = [
@@ -253,7 +269,7 @@ export function useGameRoom() {
       const sessionId = generateSessionId();
       playerSessionId.current = sessionId;
 
-      console.log('🎮 Creating player with session ID:', sessionId);
+      console.log('Creating player with session ID:', sessionId);
 
       // Create player (explicitly set is_host to false)
       const { data: playerData, error: playerError } = await supabase
@@ -272,11 +288,11 @@ export function useGameRoom() {
         .single();
 
       if (playerError) {
-        console.error('❌ Failed to create player:', playerError);
+        console.error('Failed to create player:', playerError);
         throw playerError;
       }
 
-      console.log('✅ Player created successfully:', playerData);
+      console.log('Player created successfully:', playerData);
 
       setRoom({
         id: roomData.id,
@@ -296,7 +312,7 @@ export function useGameRoom() {
       
       return true;
     } catch (error) {
-      console.error('❌ Failed to join room:', error);
+      console.error('Failed to join room:', error);
       setError(error instanceof Error ? error.message : 'Failed to join room');
       return false;
     } finally {
@@ -404,7 +420,7 @@ export function useGameRoom() {
   const leaveRoom = useCallback(async () => {
     // Clean up subscriptions first
     if (subscriptionManager.current) {
-      subscriptionManager.current.destroy();
+      subscriptionManager.current.cleanup();
       subscriptionManager.current = null;
     }
 
