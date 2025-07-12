@@ -113,12 +113,16 @@ export function useGameRoom() {
     });
   }, []);
 
-  // Handle player updates from real-time subscription
+  // Handle player updates from real-time subscription - FIXED VERSION
   const handlePlayerUpdate = useCallback((payload: any) => {
     console.log('Player update received:', payload);
-    // Refetch players to get the latest state
+    
+    // Immediately refetch players to ensure host sees the latest state
     if (room?.id) {
+      console.log('Refetching players due to player update');
       fetchPlayers(room.id);
+    } else {
+      console.log('No room ID available for player refetch');
     }
   }, [room?.id, fetchPlayers]);
 
@@ -128,7 +132,7 @@ export function useGameRoom() {
     // Future: Handle specific game moves if needed
   }, []);
 
-  // Setup subscriptions with robust error handling
+  // Setup subscriptions with robust error handling - FIXED VERSION
   useEffect(() => {
     if (!room?.id) {
       // Clean up subscriptions if no room
@@ -144,11 +148,20 @@ export function useGameRoom() {
     // Create new subscription manager
     subscriptionManager.current = new RealtimeSubscriptionManager(supabase);
 
-    // Configure subscription callbacks
+    // Configure subscription callbacks with proper error handling
     const callbacks = {
-      onRoomUpdate: handleRoomUpdate,
-      onPlayerUpdate: handlePlayerUpdate,
-      onGameMoveUpdate: handleGameMovesUpdate,
+      onRoomUpdate: (payload: any) => {
+        console.log('Room subscription update received');
+        handleRoomUpdate(payload);
+      },
+      onPlayerUpdate: (payload: any) => {
+        console.log('Player subscription update received for room:', room.id);
+        handlePlayerUpdate(payload);
+      },
+      onGameMoveUpdate: (payload: any) => {
+        console.log('Game move subscription update received');
+        handleGameMovesUpdate(payload);
+      },
       onError: (error: any) => {
         console.error('Real-time subscription error:', error);
         setError('Connection lost. Attempting to reconnect...');
@@ -156,13 +169,18 @@ export function useGameRoom() {
       onReconnect: () => {
         console.log('Successfully reconnected to real-time updates');
         setError(null);
+        // Refetch players on reconnect to ensure sync
+        if (room?.id) {
+          fetchPlayers(room.id);
+        }
       }
     };
 
     // Start subscription
     subscriptionManager.current.subscribeToRoom(room.id, callbacks);
 
-    // Initial fetch
+    // Initial fetch with explicit logging
+    console.log('Performing initial player fetch for room:', room.id);
     fetchPlayers(room.id);
 
     return () => {
@@ -183,7 +201,7 @@ export function useGameRoom() {
       const lobbyCode = generateLobbyCode();
       hostSessionId.current = sessionId;
 
-      console.log('🏠 Creating room with host session ID:', sessionId);
+      console.log('Creating room with host session ID:', sessionId);
 
       const { data, error } = await supabase
         .from('game_rooms')
@@ -198,7 +216,7 @@ export function useGameRoom() {
 
       if (error) throw error;
 
-      console.log('✅ Room created successfully:', data);
+      console.log('Room created successfully:', data);
 
       setRoom({
         id: data.id,
@@ -227,7 +245,7 @@ export function useGameRoom() {
       setIsHost(true);
       return data.lobby_code;
     } catch (error) {
-      console.error('❌ Failed to create room:', error);
+      console.error('Failed to create room:', error);
       setError('Failed to create room');
       return null;
     } finally {
@@ -327,16 +345,16 @@ export function useGameRoom() {
     }
 
     try {
-      console.log('🃏 FIXED: Using correct GameService method for card placement');
+      console.log('Using correct GameService method for card placement');
       
       // FIXED: Use the correct method name
       const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position, availableSongs);
       
       if (result.success) {
-        console.log('✅ FIXED: Card placed and turn advanced successfully');
+        console.log('Card placed and turn advanced successfully');
         return { success: true, correct: result.correct };
       } else {
-        console.error('❌ FIXED: Card placement failed:', result.error);
+        console.error('Card placement failed:', result.error);
         return { success: false };
       }
     } catch (error) {
@@ -392,7 +410,7 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
-      console.log('🎯 FIXED: Starting game with correct initialization method');
+      console.log('Starting game with correct initialization method');
       
       // FIXED: Use the correct method name
       if (availableSongs && availableSongs.length > 0) {
@@ -444,7 +462,7 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      console.log('🎵 SYNC: Host setting synchronized mystery card:', song.deezer_title);
+      console.log('Host setting synchronized mystery card:', song.deezer_title);
       await GameService.setCurrentSong(room.id, song);
     } catch (error) {
       console.error('Failed to set current song:', error);
@@ -453,18 +471,18 @@ export function useGameRoom() {
 
   const assignStartingCards = useCallback(async (availableSongs: Song[]): Promise<void> => {
     if (!room || !isHost || !availableSongs.length) {
-      console.log('⚠️ Cannot assign starting cards:', { room: !!room, isHost, songsLength: availableSongs.length });
+      console.log('Cannot assign starting cards:', { room: !!room, isHost, songsLength: availableSongs.length });
       return;
     }
 
     try {
-      console.log('🃏 Assigning starting cards to players...');
-      console.log('🎯 Players to assign cards to:', players.map(p => ({ name: p.name, timelineLength: p.timeline.length })));
+      console.log('Assigning starting cards to players...');
+      console.log('Players to assign cards to:', players.map(p => ({ name: p.name, timelineLength: p.timeline.length })));
       
       for (const player of players) {
         if (player.timeline.length === 0) {
           const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
-          console.log(`🃏 Assigning starting card to ${player.name}:`, randomSong.deezer_title);
+          console.log(`Assigning starting card to ${player.name}:`, randomSong.deezer_title);
           
           const { error } = await supabase
             .from('players')
@@ -476,13 +494,13 @@ export function useGameRoom() {
           if (error) {
             console.error(`Failed to assign starting card to ${player.name}:`, error);
           } else {
-            console.log(`✅ Successfully assigned starting card to ${player.name}`);
+            console.log(`Successfully assigned starting card to ${player.name}`);
           }
         }
       }
       
       // Refresh players after assigning cards
-      console.log('🔄 Refreshing players after assigning starting cards...');
+      console.log('Refreshing players after assigning starting cards...');
       await fetchPlayers(room.id);
     } catch (error) {
       console.error('Failed to assign starting cards:', error);
