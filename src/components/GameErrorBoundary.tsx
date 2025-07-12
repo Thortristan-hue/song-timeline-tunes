@@ -26,7 +26,7 @@ export class GameErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Game Error Boundary caught error:', error, errorInfo);
+    console.error('🚨 Game Error Boundary caught error:', error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
