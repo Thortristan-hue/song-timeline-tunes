@@ -1,161 +1,268 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types';
 
-export interface SubscriptionConfig {
-  roomId: string;
-  onRoomUpdate: (payload: any) => void;
-  onPlayersUpdate: (roomId: string) => void;
-  onGameMovesUpdate: (payload: any) => void;
+export interface SubscriptionCallbacks {
+  onRoomUpdate?: (payload: any) => void;
+  onPlayerUpdate?: (payload: any) => void;
+  onGameMoveUpdate?: (payload: any) => void;
+  onError?: (error: any) => void;
+  onReconnect?: () => void;
 }
 
 export class RealtimeSubscriptionManager {
-  private channel: RealtimeChannel | null = null;
+  private supabase: SupabaseClient<Database>;
+  private channels: Map<string, RealtimeChannel> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private baseDelay = 1000; // 1 second
+  private baseReconnectDelay = 1000; // 1 second
   private reconnectTimer: NodeJS.Timeout | null = null;
-  private isDestroyed = false;
-  private config: SubscriptionConfig | null = null;
+  private isReconnecting = false;
+  private roomId: string | null = null;
+  private callbacks: SubscriptionCallbacks = {};
 
-  constructor() {
-    console.log('🔄 RealtimeSubscriptionManager initialized');
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase;
   }
 
-  async subscribe(config: SubscriptionConfig): Promise<boolean> {
-    this.config = config;
-    return this.createSubscription();
-  }
-
-  private async createSubscription(): Promise<boolean> {
-    if (this.isDestroyed || !this.config) {
-      console.log('⚠️ Cannot create subscription: manager destroyed or no config');
-      return false;
-    }
-
-    // Clean up existing subscription
+  async subscribeToRoom(roomId: string, callbacks: SubscriptionCallbacks) {
+    console.log('Subscribing to room:', roomId);
+    this.roomId = roomId;
+    this.callbacks = callbacks;
+    
+    // Clean up any existing subscriptions
     this.cleanup();
-
-    const { roomId, onRoomUpdate, onPlayersUpdate, onGameMovesUpdate } = this.config;
-
+    
     try {
-      console.log(`🔄 Creating subscription for room: ${roomId}`);
-
-      this.channel = supabase
-        .channel(`room-${roomId}-${Date.now()}`) // Unique channel name to avoid conflicts
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'game_rooms',
-          filter: `id=eq.${roomId}`
-        }, (payload) => {
-          console.log('🔄 SYNC: Room updated:', payload.new);
-          onRoomUpdate(payload);
-        })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${roomId}`
-        }, (payload) => {
-          console.log('🎮 SYNC: Player change:', payload);
-          onPlayersUpdate(roomId);
-        })
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'game_moves',
-          filter: `room_id=eq.${roomId}`
-        }, (payload) => {
-          console.log('🎯 SYNC: Game move:', payload);
-          onGameMovesUpdate(payload);
-        })
-        .subscribe((status, error) => {
-          console.log(`📡 Subscription status: ${status}`, error);
-          
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ Successfully subscribed to real-time updates');
-            this.reconnectAttempts = 0; // Reset on successful connection
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            console.error(`❌ Subscription error: ${status}`, error);
-            this.handleSubscriptionError();
-          }
-        });
-
-      return true;
+      await this.createSubscriptions();
+      this.reconnectAttempts = 0; // Reset on successful connection
     } catch (error) {
-      console.error('❌ Failed to create subscription:', error);
-      this.handleSubscriptionError();
-      return false;
+      console.error('Failed to create subscriptions:', error);
+      this.handleConnectionError();
     }
   }
 
-  private handleSubscriptionError(): void {
-    if (this.isDestroyed || !this.config) {
-      return;
-    }
+  private async createSubscriptions() {
+    if (!this.roomId) return;
 
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached. Stopping reconnection.');
-      return;
-    }
+    console.log('Creating real-time subscriptions for room:', this.roomId);
 
-    const delay = this.calculateBackoffDelay();
+    // Room updates subscription
+    const roomChannel = this.supabase
+      .channel(`room-${this.roomId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'game_rooms',
+        filter: `id=eq.${this.roomId}`
+      }, (payload) => {
+        console.log('Room updated:', payload.new);
+        console.log('Room updated with turn/mystery card:', payload.new);
+        this.callbacks.onRoomUpdate?.(payload);
+      })
+      .on('system', { event: 'error' }, (error) => {
+        console.error('Room subscription error:', error);
+        this.handleConnectionError();
+      })
+      .subscribe((status) => {
+        console.log('Room subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to room updates');
+        }
+      });
+
+    // Players subscription
+    const playersChannel = this.supabase
+      .channel(`players-${this.roomId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'players',
+        filter: `room_id=eq.${this.roomId}`
+      }, (payload) => {
+        console.log('Player update:', payload);
+        this.callbacks.onPlayerUpdate?.(payload);
+      })
+      .on('system', { event: 'error' }, (error) => {
+        console.error('Players subscription error:', error);
+        this.handleConnectionError();
+      })
+      .subscribe((status) => {
+        console.log('Players subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to player updates');
+        }
+      });
+
+    // Game moves subscription
+    const movesChannel = this.supabase
+      .channel(`moves-${this.roomId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'game_moves',
+        filter: `room_id=eq.${this.roomId}`
+      }, (payload) => {
+        console.log('Game move update:', payload);
+        this.callbacks.onGameMoveUpdate?.(payload);
+      })
+      .on('system', { event: 'error' }, (error) => {
+        console.error('Game moves subscription error:', error);
+        this.handleConnectionError();
+      })
+      .subscribe((status) => {
+        console.log('Game moves subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to game moves');
+        }
+      });
+
+    // Store channels for cleanup
+    this.channels.set('room', roomChannel);
+    this.channels.set('players', playersChannel);
+    this.channels.set('moves', movesChannel);
+
+    // Set up error handlers for all channels
+    [roomChannel, playersChannel, movesChannel].forEach(channel => {
+      channel.on('system', { event: 'error' }, (error) => {
+        console.error('Subscription error:', error);
+        this.handleConnectionError();
+      });
+    });
+  }
+
+  private handleConnectionError() {
+    if (this.isReconnecting) return;
+
+    console.error('Subscription error detected');
+    this.callbacks.onError?.('Connection lost');
+
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.attemptReconnect();
+    } else {
+      console.error('Max reconnection attempts reached');
+      this.callbacks.onError?.('Max reconnection attempts reached');
+    }
+  }
+
+  private attemptReconnect() {
+    if (this.isReconnecting) return;
+
+    this.isReconnecting = true;
     this.reconnectAttempts++;
+    
+    // Exponential backoff with jitter
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1) + Math.random() * 1000,
+      30000 // Cap at 30 seconds
+    );
 
-    console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    console.log(`Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay.toFixed(0)}ms`);
 
-    this.reconnectTimer = setTimeout(() => {
-      if (!this.isDestroyed) {
-        this.createSubscription();
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        // Clean up existing subscriptions
+        this.cleanup(false);
+        
+        // Re-fetch current state and recreate subscriptions
+        await this.refetchStateAndReconnect();
+        
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+        console.log('Successfully reconnected');
+        
+        this.callbacks.onReconnect?.();
+      } catch (error) {
+        console.error('Reconnection failed:', error);
+        this.isReconnecting = false;
+        
+        // Try again if we haven't hit the limit
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          setTimeout(() => this.attemptReconnect(), 1000);
+        }
       }
     }, delay);
   }
 
-  private calculateBackoffDelay(): number {
-    // Exponential backoff with jitter: base * 2^attempts + random(0, 1000)
-    const exponentialDelay = this.baseDelay * Math.pow(2, this.reconnectAttempts - 1);
-    const jitter = Math.random() * 1000;
-    return Math.min(exponentialDelay + jitter, 30000); // Cap at 30 seconds
+  private async refetchStateAndReconnect() {
+    if (!this.roomId) return;
+
+    console.log('Refetching current room state before reconnection');
+    
+    // Re-fetch current room state
+    const { data: roomData, error: roomError } = await this.supabase
+      .from('game_rooms')
+      .select('*')
+      .eq('id', this.roomId)
+      .single();
+
+    if (roomError) {
+      console.error('Failed to refetch room state:', roomError);
+      throw roomError;
+    }
+
+    // Re-fetch players
+    const { data: playersData, error: playersError } = await this.supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', this.roomId);
+
+    if (playersError) {
+      console.error('Failed to refetch players:', playersError);
+      throw playersError;
+    }
+
+    console.log('Successfully refetched room state, recreating subscriptions');
+    
+    // Recreate subscriptions
+    await this.createSubscriptions();
+    
+    // Notify about the refetched state
+    this.callbacks.onRoomUpdate?.({ 
+      eventType: 'UPDATE', 
+      new: roomData, 
+      old: {} 
+    });
+    
+    if (playersData) {
+      playersData.forEach(player => {
+        this.callbacks.onPlayerUpdate?.({ 
+          eventType: 'UPDATE', 
+          new: player, 
+          old: {} 
+        });
+      });
+    }
   }
 
-  private cleanup(): void {
+  cleanup(resetReconnection = true) {
+    console.log('Cleaning up real-time subscriptions');
+    
+    // Clear reconnection timer
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
 
-    if (this.channel) {
-      console.log('🧹 Cleaning up existing subscription');
-      this.channel.unsubscribe();
-      this.channel = null;
+    // Unsubscribe from all channels
+    this.channels.forEach((channel, key) => {
+      console.log(`Unsubscribing from ${key} channel`);
+      channel.unsubscribe();
+    });
+    
+    this.channels.clear();
+
+    if (resetReconnection) {
+      this.isReconnecting = false;
+      this.reconnectAttempts = 0;
+      this.roomId = null;
+      this.callbacks = {};
     }
   }
 
-  async refreshGameState(): Promise<void> {
-    if (!this.config) return;
-
-    try {
-      console.log('🔄 Refreshing game state after reconnection...');
-      // Trigger a fresh fetch of players data
-      this.config.onPlayersUpdate(this.config.roomId);
-    } catch (error) {
-      console.error('❌ Failed to refresh game state:', error);
-    }
-  }
-
-  destroy(): void {
-    console.log('🧹 Destroying RealtimeSubscriptionManager');
-    this.isDestroyed = true;
-    this.cleanup();
-    this.config = null;
-  }
-
-  isConnected(): boolean {
-    return this.channel?.state === 'joined';
-  }
-
-  getReconnectAttempts(): number {
-    return this.reconnectAttempts;
+  getConnectionStatus(): 'connected' | 'disconnected' | 'reconnecting' {
+    if (this.isReconnecting) return 'reconnecting';
+    if (this.channels.size > 0) return 'connected';
+    return 'disconnected';
   }
 }

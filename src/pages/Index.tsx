@@ -38,7 +38,7 @@ function Index() {
   } = useGameRoom();
 
   // Enhanced debugging for phase transitions
-  console.log('📱 Index render - Phase transition debug:', {
+  console.log('Index component render - Phase transition debug:', {
     gamePhase,
     roomPhase: room?.phase,
     isHost,
@@ -52,7 +52,7 @@ function Index() {
     const joinCode = urlParams.get('join');
     
     if (joinCode && gamePhase === 'menu') {
-      console.log('🔗 Auto-joining from URL:', joinCode);
+      console.log('Auto-joining room from URL parameter:', joinCode);
       setGamePhase('mobileJoin');
       // Clear the URL parameter after processing
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -62,8 +62,8 @@ function Index() {
   // Enhanced room phase listener with better error handling
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game');
-      console.log('🎮 Room data:', { 
+      console.log('Room transitioned to playing phase - starting game');
+      console.log('Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
@@ -103,7 +103,7 @@ function Index() {
 
   const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
     try {
-      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
+      console.log('Attempting to join room with:', { lobbyCode, name });
       const success = await joinRoom(lobbyCode, name);
       if (success) {
         setPlayerName(name);
@@ -120,7 +120,7 @@ function Index() {
 
   const handleStartGame = async () => {
     try {
-      console.log('🎮 Host starting game...');
+      console.log('Host starting game...');
       await startGame();
       // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
