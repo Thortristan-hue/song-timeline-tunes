@@ -70,9 +70,9 @@ export function useGameRoom() {
       
       setPlayers(convertedPlayers);
 
-      // Update current player if we have one (only for non-host players)
+      // CRITICAL FIX: Only update current player if we are NOT the host and have a player session ID
       if (playerSessionId.current && !isHost) {
-        // Find the current player in the original database data (before conversion)
+        // Find the current player in the database data
         const currentDbPlayer = nonHostPlayers.find(dbP => 
           dbP.player_session_id === playerSessionId.current
         );
@@ -115,21 +115,20 @@ export function useGameRoom() {
     });
   }, []);
 
-  // Handle player updates from real-time subscription - ENHANCED VERSION
+  // Handle player updates from real-time subscription - FINAL FIX
   const handlePlayerUpdate = useCallback((payload: any) => {
     console.log('Player update received:', payload);
+    console.log('Current isHost state:', isHost);
+    console.log('Current room ID:', room?.id);
     
-    // Immediately refetch players to ensure host sees the latest state
+    // Always refetch players when there's a player update
     if (room?.id) {
       console.log('Refetching players due to player update');
-      // Add a small delay to ensure database consistency
-      setTimeout(() => {
-        fetchPlayers(room.id);
-      }, 100);
+      fetchPlayers(room.id);
     } else {
       console.log('No room ID available for player refetch');
     }
-  }, [room?.id, fetchPlayers]);
+  }, [room?.id, fetchPlayers, isHost]);
 
   // Handle game moves updates (placeholder for future use)
   const handleGameMovesUpdate = useCallback((payload: any) => {
