@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
+import { RealtimeSubscriptionManager } from '@/services/RealtimeSubscriptionManager';
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -16,6 +16,7 @@ export function useGameRoom() {
   
   const hostSessionId = useRef<string | null>(null);
   const playerSessionId = useRef<string | null>(null);
+  const subscriptionManager = useRef<RealtimeSubscriptionManager | null>(null);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -84,66 +85,78 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost]);
 
-  // Subscribe to room changes with synchronized turn state
+  // Handle room updates from real-time subscription
+  const handleRoomUpdate = useCallback((payload: any) => {
+    console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
+    const roomData = payload.new as any;
+    
+    // CRITICAL FIX: Properly cast current_song from Json to Song
+    let currentSong: Song | null = null;
+    if (roomData.current_song) {
+      // Cast from Json to Song with proper type assertion
+      currentSong = roomData.current_song as unknown as Song;
+    }
+    console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
+    
+    setRoom({
+      id: roomData.id,
+      lobby_code: roomData.lobby_code,
+      host_id: roomData.host_id,
+      host_name: roomData.host_name || '',
+      phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+      songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
+      created_at: roomData.created_at,
+      updated_at: roomData.updated_at,
+      current_turn: roomData.current_turn,
+      current_song: currentSong,
+      current_player_id: roomData.current_player_id || null
+    });
+  }, []);
+
+  // Handle game moves updates (placeholder for future use)
+  const handleGameMovesUpdate = useCallback((payload: any) => {
+    console.log('🎯 Game move update:', payload);
+    // Future: Handle specific game moves if needed
+  }, []);
+
+  // Setup subscriptions with robust error handling
   useEffect(() => {
-    if (!room?.id) return;
+    if (!room?.id) {
+      // Clean up subscriptions if no room
+      if (subscriptionManager.current) {
+        subscriptionManager.current.destroy();
+        subscriptionManager.current = null;
+      }
+      return;
+    }
 
-    console.log('🔄 Setting up real-time subscriptions for room:', room.id);
+    console.log('🔄 Setting up robust real-time subscriptions for room:', room.id);
 
-    const channel = supabase
-      .channel(`room-${room.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'game_rooms',
-        filter: `id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
-        const roomData = payload.new as any;
-        
-        // CRITICAL FIX: Properly cast current_song from Json to Song
-        let currentSong: Song | null = null;
-        if (roomData.current_song) {
-          // Cast from Json to Song with proper type assertion
-          currentSong = roomData.current_song as unknown as Song;
-        }
-        console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
-        
-        setRoom({
-          id: roomData.id,
-          lobby_code: roomData.lobby_code,
-          host_id: roomData.host_id,
-          host_name: roomData.host_name || '',
-          phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-          songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
-          created_at: roomData.created_at,
-          updated_at: roomData.updated_at,
-          current_turn: roomData.current_turn,
-          current_song: currentSong,
-          current_player_id: roomData.current_player_id || null
-        });
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'players',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🎮 Player change detected:', payload);
-        fetchPlayers(room.id);
-      })
-      .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
-      });
+    // Create new subscription manager
+    subscriptionManager.current = new RealtimeSubscriptionManager();
+
+    // Configure subscription
+    const subscriptionConfig = {
+      roomId: room.id,
+      onRoomUpdate: handleRoomUpdate,
+      onPlayersUpdate: fetchPlayers,
+      onGameMovesUpdate: handleGameMovesUpdate
+    };
+
+    // Start subscription
+    subscriptionManager.current.subscribe(subscriptionConfig);
 
     // Initial fetch
     fetchPlayers(room.id);
 
     return () => {
-      console.log('🔄 Cleaning up subscriptions');
-      channel.unsubscribe();
+      console.log('🔄 Cleaning up robust subscriptions');
+      if (subscriptionManager.current) {
+        subscriptionManager.current.destroy();
+        subscriptionManager.current = null;
+      }
     };
-  }, [room?.id, fetchPlayers]);
+  }, [room?.id, handleRoomUpdate, fetchPlayers, handleGameMovesUpdate]);
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
     try {
@@ -389,6 +402,12 @@ export function useGameRoom() {
   }, [room, isHost]);
 
   const leaveRoom = useCallback(async () => {
+    // Clean up subscriptions first
+    if (subscriptionManager.current) {
+      subscriptionManager.current.destroy();
+      subscriptionManager.current = null;
+    }
+
     // Only delete player record if this is a non-host player
     if (currentPlayer && !isHost) {
       await supabase
