@@ -42,7 +42,7 @@ export function HostGameBackground() {
       <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none"
         style={{
-          backgroundImage: "url('src/assets/timeliner_bg.png')", // Background image path
+          backgroundImage: "url('src/assets/timeliner_bg.jpeg')", // Background image path
         }}
       />
     </div>
