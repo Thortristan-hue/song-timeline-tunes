@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
+import { useRealtimeSubscription, SubscriptionConfig } from '@/hooks/useRealtimeSubscription';
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -13,9 +14,13 @@ export function useGameRoom() {
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionConfigs, setSubscriptionConfigs] = useState<SubscriptionConfig[]>([]);
   
   const hostSessionId = useRef<string | null>(null);
   const playerSessionId = useRef<string | null>(null);
+
+  // Setup realtime subscription with retry logic
+  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
   // Generate session ID
   const generateSessionId = () => {
@@ -84,65 +89,69 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost]);
 
-  // Subscribe to room changes with synchronized turn state
+  // Setup subscription configurations when room is available
   useEffect(() => {
-    if (!room?.id) return;
+    if (!room?.id) {
+      setSubscriptionConfigs([]);
+      return;
+    }
 
-    console.log('🔄 Setting up real-time subscriptions for room:', room.id);
+    console.log('🔄 Setting up subscription configs for room:', room.id);
 
-    const channel = supabase
-      .channel(`room-${room.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
+    const configs: SubscriptionConfig[] = [
+      {
+        channelName: `room-${room.id}`,
         table: 'game_rooms',
-        filter: `id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
-        const roomData = payload.new as any;
-        
-        // CRITICAL FIX: Properly cast current_song from Json to Song
-        let currentSong: Song | null = null;
-        if (roomData.current_song) {
-          // Cast from Json to Song with proper type assertion
-          currentSong = roomData.current_song as unknown as Song;
+        filter: `id=eq.${room.id}`,
+        onUpdate: (payload) => {
+          console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
+          const roomData = payload.new as any;
+          
+          // CRITICAL FIX: Properly cast current_song from Json to Song
+          let currentSong: Song | null = null;
+          if (roomData.current_song) {
+            // Cast from Json to Song with proper type assertion
+            currentSong = roomData.current_song as unknown as Song;
+          }
+          console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
+          
+          setRoom({
+            id: roomData.id,
+            lobby_code: roomData.lobby_code,
+            host_id: roomData.host_id,
+            host_name: roomData.host_name || '',
+            phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+            songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
+            created_at: roomData.created_at,
+            updated_at: roomData.updated_at,
+            current_turn: roomData.current_turn,
+            current_song: currentSong,
+            current_player_id: roomData.current_player_id || null
+          });
+        },
+        onError: (error) => {
+          console.error('❌ Room subscription error:', error);
+          setError('Connection issue with game room. Retrying...');
         }
-        console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
-        
-        setRoom({
-          id: roomData.id,
-          lobby_code: roomData.lobby_code,
-          host_id: roomData.host_id,
-          host_name: roomData.host_name || '',
-          phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-          songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
-          created_at: roomData.created_at,
-          updated_at: roomData.updated_at,
-          current_turn: roomData.current_turn,
-          current_song: currentSong,
-          current_player_id: roomData.current_player_id || null
-        });
-      })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
+      },
+      {
+        channelName: `room-${room.id}`,
         table: 'players',
-        filter: `room_id=eq.${room.id}`
-      }, (payload) => {
-        console.log('🎮 Player change detected:', payload);
-        fetchPlayers(room.id);
-      })
-      .subscribe((status) => {
-        console.log('📡 Subscription status:', status);
-      });
+        filter: `room_id=eq.${room.id}`,
+        onUpdate: (payload) => {
+          console.log('🎮 Player change detected:', payload);
+          fetchPlayers(room.id);
+        },
+        onError: (error) => {
+          console.error('❌ Players subscription error:', error);
+        }
+      }
+    ];
+
+    setSubscriptionConfigs(configs);
 
     // Initial fetch
     fetchPlayers(room.id);
-
-    return () => {
-      console.log('🔄 Cleaning up subscriptions');
-      channel.unsubscribe();
-    };
   }, [room?.id, fetchPlayers]);
 
   const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
@@ -461,6 +470,8 @@ export function useGameRoom() {
     isHost,
     isLoading,
     error,
+    connectionStatus,
+    forceReconnect,
     createRoom,
     joinRoom,
     updatePlayer,

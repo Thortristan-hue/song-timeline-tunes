@@ -26,6 +26,8 @@ function Index() {
     isHost,
     isLoading,
     error,
+    connectionStatus,
+    forceReconnect,
     createRoom,
     joinRoom,
     updatePlayer,
@@ -219,6 +221,8 @@ function Index() {
               onPlaceCard={handlePlaceCard}
               onSetCurrentSong={setCurrentSong}
               customSongs={customSongs}
+              connectionStatus={connectionStatus}
+              onReconnect={forceReconnect}
             />
           )}
 

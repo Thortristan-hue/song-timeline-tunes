@@ -7,6 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { GameService } from '@/services/gameService';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useRealtimeSubscription';
 
 interface GamePlayProps {
   room: any;
@@ -16,6 +18,8 @@ interface GamePlayProps {
   onPlaceCard: (song: Song, position: number, availableSongs?: Song[]) => Promise<{ success: boolean; correct?: boolean }>;
   onSetCurrentSong: (song: Song) => Promise<void>;
   customSongs: Song[];
+  connectionStatus?: ConnectionStatusType;
+  onReconnect?: () => void;
 }
 
 export function GamePlay({
@@ -25,7 +29,9 @@ export function GamePlay({
   isHost,
   onPlaceCard,
   onSetCurrentSong,
-  customSongs
+  customSongs,
+  connectionStatus,
+  onReconnect
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -136,6 +142,7 @@ export function GamePlay({
   const currentTurnPlayerId = room?.current_player_id;
   const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
+  const isMyTurn = currentPlayer?.id === currentTurnPlayerId;
 
   // ENHANCED: Host can now control audio too
   const handlePlayPause = async () => {
@@ -370,10 +377,16 @@ export function GamePlay({
     );
   }
 
-  // Host view - still use HostGameView for hosts
-  if (isHost) {
-    return (
-      <div className="relative">
+  return (
+    <div className="relative">
+      {connectionStatus && (
+        <ConnectionStatus 
+          connectionStatus={connectionStatus} 
+          onReconnect={onReconnect}
+        />
+      )}
+      
+      {isHost ? (
         <HostGameView
           currentTurnPlayer={currentTurnPlayer}
           currentSong={currentMysteryCard}
@@ -385,41 +398,21 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
           transitioning={false}
         />
-      </div>
-    );
-  }
-
-  // Player view - ALWAYS use MobilePlayerGameView for all players
-  if (!currentPlayer) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
-        <div className="text-center text-white relative z-10">
-          <div className="text-4xl mb-3">❌</div>
-          <div className="text-xl font-semibold mb-2">Something went wrong</div>
-          <div className="text-white/60 text-sm">Couldn't find your player info in optimized game</div>
-        </div>
-      </div>
-    );
-  }
-
-  const isMyTurn = currentPlayer.id === currentTurnPlayerId;
-
-  // ALL PLAYER VISUALS ARE CONTROLLED BY MobilePlayerGameView
-  return (
-    <div className="relative">
-      <MobilePlayerGameView
-        currentPlayer={currentPlayer}
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={currentMysteryCard}
-        roomCode={room.lobby_code}
-        isMyTurn={isMyTurn}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onPlaceCard={handlePlaceCard}
-        mysteryCardRevealed={mysteryCardRevealed}
-        cardPlacementResult={cardPlacementResult}
-        gameEnded={gameEnded}
-      />
+      ) : (
+        <MobilePlayerGameView
+          currentPlayer={currentPlayer}
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={currentMysteryCard}
+          roomCode={room.lobby_code}
+          isMyTurn={isMyTurn}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          onPlaceCard={handlePlaceCard}
+          mysteryCardRevealed={mysteryCardRevealed}
+          cardPlacementResult={cardPlacementResult}
+          gameEnded={gameEnded}
+        />
+      )}
     </div>
   );
 }
