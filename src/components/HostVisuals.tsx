@@ -1,6 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
+// Import HostTimelineCard from HostGameView
 import { Song, Player } from '@/types/game';
+
+function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
+  const artistHash = Array.from(song.deezer_artist).reduce(
+    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
+  );
+  const hue = Math.abs(artistHash) % 360;
+  
+  return (
+    <div 
+      className={`w-32 h-32 rounded-xl flex flex-col items-center justify-between p-3 text-white transition-all duration-300 hover:scale-110 cursor-pointer relative
+        ${isActive ? 'ring-4 ring-green-400' : ''}`}
+      style={{ 
+        backgroundColor: `hsl(${hue}, 70%, 30%)`,
+        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 25%), hsl(${hue}, 70%, 40%))`,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+      }}
+    >
+      <div className="text-sm font-medium w-full text-center truncate">
+        {song.deezer_artist}
+      </div>
+      <div className="text-3xl font-bold my-auto">
+        {song.release_year}
+      </div>
+      <div className="text-xs italic w-full text-center truncate">
+        {song.deezer_title}
+      </div>
+    </div>
+  );
+}
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';

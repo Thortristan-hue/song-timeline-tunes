@@ -33,24 +33,24 @@ export class SoundEffects {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       this.initialized = true;
-      console.log('AudioContext initialized successfully');
+      console.log('🎵 Audio system initialized');
       
       // Preload essential sounds
       this.preloadSounds();
     } catch (error) {
-      console.error('AudioContext initialization failed:', error);
+      console.warn('Audio system initialization failed, using fallback sounds:', error);
     }
   }
 
   private async preloadSounds(): Promise<void> {
     const soundManifest: Record<SoundName, string> = {
-      'button-click': '/sounds/click.mp3',
-      'success': '/sounds/success.mp3',
-      'error': '/sounds/error.mp3',
+      'button-click': '/sounds/button-click.mp3',
+      'success': '/sounds/correct.mp3',
+      'error': '/sounds/incorrect.mp3',
       'game-start': '/sounds/game-start.mp3',
       'card-place': '/sounds/card-place.mp3',
-      'card-success': '/sounds/card-success.mp3',
-      'card-error': '/sounds/card-error.mp3',
+      'card-success': '/sounds/correct.mp3',
+      'card-error': '/sounds/incorrect.mp3',
       'game-victory': '/sounds/victory.mp3'
     };
 
@@ -60,9 +60,9 @@ export class SoundEffects {
           this.loadSound(name as SoundName, url)
         )
       );
-      console.log('All sounds preloaded successfully');
+      console.log('🎵 Audio files loaded successfully');
     } catch (error) {
-      console.error('Error preloading sounds:', error);
+      console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
     }
   }
 
@@ -86,14 +86,14 @@ export class SoundEffects {
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       this.sounds.set(name, audioBuffer);
     } catch (error) {
-      console.error(`Error loading sound ${name}:`, error);
+      console.warn(`Could not load audio file "${name}", fallback sound will be used`);
       throw error;
     }
   }
 
   public async playSound(name: SoundName): Promise<void> {
     if (!this.initialized || !this.audioContext) {
-      console.warn(`Sound system not initialized - cannot play ${name}`);
+      console.warn(`🎵 Audio system not ready, using fallback sound for ${name}`);
       return this.playFallback(name);
     }
 
@@ -102,14 +102,14 @@ export class SoundEffects {
       try {
         await this.audioContext.resume();
       } catch (error) {
-        console.error('Error resuming audio context:', error);
+        console.warn('Audio context resume failed, using fallback sound:', error);
         return this.playFallback(name);
       }
     }
 
     const sound = this.sounds.get(name);
     if (!sound) {
-      console.warn(`Sound not found: ${name}`);
+      console.warn(`🎵 Audio file "${name}" not available, using fallback sound`);
       return this.playFallback(name);
     }
 
@@ -132,7 +132,7 @@ export class SoundEffects {
         gainNode.disconnect();
       });
     } catch (error) {
-      console.error(`Error playing sound ${name}:`, error);
+      console.warn(`Failed to play audio "${name}", using fallback sound:`, error);
       this.playFallback(name);
     }
   }
@@ -142,7 +142,7 @@ export class SoundEffects {
     
     // This will stop all ongoing sounds by suspending the context
     this.audioContext.suspend().catch(error => {
-      console.error('Error stopping sounds:', error);
+      console.warn('Could not stop audio playback:', error);
     });
   }
 
@@ -161,7 +161,6 @@ export class SoundEffects {
   }
 
   private async playFallback(name: SoundName): Promise<void> {
-    console.warn(`Playing fallback for ${name}`);
     if (!this.audioContext) return;
 
     try {
@@ -195,7 +194,7 @@ export class SoundEffects {
       oscillator.start();
       oscillator.stop(this.audioContext.currentTime + 0.3);
     } catch (error) {
-      console.error('Fallback sound failed:', error);
+      console.warn('Fallback sound generation failed:', error);
     }
   }
 
@@ -225,7 +224,7 @@ export class SoundEffects {
       oscillator.start();
       oscillator.stop(now + 0.5);
     } catch (error) {
-      console.error('Fallback sequence failed:', error);
+      console.warn('Fallback sequence generation failed:', error);
     }
   }
 }

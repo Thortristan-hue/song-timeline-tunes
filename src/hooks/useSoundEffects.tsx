@@ -28,14 +28,14 @@ export function useSoundEffects() {
           await audio.play();
           return true;
         } catch (pathError) {
-          console.warn(`Failed to load audio from ${path}:`, pathError);
+          // Silently try next path
           continue;
         }
       }
       
       return false;
     } catch (error) {
-      console.warn(`Audio file ${filename} failed to play:`, error);
+      // Audio file not available, fallback will be used
       return false;
     }
   }, []);
@@ -45,7 +45,7 @@ export function useSoundEffects() {
     try {
       return new (window.AudioContext || (window as any).webkitAudioContext)();
     } catch (error) {
-      console.warn('AudioContext not available:', error);
+      // AudioContext not supported, fallback sounds will be used
       return null;
     }
   }, []);
@@ -78,7 +78,7 @@ export function useSoundEffects() {
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + duration);
     } catch (error) {
-      console.warn('Polished tone generation failed:', error);
+      // Tone generation failed, silent fallback
     }
   }, [createAudioContext]);
 
