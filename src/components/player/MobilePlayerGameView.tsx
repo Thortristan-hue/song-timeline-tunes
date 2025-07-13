@@ -3,14 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, MoveRight, MoveLeft } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { audioSyncService, AudioControlEvent } from '@/services/audioSyncService';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
   currentTurnPlayer: Player;
   currentSong: Song;
   roomCode: string;
-  roomId: string;
   isMyTurn: boolean;
   isPlaying: boolean;
   onPlayPause: () => void;
@@ -25,7 +23,6 @@ export default function MobilePlayerGameView({
   currentTurnPlayer,
   currentSong,
   roomCode,
-  roomId,
   isMyTurn,
   isPlaying,
   onPlayPause,
@@ -54,39 +51,6 @@ export default function MobilePlayerGameView({
   const GAP_WIDTH = 25; // 2x thinner gaps
   const ITEM_SPACING = 145; // Adjusted to prevent overlap
   const SIDE_PADDING = 200; // Extra space on both sides for edge selections
-
-  // ENHANCED: Send audio control to host instead of playing locally
-  const handlePlayPause = async () => {
-    if (gameEnded || !currentSong) {
-      console.log('🚫 Cannot play: game ended or missing data');
-      return;
-    }
-
-    // Only current turn player can control audio
-    if (currentPlayer && currentPlayer.id !== currentTurnPlayer.id) {
-      console.log('🚫 Not your turn - audio control blocked');
-      return;
-    }
-
-    try {
-      console.log('🎵 PLAYER AUDIO: Sending audio control to host');
-      
-      const audioEvent: AudioControlEvent = {
-        action: isPlaying ? 'pause' : 'play',
-        songId: currentSong.id,
-        playerId: currentPlayer.id,
-        timestamp: Date.now()
-      };
-
-      await audioSyncService.sendAudioControl(roomId, audioEvent);
-      
-      // Visual feedback for player
-      console.log(`🎵 PLAYER: Audio ${audioEvent.action} command sent to host`);
-      
-    } catch (error) {
-      console.error('❌ Failed to send audio control to host:', error);
-    }
-  };
 
   // Create timeline from player's existing songs
   const timelineCards = currentPlayer.timeline
@@ -225,7 +189,7 @@ export default function MobilePlayerGameView({
     return lines.join('\n');
   };
 
-  // Play song preview (for timeline cards only - mystery card audio goes through host)
+  // Play song preview
   const playPreview = (url: string, songId: string) => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -295,6 +259,7 @@ export default function MobilePlayerGameView({
     };
   }, [isMyTurn, gameEnded, containerWidth, timelineCards.length]);
 
+  // Kahoot-style result overlay
   if (cardPlacementResult) {
     const isCorrect = cardPlacementResult.correct;
     
@@ -387,7 +352,7 @@ export default function MobilePlayerGameView({
         </div>
       </div>
 
-      {/* Mystery Song Preview - ENHANCED: Send to host */}
+      {/* Mystery Song Preview */}
       {isMyTurn && !gameEnded && (
         <div className="relative z-10 flex items-center justify-center px-4 py-3 flex-shrink-0">
           <div className="text-center space-y-3">
@@ -406,7 +371,7 @@ export default function MobilePlayerGameView({
                 </div>
                 
                 <Button
-                  onClick={handlePlayPause}
+                  onClick={onPlayPause}
                   className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                   disabled={!currentSong?.preview_url}
                 >
@@ -417,7 +382,7 @@ export default function MobilePlayerGameView({
               </div>
             </div>
             <div className="text-white/90 text-sm font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-3 py-1 border border-white/20">
-              Tap to play on host device
+              Tap vinyl to preview
             </div>
           </div>
         </div>
@@ -434,7 +399,7 @@ export default function MobilePlayerGameView({
               {currentTurnPlayer.name} is playing
             </div>
             <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-xl px-3 py-1 border border-white/20">
-              Audio plays on host device
+              Wait for your turn
             </div>
           </div>
         </div>

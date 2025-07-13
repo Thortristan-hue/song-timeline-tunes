@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -36,8 +37,8 @@ function Index() {
     assignStartingCards
   } = useGameRoom();
 
-  // Debug phase transitions
-  console.log('Index component render - Current state:', {
+  // Enhanced debugging for phase transitions
+  console.log('📱 Index render - Phase transition debug:', {
     gamePhase,
     roomPhase: room?.phase,
     isHost,
@@ -51,18 +52,18 @@ function Index() {
     const joinCode = urlParams.get('join');
     
     if (joinCode && gamePhase === 'menu') {
-      console.log('Detected join code in URL parameters:', joinCode);
+      console.log('🔗 Auto-joining from URL:', joinCode);
       setGamePhase('mobileJoin');
       // Clear the URL parameter after processing
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [gamePhase]);
 
-  // Room phase listener with error handling
+  // Enhanced room phase listener with better error handling
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('Room state transitioned to playing phase - initiating game');
-      console.log('Current room state:', { 
+      console.log('🎮 Room transitioned to playing phase - starting game');
+      console.log('🎮 Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
@@ -95,14 +96,14 @@ function Index() {
       }
       return false;
     } catch (error) {
-      console.error('Room creation failed:', error);
+      console.error('Failed to create room:', error);
       return false;
     }
   };
 
   const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
     try {
-      console.log('Attempting to join room with parameters:', { lobbyCode, name });
+      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
       const success = await joinRoom(lobbyCode, name);
       if (success) {
         setPlayerName(name);
@@ -112,19 +113,19 @@ function Index() {
       }
       return false;
     } catch (error) {
-      console.error('Room join operation failed:', error);
+      console.error('Failed to join room:', error);
       return false;
     }
   };
 
   const handleStartGame = async () => {
     try {
-      console.log('Host initiating game start sequence');
+      console.log('🎮 Host starting game...');
       await startGame();
       // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
     } catch (error) {
-      console.error('Game start failed:', error);
+      console.error('Failed to start game:', error);
     }
   };
 
