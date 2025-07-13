@@ -351,7 +351,7 @@ export default function MobilePlayerGameView({
           </div>
         </div>
         
-        <style>{`
+        <style jsx global>{`
           @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -645,7 +645,7 @@ export default function MobilePlayerGameView({
         </div>
       </div>
 
-      <style>{`
+      <style jsx global>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
