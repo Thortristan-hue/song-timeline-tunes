@@ -17,11 +17,11 @@ export function HostGameBackground() {
       <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '4s'}} />
       <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '6s', animationDelay: '1s'}} />
       
-      {/* Add the background image */}
+      {/* Add the background image - CORRECTED PATH */}
       <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-50"
         style={{
-          backgroundImage: "url('/src/assets/timeliner_bg.jpeg')",
+          backgroundImage: "url('/timeliner_bg.jpg')",
         }}
       />
     </div>
