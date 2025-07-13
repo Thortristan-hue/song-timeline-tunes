@@ -43,12 +43,12 @@ export default function MobilePlayerGameView({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Increased card size while keeping timeline compact
-  const CARD_WIDTH = 160;  // Increased from 110
-  const CARD_HEIGHT = 160; // Increased from 110
-  const GAP_WIDTH = 15;    // Slightly increased gap
-  const ITEM_SPACING = 180; // Increased spacing for larger cards
-  const SIDE_PADDING = 250; // Increased padding
+  // Increased card size
+  const CARD_WIDTH = 160;
+  const CARD_HEIGHT = 160;
+  const GAP_WIDTH = 15;
+  const ITEM_SPACING = 180;
+  const SIDE_PADDING = 250;
 
   const timelineCards = currentPlayer.timeline
     .filter(song => song !== null)
@@ -57,7 +57,7 @@ export default function MobilePlayerGameView({
   const totalItems = timelineCards.length + 1;
   const totalWidth = (totalItems * ITEM_SPACING) + (2 * SIDE_PADDING);
 
-  // Center the middle gap on screen load and when timeline changes
+  // Center the middle gap on screen
   useEffect(() => {
     const centerMiddleGap = () => {
       if (containerRef.current && scrollViewRef.current) {
@@ -74,10 +74,8 @@ export default function MobilePlayerGameView({
       }
     };
 
-    // Center on load
     const timer = setTimeout(centerMiddleGap, 100);
     
-    // Re-center on window resize
     const handleResize = () => {
       centerMiddleGap();
     };
@@ -136,7 +134,6 @@ export default function MobilePlayerGameView({
       behavior: 'smooth'
     });
 
-    // Update snapped position after scroll
     setTimeout(() => {
       snapToNearestGap();
     }, 300);
@@ -150,7 +147,6 @@ export default function MobilePlayerGameView({
         <button 
           onClick={() => scrollTimeline('left')} 
           className="absolute left-4 z-20 p-4 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-200 shadow-lg backdrop-blur-sm"
-          disabled={scrollPosition <= 0}
         >
           <MoveLeft className="w-6 h-6 text-white" />
         </button>
@@ -166,18 +162,9 @@ export default function MobilePlayerGameView({
             className="flex items-center relative" 
             style={{ 
               width: `${totalWidth}px`,
-              height: `${CARD_HEIGHT + 40}px` // Extra height for better spacing
+              height: `${CARD_HEIGHT + 40}px`
             }}
           >
-            {/* Center line indicator */}
-            <div 
-              className="absolute top-1/2 transform -translate-y-1/2 w-1 bg-white/30 z-10"
-              style={{
-                left: '50%',
-                height: `${CARD_HEIGHT + 20}px`
-              }}
-            />
-            
             {Array.from({ length: totalItems }, (_, gapIndex) => {
               const gapX = SIDE_PADDING + (gapIndex * ITEM_SPACING);
               const cardIndex = gapIndex;
@@ -193,8 +180,7 @@ export default function MobilePlayerGameView({
                       left: `${gapX - (GAP_WIDTH / 2)}px`,
                       width: `${GAP_WIDTH}px`,
                       height: `${CARD_HEIGHT}px`,
-                      top: '50%',
-                      transform: 'translateY(-50%)'
+                      top: '20px'
                     }}
                   >
                     <div
@@ -210,21 +196,20 @@ export default function MobilePlayerGameView({
                   {/* Card */}
                   {hasCard && card && (
                     <div
-                      className="absolute flex items-center justify-center cursor-pointer"
+                      className="absolute"
                       style={{
                         left: `${gapX + (GAP_WIDTH / 2) + 10}px`,
                         width: `${CARD_WIDTH}px`,
                         height: `${CARD_HEIGHT}px`,
-                        top: '50%',
-                        transform: 'translateY(-50%)'
+                        top: '20px'
                       }}
                     >
-                      <div className="w-full h-full rounded-xl border-2 border-white/70 bg-gradient-to-br from-slate-800 to-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-4">
-                        <div className="text-white text-center">
-                          <div className="text-sm font-semibold mb-1 truncate w-full">
+                      <div className="w-full h-full rounded-xl border-2 border-white/70 bg-gradient-to-br from-slate-800 to-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-4 cursor-pointer">
+                        <div className="text-white text-center w-full">
+                          <div className="text-sm font-semibold mb-1 truncate">
                             {card.title}
                           </div>
-                          <div className="text-xs text-white/70 mb-2 truncate w-full">
+                          <div className="text-xs text-white/70 mb-2 truncate">
                             {card.artist}
                           </div>
                           <div className="text-lg font-bold text-blue-300">
