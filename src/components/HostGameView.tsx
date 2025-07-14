@@ -8,23 +8,26 @@ import { Button } from '@/components/ui/button';
 // Host Background Component
 export function HostGameBackground() {
   return (
-    <div className="absolute inset-0">
-      {/* Background image - moved to the bottom layer */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Background image with fixed positioning */}
+      <div 
+        className="fixed inset-0 w-full h-full"
         style={{
           backgroundImage: "url('/timeliner_bg.jpeg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
           zIndex: 1,
         }}
       />
 
-      {/* Gradient overlay - above background image */}
+      {/* Gradient overlay */}
       <div
         className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-slate-900/60"
         style={{ zIndex: 2 }}
       />
 
-      {/* Animated blur effects - above gradient */}
+      {/* Animated blur effects */}
       <div 
         className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" 
         style={{ zIndex: 3 }}
@@ -38,7 +41,7 @@ export function HostGameBackground() {
         style={{ zIndex: 3 }}
       />
 
-      {/* Ambient effects - top layer of background */}
+      {/* Ambient effects */}
       <div 
         className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" 
         style={{ zIndex: 4, animationDuration: '4s' }} 
@@ -110,7 +113,6 @@ function RecordPlayerSection({
                   <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
                 </div>
                 
-                {/* Vinyl grooves effect */}
                 <div className="absolute inset-4 border border-white/10 rounded-full"></div>
                 <div className="absolute inset-8 border border-white/10 rounded-full"></div>
                 <div className="absolute inset-12 border border-white/10 rounded-full"></div>
