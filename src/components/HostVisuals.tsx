@@ -77,7 +77,9 @@ export function HostGameBackground() {
   );
 }
 
-function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
+function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCount?: number }) {
+  const safeRoomCode = roomCode || 'XXXX';
+  const safePlayersCount = playersCount || 0;
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
@@ -95,12 +97,12 @@ function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount
           <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-white" />
-              <div className="text-white font-black text-xl">{playersCount}</div>
+              <div className="text-white font-black text-xl">{safePlayersCount}</div>
             </div>
           </div>
 
           <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
-            <div className="text-white font-mono text-xl font-black tracking-wider">{roomCode}</div>
+            <div className="text-white font-mono text-xl font-black tracking-wider">{safeRoomCode}</div>
           </div>
         </div>
       </div>
@@ -240,11 +242,11 @@ function HostTimelineDisplay({
   isActive, 
   placementResult 
 }: { 
-  currentPlayer: Player; 
-  isActive: boolean;
+  currentPlayer?: Player; 
+  isActive?: boolean;
   placementResult?: { correct: boolean; song: Song };
 }) {
-  // Safety checks
+  // Safety checks with better defaults
   const safeCurrentPlayer = currentPlayer || {
     id: 'unknown',
     name: 'Unknown Player',
@@ -508,18 +510,18 @@ export function HostGameView({
   cardPlacementResult,
   transitioning
 }: {
-  currentTurnPlayer: Player;
+  currentTurnPlayer?: Player;
   previousPlayer?: Player;
-  currentSong: Song | null;
-  roomCode: string;
-  players: Player[];
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-  transitioning: boolean;
+  currentSong?: Song | null;
+  roomCode?: string;
+  players?: Player[];
+  mysteryCardRevealed?: boolean;
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
+  cardPlacementResult?: { correct: boolean; song: Song } | null;
+  transitioning?: boolean;
 }) {
-  // Safety checks and fallbacks
+  // Safety checks and fallbacks with better error handling
   const safeCurrentTurnPlayer = currentTurnPlayer || {
     id: 'unknown',
     name: 'Unknown Player',
@@ -531,6 +533,7 @@ export function HostGameView({
   const safeMysteryCardRevealed = mysteryCardRevealed ?? false;
   const safeIsPlaying = isPlaying ?? false;
   const safeTransitioning = transitioning ?? false;
+  const safeOnPlayPause = onPlayPause || (() => console.log('Play/Pause not implemented'));
 
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
@@ -578,7 +581,7 @@ export function HostGameView({
         currentSong={currentSong}
         mysteryCardRevealed={safeMysteryCardRevealed}
         isPlaying={safeIsPlaying}
-        onPlayPause={onPlayPause}
+        onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
       
