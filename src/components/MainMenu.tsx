@@ -10,321 +10,266 @@ interface MainMenuProps {
 
 export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 relative overflow-hidden">
-      {/* Urban alleyway background */}
-      <div className="absolute inset-0">
-        {/* Brick wall texture overlay */}
-        <div className="absolute inset-0 opacity-20" 
-             style={{
-               backgroundImage: `repeating-linear-gradient(
-                 0deg,
-                 transparent,
-                 transparent 10px,
-                 rgba(75, 85, 99, 0.3) 10px,
-                 rgba(75, 85, 99, 0.3) 11px
-               ),
-               repeating-linear-gradient(
-                 90deg,
-                 transparent,
-                 transparent 30px,
-                 rgba(75, 85, 99, 0.2) 30px,
-                 rgba(75, 85, 99, 0.2) 31px
-               )`
-             }}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-rich_black-500 via-rich_black-400 to-charcoal-500 relative overflow-hidden">
+      {/* Artistic background elements */}
+      <div className="absolute inset-0 opacity-30">
+        {/* Geometric patterns */}
+        <div className="absolute top-20 left-20 w-40 h-40 bg-cerulean-500/20 rounded-full blur-2xl" />
+        <div className="absolute top-40 right-32 w-60 h-60 bg-fandango-500/15 rounded-full blur-3xl" />
+        <div className="absolute bottom-32 left-1/3 w-80 h-80 bg-cerulean-400/10 rounded-full blur-3xl" />
         
-        {/* Neon glow effects */}
-        <div className="absolute top-10 left-10 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute top-32 right-20 w-60 h-60 bg-cyan-500/15 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl" />
-        
-        {/* Street art graffiti */}
+        {/* Abstract lines and shapes */}
         <svg className="w-full h-full absolute inset-0" viewBox="0 0 1200 800">
-          {/* Large graffiti tag */}
-          <g stroke="#00ff88" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.6">
-            <path d="M80 150 Q120 130 160 150 Q200 170 240 150 Q280 130 320 150" />
-            <path d="M85 160 Q125 140 165 160 Q205 180 245 160 Q285 140 325 160" />
-            <circle cx="100" cy="145" r="4" fill="#00ff88" />
-            <circle cx="180" cy="145" r="4" fill="#00ff88" />
-            <circle cx="260" cy="145" r="4" fill="#00ff88" />
-            <circle cx="320" cy="145" r="4" fill="#00ff88" />
+          {/* Flowing lines */}
+          <g stroke="#107793" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.6">
+            <path d="M100 200 Q300 150 500 200 Q700 250 900 200" />
+            <path d="M150 300 Q350 250 550 300 Q750 350 950 300" />
+            <path d="M50 400 Q250 350 450 400 Q650 450 850 400" />
           </g>
           
-          {/* Boom box street art */}
-          <g stroke="#ff0080" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.4">
-            <rect x="900" y="200" width="120" height="80" rx="8" />
-            <circle cx="930" cy="240" r="18" />
-            <circle cx="990" cy="240" r="18" />
-            <rect x="950" y="220" width="20" height="12" rx="2" />
-            <rect x="910" y="260" width="100" height="8" rx="2" />
-            <circle cx="960" cy="275" r="3" fill="#ff0080" />
-            <path d="M920 200 Q960 185 1000 200" stroke="#ff0080" strokeWidth="2" />
-          </g>
-          
-          {/* Turntables */}
-          <g stroke="#00ccff" strokeWidth="3" fill="none" opacity="0.5">
-            <circle cx="150" cy="600" r="40" />
-            <circle cx="150" cy="600" r="25" />
-            <circle cx="150" cy="600" r="6" fill="#00ccff" />
-            <rect x="135" y="580" width="30" height="8" rx="2" />
-            <path d="M125 585 Q150 575 175 585" stroke="#00ccff" strokeWidth="2" />
+          {/* Geometric shapes */}
+          <g stroke="#a53b8b" strokeWidth="3" fill="none" opacity="0.4">
+            <circle cx="200" cy="150" r="40" />
+            <circle cx="200" cy="150" r="25" />
+            <circle cx="200" cy="150" r="8" fill="#a53b8b" />
             
-            <circle cx="1050" cy="500" r="35" />
-            <circle cx="1050" cy="500" r="20" />
-            <circle cx="1050" cy="500" r="4" fill="#00ccff" />
+            <rect x="900" y="300" width="80" height="80" rx="15" transform="rotate(15 940 340)" />
+            <circle cx="940" cy="340" r="15" fill="#a53b8b" transform="rotate(15 940 340)" />
           </g>
           
-          {/* Spray paint cans */}
-          <g stroke="#ffff00" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.3">
-            <rect x="50" y="400" width="15" height="45" rx="6" />
-            <rect x="52" y="395" width="11" height="10" rx="2" />
-            <circle cx="57" cy="392" r="2" fill="#ffff00" />
-            <path d="M60 388 Q65 383 70 388" stroke="#ffff00" strokeWidth="2" />
+          {/* Sound visualization */}
+          <g stroke="#107793" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.5">
+            <rect x="50" y="600" width="8" height="40" rx="4" />
+            <rect x="65" y="580" width="8" height="60" rx="4" />
+            <rect x="80" y="590" width="8" height="50" rx="4" />
+            <rect x="95" y="570" width="8" height="70" rx="4" />
+            <rect x="110" y="585" width="8" height="55" rx="4" />
             
-            <rect x="1100" y="350" width="12" height="40" rx="5" />
-            <rect x="1102" y="346" width="8" height="8" rx="1" />
-            <circle cx="1106" cy="344" r="2" fill="#ffff00" />
+            <rect x="1050" y="500" width="8" height="35" rx="4" />
+            <rect x="1065" y="485" width="8" height="50" rx="4" />
+            <rect x="1080" y="495" width="8" height="40" rx="4" />
+            <rect x="1095" y="480" width="8" height="55" rx="4" />
           </g>
           
-          {/* Sound waves with neon effect */}
-          <g stroke="#ff6600" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.4">
-            <path d="M400 300 Q450 280 500 300 Q550 320 600 300" />
-            <path d="M400 320 Q450 300 500 320 Q550 340 600 320" />
-            <path d="M400 340 Q450 320 500 340 Q550 360 600 340" />
+          {/* Musical elements */}
+          <g stroke="#a53b8b" strokeWidth="2" fill="none" opacity="0.3">
+            <circle cx="800" cy="150" r="30" />
+            <path d="M785 135 Q800 125 815 135" />
+            <circle cx="800" cy="150" r="6" fill="#a53b8b" />
             
-            <path d="M700 400 Q750 380 800 400 Q850 420 900 400" />
-            <path d="M700 420 Q750 400 800 420 Q850 440 900 420" />
-          </g>
-          
-          {/* Microphone with cord */}
-          <g stroke="#ff3366" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.5">
-            <circle cx="300" cy="500" r="12" />
-            <rect x="295" y="512" width="10" height="60" rx="2" />
-            <circle cx="300" cy="500" r="8" fill="#ff3366" />
-            <path d="M285 485 Q300 475 315 485" stroke="#ff3366" strokeWidth="3" />
-            <path d="M300 572 Q320 580 340 572 Q360 580 380 572" stroke="#ff3366" strokeWidth="2" />
-          </g>
-          
-          {/* Graffiti arrows and tags */}
-          <g stroke="#cc00ff" strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.4">
-            <path d="M600 600 Q650 580 700 600" />
-            <path d="M690 590 L700 600 L690 610" />
-            <circle cx="620" cy="595" r="3" fill="#cc00ff" />
-            <circle cx="680" cy="595" r="3" fill="#cc00ff" />
+            <circle cx="400" cy="600" r="25" />
+            <circle cx="400" cy="600" r="15" />
+            <circle cx="400" cy="600" r="4" fill="#a53b8b" />
           </g>
         </svg>
       </div>
       
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 sm:px-8 lg:px-12">
         
-        {/* Main Logo Section */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
-          {/* Neon-style music icon */}
-          <div className="flex items-center justify-center mb-8">
+        {/* Header Section */}
+        <div className="text-center max-w-6xl mx-auto mb-20">
+          {/* Logo */}
+          <div className="flex items-center justify-center mb-12">
             <div className="relative">
-              <div className="absolute inset-0 bg-cyan-400 rounded-2xl blur-lg opacity-50" />
-              <div className="relative w-24 h-24 bg-black border-2 border-cyan-400 rounded-2xl flex items-center justify-center shadow-2xl">
-                <Music className="h-12 w-12 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+              <div className="absolute inset-0 bg-cerulean-500 rounded-3xl blur-xl opacity-40" />
+              <div className="relative w-32 h-32 bg-gradient-to-br from-rich_black-300 to-charcoal-500 border-3 border-cerulean-500 rounded-3xl flex items-center justify-center shadow-2xl">
+                <Music className="h-16 w-16 text-cerulean-400" />
               </div>
             </div>
           </div>
           
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black text-white mb-6 tracking-tight relative" 
+          <h1 className="text-7xl sm:text-8xl lg:text-9xl font-black mb-8 tracking-tight" 
               style={{ 
                 fontFamily: 'Impact, Arial Black, sans-serif',
-                textShadow: `
-                  0 0 10px #00ff88,
-                  0 0 20px #00ff88,
-                  0 0 30px #00ff88,
-                  3px 3px 0px #000,
-                  6px 6px 0px rgba(0,0,0,0.5)
-                `,
-                WebkitTextStroke: '2px #00ff88'
+                background: 'linear-gradient(135deg, #107793 0%, #a53b8b 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '4px 4px 0px rgba(14,31,47,0.8)'
               }}>
             RYTHMY
           </h1>
           
-          <div className="space-y-4 mb-8">
-            <p className="text-xl sm:text-2xl text-cyan-300 font-bold max-w-2xl mx-auto leading-relaxed"
+          <div className="space-y-6 mb-12">
+            <p className="text-2xl sm:text-3xl font-bold text-honeydew-100 max-w-3xl mx-auto leading-relaxed"
                style={{ 
-                 fontFamily: 'Impact, Arial Black, sans-serif',
-                 textShadow: '0 0 10px rgba(34,211,238,0.5), 2px 2px 0px #000'
+                 fontFamily: 'system-ui, -apple-system, sans-serif',
+                 textShadow: '2px 2px 0px rgba(14,31,47,0.8)'
                }}>
-              TEST YOUR BEATS KNOWLEDGE
+              Master the Timeline of Sound
             </p>
-            <p className="text-lg text-purple-300 max-w-xl mx-auto font-semibold"
-               style={{ textShadow: '1px 1px 0px #000' }}>
-              Drop into the cypher and see who knows when these tracks really hit the streets
+            <p className="text-lg text-honeydew-400 max-w-2xl mx-auto font-medium leading-relaxed">
+              Challenge your crew to place tracks on the timeline. 
+              Connect your Spotify and see who truly knows their music history.
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-6 mb-16 w-full max-w-lg">
-          <Button
-            onClick={onCreateRoom}
-            className="relative flex-1 bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-500 hover:via-pink-500 hover:to-red-500 text-white h-16 text-xl font-black rounded-2xl transition-all duration-300 shadow-2xl border-2 border-pink-400 transform hover:scale-105 active:scale-95 overflow-hidden"
-            style={{ 
-              fontFamily: 'Impact, Arial Black, sans-serif',
-              textShadow: '2px 2px 0px #000',
-              boxShadow: '0 0 20px rgba(236,72,153,0.5), 0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full animate-pulse" />
-            <Play className="h-6 w-6 mr-3 drop-shadow-lg" />
-            START THE SESSION
-          </Button>
-          
-          <Button
-            onClick={onJoinRoom}
-            className="relative flex-1 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:via-blue-500 hover:to-purple-500 text-white h-16 text-xl font-black rounded-2xl transition-all duration-300 shadow-2xl border-2 border-cyan-400 transform hover:scale-105 active:scale-95 overflow-hidden"
-            style={{ 
-              fontFamily: 'Impact, Arial Black, sans-serif',
-              textShadow: '2px 2px 0px #000',
-              boxShadow: '0 0 20px rgba(34,211,238,0.5), 0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full animate-pulse" />
-            <Smartphone className="h-6 w-6 mr-3 drop-shadow-lg" />
-            JOIN THE CREW
-          </Button>
+        {/* Main Action Section */}
+        <div className="w-full max-w-6xl mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+            {/* Create Room Card */}
+            <Card className="relative bg-gradient-to-br from-rich_black-400/90 to-charcoal-400/90 border-2 border-cerulean-400 p-10 rounded-3xl backdrop-blur-sm transform hover:scale-105 transition-all duration-300"
+                  style={{ boxShadow: '0 0 30px rgba(16,119,147,0.3)' }}>
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-cerulean-400 to-cerulean-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                  <Play className="h-10 w-10 text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-cerulean-300" 
+                    style={{ fontFamily: 'Impact, Arial Black, sans-serif' }}>
+                  START THE SESSION
+                </h3>
+                <p className="text-honeydew-400 text-lg leading-relaxed">
+                  Host the game with your Spotify playlist. Set the vibe and challenge your friends to guess when these tracks first hit the scene.
+                </p>
+                <Button
+                  onClick={onCreateRoom}
+                  className="w-full bg-gradient-to-r from-cerulean-500 to-cerulean-600 hover:from-cerulean-400 hover:to-cerulean-500 text-white h-16 text-xl font-black rounded-2xl transition-all duration-300 shadow-xl border-0"
+                  style={{ fontFamily: 'Impact, Arial Black, sans-serif' }}
+                >
+                  CREATE ROOM
+                </Button>
+              </div>
+            </Card>
+
+            {/* Join Room Card */}
+            <Card className="relative bg-gradient-to-br from-rich_black-400/90 to-charcoal-400/90 border-2 border-fandango-400 p-10 rounded-3xl backdrop-blur-sm transform hover:scale-105 transition-all duration-300"
+                  style={{ boxShadow: '0 0 30px rgba(165,59,139,0.3)' }}>
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-fandango-400 to-fandango-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                  <Smartphone className="h-10 w-10 text-white" />
+                </div>
+                <h3 className="text-2xl font-black text-fandango-300" 
+                    style={{ fontFamily: 'Impact, Arial Black, sans-serif' }}>
+                  JOIN THE CREW
+                </h3>
+                <p className="text-honeydew-400 text-lg leading-relaxed">
+                  Got a room code? Jump into an existing session and prove your music knowledge against friends and strangers alike.
+                </p>
+                <Button
+                  onClick={onJoinRoom}
+                  className="w-full bg-gradient-to-r from-fandango-500 to-fandango-600 hover:from-fandango-400 hover:to-fandango-500 text-white h-16 text-xl font-black rounded-2xl transition-all duration-300 shadow-xl border-0"
+                  style={{ fontFamily: 'Impact, Arial Black, sans-serif' }}
+                >
+                  JOIN ROOM
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          {/* Game Features */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-gradient-to-br from-rich_black-300/80 to-charcoal-400/80 border border-honeydew-600 p-6 text-center rounded-2xl backdrop-blur-sm hover:border-honeydew-400 transition-all duration-300">
+              <Users className="h-12 w-12 text-honeydew-300 mx-auto mb-4" />
+              <div className="text-honeydew-200 font-bold text-lg mb-2" 
+                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                Multiplayer
+              </div>
+              <div className="text-honeydew-400 text-sm font-medium">2-8 Players</div>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-rich_black-300/80 to-charcoal-400/80 border border-cerulean-600 p-6 text-center rounded-2xl backdrop-blur-sm hover:border-cerulean-400 transition-all duration-300">
+              <Music className="h-12 w-12 text-cerulean-300 mx-auto mb-4" />
+              <div className="text-cerulean-200 font-bold text-lg mb-2" 
+                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                Your Music
+              </div>
+              <div className="text-cerulean-400 text-sm font-medium">Spotify Integration</div>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-rich_black-300/80 to-charcoal-400/80 border border-fandango-600 p-6 text-center rounded-2xl backdrop-blur-sm hover:border-fandango-400 transition-all duration-300">
+              <Timer className="h-12 w-12 text-fandango-300 mx-auto mb-4" />
+              <div className="text-fandango-200 font-bold text-lg mb-2" 
+                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                Quick Rounds
+              </div>
+              <div className="text-fandango-400 text-sm font-medium">30 Second Rounds</div>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-rich_black-300/80 to-charcoal-400/80 border border-honeydew-600 p-6 text-center rounded-2xl backdrop-blur-sm hover:border-honeydew-400 transition-all duration-300">
+              <Trophy className="h-12 w-12 text-honeydew-300 mx-auto mb-4" />
+              <div className="text-honeydew-200 font-bold text-lg mb-2" 
+                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                Victory
+              </div>
+              <div className="text-honeydew-400 text-sm font-medium">First to 10 Points</div>
+            </Card>
+          </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-5xl mb-16">
-          <Card className="relative bg-black/80 border-2 border-green-400 p-6 text-center hover:border-green-300 transition-all duration-300 rounded-2xl backdrop-blur-sm transform hover:scale-105"
-                style={{ boxShadow: '0 0 15px rgba(34,197,94,0.3)' }}>
-            <Users className="h-10 w-10 text-green-400 mx-auto mb-3 drop-shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-            <div className="text-green-400 font-black text-lg mb-1" 
-                 style={{ 
-                   fontFamily: 'Impact, Arial Black, sans-serif',
-                   textShadow: '0 0 10px rgba(34,197,94,0.5), 2px 2px 0px #000'
-                 }}>
-              SQUAD UP
-            </div>
-            <div className="text-green-300 text-sm font-bold">2-8 HEADS</div>
-          </Card>
-          
-          <Card className="relative bg-black/80 border-2 border-purple-400 p-6 text-center hover:border-purple-300 transition-all duration-300 rounded-2xl backdrop-blur-sm transform hover:scale-105"
-                style={{ boxShadow: '0 0 15px rgba(168,85,247,0.3)' }}>
-            <Music className="h-10 w-10 text-purple-400 mx-auto mb-3 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
-            <div className="text-purple-400 font-black text-lg mb-1" 
-                 style={{ 
-                   fontFamily: 'Impact, Arial Black, sans-serif',
-                   textShadow: '0 0 10px rgba(168,85,247,0.5), 2px 2px 0px #000'
-                 }}>
-              YOUR BEATS
-            </div>
-            <div className="text-purple-300 text-sm font-bold">SPOTIFY FLOW</div>
-          </Card>
-          
-          <Card className="relative bg-black/80 border-2 border-cyan-400 p-6 text-center hover:border-cyan-300 transition-all duration-300 rounded-2xl backdrop-blur-sm transform hover:scale-105"
-                style={{ boxShadow: '0 0 15px rgba(34,211,238,0.3)' }}>
-            <Timer className="h-10 w-10 text-cyan-400 mx-auto mb-3 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
-            <div className="text-cyan-400 font-black text-lg mb-1" 
-                 style={{ 
-                   fontFamily: 'Impact, Arial Black, sans-serif',
-                   textShadow: '0 0 10px rgba(34,211,238,0.5), 2px 2px 0px #000'
-                 }}>
-              RAPID FIRE
-            </div>
-            <div className="text-cyan-300 text-sm font-bold">30 SECONDS</div>
-          </Card>
-          
-          <Card className="relative bg-black/80 border-2 border-yellow-400 p-6 text-center hover:border-yellow-300 transition-all duration-300 rounded-2xl backdrop-blur-sm transform hover:scale-105"
-                style={{ boxShadow: '0 0 15px rgba(250,204,21,0.3)' }}>
-            <Trophy className="h-10 w-10 text-yellow-400 mx-auto mb-3 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]" />
-            <div className="text-yellow-400 font-black text-lg mb-1" 
-                 style={{ 
-                   fontFamily: 'Impact, Arial Black, sans-serif',
-                   textShadow: '0 0 10px rgba(250,204,21,0.5), 2px 2px 0px #000'
-                 }}>
-              CHAMPION
-            </div>
-            <div className="text-yellow-300 text-sm font-bold">FIRST TO 10</div>
-          </Card>
-        </div>
-
-        {/* How to Play */}
-        <Card className="relative bg-black/90 border-2 border-white/30 p-8 w-full max-w-4xl rounded-2xl backdrop-blur-sm"
-              style={{ boxShadow: '0 0 30px rgba(255,255,255,0.1)' }}>
-          <h3 className="text-3xl font-black text-white mb-8 text-center" 
+        {/* How to Play Section */}
+        <Card className="w-full max-w-6xl bg-gradient-to-br from-rich_black-400/95 to-charcoal-500/95 border-2 border-honeydew-600 p-12 rounded-3xl backdrop-blur-sm mb-16"
+              style={{ boxShadow: '0 0 40px rgba(217,232,221,0.2)' }}>
+          <h2 className="text-4xl font-black text-center mb-12" 
               style={{ 
                 fontFamily: 'Impact, Arial Black, sans-serif',
-                textShadow: '0 0 15px #fff, 3px 3px 0px #000'
+                background: 'linear-gradient(135deg, #107793 0%, #a53b8b 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
               }}>
-            HOW WE DO THIS
-          </h3>
+            HOW TO PLAY
+          </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-red-400 shadow-lg"
-                     style={{ boxShadow: '0 0 15px rgba(239,68,68,0.5)' }}>
-                  <span className="text-white font-black text-xl" style={{ textShadow: '1px 1px 0px #000' }}>1</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-8">
+              <div className="flex items-start gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-cerulean-400 to-cerulean-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <span className="text-white font-black text-2xl">1</span>
                 </div>
                 <div>
-                  <h4 className="text-red-400 font-black mb-1 text-lg" 
-                      style={{ 
-                        fontFamily: 'Impact, Arial Black, sans-serif',
-                        textShadow: '0 0 10px rgba(248,113,113,0.5), 2px 2px 0px #000'
-                      }}>
-                    CONNECT THE BEATS
+                  <h4 className="text-cerulean-300 font-bold mb-3 text-xl" 
+                      style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    Connect Your Spotify
                   </h4>
-                  <p className="text-gray-300 text-sm font-bold">Hook up your Spotify playlist to set the vibe</p>
+                  <p className="text-honeydew-400 text-base leading-relaxed">
+                    Host connects their Spotify account and selects a playlist to set the musical challenge for the session.
+                  </p>
                 </div>
               </div>
               
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-purple-400 shadow-lg"
-                     style={{ boxShadow: '0 0 15px rgba(168,85,247,0.5)' }}>
-                  <span className="text-white font-black text-xl" style={{ textShadow: '1px 1px 0px #000' }}>2</span>
+              <div className="flex items-start gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-fandango-400 to-fandango-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <span className="text-white font-black text-2xl">2</span>
                 </div>
                 <div>
-                  <h4 className="text-purple-400 font-black mb-1 text-lg" 
-                      style={{ 
-                        fontFamily: 'Impact, Arial Black, sans-serif',
-                        textShadow: '0 0 10px rgba(168,85,247,0.5), 2px 2px 0px #000'
-                      }}>
-                    GATHER THE SQUAD
+                  <h4 className="text-fandango-300 font-bold mb-3 text-xl" 
+                      style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    Gather Your Crew
                   </h4>
-                  <p className="text-gray-300 text-sm font-bold">Share that code and wait for your crew to roll up</p>
+                  <p className="text-honeydew-400 text-base leading-relaxed">
+                    Share the unique room code with friends. Up to 8 players can join and compete in the same session.
+                  </p>
                 </div>
               </div>
             </div>
             
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-cyan-500 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-green-400 shadow-lg"
-                     style={{ boxShadow: '0 0 15px rgba(34,197,94,0.5)' }}>
-                  <span className="text-white font-black text-xl" style={{ textShadow: '1px 1px 0px #000' }}>3</span>
+            <div className="space-y-8">
+              <div className="flex items-start gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-honeydew-400 to-honeydew-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <span className="text-rich_black-500 font-black text-2xl">3</span>
                 </div>
                 <div>
-                  <h4 className="text-green-400 font-black mb-1 text-lg" 
-                      style={{ 
-                        fontFamily: 'Impact, Arial Black, sans-serif',
-                        textShadow: '0 0 10px rgba(34,197,94,0.5), 2px 2px 0px #000'
-                      }}>
-                    FEEL THE RHYTHM
+                  <h4 className="text-honeydew-300 font-bold mb-3 text-xl" 
+                      style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    Listen & Place
                   </h4>
-                  <p className="text-gray-300 text-sm font-bold">Listen to the track and drop it on the timeline</p>
+                  <p className="text-honeydew-400 text-base leading-relaxed">
+                    Hear a 30-second snippet and place the track on the timeline based on when you think it was released.
+                  </p>
                 </div>
               </div>
               
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-yellow-400 shadow-lg"
-                     style={{ boxShadow: '0 0 15px rgba(250,204,21,0.5)' }}>
-                  <span className="text-white font-black text-xl" style={{ textShadow: '1px 1px 0px #000' }}>4</span>
+              <div className="flex items-start gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-charcoal-400 to-charcoal-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <span className="text-honeydew-100 font-black text-2xl">4</span>
                 </div>
                 <div>
-                  <h4 className="text-yellow-400 font-black mb-1 text-lg" 
-                      style={{ 
-                        fontFamily: 'Impact, Arial Black, sans-serif',
-                        textShadow: '0 0 10px rgba(250,204,21,0.5), 2px 2px 0px #000'
-                      }}>
-                    CLAIM THE CROWN
+                  <h4 className="text-charcoal-300 font-bold mb-3 text-xl" 
+                      style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    Score & Win
                   </h4>
-                  <p className="text-gray-300 text-sm font-bold">Closest guess gets points. First to 10 runs the block!</p>
+                  <p className="text-honeydew-400 text-base leading-relaxed">
+                    Earn points based on accuracy. The closer your guess, the more points you get. First to 10 points wins!
+                  </p>
                 </div>
               </div>
             </div>
@@ -332,17 +277,14 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         </Card>
 
         {/* Footer */}
-        <div className="mt-16 text-center space-y-3">
-          <p className="text-green-400 text-sm font-black uppercase tracking-wide"
-             style={{ 
-               fontFamily: 'Impact, Arial Black, sans-serif',
-               textShadow: '0 0 10px rgba(34,197,94,0.5), 2px 2px 0px #000'
-             }}>
-            POWERED BY SPOTIFY • STRAIGHT FROM THE STREETS
+        <div className="text-center space-y-4 max-w-2xl">
+          <p className="text-cerulean-300 text-base font-bold tracking-wide"
+             style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+            Powered by Spotify
           </p>
-          <p className="text-gray-400 text-xs max-w-md mx-auto font-bold leading-relaxed">
-            This is for the real ones who know their music history. 
-            Connect your playlist and prove you know when these classics first dropped.
+          <p className="text-honeydew-500 text-sm leading-relaxed">
+            Test your music knowledge with friends in this engaging timeline guessing game. 
+            Connect your favorite playlists and discover who really knows their music history.
           </p>
         </div>
       </div>
