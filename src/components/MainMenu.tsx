@@ -19,26 +19,26 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const tipIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const tips = [
-    "Life is short. Eat the damn burger.",
+    "Life is short. Eat kebab.",
     "Don't trust a fart after shwarma.",
     "If you can't be good, at least be good at being bad.",
     "Some days you're the dog, some days you're the hydrant.",
-    "Never text your ex. Unless it's to remind them how much better you're doing.",
-    "Don't let Monday ruin your weekend vibe.",
+    "Remember that a hangover is just punishment for getting sober.",
+    "Don't let Monday ruin your weekend bender.",
     "You can't fix stupid, but you can laugh at it.",
     "Your bed is calling. Answer it.",
     "Don't be afraid to be a hot mess. At least you're hot.",
-    "Coffee first, world domination later.",
-    "I'm not lazy, I'm energy efficient.",
-    "Sarcasm is my love language.",
-    "I don't need therapy, I need a vacation.",
-    "My playlist is a reflection of my emotional chaos.",
-    "Music is my escape from reality. Also, my return to it.",
-    "If you remember the 90s, you weren't listening to enough music.",
-    "Dancing like nobody's watching because they're all on their phones.",
-    "My Spotify Wrapped is basically a therapy session.",
-    "Good vibes only... and good beats.",
-    "Life's a playlist, make it a good one."
+    "Monsu first, bullshit later.",
+    "Being an adult is hard, laudur helps",
+    "You can't buy happiness, but you can buy Jägermeister. Same thing",
+    "Never argue when you're naked, you'll lose every time",
+    "Save water, drink longero",
+    "Flirting with the bartender may not get you a free drink, but it's worth a shot.",
+    "Check the Hesburger app for new coupons.",
+    "Sleep is a poor substitute for caffeine."
+    "I put the ‘pro’ in procrastination."
+    "I’m not an alcoholic—alcoholics go to meetings. I go to bars."
+    "I drink because I’m a people person, and people are the worst."
   ];
 
   // Initialize shuffled tips on component mount only once
