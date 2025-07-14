@@ -1,6 +1,12 @@
 
 /* Consolidated Enhanced Animations & Transitions */
 
+/* Enhanced shimmer effect for buttons */
+@keyframes shimmer {
+  0% { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(200%) skewX(-12deg); }
+}
+
 /* Card animations */
 @keyframes card-throw {
   0% { transform: translateY(0) scale(1); opacity: 1; }
@@ -25,6 +31,21 @@
   20%, 40%, 60%, 80% { transform: translateX(8px); }
 }
 
+/* Enhanced floating animation for background elements */
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
+  25% { transform: translateY(-20px) rotate(90deg); opacity: 0.6; }
+  50% { transform: translateY(-10px) rotate(180deg); opacity: 0.4; }
+  75% { transform: translateY(-30px) rotate(270deg); opacity: 0.7; }
+  100% { transform: translateY(0px) rotate(360deg); opacity: 0.3; }
+}
+
+/* Pulse animation variations */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
 /* Player transition animations */
 @keyframes playerElevate {
   0% { transform: translateY(0) scale(1); }
@@ -45,12 +66,15 @@
 }
 
 @keyframes glowPulse {
-  0% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.5); }
-  100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+  0% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.5); }
+  100% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
 }
 
 /* Animation classes */
+.animate-shimmer { animation: shimmer 2s ease-in-out; }
+.animate-float { animation: float 15s linear infinite; }
+.animate-pulse-slow { animation: pulse-slow 4s ease-in-out infinite; }
 .animate-card-throw { animation: card-throw 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-placement { animation: card-placement 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-success { animation: card-success 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
