@@ -1,9 +1,9 @@
 
-/* Timeliner - Centralized Visual Design System */
+/* Rythmy - Centralized Visual Design System */
 
 /* CSS Custom Properties for consistent design */
 :root {
-  /* Urban Color Palette - Electric and neon */
+  /* Music Color Palette - Electric and neon */
   --timeliner-primary: #00d4ff;
   --timeliner-secondary: #ff0080;
   --timeliner-accent: #39ff14;
@@ -17,12 +17,12 @@
   --timeliner-text-muted: #94a3b8;
   --timeliner-text-dark: #1e293b;
   
-  /* Background colors - Urban night theme */
+  /* Background colors - Music night theme */
   --timeliner-bg-primary: #0a0a0a;
   --timeliner-bg-secondary: #1a1a1a;
   --timeliner-bg-card: rgba(26, 26, 26, 0.8);
   
-  /* Urban gradients with neon effects */
+  /* Music gradients with neon effects */
   --timeliner-bg-gradient: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 100%);
   --timeliner-card-gradient: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(255, 0, 128, 0.1) 100%);
   --timeliner-button-gradient: linear-gradient(135deg, var(--timeliner-primary) 0%, var(--timeliner-secondary) 100%);

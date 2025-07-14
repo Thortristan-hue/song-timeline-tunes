@@ -15,20 +15,20 @@ class DefaultPlaylistService {
    * @returns Promise<Song[]> Array of valid songs
    */
   async loadDefaultPlaylist(): Promise<Song[]> {
-    console.log('🎵 Loading default playlist with performance optimization...');
+    console.log('Loading default playlist with performance optimization');
 
     // Accept both v1 and v2 formats
     this.songs = defaultPlaylist
       .filter(item => this.validateSong(item))
       .map(item => this.mapToSong(item));
 
-    console.log(`📋 Total valid songs in playlist: ${this.songs.length}`);
+    console.log(`Total valid songs in playlist: ${this.songs.length}`);
 
-    console.log(`⚡ PERFORMANCE OPTIMIZATION: Skipping bulk preview fetching to prevent API spam`);
-    console.log(`📊 API CALLS SAVED: Prevented ${this.songs.length} immediate preview requests`);
+    console.log('Performance optimization: Skipping bulk preview fetching to prevent API spam');
+    console.log(`API calls saved: Prevented ${this.songs.length} immediate preview requests`);
 
     // Return all songs without previews - they'll be fetched on-demand
-    console.log(`✅ Loaded ${this.songs.length} songs (previews will be fetched on-demand to prevent API spam)`);
+    console.log(`Loaded ${this.songs.length} songs (previews will be fetched on-demand to prevent API spam)`);
     return this.songs;
   }
 
@@ -39,7 +39,7 @@ class DefaultPlaylistService {
    * @returns Promise<Song[]> Array of songs with valid previews
    */
   async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
-    console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
+    console.log(`Enhanced load: Fetching previews until we get ${minSongs} songs with working previews`);
 
     // Get all valid songs first
     if (this.songs.length === 0) {
@@ -54,7 +54,7 @@ class DefaultPlaylistService {
     let successCount = 0;
     let failCount = 0;
 
-    console.log(`🎯 RESILIENT APPROACH: Will keep trying songs until we get ${minSongs} with working previews`);
+    console.log(`Resilient approach: Will keep trying songs until we get ${minSongs} with working previews`);
 
     // Keep processing songs until we have enough with previews
     for (const song of shuffledSongs) {
@@ -65,32 +65,32 @@ class DefaultPlaylistService {
 
       // Stop if we've processed too many songs (safety limit - increased to 80)
       if (songsProcessed >= Math.min(80, this.songs.length)) {
-        console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
+        console.log(`Safety limit: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
         break;
       }
 
       try {
         songsProcessed++;
-        console.log(`🎵 Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
+        console.log(`Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
 
         const songWithPreview = await this.fetchPreviewUrl(song);
         if (songWithPreview.preview_url) {
           songsWithPreviews.push(songWithPreview);
           successCount++;
-          console.log(`✅ Preview ${successCount}/${minSongs}: ${song.deezer_title} by ${song.deezer_artist}`);
+          console.log(`Preview ${successCount}/${minSongs}: ${song.deezer_title} by ${song.deezer_artist}`);
         } else {
           failCount++;
-          console.log(`❌ No preview (${failCount} failed): ${song.deezer_title} by ${song.deezer_artist}`);
+          console.log(`No preview (${failCount} failed): ${song.deezer_title} by ${song.deezer_artist}`);
         }
       } catch (error) {
         failCount++;
-        console.log(`❌ Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
+        console.log(`Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
       }
     }
 
-    console.log(`🎯 RESILIENT RESULT: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
-    console.log(`📊 SUCCESS RATE: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
-    console.log(`📊 API EFFICIENCY: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
+    console.log(`Resilient result: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
+    console.log(`Success rate: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
+    console.log(`API efficiency: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
 
     return songsWithPreviews;
   }
@@ -142,7 +142,7 @@ class DefaultPlaylistService {
       if (deezerUrl) {
         const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
         if (trackId) {
-          console.log(`🎵 ON-DEMAND FETCH: Getting preview for ${song.deezer_title} (prevents bulk API spam)`);
+          console.log(`On-demand fetch: Getting preview for ${song.deezer_title} (prevents bulk API spam)`);
           const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
           return { ...song, preview_url: previewUrl };
         }
@@ -261,7 +261,7 @@ class DefaultPlaylistService {
     const randomSong = this.getRandomSong();
     if (!randomSong) return null;
 
-    console.log(`🎵 FRESH PREVIEW: Fetching on-demand for ${randomSong.deezer_title} (anti-spam)`);
+    console.log(`Fresh preview: Fetching on-demand for ${randomSong.deezer_title} (anti-spam)`);
     return await this.fetchPreviewUrl(randomSong);
   }
 }
