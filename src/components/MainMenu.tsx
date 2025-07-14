@@ -14,6 +14,7 @@ interface MainMenuProps {
 export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [currentTip, setCurrentTip] = useState(0);
   const [tipChanging, setTipChanging] = useState(false);
+  const [shuffledTips, setShuffledTips] = useState<string[]>([]);
 
   const tips = [
     "Adulting is hard. Vodka helps.",
@@ -35,20 +36,40 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "Save water, drink longero.",
     "You can't fix stupid, but you can laugh at it.",
     "Your bed is calling. Answer it.",
-    "Don't be afraid to be a hot mess. At least you're hot."
+    "Don't be afraid to be a hot mess. At least you're hot.",
+    "Coffee first, world domination later.",
+    "I'm not lazy, I'm energy efficient.",
+    "Wine is basically fruit salad, right?",
+    "Sarcasm is my love language.",
+    "I don't need therapy, I need a vacation.",
+    "My playlist is a reflection of my emotional chaos.",
+    "Music is my escape from reality. Also, my return to it.",
+    "If you remember the 90s, you weren't listening to enough music.",
+    "Dancing like nobody's watching because they're all on their phones.",
+    "My Spotify Wrapped is basically a therapy session.",
+    "Good vibes only... and good beats.",
+    "Life's a playlist, make it a good one."
   ];
 
-  // Enhanced tip cycling with smooth transitions
+  // Initialize shuffled tips on component mount
   useEffect(() => {
+    const shuffled = [...tips].sort(() => Math.random() - 0.5);
+    setShuffledTips(shuffled);
+  }, [tips]);
+
+  // Enhanced tip cycling with smooth transitions and random order
+  useEffect(() => {
+    if (shuffledTips.length === 0) return;
+    
     const interval = setInterval(() => {
       setTipChanging(true);
       setTimeout(() => {
-        setCurrentTip((prev) => (prev + 1) % tips.length);
+        setCurrentTip((prev) => (prev + 1) % shuffledTips.length);
         setTipChanging(false);
       }, 400);
     }, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shuffledTips]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
@@ -141,25 +162,25 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         
         {/* Floating music notes with enhanced animations */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(16)].map((_, i) => (
+          {[...Array(12)].map((_, i) => (
             <div 
               key={i}
-              className="absolute floating-particle opacity-20"
+              className="absolute floating-particle opacity-30"
               style={{
                 top: `${Math.random() * 120 - 20}%`,
                 left: `${Math.random() * 120 - 20}%`,
-                animationDuration: `${15 + Math.random() * 25}s`,
+                animationDuration: `${20 + Math.random() * 15}s`,
                 animationDelay: `${Math.random() * 10}s`,
               }}
             >
               {i % 4 === 0 ? (
-                <Music className="h-3 w-3 text-[#107793] animate-spin-slow" />
+                <Music className="h-4 w-4 text-[#107793] animate-spin-slow" />
               ) : i % 4 === 1 ? (
-                <Music className="h-4 w-4 text-[#a53b8b] animate-pulse" />
+                <Music className="h-3 w-3 text-[#a53b8b] animate-pulse-slow" />
               ) : i % 4 === 2 ? (
                 <Volume2 className="h-3 w-3 text-[#4a4f5b] animate-bounce" />
               ) : (
-                <Radio className="h-3 w-3 text-[#107793] animate-wiggle" />
+                <Radio className="h-4 w-4 text-[#107793] animate-wiggle" />
               )}
             </div>
           ))}
@@ -176,7 +197,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* Header */}
         <div className="text-center pt-12 sm:pt-16 mb-8 sm:mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 relative overflow-hidden logo-bounce">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 relative overflow-hidden logo-bounce">
               <img 
                 src="/Vinyl_rythm.png" 
                 alt="Rythmy Logo" 
@@ -197,7 +218,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <div className={`bg-gradient-to-r from-[#a53b8b]/40 to-[#4a4f5b]/40 backdrop-blur-sm p-4 rounded-xl max-w-xl mx-auto border border-[#a53b8b]/30 menu-entrance stagger-2 transition-all duration-500 ${tipChanging ? 'opacity-50 transform scale-95' : 'opacity-100 transform scale-100'}`}>
             <p className="text-sm text-[#d9e8dd] italic">
               <span className="text-[#a53b8b] font-semibold mr-2">♪ Tip:</span>
-              {tips[currentTip]}
+              {shuffledTips.length > 0 ? shuffledTips[currentTip] : tips[0]}
             </p>
           </div>
         </div>
@@ -227,86 +248,150 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </div>
         </div>
 
-        {/* How It Works */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2 menu-entrance stagger-5">
-            How it works
+        {/* Game Instructions */}
+        <div className="max-w-5xl mx-auto mb-12">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-3 menu-entrance stagger-5">
+            Game Instructions
           </h2>
-          <p className="text-center text-[#d9e8dd] text-sm mb-8 menu-entrance stagger-6">Simple to learn, impossible to master!</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-[#1A1A2E] border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10 stagger-fade-in stagger-1">
-              <Users className="h-8 w-8 text-[#A8DADC] mx-auto mb-3 animate-bounce" />
-              <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Gather Your Crew</h3>
-              <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
-              <p className="text-[#A8DADC] text-xs italic">Perfect for parties or virtual hangouts!</p>
-            </Card>
-        
-            <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10 stagger-fade-in stagger-2">
-              <Radio className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3 animate-pulse" />
-              <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Choose Your Playlist</h3>
-              <p className="text-[#4CC9F0] text-xs sm:text-sm mb-2">Link any Spotify playlist for endless possibilities</p>
-              <p className="text-[#4CC9F0] text-xs italic">From 90s grunge to today's top hits!</p>
-            </Card>
-        
-            <Card className="bg-[#1A1A2E] border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10 stagger-fade-in stagger-3">
-              <Zap className="h-8 w-8 text-[#F72585] mx-auto mb-3 animate-bounce" />
-              <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Quick-Fire Rounds</h3>
-              <p className="text-[#F72585] text-xs sm:text-sm mb-2">Snappy 30-second rounds keep the energy high</p>
-              <p className="text-[#F72585] text-xs italic">Think fast—the clock is ticking!</p>
-            </Card>
-        
-            <Card className="bg-[#1A1A2E] border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10 stagger-fade-in stagger-4">
-              <Trophy className="h-8 w-8 text-[#7209B7] mx-auto mb-3 animate-pulse" />
-              <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Race to Victory</h3>
-              <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
-              <p className="text-[#7209B7] text-xs italic">Brag-worthy achievements unlocked!</p>
-            </Card>
+          <p className="text-center text-[#d9e8dd] text-base mb-10 menu-entrance stagger-6">Everything you need to know to become a music timeline master!</p>
+          
+          {/* What You Need Section */}
+          <div className="mb-10">
+            <h3 className="text-xl font-semibold text-[#4CC9F0] mb-6 text-center">🎵 What You Need to Prepare</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-1">
+                <Smartphone className="h-10 w-10 text-[#4CC9F0] mx-auto mb-4 animate-pulse" />
+                <h4 className="text-white font-semibold text-lg mb-3">Mobile Device</h4>
+                <p className="text-[#4CC9F0] text-sm mb-2">Players need a smartphone or tablet to join and play</p>
+                <p className="text-[#4CC9F0] text-xs italic">Any modern browser works perfectly!</p>
+              </Card>
+              
+              <Card className="bg-[#1A1A2E] border border-[#F72585]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-2">
+                <Radio className="h-10 w-10 text-[#F72585] mx-auto mb-4 animate-bounce" />
+                <h4 className="text-white font-semibold text-lg mb-3">Spotify Playlist</h4>
+                <p className="text-[#F72585] text-sm mb-2">Create or find a public Spotify playlist with your favorite songs</p>
+                <p className="text-[#F72585] text-xs italic">The more diverse, the better the challenge!</p>
+              </Card>
+              
+              <Card className="bg-[#1A1A2E] border border-[#7209B7]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-3">
+                <Users className="h-10 w-10 text-[#7209B7] mx-auto mb-4 animate-wiggle" />
+                <h4 className="text-white font-semibold text-lg mb-3">Friends (2-8 Players)</h4>
+                <p className="text-[#7209B7] text-sm mb-2">Gather your crew for an epic music showdown</p>
+                <p className="text-[#7209B7] text-xs italic">The more music nerds, the merrier!</p>
+              </Card>
+            </div>
           </div>
-        </div>
+
+          {/* How to Play Section */}
+          <div className="mb-10">
+            <h3 className="text-xl font-semibold text-[#A8DADC] mb-6 text-center">🎮 How to Play</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="flex items-start space-x-4">
+                  <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">1</div>
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">Host Creates Room</h4>
+                    <p className="text-[#d9e8dd] text-sm">Click "Start a Game" and set up your playlist. Share the lobby code or QR code with friends.</p>
+                  </div>
+                </div>
                 
-        {/* Testimonials */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-[#0e1f2f]/50 backdrop-blur-sm p-4 rounded-lg border border-[#107793]/30">
-              <div className="flex items-center mb-2">
-                <Star className="h-3 w-3 text-[#107793]" />
-                <Star className="h-3 w-3 text-[#107793]" />
-                <Star className="h-3 w-3 text-[#107793]" />
-                <Star className="h-3 w-3 text-[#107793]" />
-                <Star className="h-3 w-3 text-[#107793]" />
+                <div className="flex items-start space-x-4">
+                  <div className="w-8 h-8 bg-[#a53b8b] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">2</div>
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">Players Join</h4>
+                    <p className="text-[#d9e8dd] text-sm">Use "Join Lobby" to enter the room code and pick your player color. Wait for everyone to join!</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-8 h-8 bg-[#4a4f5b] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">3</div>
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">Listen & Guess</h4>
+                    <p className="text-[#d9e8dd] text-sm">When a song plays, place it on the timeline where you think it was released. You have 30 seconds!</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">4</div>
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">Score Points</h4>
+                    <p className="text-[#d9e8dd] text-sm">Get points based on how close your guess is. Perfect placements give maximum points!</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-[#d9e8dd] italic">
-                "Settled a 80-year debate with my dad about when 'Smells Like Teen Spirit' came out. I was right!"
-              </p>
-              <p className="text-right text-[#107793] text-xs mt-2">— Music know-it-all</p>
+              
+              <div className="bg-[#0e1f2f]/50 backdrop-blur-sm p-6 rounded-xl border border-[#107793]/30">
+                <h4 className="text-[#4CC9F0] font-semibold text-lg mb-4 text-center">🏆 Scoring System</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-[#d9e8dd]">Perfect placement:</span>
+                    <span className="text-[#10b981] font-semibold">+3 points</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#d9e8dd]">Close guess (±2 years):</span>
+                    <span className="text-[#3b82f6] font-semibold">+2 points</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#d9e8dd]">Good guess (±5 years):</span>
+                    <span className="text-[#f59e0b] font-semibold">+1 point</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#d9e8dd]">Way off:</span>
+                    <span className="text-[#ef4444] font-semibold">0 points</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-[#107793]/30">
+                  <p className="text-[#4CC9F0] text-xs text-center italic">First to reach 10 points wins the crown! 👑</p>
+                </div>
+              </div>
             </div>
-            
-            <div className="bg-[#0e1f2f]/50 backdrop-blur-sm p-4 rounded-lg border border-[#a53b8b]/30">
-              <div className="flex items-center mb-2">
-                <Star className="h-3 w-3 text-[#a53b8b]" />
-                <Star className="h-3 w-3 text-[#a53b8b]" />
-                <Star className="h-3 w-3 text-[#a53b8b]" />
-                <Star className="h-3 w-3 text-[#a53b8b]" />
-                <Star className="h-3 w-3 text-[#a53b8b]" />
+          </div>
+
+          {/* Game Flow Section */}
+          <div>
+            <h3 className="text-xl font-semibold text-[#F72585] mb-6 text-center">⚡ Game Flow Overview</h3>
+            <div className="bg-gradient-to-r from-[#1A1A2E] to-[#0e1f2f] border border-[#F72585]/20 p-8 rounded-xl backdrop-blur-sm">
+              <div className="flex flex-wrap justify-center items-center gap-4 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-[#107793] rounded-full flex items-center justify-center mb-2">
+                    <Music className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-sm font-medium">Song Plays</span>
+                </div>
+                
+                <div className="text-[#F72585] text-2xl">→</div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-[#a53b8b] rounded-full flex items-center justify-center mb-2">
+                    <Timer className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-sm font-medium">30s Timer</span>
+                </div>
+                
+                <div className="text-[#F72585] text-2xl">→</div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-[#4a4f5b] rounded-full flex items-center justify-center mb-2">
+                    <Smartphone className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-sm font-medium">Place Guess</span>
+                </div>
+                
+                <div className="text-[#F72585] text-2xl">→</div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 bg-[#7209B7] rounded-full flex items-center justify-center mb-2">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-white text-sm font-medium">Score & Repeat</span>
+                </div>
               </div>
-              <p className="text-xs text-[#d9e8dd] italic">
-                "I was born in the wrong generation"
-              </p>
-              <p className="text-right text-[#a53b8b] text-xs mt-2">— Dumb fuck</p>
-            </div>
-            
-            <div className="bg-[#0e1f2f]/50 backdrop-blur-sm p-4 rounded-lg border border-[#4a4f5b]/30">
-              <div className="flex items-center mb-2">
-                <Star className="h-3 w-3 text-[#4a4f5b]" />
-                <Star className="h-3 w-3 text-[#4a4f5b]" />
-                <Star className="h-3 w-3 text-[#4a4f5b]" />
-                <Star className="h-3 w-3 text-[#4a4f5b]" />
-                <Star className="h-3 w-3 text-[#4a4f5b]" />
+              
+              <div className="mt-6 text-center">
+                <p className="text-[#d9e8dd] text-sm italic">
+                  "Quick rounds keep the energy high! Think fast, trust your musical instincts, and may the best timeline master win! 🎵"
+                </p>
               </div>
-              <p className="text-xs text-[#d9e8dd] italic">
-                "I thought I knew my 80s pop inside out. This game has humbled me. In a fun way though!"
-              </p>
-              <p className="text-right text-[#4a4f5b] text-xs mt-2">— Nostalgic millennial</p>
             </div>
           </div>
         </div>
