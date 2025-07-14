@@ -44,11 +44,11 @@ export function MysteryCard({
   if (isDestroyed) {
     return (
       <Card className={cn(
-        "w-32 h-40 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white opacity-50 animate-pulse",
+        "w-32 h-40 bg-red-500/20 border-red-400/50 flex flex-col items-center justify-center text-white opacity-50 animate-card-error",
         className
       )}>
-        <div className="text-4xl mb-2">💥</div>
-        <div className="text-sm text-center px-2">Incorrect!</div>
+        <div className="text-4xl mb-2 animate-bounce">💥</div>
+        <div className="text-sm text-center px-2 animate-fade-in-up">Incorrect!</div>
       </Card>
     );
   }
@@ -59,7 +59,7 @@ export function MysteryCard({
         "w-32 h-40 bg-slate-600/50 border-slate-500/50 flex flex-col items-center justify-center text-white animate-pulse",
         className
       )}>
-        <Music className="h-8 w-8 mb-2 opacity-50" />
+        <Music className="h-8 w-8 mb-2 opacity-50 animate-spin-slow" />
         <div className="text-sm text-center px-2 opacity-50">Loading...</div>
       </Card>
     );
@@ -92,8 +92,8 @@ export function MysteryCard({
     return (
       <Card
         className={cn(
-          "w-32 h-40 bg-gradient-to-br from-purple-600 to-indigo-600 border-purple-400/50 flex flex-col items-center justify-center text-white shadow-lg transition-all",
-          isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95 touch-manipulation select-none",
+          "w-32 h-40 bg-gradient-to-br from-purple-600 to-indigo-600 border-purple-400/50 flex flex-col items-center justify-center text-white shadow-lg transition-all card-reveal",
+          isInteractive && "cursor-grab hover:scale-105 hover-glow active:cursor-grabbing active:scale-95 touch-manipulation select-none interactive-button",
           className
         )}
         draggable={isInteractive}
@@ -107,9 +107,9 @@ export function MysteryCard({
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
-        <div className="text-4xl mb-2 relative z-10">🎵</div>
-        <HelpCircle className="h-8 w-8 mb-2 relative z-10 opacity-70" />
-        <div className="text-2xl font-black mb-1 relative z-10">?</div>
+        <div className="text-4xl mb-2 relative z-10 animate-bounce">🎵</div>
+        <HelpCircle className="h-8 w-8 mb-2 relative z-10 opacity-70 animate-spin-slow" />
+        <div className="text-2xl font-black mb-1 relative z-10 animate-pulse">?</div>
         <div className="text-xs text-center px-2 opacity-90 relative z-10">
           {!song.preview_url ? "No Preview" : "Mystery Song"}
         </div>
@@ -121,8 +121,8 @@ export function MysteryCard({
   return (
     <Card
       className={cn(
-        "w-32 h-40 flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transition-all",
-        isInteractive && "cursor-grab hover:scale-105 active:cursor-grabbing active:scale-95 touch-manipulation select-none",
+        "w-32 h-40 flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transition-all animate-card-flip",
+        isInteractive && "cursor-grab hover:scale-105 hover-glow active:cursor-grabbing active:scale-95 touch-manipulation select-none interactive-button",
         className
       )}
       style={{ 
@@ -137,9 +137,9 @@ export function MysteryCard({
       onDragEnd={onDragEnd}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
-      <Music className="h-6 w-6 mb-2 opacity-80 relative z-10" />
+      <Music className="h-6 w-6 mb-2 opacity-80 relative z-10 animate-wiggle" />
       <div className="text-center relative z-10 px-2">
-        <div className="text-lg font-black mb-1">
+        <div className="text-lg font-black mb-1 animate-bounce">
           {song.release_year}
         </div>
         <div className="text-xs opacity-90 leading-tight">

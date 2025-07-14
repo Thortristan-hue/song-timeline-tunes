@@ -65,61 +65,77 @@ export const CassettePlayerDisplay = ({
   return (
     <div className={`fixed bottom-4 left-0 right-0 z-20 px-4 ${className}`}>
       <div className="flex flex-wrap justify-center gap-2 max-w-6xl mx-auto">
-        {players.map(player => {
+        {players.map((player, index) => {
           const isCurrent = player.id === currentPlayerId;
           const isExpanded = expandedPlayer === player.id;
 
           return (
             <div 
               key={player.id}
-              className={`relative transition-all duration-200 ${isCurrent ? 'z-10' : 'z-0'}`}
+              className={`relative transition-all duration-300 ${isCurrent ? 'z-10' : 'z-0'} stagger-fade-in`}
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div
-                className={`relative cursor-pointer ${isCurrent ? 'scale-105' : 'scale-90 hover:scale-95'}`}
+                className={`relative cursor-pointer transition-all duration-300 ${
+                  isCurrent 
+                    ? 'scale-105 player-elevate' 
+                    : 'scale-90 hover:scale-95 hover-lift'
+                } ${isCurrent ? 'cassette-bounce' : ''}`}
                 onClick={() => setExpandedPlayer(prev => prev === player.id ? null : player.id)}
               >
                 <img
                   src={getCassetteImage(player.color)}
                   alt={`${player.name}'s cassette`}
-                  className="w-36 h-24 object-contain drop-shadow-md"
+                  className={`w-36 h-24 object-contain drop-shadow-md transition-all duration-300 ${
+                    isCurrent ? 'drop-shadow-2xl' : ''
+                  }`}
+                  style={{
+                    filter: isCurrent ? 'drop-shadow(0 0 20px rgba(16, 119, 147, 0.6))' : 'none'
+                  }}
                 />
 
                 <div className="absolute inset-0 flex flex-col justify-end pb-4">
                   <div className="flex justify-between items-start px-2">
-                    <span className="text-black font-bold text-xs max-w-[60px] truncate">
+                    <span className={`text-black font-bold text-xs max-w-[60px] truncate transition-all duration-300 ${
+                      isCurrent ? 'animate-pulse' : ''
+                    }`}>
                       {player.name}
                     </span>
-                    <span className="text-black font-bold text-xs bg-white/80 rounded px-0.5">
+                    <span className={`text-black font-bold text-xs bg-white/80 rounded px-0.5 transition-all duration-300 ${
+                      isCurrent ? 'bg-white animate-bounce' : ''
+                    }`}>
                       {player.timeline.length}
                     </span>
                   </div>
                 </div>
 
-                <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full">
+                <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-black/70 rounded-full transition-all duration-500"
+                    className={`h-full bg-black/70 rounded-full transition-all duration-500 ${
+                      isCurrent ? 'bg-gradient-to-r from-[#107793] to-[#a53b8b] animate-shimmer' : ''
+                    }`}
                     style={{ width: `${(player.timeline.length / 10) * 100}%` }}
                   />
                 </div>
 
                 {isCurrent && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white animate-pulse glow-pulse"></div>
                 )}
               </div>
 
               {isExpanded && player.timeline.length > 0 && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 max-h-52 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 z-30">
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 max-h-52 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 z-30 animate-scale-in">
                   <div className="sticky top-0 bg-slate-800 py-1 border-b border-slate-700">
                     <h3 className="text-white text-xs font-bold text-center truncate">
                       {player.name}'s Timeline
                     </h3>
                   </div>
                   <div className="divide-y divide-slate-700">
-                    {player.timeline.map((song, index) => (
-                      <div key={`${player.id}-${index}`} className="py-1 px-1">
+                    {player.timeline.map((song, songIndex) => (
+                      <div key={`${player.id}-${songIndex}`} className={`py-1 px-1 stagger-fade-in`} style={{ animationDelay: `${songIndex * 0.1}s` }}>
                         <div className="flex items-start gap-1">
                           <span className="text-xs text-slate-400 font-mono w-4 flex-shrink-0">
-                            {index + 1}.
+                            {songIndex + 1}.
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-xs font-medium truncate">

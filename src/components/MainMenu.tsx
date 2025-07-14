@@ -13,6 +13,7 @@ interface MainMenuProps {
 
 export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [currentTip, setCurrentTip] = useState(0);
+  const [tipChanging, setTipChanging] = useState(false);
 
   const tips = [
     "Adulting is hard. Vodka helps.",
@@ -37,10 +38,14 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "Don't be afraid to be a hot mess. At least you're hot."
   ];
 
-  // Cycle through tips every 8 seconds
+  // Enhanced tip cycling with smooth transitions
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTip((prev) => (prev + 1) % tips.length);
+      setTipChanging(true);
+      setTimeout(() => {
+        setCurrentTip((prev) => (prev + 1) % tips.length);
+        setTipChanging(false);
+      }, 400);
     }, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -134,25 +139,27 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <path d="M800 220 Q850 200, 900 220 Q950 240, 1000 220" stroke="#107793" strokeWidth="1" opacity="0.1" />
         </svg>
         
-        {/* Floating music notes */}
+        {/* Floating music notes with enhanced animations */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(16)].map((_, i) => (
             <div 
               key={i}
-              className="absolute animate-float opacity-30"
+              className="absolute floating-particle opacity-20"
               style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animation: `float ${10 + Math.random() * 20}s linear infinite`,
-                animationDelay: `${Math.random() * 5}s`,
+                top: `${Math.random() * 120 - 20}%`,
+                left: `${Math.random() * 120 - 20}%`,
+                animationDuration: `${15 + Math.random() * 25}s`,
+                animationDelay: `${Math.random() * 10}s`,
               }}
             >
-              {i % 3 === 0 ? (
-                <Music className="h-3 w-3 text-[#107793]" />
-              ) : i % 3 === 1 ? (
-                <Music className="h-4 w-4 text-[#a53b8b]" />
+              {i % 4 === 0 ? (
+                <Music className="h-3 w-3 text-[#107793] animate-spin-slow" />
+              ) : i % 4 === 1 ? (
+                <Music className="h-4 w-4 text-[#a53b8b] animate-pulse" />
+              ) : i % 4 === 2 ? (
+                <Volume2 className="h-3 w-3 text-[#4a4f5b] animate-bounce" />
               ) : (
-                <Volume2 className="h-3 w-3 text-[#4a4f5b]" />
+                <Radio className="h-3 w-3 text-[#107793] animate-wiggle" />
               )}
             </div>
           ))}
@@ -169,22 +176,22 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* Header */}
         <div className="text-center pt-12 sm:pt-16 mb-8 sm:mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-2xl flex items-center justify-center shadow-lg shadow-[#107793]/20 relative overflow-hidden">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-2xl flex items-center justify-center shadow-lg shadow-[#107793]/20 relative overflow-hidden logo-bounce">
               <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
-              <Music className="h-8 w-8 sm:h-10 sm:w-10 text-[#107793]" />
+              <Music className="h-8 w-8 sm:h-10 sm:w-10 text-[#107793] animate-wiggle" />
             </div>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-2 tracking-tight relative inline-block">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-2 tracking-tight relative inline-block menu-entrance">
             RYTHMY
-            <span className="absolute -top-1 -right-2 text-xs text-[#107793] font-mono">BETA</span>
+            <span className="absolute -top-1 -right-2 text-xs text-[#107793] font-mono animate-pulse">BETA</span>
           </h1>
           
-          <p className="text-base sm:text-lg text-[#d9e8dd] max-w-2xl mx-auto leading-relaxed mb-6">
+          <p className="text-base sm:text-lg text-[#d9e8dd] max-w-2xl mx-auto leading-relaxed mb-6 menu-entrance stagger-1">
             Dive into the ultimate music timeline challenge! Guess when songs hit the charts, arrange tracks in perfect chronological order, and discover just how well you know your favorite tunes through the decades.
           </p>
           
-          <div className="bg-gradient-to-r from-[#a53b8b]/40 to-[#4a4f5b]/40 backdrop-blur-sm p-4 rounded-xl max-w-xl mx-auto border border-[#a53b8b]/30">
+          <div className={`bg-gradient-to-r from-[#a53b8b]/40 to-[#4a4f5b]/40 backdrop-blur-sm p-4 rounded-xl max-w-xl mx-auto border border-[#a53b8b]/30 menu-entrance stagger-2 transition-all duration-500 ${tipChanging ? 'opacity-50 transform scale-95' : 'opacity-100 transform scale-100'}`}>
             <p className="text-sm text-[#d9e8dd] italic">
               <span className="text-[#a53b8b] font-semibold mr-2">♪ Tip:</span>
               {tips[currentTip]}
@@ -197,56 +204,56 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <div className="space-y-4">
             <Button
               onClick={onCreateRoom}
-              className="w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 active:scale-95 relative overflow-hidden group"
+              className="w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow menu-entrance stagger-3"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#107793]/0 via-[#107793]/10 to-[#107793]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
-              <Play className="h-5 w-5 mr-3" />
+              <Play className="h-5 w-5 mr-3 group-hover:animate-pulse" />
               Start a Game
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 text-xs">host</div>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 text-xs group-hover:animate-bounce">host</div>
             </Button>
             
             <Button
               onClick={onJoinRoom}
-              className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 active:scale-95 relative overflow-hidden group"
+              className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow menu-entrance stagger-4"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
-              <Smartphone className="h-5 w-5 mr-3" />
+              <Smartphone className="h-5 w-5 mr-3 group-hover:animate-wiggle" />
               Join Lobby
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 text-xs">player</div>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 text-xs group-hover:animate-bounce">player</div>
             </Button>
           </div>
         </div>
 
         {/* How It Works */}
         <div className="max-w-4xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2 menu-entrance stagger-5">
             How it works
           </h2>
-          <p className="text-center text-[#d9e8dd] text-sm mb-8">Simple to learn, impossible to master!</p>
+          <p className="text-center text-[#d9e8dd] text-sm mb-8 menu-entrance stagger-6">Simple to learn, impossible to master!</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-[#1A1A2E] border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10">
-              <Users className="h-8 w-8 text-[#A8DADC] mx-auto mb-3" />
+            <Card className="bg-[#1A1A2E] border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10 stagger-fade-in stagger-1">
+              <Users className="h-8 w-8 text-[#A8DADC] mx-auto mb-3 animate-bounce" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Gather Your Crew</h3>
               <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
               <p className="text-[#A8DADC] text-xs italic">Perfect for parties or virtual hangouts!</p>
             </Card>
         
-            <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10">
-              <Radio className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3" />
+            <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10 stagger-fade-in stagger-2">
+              <Radio className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3 animate-pulse" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Choose Your Playlist</h3>
               <p className="text-[#4CC9F0] text-xs sm:text-sm mb-2">Link any Spotify playlist for endless possibilities</p>
               <p className="text-[#4CC9F0] text-xs italic">From 90s grunge to today's top hits!</p>
             </Card>
         
-            <Card className="bg-[#1A1A2E] border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10">
-              <Zap className="h-8 w-8 text-[#F72585] mx-auto mb-3" />
+            <Card className="bg-[#1A1A2E] border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10 stagger-fade-in stagger-3">
+              <Zap className="h-8 w-8 text-[#F72585] mx-auto mb-3 animate-bounce" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Quick-Fire Rounds</h3>
               <p className="text-[#F72585] text-xs sm:text-sm mb-2">Snappy 30-second rounds keep the energy high</p>
               <p className="text-[#F72585] text-xs italic">Think fast—the clock is ticking!</p>
             </Card>
         
-            <Card className="bg-[#1A1A2E] border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10">
-              <Trophy className="h-8 w-8 text-[#7209B7] mx-auto mb-3" />
+            <Card className="bg-[#1A1A2E] border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10 stagger-fade-in stagger-4">
+              <Trophy className="h-8 w-8 text-[#7209B7] mx-auto mb-3 animate-pulse" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Race to Victory</h3>
               <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
               <p className="text-[#7209B7] text-xs italic">Brag-worthy achievements unlocked!</p>
