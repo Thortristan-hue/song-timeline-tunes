@@ -1,11 +1,12 @@
 
-# Timeliner - Music Timeline Game
+
+# Rythmy - Music Timeline Game
 
 A real-time multiplayer music timeline game where players guess when songs were released and organize them chronologically. Players join via mobile devices while the host displays the game on a larger screen, creating an engaging party game experience.
 
 ## Game Overview
 
-Timeliner is a social music guessing game that tests players' knowledge of music history. The host presents mystery songs, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 songs wins!
+Rythmy is a social music guessing game that tests players' knowledge of music history. The host presents mystery songs, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 songs wins!
 
 ## Project Architecture
 
@@ -201,6 +202,7 @@ Deploy instantly via [Lovable](https://lovable.dev/projects/f0f391ce-3307-4d50-a
 
 ## Game Design Philosophy
 
-Timeliner bridges the gap between digital gaming and social interaction by requiring players to use their mobile devices while sharing a communal host display. This creates an engaging party atmosphere where music knowledge becomes a social currency, and the visual feedback system keeps all players engaged even when it's not their turn.
+Rythmy bridges the gap between digital gaming and social interaction by requiring players to use their mobile devices while sharing a communal host display. This creates an engaging party atmosphere where music knowledge becomes a social currency, and the visual feedback system keeps all players engaged even when it's not their turn.
 
 The game celebrates music history and encourages discovery of songs across different eras, making it both entertaining and educational. The real-time multiplayer architecture ensures smooth gameplay even with network interruptions, while the audio-visual design creates an immersive retro gaming experience.
+
