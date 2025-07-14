@@ -224,28 +224,28 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </h2>
           <p className="text-center text-[#d9e8dd] text-sm mb-8">Simple to learn, impossible to master!</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-gradient-to-br from-[#A8DADe]/30 to-[#A8DADe]/30 border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#A8DADe]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10">
+            <Card className="bg-[#A8DADe]/40 border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10">
               <Users className="h-8 w-8 text-[#1A1A2E] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Gather Your Crew</h3>
               <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
               <p className="text-[#1A1A2E] text-xs italic">Perfect for parties or virtual hangouts!</p>
             </Card>
-            
-            <Card className="bg-gradient-to-br from-[#A8DADe]/30 to-[#A8DADe]/30 border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#A8DADe]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10">
+        
+            <Card className="bg-[#A8DADe]/40 border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10">
               <Radio className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Choose Your Playlist</h3>
               <p className="text-[#4CC9F0] text-xs sm:text-sm mb-2">Link any Spotify playlist for endless possibilities</p>
               <p className="text-[#4CC9F0] text-xs italic">From 90s grunge to today's top hits!</p>
             </Card>
-            
-            <Card className="bg-gradient-to-br from-[#A8DADe]/30 to-[#A8DADe]/30 border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#A8DADe]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10">
+        
+            <Card className="bg-[#A8DADe]/40 border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10">
               <Zap className="h-8 w-8 text-[#F72585] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Quick-Fire Rounds</h3>
               <p className="text-[#F72585] text-xs sm:text-sm mb-2">Snappy 30-second rounds keep the energy high</p>
               <p className="text-[#F72585] text-xs italic">Think fast—the clock is ticking!</p>
             </Card>
-          
-            <Card className="bg-gradient-to-br from-[#A8DADe]/30 to-[#A8DADe]/30 border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#A8DADe]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10">
+        
+            <Card className="bg-[#A8DADe]/40 border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10">
               <Trophy className="h-8 w-8 text-[#7209B7] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Race to Victory</h3>
               <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
