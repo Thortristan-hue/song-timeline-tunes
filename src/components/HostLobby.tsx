@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2 } from 'lucide-react';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Headphones } from 'lucide-react';
 import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -85,45 +85,68 @@ export function HostLobby({
 
   if (!roomCreated || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-100 via-orange-50 to-yellow-50 relative overflow-hidden flex items-center justify-center">
-        {/* Hand-drawn background elements */}
-        <div className="absolute inset-0 opacity-20">
-          <svg className="w-full h-full" viewBox="0 0 1200 800">
-            {/* Floating music notes */}
-            <g stroke="#f97316" strokeWidth="3" fill="#f97316" strokeLinecap="round">
-              <circle cx="200" cy="150" r="6" />
-              <path d="M206 150 L206 120" stroke="#f97316" strokeWidth="3" />
-              <path d="M206 120 L220 125" stroke="#f97316" strokeWidth="3" />
-              
-              <circle cx="950" cy="400" r="6" />
-              <path d="M956 400 L956 370" stroke="#f97316" strokeWidth="3" />
-              <path d="M956 370 L970 375" stroke="#f97316" strokeWidth="3" />
-              
-              <circle cx="100" cy="350" r="6" />
-              <path d="M106 350 L106 320" stroke="#f97316" strokeWidth="3" />
-              <path d="M106 320 L120 325" stroke="#f97316" strokeWidth="3" />
-            </g>
+      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+        {/* Enhanced Dark Background Effects */}
+        <div className="absolute inset-0">
+          {/* Main glow effects */}
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+          
+          {/* Additional scattered glows */}
+          <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
+          <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
+          
+          {/* Floating music notes */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(8)].map((_, i) => (
+              <div 
+                key={i}
+                className="absolute animate-float opacity-20"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animation: `float ${8 + Math.random() * 12}s linear infinite`,
+                  animationDelay: `${Math.random() * 3}s`,
+                }}
+              >
+                {i % 2 === 0 ? (
+                  <Music2 className="h-4 w-4 text-[#107793]" />
+                ) : (
+                  <Volume2 className="h-3 w-3 text-[#a53b8b]" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Geometric shapes */}
+          <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 1200 800" fill="none">
+            {/* Music note shapes */}
+            <circle cx="200" cy="200" r="4" fill="#107793" opacity="0.4" />
+            <circle cx="1000" cy="300" r="6" fill="#a53b8b" opacity="0.4" />
+            <circle cx="400" cy="600" r="3" fill="#4a4f5b" opacity="0.4" />
             
-            {/* Wavy sound lines */}
-            <g stroke="#fb923c" strokeWidth="2" fill="none" strokeLinecap="round">
-              <path d="M300 250 Q350 230 400 250 T500 250" />
-              <path d="M300 270 Q350 250 400 270 T500 270" />
-              <path d="M300 290 Q350 270 400 290 T500 290" />
-              
-              <path d="M700 350 Q750 330 800 350 T900 350" />
-              <path d="M700 370 Q750 350 800 370 T900 370" />
-            </g>
+            {/* Connecting lines */}
+            <path d="M200 200 L400 250 L600 230" stroke="#107793" strokeWidth="1" opacity="0.3" />
+            <path d="M1000 300 L800 400 L700 380" stroke="#a53b8b" strokeWidth="1" opacity="0.3" />
+            
+            {/* Sound waves */}
+            <path d="M300 400 Q350 380, 400 400 Q450 420, 500 400" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+            <path d="M300 420 Q350 400, 400 420 Q450 440, 500 420" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
           </svg>
         </div>
         
-        <div className="text-center text-orange-800 relative z-10">
-          <div className="w-20 h-20 bg-orange-300/50 rounded-3xl flex items-center justify-center mx-auto mb-8 border-4 border-orange-400">
-            <Music2 className="h-10 w-10 text-orange-700 animate-bounce" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#107793]/20 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
+              <Music2 className="h-10 w-10 text-[#107793] animate-bounce" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
+              Setting up your room
+            </h1>
+            <p className="text-[#d9e8dd] font-medium">This'll just take a second...</p>
           </div>
-          <div className="text-3xl font-bold mb-3" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
-            Setting up your room
-          </div>
-          <div className="text-orange-600 font-medium">This'll just take a second...</div>
         </div>
       </div>
     );
@@ -132,59 +155,92 @@ export function HostLobby({
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-100 via-orange-50 to-yellow-50 relative overflow-hidden">
-      {/* Hand-drawn background elements */}
-      <div className="absolute inset-0 opacity-20">
-        <svg className="w-full h-full" viewBox="0 0 1200 800">
-          {/* Cassette tapes scattered */}
-          <g stroke="#f97316" strokeWidth="3" fill="none" strokeLinecap="round">
-            <rect x="50" y="80" width="80" height="50" rx="8" transform="rotate(-15 90 105)" />
-            <circle cx="70" cy="110" r="6" transform="rotate(-15 90 105)" />
-            <circle cx="110" cy="110" r="6" transform="rotate(-15 90 105)" />
-            <rect x="75" y="100" width="30" height="6" rx="2" transform="rotate(-15 90 105)" />
-            
-            <rect x="1000" y="200" width="80" height="50" rx="8" transform="rotate(20 1040 225)" />
-            <circle cx="1020" cy="230" r="6" transform="rotate(20 1040 225)" />
-            <circle cx="1060" cy="230" r="6" transform="rotate(20 1040 225)" />
-            <rect x="1025" y="220" width="30" height="6" rx="2" transform="rotate(20 1040 225)" />
-          </g>
+    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+      {/* Enhanced Dark Background Effects */}
+      <div className="absolute inset-0">
+        {/* Main glow effects */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+        
+        {/* Additional scattered glows */}
+        <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
+        <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
+        <div className="absolute top-1/3 left-1/6 w-20 h-20 bg-[#4a4f5b]/4 rounded-full blur-lg" />
+        <div className="absolute bottom-1/3 right-1/6 w-32 h-32 bg-[#107793]/4 rounded-full blur-lg" />
+        
+        {/* New ambient lighting */}
+        <div className="absolute top-3/4 left-1/3 w-64 h-64 bg-[#a53b8b]/10 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute top-1/6 right-1/3 w-72 h-72 bg-[#0e1f2f]/10 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute -bottom-20 left-1/2 w-96 h-96 bg-[#4a4f5b]/20 rounded-full blur-3xl" />
+        
+        {/* Geometric shapes */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1200 800" fill="none">
+          {/* Music equipment shapes */}
+          <rect x="100" y="100" width="60" height="40" rx="8" fill="#107793" opacity="0.2" transform="rotate(-10 130 120)" />
+          <circle cx="120" cy="130" r="4" fill="#107793" opacity="0.3" />
+          <circle cx="140" cy="130" r="4" fill="#107793" opacity="0.3" />
+          
+          <rect x="1000" y="200" width="60" height="40" rx="8" fill="#a53b8b" opacity="0.2" transform="rotate(15 1030 220)" />
+          <circle cx="1020" cy="230" r="4" fill="#a53b8b" opacity="0.3" />
+          <circle cx="1040" cy="230" r="4" fill="#a53b8b" opacity="0.3" />
           
           {/* Vinyl records */}
-          <g stroke="#ea580c" strokeWidth="3" fill="none">
-            <circle cx="150" cy="600" r="35" transform="rotate(-10 150 600)" />
-            <circle cx="150" cy="600" r="6" />
-            <path d="M130 580 Q150 570 170 580" stroke="#ea580c" strokeWidth="2" />
-            
-            <circle cx="1050" cy="150" r="30" transform="rotate(15 1050 150)" />
-            <circle cx="1050" cy="150" r="5" />
-            <path d="M1035 135 Q1050 125 1065 135" stroke="#ea580c" strokeWidth="2" />
-          </g>
+          <circle cx="200" cy="600" r="25" stroke="#4a4f5b" strokeWidth="2" fill="none" opacity="0.2" />
+          <circle cx="200" cy="600" r="4" fill="#4a4f5b" opacity="0.3" />
           
-          {/* Music notes floating */}
-          <g stroke="#f97316" strokeWidth="3" fill="#f97316" strokeLinecap="round">
-            <circle cx="200" cy="150" r="6" />
-            <path d="M206 150 L206 120" stroke="#f97316" strokeWidth="3" />
-            <path d="M206 120 L220 125" stroke="#f97316" strokeWidth="3" />
-            
-            <circle cx="950" cy="400" r="6" />
-            <path d="M956 400 L956 370" stroke="#f97316" strokeWidth="3" />
-            <path d="M956 370 L970 375" stroke="#f97316" strokeWidth="3" />
-            
-            <circle cx="100" cy="350" r="6" />
-            <path d="M106 350 L106 320" stroke="#f97316" strokeWidth="3" />
-            <path d="M106 320 L120 325" stroke="#f97316" strokeWidth="3" />
-          </g>
+          <circle cx="1050" cy="150" r="20" stroke="#107793" strokeWidth="2" fill="none" opacity="0.2" />
+          <circle cx="1050" cy="150" r="3" fill="#107793" opacity="0.3" />
           
-          {/* Wavy sound lines */}
-          <g stroke="#fb923c" strokeWidth="2" fill="none" strokeLinecap="round">
-            <path d="M300 250 Q350 230 400 250 T500 250" />
-            <path d="M300 270 Q350 250 400 270 T500 270" />
-            <path d="M300 290 Q350 270 400 290 T500 290" />
-            
-            <path d="M700 350 Q750 330 800 350 T900 350" />
-            <path d="M700 370 Q750 350 800 370 T900 370" />
-          </g>
+          {/* Music notes */}
+          <circle cx="300" cy="200" r="4" fill="#a53b8b" opacity="0.3" />
+          <path d="M304 200 L304 170" stroke="#a53b8b" strokeWidth="2" opacity="0.3" />
+          <path d="M304 170 L314 175" stroke="#a53b8b" strokeWidth="2" opacity="0.3" />
+          
+          <circle cx="850" cy="500" r="4" fill="#107793" opacity="0.3" />
+          <path d="M854 500 L854 470" stroke="#107793" strokeWidth="2" opacity="0.3" />
+          <path d="M854 470 L864 475" stroke="#107793" strokeWidth="2" opacity="0.3" />
+          
+          {/* Sound waves */}
+          <path d="M400 300 Q450 280, 500 300 Q550 320, 600 300" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+          <path d="M400 320 Q450 300, 500 320 Q550 340, 600 320" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+          <path d="M400 340 Q450 320, 500 340 Q550 360, 600 340" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+          
+          {/* Connecting lines */}
+          <path d="M200 200 L400 250 L600 230" stroke="#107793" strokeWidth="1" opacity="0.2" />
+          <path d="M1000 300 L800 400 L700 380" stroke="#a53b8b" strokeWidth="1" opacity="0.2" />
         </svg>
+        
+        {/* Floating music notes */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(12)].map((_, i) => (
+            <div 
+              key={i}
+              className="absolute animate-float opacity-20"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animation: `float ${10 + Math.random() * 20}s linear infinite`,
+                animationDelay: `${Math.random() * 5}s`,
+              }}
+            >
+              {i % 4 === 0 ? (
+                <Music2 className="h-3 w-3 text-[#107793]" />
+              ) : i % 4 === 1 ? (
+                <Volume2 className="h-4 w-4 text-[#a53b8b]" />
+              ) : i % 4 === 2 ? (
+                <Radio className="h-3 w-3 text-[#4a4f5b]" />
+              ) : (
+                <Headphones className="h-3 w-3 text-[#4CC9F0]" />
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {/* Noise texture overlay */}
+        <div className="absolute inset-0 opacity-[0.015] bg-gradient-to-r from-transparent via-white to-transparent mix-blend-overlay" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='27' cy='27' r='1'/%3E%3Ccircle cx='47' cy='47' r='1'/%3E%3Ccircle cx='17' cy='37' r='1'/%3E%3Ccircle cx='37' cy='17' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }} />
       </div>
       
       <div className="relative z-10 min-h-screen flex flex-col">
@@ -195,19 +251,18 @@ export function HostLobby({
               soundEffects.playButtonClick();
               onBackToMenu();
             }}
-            className="bg-orange-400 text-orange-900 hover:bg-orange-500 hover:text-white font-bold rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl border-4 border-orange-500 hover:border-orange-600 transform hover:scale-105 hover:rotate-1"
-            style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}
+            className="bg-[#0e1f2f]/60 hover:bg-[#0e1f2f]/80 border border-[#107793]/30 text-white h-12 px-6 text-base font-medium 
+                     rounded-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-[#107793]/10"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-3" />
             Back to Menu
           </Button>
           
           <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-orange-800 transform -rotate-1" 
-                style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
               Party Setup
             </h1>
-            <p className="text-orange-600 font-medium transform rotate-1">Get ready to jam with friends</p>
+            <p className="text-[#d9e8dd] font-medium">Get ready to jam with friends</p>
           </div>
           
           <div className="w-32" />
@@ -220,25 +275,24 @@ export function HostLobby({
             <div className="space-y-6">
               
               {/* Room Code Card */}
-              <Card className="bg-orange-200/80 border-4 border-orange-400 p-6 sm:p-8 rounded-3xl shadow-xl hover:bg-orange-200 transition-all duration-500 hover:scale-[1.02] hover:rotate-1">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 sm:p-8 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
                 <div className="text-center space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-orange-900 mb-2 transform -rotate-1" 
-                        style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                    <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
                       Room Code
                     </h2>
-                    <p className="text-orange-700 font-medium">Your crew needs this magic code</p>
+                    <p className="text-[#d9e8dd] font-medium">Your crew needs this magic code</p>
                   </div>
                   
                   <div className="relative group">
-                    <div className="bg-white text-orange-800 text-3xl sm:text-4xl font-bold font-mono px-6 py-4 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg border-4 border-orange-300">
+                    <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white text-3xl sm:text-4xl font-bold font-mono px-6 py-4 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg backdrop-blur-sm">
                       {lobbyCode}
                     </div>
                     
                     <Button
                       onClick={copyToClipboard}
                       size="sm"
-                      className="absolute -top-2 -right-2 bg-orange-500 hover:bg-orange-600 text-white rounded-full w-12 h-12 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 border-3 border-orange-600"
+                      className="absolute -top-2 -right-2 bg-gradient-to-r from-[#107793] to-[#0e1f2f] hover:from-[#0e1f2f] hover:to-[#107793] text-white rounded-full w-12 h-12 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 border-0"
                     >
                       {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
                     </Button>
@@ -246,36 +300,36 @@ export function HostLobby({
                   
                   {/* QR Code */}
                   <div className="flex justify-center pt-4">
-                    <div className="p-4 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border-4 border-orange-300">
+                    <div className="p-4 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border border-[#4a4f5b]/30">
                       <QRCodeGenerator 
                         value={gameUrl}
                         size={120}
                       />
                     </div>
                   </div>
-                  <p className="text-orange-600 font-medium text-sm transform rotate-1">
+                  <p className="text-[#d9e8dd] font-medium text-sm">
                     Or scan this groovy code
                   </p>
                 </div>
               </Card>
 
               {/* Playlist Section */}
-              <Card className="bg-orange-200/80 border-4 border-orange-400 p-6 rounded-3xl shadow-xl hover:bg-orange-200 transition-all duration-500 hover:rotate-1">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
                 <div className="flex items-center gap-3 mb-4">
-                  <Music2 className="h-6 w-6 text-orange-700" />
-                  <h3 className="text-xl font-bold text-orange-900" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                  <Music2 className="h-6 w-6 text-[#4CC9F0]" />
+                  <h3 className="text-xl font-bold text-white tracking-tight">
                     The Playlist
                   </h3>
                 </div>
                 
-                <div className="bg-green-100 border-4 border-green-400 rounded-2xl p-4">
+                <div className="bg-[#4CC9F0]/10 border border-[#4CC9F0]/30 rounded-2xl p-4 backdrop-blur-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
                     <div>
-                      <div className="text-green-900 font-bold" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                      <div className="text-[#4CC9F0] font-bold tracking-tight">
                         Default bangers loaded
                       </div>
-                      <div className="text-green-700 font-medium text-sm">
+                      <div className="text-[#d9e8dd] font-medium text-sm">
                         Mix of hits from every era
                       </div>
                     </div>
@@ -290,10 +344,10 @@ export function HostLobby({
                       }
                     }}
                     setCustomSongs={setCustomSongs}
-                    isDarkMode={false}
+                    isDarkMode={true}
                   />
                 </div>
-                <p className="text-xs text-orange-600 mt-2 font-medium">
+                <p className="text-xs text-[#d9e8dd]/60 mt-2 font-medium">
                   Custom playlists dropping soon ✨
                 </p>
               </Card>
@@ -306,9 +360,9 @@ export function HostLobby({
                   onStartGame();
                 }}
                 disabled={players.length < 1}
-                className="w-full bg-orange-500 text-white hover:bg-orange-600 h-16 text-lg font-bold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 border-4 border-orange-600 hover:border-orange-700 transform hover:-rotate-1"
-                style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}
+                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
                 <Play className="h-6 w-6 mr-3" />
                 {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
               </Button>
@@ -316,27 +370,28 @@ export function HostLobby({
 
             {/* Right Column - Players */}
             <div>
-              <Card className="bg-orange-200/80 border-4 border-orange-400 p-6 h-full rounded-3xl shadow-xl hover:bg-orange-200 transition-all duration-500 hover:-rotate-1">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 h-full rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
                 <div className="flex items-center gap-3 mb-6">
-                  <Users className="h-6 w-6 text-orange-700" />
-                  <h3 className="text-xl font-bold text-orange-900" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                  <Users className="h-6 w-6 text-[#4CC9F0]" />
+                  <h3 className="text-xl font-bold text-white tracking-tight">
                     The Squad ({players.length})
                   </h3>
                   {players.length > 0 && (
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
                   )}
                 </div>
                 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {players.length === 0 ? (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-orange-300/50 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-orange-400">
-                        <Users className="h-8 w-8 text-orange-600" />
+                      <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#4a4f5b]/10 to-transparent"></div>
+                        <Users className="h-8 w-8 text-[#4a4f5b]" />
                       </div>
-                      <p className="text-orange-800 text-lg font-bold mb-2" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                      <p className="text-white text-lg font-bold mb-2 tracking-tight">
                         Waiting for friends
                       </p>
-                      <p className="text-orange-600 font-medium">
+                      <p className="text-[#d9e8dd] font-medium">
                         Share that room code above!
                       </p>
                     </div>
@@ -344,27 +399,27 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-4 p-4 bg-orange-100/80 border-3 border-orange-300 rounded-2xl transition-all duration-300 hover:bg-orange-100 transform hover:scale-[1.02] hover:rotate-1 shadow-md"
+                        className="flex items-center gap-4 p-4 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm"
                       >
-                        <div className="text-lg font-bold text-orange-600" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                        <div className="text-lg font-bold text-[#4CC9F0] tracking-tight">
                           {index + 1}
                         </div>
                         
                         <div 
-                          className="w-5 h-5 rounded-full shadow-md border-2 border-white"
+                          className="w-5 h-5 rounded-full shadow-md border-2 border-white/20"
                           style={{ backgroundColor: player.color }}
                         />
                         
                         <div className="flex-1">
-                          <div className="text-orange-900 font-bold" style={{ fontFamily: 'Comic Sans MS, cursive, sans-serif' }}>
+                          <div className="text-white font-bold tracking-tight">
                             {player.name}
                           </div>
-                          <div className="text-orange-700 text-sm font-medium">
+                          <div className="text-[#d9e8dd] text-sm font-medium">
                             Ready to jam
                           </div>
                         </div>
                         
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                        <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
                       </div>
                     ))
                   )}
@@ -376,7 +431,7 @@ export function HostLobby({
 
         {/* Footer disclaimer */}
         <div className="p-6 text-center">
-          <p className="text-orange-600 text-sm font-medium max-w-md mx-auto">
+          <p className="text-[#d9e8dd]/70 text-sm font-medium max-w-md mx-auto">
             This groovy creation is just for friends to jam together • Not affiliated with any music service
           </p>
         </div>
