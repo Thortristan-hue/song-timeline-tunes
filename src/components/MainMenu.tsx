@@ -225,10 +225,10 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <p className="text-center text-[#d9e8dd] text-sm mb-8">Simple to learn, impossible to master!</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <Card className="bg-[#1A1A2E] border border-[#1A1A2E]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#1A1A2E]/10">
-              <Users className="h-8 w-8 text-[#1A1A2E] mx-auto mb-3" />
+              <Users className="h-8 w-8 text-[#A8DADC] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Gather Your Crew</h3>
               <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
-              <p className="text-[#1A1A2E] text-xs italic">Perfect for parties or virtual hangouts!</p>
+              <p className="text-[#A8DADC] text-xs italic">Perfect for parties or virtual hangouts!</p>
             </Card>
         
             <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gradient-to-br hover:from-[#A8DADe]/30 hover:to-[#A8DADe]/30 transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10">
