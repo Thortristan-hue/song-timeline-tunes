@@ -1,12 +1,12 @@
 
 
-# Rythmy - Music Timeline Game
+# Urban Beats - Music Timeline Game
 
-A real-time multiplayer music timeline game where players guess when tracks dropped and organize them chronologically. Players join via mobile devices while the host displays the game on a larger screen, creating an engaging party game experience.
+A real-time multiplayer urban music timeline game where players guess when tracks dropped in the concrete jungle and organize them chronologically. Players join via mobile devices while the host displays the game on a larger screen, creating an engaging street-smart party game experience.
 
 ## Game Overview
 
-Rythmy is a social music guessing game that tests players' knowledge of music history. The host presents mystery tracks from various genres, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 tracks becomes the music legend!
+Urban Beats is a social music guessing game that tests players' knowledge of urban music history and street culture. The host presents mystery tracks from hip-hop, R&B, pop, and underground scenes, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 tracks becomes the urban music legend!
 
 ## Project Architecture
 
@@ -81,7 +81,7 @@ Rythmy is a social music guessing game that tests players' knowledge of music hi
 - `src/assets/record-player.png` - Vintage record player image for host display
 - `src/assets/record.png` - Vinyl record image with spinning animation
 - `src/assets/cassette-*.png` - Collection of colorful cassette tape images for player representation
-- `src/assets/rythmy_bg.jpg` - Game background image with retro music theme
+- `src/assets/timeliner_bg.jpg` - Game background image with retro music theme
 
 ### UI Component Library
 
@@ -202,7 +202,7 @@ Deploy instantly via [Lovable](https://lovable.dev/projects/f0f391ce-3307-4d50-a
 
 ## Game Design Philosophy
 
-Rythmy bridges the gap between digital gaming and music culture by requiring players to use their mobile devices while sharing a communal host display. This creates an engaging party atmosphere where music knowledge becomes social currency, and the visual feedback system keeps all players engaged even when it's not their turn.
+Urban Beats bridges the gap between digital gaming and street culture by requiring players to use their mobile devices while sharing a communal host display. This creates an engaging block party atmosphere where urban music knowledge becomes social currency, and the visual feedback system keeps all players engaged even when it's not their turn.
 
-The game celebrates music history and encourages discovery of tracks across different eras, making it both entertaining and educational. The real-time multiplayer architecture ensures smooth gameplay even with network interruptions, while the modern design creates an immersive gaming experience.
+The game celebrates urban music history and encourages discovery of tracks across different eras, from old-school hip-hop to modern trap, making it both entertaining and educational. The real-time multiplayer architecture ensures smooth gameplay even with network interruptions, while the neon-lit design creates an immersive city nightlife gaming experience.
 

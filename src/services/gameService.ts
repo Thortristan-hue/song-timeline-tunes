@@ -105,20 +105,20 @@ export class GameService {
       song && song.id && !usedSongIds.includes(song.id)
     );
     
-    console.log('Fresh mystery card selection:', {
+    console.log('🎯 FRESH MYSTERY CARD SELECTION:', {
       totalAvailable: availableSongs.length,
       alreadyUsed: usedSongIds.length,
       availableForSelection: unusedSongs.length
     });
     
     if (unusedSongs.length === 0) {
-      console.error('No unused songs available');
+      console.error('❌ CRITICAL: No unused songs available!');
       return null;
     }
     
     // Select random unused song
     const selectedSong = unusedSongs[Math.floor(Math.random() * unusedSongs.length)];
-    console.log('Selected fresh mystery card:', selectedSong.deezer_title);
+    console.log('✅ SELECTED FRESH MYSTERY CARD:', selectedSong.deezer_title);
     
     return selectedSong;
   }
@@ -141,7 +141,7 @@ export class GameService {
       throw new Error('No players available to start game');
     }
 
-    console.log('Starting card assignment: Assigning to all players');
+    console.log('🎯 STARTING CARD ASSIGNMENT: Assigning to all players');
 
     // Shuffle songs to ensure random selection
     const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
@@ -152,7 +152,7 @@ export class GameService {
       const startingCard = shuffledSongs[songIndex % shuffledSongs.length];
       songIndex++;
 
-      console.log(`Starting card assigned to ${player.name}:`, startingCard.deezer_title);
+      console.log(`🃏 STARTING CARD: Assigned to ${player.name}:`, startingCard.deezer_title);
       
       const { error } = await supabase
         .from('players')
@@ -179,7 +179,7 @@ export class GameService {
     }
 
     const initialMysteryCard = availableForMystery[Math.floor(Math.random() * availableForMystery.length)];
-    console.log('Setting initial mystery card:', initialMysteryCard.deezer_title);
+    console.log('🎯 INIT: Setting initial mystery card:', initialMysteryCard.deezer_title);
 
     // Set random first player
     const randomPlayerIndex = Math.floor(Math.random() * allPlayers.length);
@@ -201,7 +201,7 @@ export class GameService {
       throw error;
     }
 
-    console.log('Game initialized with starting cards and mystery card');
+    console.log('✅ INIT: Game initialized with starting cards and mystery card');
     return initialMysteryCard;
   }
 
@@ -214,7 +214,7 @@ export class GameService {
     availableSongs: Song[]
   ): Promise<{ success: boolean; correct?: boolean; error?: string; gameEnded?: boolean; winner?: Player }> {
     try {
-      console.log('Card placement: Starting with turn advancement');
+      console.log('🃏 CARD PLACEMENT: Starting with turn advancement');
 
       // Get current player data
       const { data: playerData, error: playerError } = await supabase
@@ -263,11 +263,11 @@ export class GameService {
         throw updateError;
       }
 
-      console.log('Card placement: Player timeline updated');
+      console.log('✅ CARD PLACEMENT: Player timeline updated');
 
       // Check for game end condition (10 cards) - only if placement was correct
       if (isCorrect && finalTimeline.length >= 10) {
-        console.log('Game end: Player reached 10 cards');
+        console.log('🎯 GAME END: Player reached 10 cards');
         await this.endGame(roomId, playerId);
         
         const updatedPlayer = this.convertDatabasePlayerToPlayer({
@@ -312,7 +312,7 @@ export class GameService {
       const nextTurn = (currentTurn + 1) % allPlayers.length;
       const nextPlayerId = allPlayers[nextTurn]?.id;
 
-      console.log('Turn advancement:', {
+      console.log('🎯 TURN ADVANCEMENT:', {
         currentTurn,
         nextTurn,
         nextPlayer: allPlayers[nextTurn]?.name
@@ -330,7 +330,7 @@ export class GameService {
       );
       
       if (!nextMysteryCard) {
-        console.error('No fresh mystery card available for next turn');
+        console.error('❌ CRITICAL: No fresh mystery card available for next turn!');
         return { success: false, error: 'No fresh mystery card available' };
       }
 
@@ -346,7 +346,7 @@ export class GameService {
         .eq('id', roomId);
 
       if (turnUpdateError) {
-        console.error('Turn advancement failed:', turnUpdateError);
+        console.error('❌ TURN ADVANCEMENT: Failed:', turnUpdateError);
         throw turnUpdateError;
       }
 

@@ -1,5 +1,5 @@
 /**
- * Rythmy - Centralized Animation System
+ * Timeliner - Centralized Animation System
  * Manages all animations, transitions, and visual effects
  */
 
@@ -239,7 +239,7 @@ export class AnimationManager {
 
   // CSS class-based animations for React components
   getCSSAnimationClass(animationKey: keyof typeof ANIMATIONS): string {
-    return `rythmy-${animationKey.toLowerCase().replace(/_/g, '-')}`;
+    return `timeliner-${animationKey.toLowerCase().replace(/_/g, '-')}`;
   }
 }
 
