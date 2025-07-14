@@ -46,7 +46,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#d9e8dd] to-[#0e1f2f] relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
       {/* Enhanced Dark Background Effects */}
       <div className="absolute inset-0">
         {/* Main glow effects */}
