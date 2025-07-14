@@ -17,29 +17,17 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [shuffledTips, setShuffledTips] = useState<string[]>([]);
 
   const tips = [
-    "Adulting is hard. Vodka helps.",
     "Life is short. Eat the damn burger.",
     "Don't trust a fart after shwarma.",
-    "Remember, hangovers are just punishment for getting sober.",
-    "You can't buy happiness, but you can buy Jägermeister. Same thing.",
-    "Flirting with the bartender may not get you a free drink, but it's worth a shot.",
-    "Always check your pockets before doing laundry. Condoms don't survive the spin cycle.",
     "If you can't be good, at least be good at being bad.",
-    "Red bull first, bullshit later.",
-    "Never argue when you're naked. You'll lose every time.",
-    "If at first you don't succeed, pour another shot.",
     "Some days you're the dog, some days you're the hydrant.",
-    "Life is all about balance: a salad in one hand and a cocktail in the other.",
     "Never text your ex. Unless it's to remind them how much better you're doing.",
     "Don't let Monday ruin your weekend vibe.",
-    "Never trust someone who doesn't swear. They're hiding something.",
-    "Save water, drink longero.",
     "You can't fix stupid, but you can laugh at it.",
     "Your bed is calling. Answer it.",
     "Don't be afraid to be a hot mess. At least you're hot.",
     "Coffee first, world domination later.",
     "I'm not lazy, I'm energy efficient.",
-    "Wine is basically fruit salad, right?",
     "Sarcasm is my love language.",
     "I don't need therapy, I need a vacation.",
     "My playlist is a reflection of my emotional chaos.",
@@ -67,7 +55,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         setCurrentTip((prev) => (prev + 1) % shuffledTips.length);
         setTipChanging(false);
       }, 400);
-    }, 8000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [shuffledTips]);
 
@@ -169,7 +157,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
               style={{
                 top: `${Math.random() * 120 - 20}%`,
                 left: `${Math.random() * 120 - 20}%`,
-                animationDuration: `${20 + Math.random() * 15}s`,
+                animationDuration: `${30 + Math.random() * 20}s`,
                 animationDelay: `${Math.random() * 10}s`,
               }}
             >
@@ -178,9 +166,9 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
               ) : i % 4 === 1 ? (
                 <Music className="h-3 w-3 text-[#a53b8b] animate-pulse-slow" />
               ) : i % 4 === 2 ? (
-                <Volume2 className="h-3 w-3 text-[#4a4f5b] animate-bounce" />
+                <Volume2 className="h-3 w-3 text-[#4a4f5b] animate-pulse-slow" />
               ) : (
-                <Radio className="h-4 w-4 text-[#107793] animate-wiggle" />
+                <Radio className="h-4 w-4 text-[#107793] animate-pulse-slow" />
               )}
             </div>
           ))}
@@ -317,31 +305,6 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                     <h4 className="text-white font-semibold mb-1">Score Points</h4>
                     <p className="text-[#d9e8dd] text-sm">Get points based on how close your guess is. Perfect placements give maximum points!</p>
                   </div>
-                </div>
-              </div>
-              
-              <div className="bg-[#0e1f2f]/50 backdrop-blur-sm p-6 rounded-xl border border-[#107793]/30">
-                <h4 className="text-[#4CC9F0] font-semibold text-lg mb-4 text-center">🏆 Scoring System</h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-[#d9e8dd]">Perfect placement:</span>
-                    <span className="text-[#10b981] font-semibold">+3 points</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#d9e8dd]">Close guess (±2 years):</span>
-                    <span className="text-[#3b82f6] font-semibold">+2 points</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#d9e8dd]">Good guess (±5 years):</span>
-                    <span className="text-[#f59e0b] font-semibold">+1 point</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#d9e8dd]">Way off:</span>
-                    <span className="text-[#ef4444] font-semibold">0 points</span>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-[#107793]/30">
-                  <p className="text-[#4CC9F0] text-xs text-center italic">First to reach 10 points wins the crown! 👑</p>
                 </div>
               </div>
             </div>
