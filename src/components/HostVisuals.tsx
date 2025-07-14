@@ -5,6 +5,7 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
+// Host Background Component
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0">
@@ -16,24 +17,23 @@ export function HostGameBackground() {
       <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-50"
         style={{
-          backgroundImage: "url('../assets/timeliner_bg.jpeg')",
+          backgroundImage: "url('/timeliner_bg.jpeg')", // Path to the background image in public folder
           zIndex: 10,
         }}
       />
 
-      {/* Gradient overlay with lower z-index */}
+      {/* Gradient overlay */}
       <div
         className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none"
         style={{ zIndex: 5 }}
       />
 
-      {/* Additional ambient effects */}
+      {/* Ambient effects */}
       <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '4s' }} />
       <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '6s', animationDelay: '1s' }} />
     </div>
   );
 }
-
 function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
