@@ -1,0 +1,341 @@
+/* Modern Game UI Styling */
+:root {
+  --primary-color: #ff3a5e;
+  --secondary-color: #3affda;
+  --dark-bg: #121212;
+  --light-text: #ffffff;
+  --accent-color: #ffc045;
+  --gradient-bg: linear-gradient(135deg, #2d0036, #170030);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  background: var(--gradient-bg);
+  color: var(--light-text);
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Game Container */
+.game-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header Styling */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.game-logo {
+  display: flex;
+  align-items: center;
+}
+
+.game-logo h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 1px;
+}
+
+.game-logo img {
+  height: 50px;
+  margin-right: 10px;
+}
+
+/* Score and Round Display */
+.game-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.stat-box {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 10px 20px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--primary-color);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Mystery Song Container */
+.mystery-song-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px 0;
+}
+
+.vinyl-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin-bottom: 20px;
+}
+
+.vinyl-record {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #000;
+  box-shadow: 0 0 30px rgba(255, 58, 94, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.vinyl-record::before {
+  content: '';
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  background: #333;
+  border-radius: 50%;
+  top: 35%;
+  left: 35%;
+}
+
+.vinyl-record::after {
+  content: '';
+  position: absolute;
+  width: 10%;
+  height: 10%;
+  background: #ff3a5e;
+  border-radius: 50%;
+  top: 45%;
+  left: 45%;
+}
+
+.record-grooves {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  top: 5%;
+  left: 5%;
+  pointer-events: none;
+}
+
+.record-grooves:nth-child(2) {
+  width: 80%;
+  height: 80%;
+  top: 10%;
+  left: 10%;
+}
+
+.record-grooves:nth-child(3) {
+  width: 70%;
+  height: 70%;
+  top: 15%;
+  left: 15%;
+}
+
+.record-grooves:nth-child(4) {
+  width: 60%;
+  height: 60%;
+  top: 20%;
+  left: 20%;
+}
+
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 0 20px rgba(255, 58, 94, 0.7);
+  transition: all 0.3s ease;
+}
+
+.play-button:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 0 30px rgba(255, 58, 94, 0.9);
+}
+
+.play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 10px 0 10px 16px;
+  border-color: transparent transparent transparent white;
+  margin-left: 4px;
+}
+
+.mystery-song-text {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 20px 0;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+/* Timeline Styling */
+.timeline-container {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  padding: 40px 0;
+  margin: 60px 0;
+}
+
+.timeline-track {
+  position: absolute;
+  height: 8px;
+  background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  border-radius: 4px;
+  z-index: 0;
+}
+
+.timeline-card {
+  position: relative;
+  width: 160px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 15px;
+  box-shadow: var(--shadow);
+  z-index: 1;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+
+.timeline-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+}
+
+.timeline-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.timeline-card:hover::before {
+  opacity: 1;
+}
+
+.timeline-card::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 15px;
+  background: var(--primary-color);
+}
+
+.card-year {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent-color);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.card-artist {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--light-text);
+  text-align: center;
+}
+
+.card-song {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  text-align: center;
+  font-style: italic;
+}
+
+.timeline-marker {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .timeline-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  
+  .timeline-track {
+    height: 100%;
+    width: 8px;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .timeline-card {
+    width: 80%;
+    max-width: 300px;
+  }
+  
+  .timeline-card::after {
+    bottom: 50%;
+    left: -15px;
+    transform: translateY(50%);
+    width: 15px;
+    height: 2px;
+  }
+  
+  .timeline-marker {
+    bottom: auto;
+    left: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
