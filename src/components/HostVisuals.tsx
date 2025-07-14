@@ -131,7 +131,7 @@ function RecordPlayerSection({
               isPlaying ? 'animate-spin' : 'hover:scale-110'
             }`}>
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
-              <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
+              <div className="relative w-full h-full bg-gradient-to-br from-[#1a1a1a] via-[#2a2a2a] to-[#0a0a0a] rounded-full shadow-2xl border-4 border-[#00d4ff]/60">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
                 </div>
