@@ -207,10 +207,10 @@ export default function MobilePlayerGameView({
                       <div className="w-full h-full rounded-xl border-2 border-white/70 bg-gradient-to-br from-slate-800 to-slate-700 shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col items-center justify-center p-4 cursor-pointer">
                         <div className="text-white text-center w-full">
                           <div className="text-sm font-semibold mb-1 truncate">
-                            {card.title}
+                            {card.deezer_title}
                           </div>
                           <div className="text-xs text-white/70 mb-2 truncate">
-                            {card.artist}
+                            {card.deezer_artist}
                           </div>
                           <div className="text-lg font-bold text-blue-300">
                             {card.release_year}

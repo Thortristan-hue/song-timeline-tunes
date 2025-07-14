@@ -174,7 +174,7 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
         {song.deezer_title}
       </div>
       
-      <style jsx global>{`
+      <style>{`
         @keyframes ultimate-bang {
           0% {
             transform: scale(0.5) translateY(-120px) rotateZ(-20deg) rotateX(90deg);
@@ -320,7 +320,7 @@ function HostTimelineDisplay({
         </div>
       )}
       
-      <style jsx global>{`
+      <style>{`
         @keyframes epic-card-drop {
           0% {
             transform: translateY(-300px) scale(0.4) rotateX(180deg) rotateZ(-30deg);
@@ -593,7 +593,7 @@ export function HostGameView({
             </div>
           </div>
           
-          <style jsx global>{`
+          <style>{`
             @keyframes epic-modal-appear {
               0% {
                 opacity: 0;
