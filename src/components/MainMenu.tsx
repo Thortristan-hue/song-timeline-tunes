@@ -10,12 +10,58 @@ interface MainMenuProps {
 
 export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rich_black-500 via-rich_black-600 to-charcoal-500 relative overflow-hidden">
-      {/* Subtle Background Effects */}
+    <div className="min-h-screen bg-gradient-to-br from-rich_black-700 via-rich_black-800 to-charcoal-700 relative overflow-hidden">
+      {/* Enhanced Dark Background Effects */}
       <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cerulean-500/10 rounded-full blur-2xl" />
-        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-fandango-500/10 rounded-full blur-2xl" />
-        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-honeydew-500/8 rounded-full blur-2xl" />
+        {/* Main glow effects */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-cerulean-500/15 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-fandango-500/15 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-honeydew-500/12 rounded-full blur-2xl animate-pulse" />
+        
+        {/* Additional scattered glows */}
+        <div className="absolute top-16 right-16 w-24 h-24 bg-cerulean-500/8 rounded-full blur-xl" />
+        <div className="absolute bottom-32 left-16 w-28 h-28 bg-fandango-500/8 rounded-full blur-xl" />
+        <div className="absolute top-1/3 left-1/6 w-20 h-20 bg-honeydew-500/6 rounded-full blur-lg" />
+        <div className="absolute bottom-1/3 right-1/6 w-32 h-32 bg-cerulean-500/6 rounded-full blur-lg" />
+        
+        {/* Geometric shapes */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1200 800" fill="none">
+          {/* Music note shapes */}
+          <circle cx="150" cy="150" r="4" fill="#107793" opacity="0.3" />
+          <circle cx="1050" cy="200" r="6" fill="#a53b8b" opacity="0.3" />
+          <circle cx="300" cy="600" r="3" fill="#d9e8dd" opacity="0.3" />
+          <circle cx="900" cy="650" r="5" fill="#107793" opacity="0.3" />
+          
+          {/* Connecting lines */}
+          <path d="M150 150 L300 200 L450 180" stroke="#107793" strokeWidth="1" opacity="0.2" />
+          <path d="M1050 200 L900 300 L800 280" stroke="#a53b8b" strokeWidth="1" opacity="0.2" />
+          <path d="M300 600 L500 550 L700 570" stroke="#d9e8dd" strokeWidth="1" opacity="0.2" />
+          
+          {/* Abstract rectangles */}
+          <rect x="800" y="100" width="60" height="20" rx="10" fill="#107793" opacity="0.1" transform="rotate(15 830 110)" />
+          <rect x="200" y="400" width="80" height="15" rx="8" fill="#a53b8b" opacity="0.1" transform="rotate(-10 240 408)" />
+          <rect x="600" y="700" width="50" height="25" rx="12" fill="#d9e8dd" opacity="0.1" transform="rotate(25 625 713)" />
+          
+          {/* Dotted patterns */}
+          <g opacity="0.15">
+            <circle cx="400" cy="120" r="2" fill="#107793" />
+            <circle cx="420" cy="125" r="1.5" fill="#107793" />
+            <circle cx="440" cy="130" r="2" fill="#107793" />
+            <circle cx="460" cy="135" r="1.5" fill="#107793" />
+          </g>
+          
+          <g opacity="0.15">
+            <circle cx="700" cy="350" r="2" fill="#a53b8b" />
+            <circle cx="720" cy="355" r="1.5" fill="#a53b8b" />
+            <circle cx="740" cy="360" r="2" fill="#a53b8b" />
+            <circle cx="760" cy="365" r="1.5" fill="#a53b8b" />
+          </g>
+        </svg>
+        
+        {/* Noise texture overlay */}
+        <div className="absolute inset-0 opacity-[0.02] bg-gradient-to-r from-transparent via-white to-transparent mix-blend-overlay" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='27' cy='27' r='1'/%3E%3Ccircle cx='47' cy='47' r='1'/%3E%3Ccircle cx='17' cy='37' r='1'/%3E%3Ccircle cx='37' cy='17' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }} />
       </div>
       
       <div className="relative z-10 flex flex-col min-h-screen px-4 sm:px-6 lg:px-8">
