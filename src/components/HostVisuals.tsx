@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Graffiti-inspired background */}
+      {/* Simplified background for debugging */}
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          backgroundImage: "url('/src/assets/timeliner_bg.jpg')",
+          backgroundImage: "url('/timeliner_bg.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -22,7 +22,7 @@ export function HostGameBackground() {
         }}
       />
 
-      {/* Chaotic overlay mimicking spray paint drips */}
+      {/* Simplified overlay */}
       <div 
         className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-800/60 to-black/70"
         style={{
@@ -31,45 +31,18 @@ export function HostGameBackground() {
         }}
       />
 
-      {/* Abstract graffiti effects */}
+      {/* Simplified effects - animations temporarily disabled */}
       <div 
-        className="absolute top-20 left-20 w-96 h-96 bg-gray-500/10 rounded-full blur-3xl animate-pulse" 
+        className="absolute top-20 left-20 w-96 h-96 bg-gray-500/10 rounded-full blur-3xl" 
         style={{
           zIndex: 3,
           mixBlendMode: 'overlay'
         }}
       />
       <div 
-        className="absolute bottom-32 right-32 w-80 h-80 bg-gray-300/5 rounded-full blur-3xl animate-pulse" 
+        className="absolute bottom-32 right-32 w-80 h-80 bg-gray-300/5 rounded-full blur-3xl" 
         style={{
           zIndex: 3,
-          animationDelay: '2s',
-          mixBlendMode: 'overlay'
-        }} 
-      />
-      <div 
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gray-600/4 rounded-full blur-3xl"
-        style={{
-          zIndex: 3,
-          mixBlendMode: 'overlay'
-        }}
-      />
-
-      {/* Graffiti drips and ambient chaos */}
-      <div 
-        className="absolute top-10 right-10 w-32 h-32 bg-gray-400/5 rounded-full blur-2xl animate-ping" 
-        style={{
-          zIndex: 4,
-          animationDuration: '4s',
-          mixBlendMode: 'overlay'
-        }} 
-      />
-      <div 
-        className="absolute bottom-10 left-10 w-40 h-40 bg-gray-700/5 rounded-full blur-2xl animate-ping" 
-        style={{
-          zIndex: 4,
-          animationDuration: '6s',
-          animationDelay: '1s',
           mixBlendMode: 'overlay'
         }} 
       />
@@ -128,7 +101,7 @@ function RecordPlayerSection({
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
             <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
-              isPlaying ? 'animate-spin' : 'hover:scale-110'
+              isPlaying ? 'animate-spin' : ''
             }`}>
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
               <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
@@ -178,9 +151,8 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
 
   return (
     <div 
-      className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
-        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
-        ${isDropping ? 'animate-ultimate-bang' : ''}`}
+      className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-300 cursor-pointer relative shadow-2xl
+        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 25%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
@@ -291,9 +263,7 @@ function HostTimelineDisplay({
 
   return (
     <div 
-      className={`flex justify-center items-center p-6 rounded-3xl transition-all duration-1200 ${
-        isEntering ? 'animate-epic-timeline-enter' : ''
-      } ${isExiting ? 'animate-epic-timeline-exit' : ''}`}
+      className={`flex justify-center items-center p-6 rounded-3xl transition-all duration-500`}
       style={{
         gap: `${gapSize}px`,
         transform: isActive ? 'translateY(0) scale(1)' : 'translateY(60px) scale(0.85)',
@@ -302,8 +272,8 @@ function HostTimelineDisplay({
       }}
     >
       {currentPlayer.timeline.length === 0 ? (
-        <div className={`text-white/60 italic py-8 text-xl transition-all duration-1000 ${
-          isActive ? 'animate-text-elegant-fade-in' : 'opacity-0'
+        <div className={`text-white/60 italic py-8 text-xl transition-all duration-500 ${
+          isActive ? 'opacity-100' : 'opacity-0'
         }`}>
           {currentPlayer.name} hasn't placed any cards yet
         </div>
@@ -311,9 +281,7 @@ function HostTimelineDisplay({
         currentPlayer.timeline.map((song, index) => (
           <div 
             key={song.id}
-            className={`transition-all duration-900 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'} ${
-              newCardIndex === index ? 'animate-epic-card-drop' : ''
-            }`}
+            className={`transition-all duration-500 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'}`}
             style={{
               transitionDelay: `${index * 100}ms`,
               transformOrigin: 'bottom center',
@@ -510,11 +478,36 @@ export function HostGameView({
   cardPlacementResult: { correct: boolean; song: Song } | null;
   transitioning: boolean;
 }) {
-  const [displayedPlayer, setDisplayedPlayer] = useState(currentTurnPlayer);
+  // Add debug logging and prop validation
+  console.log('🎮 HostGameView rendering with props:', {
+    currentTurnPlayer: currentTurnPlayer?.name,
+    currentSong: currentSong?.deezer_title,
+    roomCode,
+    playersCount: players?.length,
+    mysteryCardRevealed,
+    isPlaying,
+    transitioning
+  });
+
+  // Provide fallback values for props
+  const safeCurrentTurnPlayer = currentTurnPlayer || { 
+    id: 'fallback', 
+    name: 'Loading...', 
+    timeline: [], 
+    color: '#ffffff',
+    avatar: '',
+    score: 0
+  };
+  const safeRoomCode = roomCode || 'XXXX';
+  const safePlayers = players || [];
+  const safeOnPlayPause = onPlayPause || (() => console.warn('onPlayPause not provided'));
+  const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   
   useEffect(() => {
+    console.log('🎮 HostGameView useEffect triggered', { cardPlacementResult, transitioning, currentTurnPlayer: safeCurrentTurnPlayer.name });
+    
     if (cardPlacementResult) {
       setShowResultModal(true);
       const resultTimer = setTimeout(() => {
@@ -522,7 +515,7 @@ export function HostGameView({
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
-          setDisplayedPlayer(currentTurnPlayer);
+          setDisplayedPlayer(safeCurrentTurnPlayer);
           setAnimationStage('entering');
           
           const enterTimer = setTimeout(() => {
@@ -539,24 +532,29 @@ export function HostGameView({
     } else if (transitioning) {
       setAnimationStage('exiting');
       setTimeout(() => {
-        setDisplayedPlayer(currentTurnPlayer);
+        setDisplayedPlayer(safeCurrentTurnPlayer);
         setAnimationStage('entering');
         setTimeout(() => setAnimationStage('idle'), 1500);
       }, 1200);
     } else {
-      setDisplayedPlayer(currentTurnPlayer);
+      setDisplayedPlayer(safeCurrentTurnPlayer);
     }
-  }, [currentTurnPlayer, transitioning, cardPlacementResult]);
+  }, [safeCurrentTurnPlayer, transitioning, cardPlacementResult]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Debug info - remove in production */}
+      <div className="absolute top-0 left-0 z-50 bg-black/80 text-white p-2 text-xs">
+        Player: {safeCurrentTurnPlayer.name} | Players: {safePlayers.length} | Room: {safeRoomCode}
+      </div>
+      
       <HostGameBackground />
-      <HostHeader roomCode={roomCode} playersCount={players.length} />
+      <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
       <RecordPlayerSection 
         currentSong={currentSong}
         mysteryCardRevealed={mysteryCardRevealed}
         isPlaying={isPlaying}
-        onPlayPause={onPlayPause}
+        onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
       
@@ -572,8 +570,8 @@ export function HostGameView({
 
       <div className="absolute bottom-6 left-6 right-6 z-10">
         <CassettePlayerDisplay 
-          players={players} 
-          currentPlayerId={currentTurnPlayer.id}
+          players={safePlayers} 
+          currentPlayerId={safeCurrentTurnPlayer.id}
         />
       </div>
 
@@ -605,8 +603,8 @@ export function HostGameView({
             </div>
             <div className="text-white/70 text-2xl animate-epic-text-slide-up">
               {cardPlacementResult.correct ? 
-                `${currentTurnPlayer.name} scored a point!` : 
-                `Better luck next time, ${currentTurnPlayer.name}!`
+                `${safeCurrentTurnPlayer.name} scored a point!` : 
+                `Better luck next time, ${safeCurrentTurnPlayer.name}!`
               }
             </div>
           </div>
