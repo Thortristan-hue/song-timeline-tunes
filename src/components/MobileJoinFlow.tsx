@@ -89,14 +89,14 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
 
   if (joinState === 'joiningRoom') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
-        {/* Background Effects */}
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] relative overflow-hidden">
+        {/* Urban Background Effects */}
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#00d4ff]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#ff0080]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#39ff14]/8 rounded-full blur-2xl animate-pulse" />
           
-          {/* Floating music notes */}
+          {/* Floating urban elements */}
           <div className="absolute inset-0 overflow-hidden">
             {[...Array(8)].map((_, i) => (
               <div 
@@ -110,9 +110,9 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
                 }}
               >
                 {i % 2 === 0 ? (
-                  <Music className="h-3 w-3 text-[#107793]" />
+                  <Music className="h-3 w-3 text-[#00d4ff]" />
                 ) : (
-                  <Volume2 className="h-3 w-3 text-[#a53b8b]" />
+                  <Volume2 className="h-3 w-3 text-[#ff0080]" />
                 )}
               </div>
             ))}
@@ -149,18 +149,18 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
 
   if (joinState === 'enterDetails') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
-        {/* Background Effects */}
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] relative overflow-hidden">
+        {/* Urban Background Effects */}
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#00d4ff]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#ff0080]/10 rounded-full blur-2xl animate-pulse" />
+          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#39ff14]/8 rounded-full blur-2xl animate-pulse" />
           
-          {/* Additional scattered glows */}
-          <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
-          <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
+          {/* Additional urban lighting */}
+          <div className="absolute top-16 right-16 w-24 h-24 bg-[#00d4ff]/5 rounded-full blur-xl" />
+          <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#ff0080]/5 rounded-full blur-xl" />
           
-          {/* Floating music notes */}
+          {/* Floating urban elements */}
           <div className="absolute inset-0 overflow-hidden">
             {[...Array(10)].map((_, i) => (
               <div 
@@ -174,11 +174,11 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
                 }}
               >
                 {i % 3 === 0 ? (
-                  <Music className="h-3 w-3 text-[#107793]" />
+                  <Music className="h-3 w-3 text-[#00d4ff]" />
                 ) : i % 3 === 1 ? (
-                  <Palette className="h-4 w-4 text-[#a53b8b]" />
+                  <Palette className="h-4 w-4 text-[#ff0080]" />
                 ) : (
-                  <Volume2 className="h-3 w-3 text-[#4a4f5b]" />
+                  <Volume2 className="h-3 w-3 text-[#39ff14]" />
                 )}
               </div>
             ))}
@@ -195,26 +195,26 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
           <div className="mb-8">
             <Button
               onClick={handleBackFromDetails}
-              className="bg-[#0e1f2f]/60 hover:bg-[#0e1f2f]/80 border border-[#107793]/30 text-white h-12 px-6 text-base font-medium 
-                       rounded-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-[#107793]/10"
+              className="bg-[#1a1a1a]/80 hover:bg-[#2a2a2a]/80 border border-[#00d4ff]/40 text-white h-12 px-6 text-base font-medium 
+                       rounded-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-[#00d4ff]/20"
             >
               <ArrowLeft className="h-4 w-4 mr-3" />
-              Back
+              Back to Streets
             </Button>
           </div>
 
           {/* Main content */}
           <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
-            <div className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-8 rounded-3xl shadow-lg shadow-[#107793]/10">
+            <div className="bg-[#1a1a1a]/80 backdrop-blur-3xl border border-[#00d4ff]/30 p-8 rounded-3xl shadow-lg shadow-[#00d4ff]/10">
               {/* Header */}
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#a53b8b] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#a53b8b]/20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#a53b8b]/10 to-transparent"></div>
-                  <Palette className="h-8 w-8 text-[#a53b8b]" />
+                <div className="w-16 h-16 bg-[#1a1a1a]/80 border-2 border-[#ff0080]/60 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#ff0080]/20 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#ff0080]/10 to-transparent"></div>
+                  <Palette className="h-8 w-8 text-[#ff0080]" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Set up your player</h1>
-                <p className="text-[#d9e8dd] text-base leading-relaxed font-medium">
-                  Joining room: <span className="font-mono text-[#4CC9F0]">{lobbyCode}</span>
+                <h1 className="text-2xl font-black text-white mb-3 tracking-tight">Set Your Urban Style</h1>
+                <p className="text-[#d1d5db] text-base leading-relaxed font-medium">
+                  Entering the scene: <span className="font-mono text-[#00d4ff] font-bold">{lobbyCode}</span>
                 </p>
               </div>
 
@@ -407,9 +407,9 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
         <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
           {/* Disclaimer */}
           <div className="text-center mb-8">
-            <p className="text-sm text-[#d9e8dd]/70 leading-relaxed">
-              This is just a fun game for friends! We're not affiliated with any music services. 
-              It's a free project made for good times and great music.
+            <p className="text-sm text-[#d1d5db]/70 leading-relaxed">
+              This is just a fun game for the crew! We're not affiliated with any music services. 
+              It's a free project made for good vibes and great beats.
             </p>
           </div>
 
@@ -417,17 +417,17 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
             {/* Header */}
             <div className="text-center mb-10">
               <div className="relative mb-6">
-                <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-[#107793]/20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
-                  <Smartphone className="h-8 w-8 text-[#107793]" />
+                <div className="w-16 h-16 bg-[#1a1a1a]/80 border-2 border-[#00d4ff]/60 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-[#00d4ff]/20 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00d4ff]/10 to-transparent"></div>
+                  <Smartphone className="h-8 w-8 text-[#00d4ff]" />
                 </div>
-                <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#4CC9F0] rounded-full flex items-center justify-center shadow-lg">
-                  <Wifi className="h-3 w-3 text-white" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#39ff14] rounded-full flex items-center justify-center shadow-lg">
+                  <Wifi className="h-3 w-3 text-black" />
                 </div>
               </div>
-              <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Join the fun</h1>
-              <p className="text-[#d9e8dd] text-base leading-relaxed font-medium">
-                Got a code from your friend? Let's get you in!
+              <h1 className="text-3xl font-black text-white mb-3 tracking-tight">Join the Crew</h1>
+              <p className="text-[#d1d5db] text-base leading-relaxed font-medium">
+                Got the street code? Time to show your urban music knowledge!
               </p>
             </div>
 
@@ -435,8 +435,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
             <form onSubmit={handleCodeSubmit} className="space-y-6">
               {/* Lobby Code Input */}
               <div>
-                <label htmlFor="lobbyCode" className="block text-lg font-semibold text-white mb-3 tracking-tight">
-                  Game Code
+                <label htmlFor="lobbyCode" className="block text-lg font-bold text-white mb-3 tracking-tight">
+                  Street Code
                 </label>
                 <Input
                   id="lobbyCode"
@@ -444,8 +444,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
                   placeholder="ABC123"
                   value={lobbyCode}
                   onChange={handleLobbyCodeChange}
-                  className="bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 text-white placeholder:text-[#d9e8dd]/40 h-16 text-xl text-center 
-                           font-mono tracking-wider rounded-xl focus:bg-[#1A1A2E]/70 focus:ring-2 focus:ring-[#107793]/50 focus:border-[#107793]/50
+                  className="bg-[#2a2a2a]/60 border border-[#00d4ff]/40 text-white placeholder:text-[#d1d5db]/40 h-16 text-xl text-center 
+                           font-mono tracking-wider rounded-xl focus:bg-[#2a2a2a]/80 focus:ring-2 focus:ring-[#00d4ff]/60 focus:border-[#00d4ff]
                            backdrop-blur-xl shadow-inner transition-all duration-200"
                   autoCapitalize="characters"
                   autoCorrect="off"
@@ -453,15 +453,15 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
                   inputMode="text"
                   autoFocus
                 />
-                <p className="text-[#d9e8dd]/60 text-sm mt-2 text-center font-medium">
-                  Ask your friend for the 6-character code
+                <p className="text-[#d1d5db]/60 text-sm mt-2 text-center font-medium">
+                  Get the 6-character code from your host
                 </p>
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="bg-[#F72585]/10 border border-[#F72585]/30 rounded-xl p-4 backdrop-blur-xl">
-                  <p className="text-[#F72585] text-center font-medium">{error}</p>
+                <div className="bg-red-500/20 border border-red-400/40 rounded-xl p-4 backdrop-blur-xl">
+                  <p className="text-red-300 text-center font-medium">{error}</p>
                 </div>
               )}
 
@@ -469,20 +469,20 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
               <Button
                 type="submit"
                 disabled={!lobbyCode.trim() || isLoading}
-                className="w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white font-semibold h-16 text-lg 
+                className="w-full bg-gradient-to-r from-[#00d4ff] to-[#ff0080] text-white font-bold h-16 text-lg 
                          rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 
-                         hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight shadow-lg 
+                         hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight shadow-lg shadow-[#00d4ff]/20
                          disabled:hover:scale-100 relative overflow-hidden group"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#107793]/0 via-[#107793]/10 to-[#107793]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
-                Continue
+                <div className="absolute inset-0 bg-gradient-to-r from-[#00d4ff]/0 via-[#00d4ff]/10 to-[#00d4ff]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
+                Enter the Scene
               </Button>
             </form>
 
             {/* Help text */}
-            <div className="mt-8 pt-6 border-t border-[#4a4f5b]/30">
-              <p className="text-[#d9e8dd]/60 text-sm text-center leading-relaxed">
-                Make sure you're connected to the internet and have the right code from your host.
+            <div className="mt-8 pt-6 border-t border-[#00d4ff]/30">
+              <p className="text-[#d1d5db]/60 text-sm text-center leading-relaxed">
+                Stay connected to the network and verify the street code with your crew leader.
               </p>
             </div>
           </div>
