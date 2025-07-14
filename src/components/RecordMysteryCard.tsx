@@ -21,7 +21,7 @@ export function RecordMysteryCard({
       <img 
         src={recordPlayerImage}
         alt="Record Player"
-        className="w-64 h-64 object-contain"
+        className="w-64 h-64 object-contain hover:scale-105 transition-transform duration-300"
       />
       
       <div 
@@ -37,21 +37,21 @@ export function RecordMysteryCard({
           className={`w-20 h-20 object-contain transition-all duration-500 ${
             isDestroyed 
               ? 'opacity-0 scale-0 rotate-180' 
-              : 'opacity-100 scale-100 rotate-0'
+              : 'opacity-100 scale-100'
           } ${
-            !isRevealed ? 'animate-spin' : ''
+            !isRevealed ? 'record-spin' : 'animate-pulse'
           }`}
           style={{
-            animationDuration: isRevealed ? '0s' : '3s'
+            filter: !isRevealed ? 'drop-shadow(0 0 15px rgba(16, 119, 147, 0.6))' : 'none'
           }}
         />
         
         {isRevealed && song && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center">
-            <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap">
-              <div className="font-bold">{song.deezer_title}</div>
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center animate-fade-in-up">
+            <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap hover:scale-105 transition-all duration-300 border border-[#107793]/30">
+              <div className="font-bold animate-shimmer">{song.deezer_title}</div>
               <div className="text-white/80">{song.deezer_artist}</div>
-              <div className="text-yellow-400 font-bold">{song.release_year}</div>
+              <div className="text-yellow-400 font-bold animate-bounce">{song.release_year}</div>
             </div>
           </div>
         )}

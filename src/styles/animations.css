@@ -25,6 +25,12 @@
   20%, 40%, 60%, 80% { transform: translateX(8px); }
 }
 
+@keyframes card-flip {
+  0% { transform: rotateY(0deg) scale(1); }
+  50% { transform: rotateY(90deg) scale(1.05); }
+  100% { transform: rotateY(0deg) scale(1); }
+}
+
 /* Player transition animations */
 @keyframes playerElevate {
   0% { transform: translateY(0) scale(1); }
@@ -50,20 +56,184 @@
   100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
 }
 
+/* Enhanced menu animations */
+@keyframes menu-entrance {
+  0% { 
+    opacity: 0; 
+    transform: translateY(40px) scale(0.95); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes logo-bounce {
+  0% { 
+    opacity: 0; 
+    transform: translateY(-50px) scale(0.8); 
+  }
+  60% { 
+    opacity: 1; 
+    transform: translateY(10px) scale(1.1); 
+  }
+  80% { 
+    transform: translateY(-5px) scale(0.95); 
+  }
+  100% { 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes button-glow {
+  0% { 
+    box-shadow: 0 0 20px rgba(16, 119, 147, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(16, 119, 147, 0.6);
+    transform: scale(1.02);
+  }
+  100% { 
+    box-shadow: 0 0 20px rgba(16, 119, 147, 0.3);
+    transform: scale(1);
+  }
+}
+
+@keyframes stagger-fade-in {
+  0% { 
+    opacity: 0; 
+    transform: translateY(30px) scale(0.9); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes tip-transition {
+  0% { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+  25% { 
+    opacity: 0; 
+    transform: translateX(-20px); 
+  }
+  75% { 
+    opacity: 0; 
+    transform: translateX(20px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes floating-particle {
+  0% { 
+    opacity: 0; 
+    transform: translateY(100vh) scale(0.5); 
+  }
+  10% { 
+    opacity: 1; 
+  }
+  90% { 
+    opacity: 1; 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translateY(-100px) scale(1.2); 
+  }
+}
+
+@keyframes record-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cassette-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-5px) rotate(1deg); }
+  75% { transform: translateY(-2px) rotate(-1deg); }
+}
+
+@keyframes timeline-slide {
+  0% { 
+    opacity: 0; 
+    transform: translateX(-100%) scale(0.8); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateX(0) scale(1); 
+  }
+}
+
+@keyframes victory-confetti {
+  0% { 
+    opacity: 1; 
+    transform: translateY(0) rotate(0deg); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translateY(100vh) rotate(720deg); 
+  }
+}
+
 /* Animation classes */
 .animate-card-throw { animation: card-throw 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-placement { animation: card-placement 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-success { animation: card-success 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-error { animation: card-error 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-flip { animation: card-flip 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .player-elevate { animation: playerElevate 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .player-swap { animation: playerSwap 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .timeline-expand { animation: timelineExpand 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .glow-pulse { animation: glowPulse 2s infinite; }
 
+/* Enhanced menu animation classes */
+.menu-entrance { animation: menu-entrance 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.logo-bounce { animation: logo-bounce 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.button-glow { animation: button-glow 2s ease-in-out infinite; }
+.stagger-fade-in { animation: stagger-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.tip-transition { animation: tip-transition 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.floating-particle { animation: floating-particle 15s linear infinite; }
+.record-spin { animation: record-spin 3s linear infinite; }
+.cassette-bounce { animation: cassette-bounce 4s ease-in-out infinite; }
+.timeline-slide { animation: timeline-slide 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.victory-confetti { animation: victory-confetti 3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* Stagger delays for sequential animations */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+.stagger-6 { animation-delay: 0.6s; }
+
 /* Transition utilities */
 .turn-transition { transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .quick-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .smooth-transition { transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Enhanced hover effects */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.hover-glow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(16, 119, 147, 0.6);
+  transform: scale(1.02);
+}
 
 /* Turn transition overlay */
 .turn-transition-overlay {
@@ -78,4 +248,61 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fade-in-up 0.5s ease-out;
+}
+
+/* Parallax effects */
+.parallax-bg {
+  transition: transform 0.1s ease-out;
+}
+
+/* Interactive button effects */
+.interactive-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease-out;
+}
+
+.interactive-button:hover::before {
+  left: 100%;
+}
+
+.interactive-button:active {
+  transform: scale(0.98);
+}
+
+/* Card reveal animation */
+.card-reveal {
+  perspective: 1000px;
+}
+
+.card-reveal-inner {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.card-reveal.flipped .card-reveal-inner {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+}
+
+.card-back {
+  transform: rotateY(180deg);
 }
