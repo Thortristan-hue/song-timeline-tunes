@@ -13,7 +13,7 @@ export function QRCodeGenerator({ value, size = 200, className }: QRCodeGenerato
   
   return (
     <div className={`text-center space-y-3 ${className}`}>
-      <div className="font-bold text-slate-800 text-lg">Scan to Join</div>
+      <div className="font-bold text-white text-lg">Scan to Join</div>
       <div className="mx-auto bg-white p-4 rounded-lg inline-block shadow-lg">
         <QRCodeSVG 
           value={joinUrl}
@@ -23,10 +23,10 @@ export function QRCodeGenerator({ value, size = 200, className }: QRCodeGenerato
           className="rounded"
         />
       </div>
-      <div className="text-sm text-slate-600">
-        Or visit: <span className="font-mono text-blue-600">{window.location.origin}</span>
+      <div className="text-sm text-white/60">
+        Or visit: <span className="font-mono text-blue-400">{window.location.origin}</span>
         <br />
-        Room Code: <span className="font-mono font-bold text-lg">{value}</span>
+        Room Code: <span className="font-mono font-bold text-lg text-white">{value}</span>
       </div>
     </div>
   );

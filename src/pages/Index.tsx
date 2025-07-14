@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
-import { MobileJoin } from '@/components/MobileJoin';
+import { MobileJoinFlow } from '@/components/MobileJoinFlow';
 import MobilePlayerLobby from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
@@ -18,6 +17,7 @@ function Index() {
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [playerName, setPlayerName] = useState('');
   const [winner, setWinner] = useState<any>(null);
+  const [autoJoinCode, setAutoJoinCode] = useState<string>(''); // New state for QR code join
 
   const {
     room,
@@ -55,6 +55,7 @@ function Index() {
     
     if (joinCode && gamePhase === 'menu') {
       console.log('🔗 Auto-joining from URL:', joinCode);
+      setAutoJoinCode(joinCode.toUpperCase());
       setGamePhase('mobileJoin');
       // Clear the URL parameter after processing
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -137,6 +138,7 @@ function Index() {
     setCustomSongs([]);
     setPlayerName('');
     setWinner(null);
+    setAutoJoinCode(''); // Clear auto-join code
     soundEffects.playButtonClick();
   };
 
@@ -195,10 +197,11 @@ function Index() {
           )}
 
           {gamePhase === 'mobileJoin' && (
-            <MobileJoin
+            <MobileJoinFlow
               onJoinRoom={handleJoinRoom}
               onBackToMenu={handleBackToMenu}
               isLoading={isLoading}
+              autoJoinCode={autoJoinCode}
             />
           )}
 
