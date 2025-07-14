@@ -34,7 +34,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
   const cleanup = useCallback(() => {
     if (channelRef.current) {
-      console.log('🔄 Cleaning up realtime subscription');
+      console.log('Cleaning up realtime subscription');
       channelRef.current.unsubscribe();
       channelRef.current = null;
     }
@@ -46,7 +46,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   }, []);
 
   const handleConnectionError = useCallback((error: any, context: string) => {
-    console.warn(`📡 Subscription error in ${context}:`, error);
+    console.warn(`Subscription error in ${context}:`, error);
     
     setConnectionStatus(prev => ({
       ...prev,
@@ -73,12 +73,12 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       cleanup();
       
       if (configs.length === 0) {
-        console.warn('📡 No subscription configs provided');
+        console.warn('No subscription configs provided');
         return;
       }
 
       const channelName = configs[0].channelName;
-      console.log('📡 Setting up realtime subscription:', channelName);
+      console.log('Setting up realtime subscription:', channelName);
       
       const channel = supabase.channel(channelName);
       
@@ -94,11 +94,11 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
       // Handle subscription status
       const subscription = channel.subscribe((status, err) => {
-        console.log('📡 Subscription status:', status, err);
+        console.log('Subscription status:', status, err);
         
         switch (status) {
           case 'SUBSCRIBED':
-            console.log('✅ Successfully subscribed to realtime updates');
+            console.log('Successfully subscribed to realtime updates');
             setConnectionStatus({
               isConnected: true,
               isReconnecting: false,
@@ -108,17 +108,17 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
             break;
             
           case 'TIMED_OUT':
-            console.warn('⏰ Subscription timed out');
+            console.warn('Subscription timed out');
             handleConnectionError({ message: 'Connection timed out' }, 'timeout');
             break;
             
           case 'CLOSED':
-            console.warn('🔌 Subscription closed');
+            console.warn('Subscription closed');
             setConnectionStatus(prev => ({ ...prev, isConnected: false }));
             break;
             
           case 'CHANNEL_ERROR':
-            console.error('❌ Channel error:', err);
+            console.error('Channel error:', err);
             handleConnectionError(err || { message: 'Channel error' }, 'channel_error');
             break;
         }
@@ -131,7 +131,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
         if (channelRef.current) {
           const state = channelRef.current.state;
           if (state === 'closed' || state === 'errored') {
-            console.warn('📡 Connection unhealthy, attempting reconnect');
+            console.warn('Connection unhealthy, attempting reconnect');
             clearInterval(healthCheck);
             scheduleReconnect();
           }
@@ -142,14 +142,14 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       return () => clearInterval(healthCheck);
       
     } catch (error) {
-      console.error('❌ Failed to setup subscription:', error);
+      console.error('Failed to setup subscription:', error);
       handleConnectionError(error, 'setup');
     }
   }, [configs, cleanup, handleConnectionError]);
 
   const scheduleReconnect = useCallback(() => {
     if (retryCountRef.current >= maxRetries) {
-      console.error('❌ Max reconnection attempts reached');
+      console.error('Max reconnection attempts reached');
       setConnectionStatus(prev => ({
         ...prev,
         isReconnecting: false,
@@ -167,7 +167,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     retryCountRef.current++;
     const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 5)); // Exponential backoff with cap
     
-    console.log(`📡 Scheduling reconnect attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
+    console.log(`Scheduling reconnect attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
     
     setConnectionStatus(prev => ({
       ...prev,
@@ -183,7 +183,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   // Monitor network status
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Network came back online, reconnecting...');
+      console.log('Network came back online, reconnecting');
       if (!connectionStatus.isConnected) {
         retryCountRef.current = 0; // Reset retry count on network recovery
         connect();
@@ -191,7 +191,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     };
 
     const handleOffline = () => {
-      console.log('🌐 Network went offline');
+      console.log('Network went offline');
       setConnectionStatus(prev => ({
         ...prev,
         isConnected: false,
@@ -221,7 +221,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !connectionStatus.isConnected) {
-        console.log('📱 Page became visible, checking connection...');
+        console.log('Page became visible, checking connection');
         retryCountRef.current = 0;
         connect();
       }
@@ -232,7 +232,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   }, [connect, connectionStatus.isConnected]);
 
   const forceReconnect = useCallback(() => {
-    console.log('🔄 Force reconnecting...');
+    console.log('Force reconnecting');
     retryCountRef.current = 0;
     connect();
   }, [connect]);
