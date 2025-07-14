@@ -63,21 +63,21 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
       {/* Enhanced Dark Background Effects */}
       <div className="absolute inset-0">
-        {/* Main glow effects */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+        {/* Main glow effects with smoother animations */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse-ultra-slow" />
+        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse-ultra-slow" style={{animationDelay: '2s'}} />
+        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse-ultra-slow" style={{animationDelay: '4s'}} />
         
-        {/* Additional scattered glows */}
-        <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
-        <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
-        <div className="absolute top-1/3 left-1/6 w-20 h-20 bg-[#4a4f5b]/4 rounded-full blur-lg" />
-        <div className="absolute bottom-1/3 right-1/6 w-32 h-32 bg-[#107793]/4 rounded-full blur-lg" />
+        {/* Additional scattered glows with gentle animations */}
+        <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl animate-glow-gentle" />
+        <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl animate-glow-gentle" style={{animationDelay: '3s'}} />
+        <div className="absolute top-1/3 left-1/6 w-20 h-20 bg-[#4a4f5b]/4 rounded-full blur-lg animate-pulse-slow" />
+        <div className="absolute bottom-1/3 right-1/6 w-32 h-32 bg-[#107793]/4 rounded-full blur-lg animate-pulse-slow" style={{animationDelay: '1.5s'}} />
         
-        {/* New ambient lighting */}
-        <div className="absolute top-3/4 left-1/3 w-64 h-64 bg-[#a53b8b]/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute top-1/6 right-1/3 w-72 h-72 bg-[#0e1f2f]/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute -bottom-20 left-1/2 w-96 h-96 bg-[#4a4f5b]/20 rounded-full blur-3xl" />
+        {/* New ambient lighting with slower animations */}
+        <div className="absolute top-3/4 left-1/3 w-64 h-64 bg-[#a53b8b]/10 rounded-full blur-3xl animate-pulse-ultra-slow" style={{animationDelay: '6s'}} />
+        <div className="absolute top-1/6 right-1/3 w-72 h-72 bg-[#0e1f2f]/10 rounded-full blur-3xl animate-pulse-ultra-slow" style={{animationDelay: '8s'}} />
+        <div className="absolute -bottom-20 left-1/2 w-96 h-96 bg-[#4a4f5b]/20 rounded-full blur-3xl animate-glow-gentle" style={{animationDelay: '5s'}} />
         
         {/* Geometric shapes */}
         <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1200 800" fill="none">
@@ -153,12 +153,12 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           {[...Array(12)].map((_, i) => (
             <div 
               key={i}
-              className="absolute floating-particle opacity-30"
+              className="absolute floating-particle opacity-20"
               style={{
                 top: `${Math.random() * 120 - 20}%`,
                 left: `${Math.random() * 120 - 20}%`,
-                animationDuration: `${30 + Math.random() * 20}s`,
-                animationDelay: `${Math.random() * 10}s`,
+                animationDuration: `${35 + Math.random() * 15}s`,
+                animationDelay: `${Math.random() * 20}s`,
               }}
             >
               {i % 4 === 0 ? (
