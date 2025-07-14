@@ -45,42 +45,20 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] p-6 flex flex-col relative overflow-hidden">
-      {/* Urban background effects */}
-      <div className="absolute inset-0">
-        <div className="absolute top-32 left-8 w-64 h-64 bg-[#00d4ff]/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-32 right-8 w-48 h-48 bg-[#ff0080]/10 rounded-full blur-2xl" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-[#39ff14]/8 rounded-full blur-3xl" />
-        
-        {/* City lights pattern */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(6)].map((_, i) => (
-            <div 
-              key={i}
-              className="absolute animate-float opacity-15"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animation: `float ${12 + Math.random() * 8}s linear infinite`,
-                animationDelay: `${Math.random() * 3}s`,
-              }}
-            >
-              <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="absolute bottom-40 right-8 w-48 h-48 bg-[#ff0080]/8 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 flex flex-col">
+      {/* Subtle background elements */}
+      <div className="absolute top-32 left-8 w-64 h-64 bg-blue-500/3 rounded-full blur-3xl" />
+      <div className="absolute bottom-40 right-8 w-48 h-48 bg-purple-500/2 rounded-full blur-3xl" />
       
       {/* Header */}
       <div className="mb-8 relative z-10">
         <Button
           onClick={onBackToMenu}
-          className="bg-[#1a1a1a]/80 hover:bg-[#2a2a2a]/80 border border-[#00d4ff]/40 text-white h-12 px-6 text-base font-medium 
-                   rounded-2xl backdrop-blur-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-[#00d4ff]/20"
+          className="bg-white/10 hover:bg-white/20 border-0 text-white h-12 px-6 text-base font-medium 
+                   rounded-2xl backdrop-blur-xl transition-all duration-200 hover:scale-105 active:scale-95"
         >
           <ArrowLeft className="h-4 w-4 mr-3" />
-          Back to Streets
+          Back
         </Button>
       </div>
 
@@ -88,26 +66,26 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
       <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10">
         {/* Disclaimer */}
         <div className="text-center mb-8">
-          <p className="text-sm text-[#d1d5db]/70 leading-relaxed">
-            This is just a fun game for the crew! We're not affiliated with any music services. 
-            It's a free project made for good vibes and great beats.
+          <p className="text-sm text-white/50 leading-relaxed">
+            This is just a fun game for friends! We're not affiliated with any music services. 
+            It's a free project made for good times and great music.
           </p>
         </div>
 
-        <div className="bg-[#1a1a1a]/80 backdrop-blur-3xl border border-[#00d4ff]/30 p-8 rounded-3xl shadow-xl shadow-[#00d4ff]/10">
+        <div className="bg-black/20 backdrop-blur-3xl border border-white/10 p-8 rounded-3xl">
           {/* Header */}
           <div className="text-center mb-10">
             <div className="relative mb-6">
-              <div className="w-16 h-16 bg-[#1a1a1a]/80 border-2 border-[#ff0080]/60 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl shadow-lg shadow-[#ff0080]/20">
-                <Smartphone className="h-8 w-8 text-[#ff0080]" />
+              <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl">
+                <Smartphone className="h-8 w-8 text-white/80" />
               </div>
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#39ff14] rounded-full flex items-center justify-center shadow-lg">
-                <Wifi className="h-3 w-3 text-black" />
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <Wifi className="h-3 w-3 text-white" />
               </div>
             </div>
-            <h1 className="text-3xl font-black text-white mb-3 tracking-tight">Join the Crew</h1>
-            <p className="text-[#d1d5db] text-base leading-relaxed font-medium">
-              Got the street code? Time to show your urban music knowledge!
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Join the fun</h1>
+            <p className="text-white/60 text-base leading-relaxed font-medium">
+              Got a code from your friend? Let's get you in!
             </p>
           </div>
 
@@ -115,8 +93,8 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
           <div className="space-y-6">
             {/* Lobby Code Input */}
             <div>
-              <label htmlFor="lobbyCode" className="block text-lg font-bold text-white mb-3 tracking-tight">
-                Street Code
+              <label htmlFor="lobbyCode" className="block text-lg font-semibold text-white mb-3 tracking-tight">
+                Game Code
               </label>
               <Input
                 id="lobbyCode"
@@ -124,32 +102,32 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
                 placeholder="ABC123"
                 value={lobbyCode}
                 onChange={handleLobbyCodeChange}
-                className="bg-[#2a2a2a]/60 border border-[#00d4ff]/40 text-white placeholder:text-[#d1d5db]/40 h-16 text-xl text-center 
-                         font-mono tracking-wider rounded-2xl focus:bg-[#2a2a2a]/80 focus:ring-2 focus:ring-[#00d4ff]/60 focus:border-[#00d4ff] 
+                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-xl text-center 
+                         font-mono tracking-wider rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
                          backdrop-blur-xl shadow-inner transition-all duration-200"
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck="false"
                 inputMode="text"
               />
-              <p className="text-[#d1d5db]/60 text-sm mt-2 text-center font-medium">
-                Get the 6-character code from your host
+              <p className="text-white/40 text-sm mt-2 text-center font-medium">
+                Ask your friend for the 6-character code
               </p>
             </div>
 
             {/* Player Name Input */}
             <div>
-              <label htmlFor="playerName" className="block text-lg font-bold text-white mb-3 tracking-tight">
-                Your Street Name
+              <label htmlFor="playerName" className="block text-lg font-semibold text-white mb-3 tracking-tight">
+                What should we call you?
               </label>
               <Input
                 id="playerName"
                 type="text"
-                placeholder="Your urban alias..."
+                placeholder="Your name here..."
                 value={playerName}
                 onChange={handleNameChange}
-                className="bg-[#2a2a2a]/60 border border-[#ff0080]/40 text-white placeholder:text-[#d1d5db]/40 h-16 text-lg 
-                         rounded-2xl focus:bg-[#2a2a2a]/80 focus:ring-2 focus:ring-[#ff0080]/60 focus:border-[#ff0080] 
+                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-lg 
+                         rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
                          backdrop-blur-xl shadow-inner transition-all duration-200"
                 maxLength={20}
                 autoCapitalize="words"
@@ -159,7 +137,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/20 border border-red-400/40 rounded-2xl p-4 backdrop-blur-xl">
+              <div className="bg-red-500/10 border border-red-400/20 rounded-2xl p-4 backdrop-blur-xl">
                 <p className="text-red-300 text-center font-medium">{error}</p>
               </div>
             )}
@@ -168,20 +146,17 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
             <Button
               onClick={handleSubmit}
               disabled={!lobbyCode.trim() || !playerName.trim() || isLoading}
-              className="w-full bg-gradient-to-r from-[#00d4ff] to-[#ff0080] text-white hover:from-[#00d4ff]/90 hover:to-[#ff0080]/90 font-bold h-16 text-lg 
+              className="w-full bg-white text-black hover:bg-white/90 font-semibold h-16 text-lg 
                        rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 
-                       hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight shadow-lg shadow-[#00d4ff]/20"
+                       hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight"
             >
               {isLoading ? (
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Entering the Scene...
+                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  Connecting...
                 </div>
               ) : (
-                <>
-                  <Smartphone className="h-5 w-5 mr-3" />
-                  Enter the Battle
-                </>
+                'Join Game'
               )}
             </Button>
           </div>

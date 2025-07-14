@@ -337,10 +337,10 @@ export function GamePlay({
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] relative overflow-hidden flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10">
           <div className="text-4xl mb-4">🏆</div>
-          <div className="text-3xl font-bold mb-3">Street Legend Crowned!</div>
+          <div className="text-3xl font-bold mb-3">Game Over!</div>
           {winningPlayer && (
             <div className="text-xl mb-4">
               <span style={{ color: winningPlayer.color }}>{winningPlayer.name}</span> wins!
@@ -361,10 +361,10 @@ export function GamePlay({
 
   if (!gameReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] relative overflow-hidden flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-[#00d4ff]/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-[#ff0080]/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+          <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
         </div>
         <div className="text-center text-white relative z-10">
           <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20">

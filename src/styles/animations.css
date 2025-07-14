@@ -45,9 +45,9 @@
 }
 
 @keyframes glowPulse {
-  0% { box-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.5); }
-  100% { box-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
+  0% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(139, 92, 246, 0.5); }
+  100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
 }
 
 /* Animation classes */
