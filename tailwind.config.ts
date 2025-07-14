@@ -95,7 +95,7 @@ export default {
 				},
 				'pulse-slow': {
 					'0%, 100%': { opacity: '0.3' },
-					'50%': { opacity: '0.8' }
+					'50%': { opacity: '0.7' }
 				},
 				'shimmer': {
 					'0%': { transform: 'translateX(-100%)' },
@@ -149,7 +149,7 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'float': 'float 6s ease-in-out infinite',
 				'float-slow': 'float-slow 8s ease-in-out infinite',
-				'pulse-slow': 'pulse-slow 4s ease-in-out infinite',
+				'pulse-slow': 'pulse-slow 6s ease-in-out infinite',
 				'shimmer': 'shimmer 2s linear infinite',
 				'fade-in-up': 'fade-in-up 0.6s ease-out',
 				'fade-in-down': 'fade-in-down 0.6s ease-out',
@@ -159,7 +159,7 @@ export default {
 				'slide-in-right': 'slide-in-right 0.6s ease-out',
 				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
 				'card-hover': 'card-hover 0.3s ease-out forwards',
-				'spin-slow': 'spin-slow 10s linear infinite',
+				'spin-slow': 'spin-slow 20s linear infinite',
 				'wiggle': 'wiggle 1s ease-in-out infinite'
 			}
 		}
