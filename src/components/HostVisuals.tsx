@@ -9,19 +9,19 @@ export function HostGameBackground() {
   return (
     <div className="absolute inset-0">
       <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
+      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl" />
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none" />
-      
+
       {/* Additional ambient effects */}
-      <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '4s'}} />
-      <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{animationDuration: '6s', animationDelay: '1s'}} />
-      
-      {/* Add the background image - CORRECTED PATH */}
+      <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '4s' }} />
+      <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '6s', animationDelay: '1s' }} />
+
+      {/* Add the background image */}
       <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-50"
         style={{
-          backgroundImage: "url('/timeliner_bg.jpg')",
+          backgroundImage: "url(require('@/assets/timeliner_bg.jpg'))",
         }}
       />
     </div>
