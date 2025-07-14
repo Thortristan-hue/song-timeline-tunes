@@ -33,7 +33,7 @@ export class SoundEffects {
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       this.initialized = true;
-      console.log('Audio system initialized');
+      console.log('🎵 Audio system initialized');
       
       // Preload essential sounds
       this.preloadSounds();
@@ -60,7 +60,7 @@ export class SoundEffects {
           this.loadSound(name as SoundName, url)
         )
       );
-      console.log('Audio files loaded successfully');
+      console.log('🎵 Audio files loaded successfully');
     } catch (error) {
       console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
     }
@@ -93,7 +93,7 @@ export class SoundEffects {
 
   public async playSound(name: SoundName): Promise<void> {
     if (!this.initialized || !this.audioContext) {
-      console.warn(`Audio system not ready, using fallback sound for ${name}`);
+      console.warn(`🎵 Audio system not ready, using fallback sound for ${name}`);
       return this.playFallback(name);
     }
 
@@ -109,7 +109,7 @@ export class SoundEffects {
 
     const sound = this.sounds.get(name);
     if (!sound) {
-      console.warn(`Audio file "${name}" not available, using fallback sound`);
+      console.warn(`🎵 Audio file "${name}" not available, using fallback sound`);
       return this.playFallback(name);
     }
 
