@@ -223,34 +223,33 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             How it works
           </h2>
           <p className="text-center text-[#d9e8dd] text-sm mb-8">Simple to learn, impossible to master!</p>
-          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-gradient-to-br from-[#0e1f2f]/30 to-[#0e1f2f]/30 border border-[#4a4f5b]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#0e1f2f]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#4a4f5b]/10">
-              <Users className="h-8 w-8 text-[#4a4f5b] mx-auto mb-3" />
+            <Card className="bg-gradient-to-br from-[#1A1A2E]/30 to-[#1A1A2E]/30 border border-[#A8DADC]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#1A1A2E]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#A8DADC]/10">
+              <Users className="h-8 w-8 text-[#A8DADC] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Gather Your Crew</h3>
-              <p className="text-[#d9e8dd] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
-              <p className="text-[#4a4f5b] text-xs italic">Perfect for parties or virtual hangouts!</p>
+              <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">Up to 8 players can join the musical showdown</p>
+              <p className="text-[#A8DADC] text-xs italic">Perfect for parties or virtual hangouts!</p>
             </Card>
             
-            <Card className="bg-gradient-to-br from-[#0e1f2f]/30 to-[#0e1f2f]/30 border border-[#107793]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#0e1f2f]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#107793]/10">
-              <Radio className="h-8 w-8 text-[#107793] mx-auto mb-3" />
+            <Card className="bg-gradient-to-br from-[#1A1A2E]/30 to-[#1A1A2E]/30 border border-[#4CC9F0]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#1A1A2E]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#4CC9F0]/10">
+              <Radio className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Choose Your Playlist</h3>
-              <p className="text-[#107793] text-xs sm:text-sm mb-2">Link any Spotify playlist for endless possibilities</p>
-              <p className="text-[#107793] text-xs italic">From 90s grunge to today's top hits!</p>
+              <p className="text-[#4CC9F0] text-xs sm:text-sm mb-2">Link any Spotify playlist for endless possibilities</p>
+              <p className="text-[#4CC9F0] text-xs italic">From 90s grunge to today's top hits!</p>
             </Card>
             
-            <Card className="bg-gradient-to-br from-[#0e1f2f]/30 to-[#0e1f2f]/30 border border-[#a53b8b]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#0e1f2f]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#a53b8b]/10">
-              <Zap className="h-8 w-8 text-[#a53b8b] mx-auto mb-3" />
+            <Card className="bg-gradient-to-br from-[#1A1A2E]/30 to-[#1A1A2E]/30 border border-[#F72585]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#1A1A2E]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#F72585]/10">
+              <Zap className="h-8 w-8 text-[#F72585] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Quick-Fire Rounds</h3>
-              <p className="text-[#a53b8b] text-xs sm:text-sm mb-2">Snappy 30-second rounds keep the energy high</p>
-              <p className="text-[#a53b8b] text-xs italic">Think fast—the clock is ticking!</p>
+              <p className="text-[#F72585] text-xs sm:text-sm mb-2">Snappy 30-second rounds keep the energy high</p>
+              <p className="text-[#F72585] text-xs italic">Think fast—the clock is ticking!</p>
             </Card>
-
-            <Card className="bg-gradient-to-br from-[#0e1f2f]/30 to-[#0e1f2f]/30 border border-[#4a4f5b]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#0e1f2f]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#4a4f5b]/10">
-              <Trophy className="h-8 w-8 text-[#4a4f5b] mx-auto mb-3" />
+          
+            <Card className="bg-gradient-to-br from-[#1A1A2E]/30 to-[#1A1A2E]/30 border border-[#7209B7]/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-[#1A1A2E]/40 transition-all duration-300 hover:shadow-md hover:shadow-[#7209B7]/10">
+              <Trophy className="h-8 w-8 text-[#7209B7] mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Race to Victory</h3>
-              <p className="text-[#d9e8dd] text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
-              <p className="text-[#4a4f5b] text-xs italic">Brag-worthy achievements unlocked!</p>
+              <p className="text-[#E6F4F1] text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
+              <p className="text-[#7209B7] text-xs italic">Brag-worthy achievements unlocked!</p>
             </Card>
           </div>
         </div>
@@ -317,16 +316,16 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </div>
           
           <p className="text-[#d9e8dd] text-sm font-medium mb-2">
-            • Made with ♥ for music lovers
+            Made with ♥ for music lovers
           </p>
           
           <p className="text-[#4a4f5b] text-xs max-w-md mx-auto leading-relaxed">
-            Good vibes and friendly competition. 
+            
             Rythmy doesn't judge your questionable music taste (even if your friends do).
           </p>
           
           <p className="text-[#4a4f5b] text-xs mt-4">
-            v1.2.3 • <span className="text-[#107793]">Report bugs to: 97uselobp@mozmail.com!</span>
+            v0.1.1 • <span className="text-[#107793]">Report bugs to: 97uselobp@mozmail.com!</span>
           </p>
         </footer>
       </div>
