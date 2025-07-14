@@ -289,7 +289,7 @@ export function GameHeader({ roomCode, currentPlayer, currentTurnPlayer, isMyTur
                 isMyTurn && !gameEnded ? 'text-green-200' : 
                 gameEnded ? 'text-gray-200' : 'text-white'
               }`}>
-                {gameEnded ? 'Game Over' : 
+                {gameEnded ? 'Streets Decided' : 
                  isMyTurn ? 'Your turn!' : currentTurnPlayer.name}
               </div>
             </div>
