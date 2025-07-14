@@ -159,7 +159,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </h1>
           
           <p className="text-sm sm:text-base text-blue-300 font-medium tracking-wide mb-6">
-            Where your music knowledge meets friendly competition
+            
           </p>
           
           <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed mb-6">
@@ -195,7 +195,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-purple-400/10 to-purple-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
               <Smartphone className="h-5 w-5 mr-3" />
-              Join a Game
+              Join Lobby
               <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 text-xs">player</div>
             </Button>
           </div>
@@ -233,7 +233,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             <Card className="bg-gradient-to-br from-gray-800/30 to-gray-900/30 border border-green-600/20 p-4 sm:p-6 text-center rounded-xl backdrop-blur-sm hover:bg-gray-700/40 transition-all duration-300 hover:shadow-md hover:shadow-green-900/10">
               <Trophy className="h-8 w-8 text-green-300 mx-auto mb-3" />
               <h3 className="text-white font-semibold text-sm sm:text-base mb-2">Race to Victory</h3>
-              <p className="text-gray-400 text-xs sm:text-sm mb-2">First to 10 points claims the musical crown</p>
+              <p className="text-gray-400 text-xs sm:text-sm mb-2">First to 10 points claims the crown</p>
               <p className="text-gray-500 text-xs italic">Brag-worthy achievements unlocked!</p>
             </Card>
           </div>
@@ -251,7 +251,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                 <Star className="h-3 w-3 text-blue-400" />
               </div>
               <p className="text-xs text-gray-400 italic">
-                "Settled a 20-year debate with my dad about when 'Smells Like Teen Spirit' came out. I was right!"
+                "Settled a 80-year debate with my dad about when 'Smells Like Teen Spirit' came out. I was right!"
               </p>
               <p className="text-right text-blue-400 text-xs mt-2">— Music know-it-all</p>
             </div>
@@ -265,9 +265,9 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                 <Star className="h-3 w-3 text-purple-400" />
               </div>
               <p className="text-xs text-gray-400 italic">
-                "Our weekly game night just got a serious upgrade. Even our friend who claims to hate music loves playing!"
+                "I was born in the wrong generation"
               </p>
-              <p className="text-right text-purple-400 text-xs mt-2">— Party host</p>
+              <p className="text-right text-purple-400 text-xs mt-2">— Dumb fuck</p>
             </div>
             
             <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-lg border border-green-800/30">
@@ -301,16 +301,16 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </div>
           
           <p className="text-gray-300 text-sm font-medium mb-2">
-            Powered by Spotify • Made with ♥ for music lovers
+            • Made with ♥ for music lovers
           </p>
           
           <p className="text-gray-500 text-xs max-w-md mx-auto leading-relaxed">
-            No fancy algorithms, just good vibes and friendly competition. 
+            Good vibes and friendly competition. 
             Rythmy doesn't judge your questionable music taste (even if your friends do).
           </p>
           
           <p className="text-gray-700 text-xs mt-4">
-            v1.2.3 • <span className="text-blue-600">New: Custom game modes!</span>
+            v1.2.3 • <span className="text-blue-600">Report bugs to: 97uselobp@mozmail.com!</span>
           </p>
         </footer>
       </div>
