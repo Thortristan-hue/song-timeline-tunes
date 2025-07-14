@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
@@ -15,6 +15,8 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [currentTip, setCurrentTip] = useState(0);
   const [tipChanging, setTipChanging] = useState(false);
   const [shuffledTips, setShuffledTips] = useState<string[]>([]);
+  const [animationsApplied, setAnimationsApplied] = useState(false);
+  const tipIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const tips = [
     "Life is short. Eat the damn burger.",
@@ -39,25 +41,51 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "Life's a playlist, make it a good one."
   ];
 
-  // Initialize shuffled tips on component mount
+  // Initialize shuffled tips on component mount only once
   useEffect(() => {
     const shuffled = [...tips].sort(() => Math.random() - 0.5);
     setShuffledTips(shuffled);
-  }, [tips]);
+    
+    // Apply animations only once after mount
+    setTimeout(() => {
+      setAnimationsApplied(true);
+    }, 100);
+
+    return () => {
+      if (tipIntervalRef.current) {
+        clearInterval(tipIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Enhanced tip cycling with smooth transitions and random order
   useEffect(() => {
     if (shuffledTips.length === 0) return;
     
-    const interval = setInterval(() => {
+    // Clear any existing interval when dependencies change
+    if (tipIntervalRef.current) {
+      clearInterval(tipIntervalRef.current);
+    }
+    
+    tipIntervalRef.current = setInterval(() => {
       setTipChanging(true);
       setTimeout(() => {
         setCurrentTip((prev) => (prev + 1) % shuffledTips.length);
         setTipChanging(false);
       }, 400);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [shuffledTips]);
+    }, 10000); // Increased from 5000ms to 10000ms (10 seconds)
+    
+    return () => {
+      if (tipIntervalRef.current) {
+        clearInterval(tipIntervalRef.current);
+      }
+    };
+  }, [shuffledTips.length]);
+
+  // Generate animation classes conditionally based on whether initial animations are done
+  const getAnimationClass = (baseClass: string, staggerClass?: string) => {
+    return animationsApplied ? `${baseClass} ${staggerClass || ''}` : '';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
@@ -185,7 +213,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* Header */}
         <div className="text-center pt-12 sm:pt-16 mb-8 sm:mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-32 h-32 sm:w-40 sm:h-40 relative overflow-hidden logo-bounce">
+            <div className={`w-32 h-32 sm:w-40 sm:h-40 relative overflow-hidden ${getAnimationClass('logo-bounce')}`}>
               <img 
                 src="/Vinyl_rythm.png" 
                 alt="Rythmy Logo" 
@@ -194,16 +222,16 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             </div>
           </div>
           
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-2 tracking-tight relative inline-block menu-entrance">
+          <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-2 tracking-tight relative inline-block ${getAnimationClass('menu-entrance')}`}>
             RYTHMY
             <span className="absolute -top-1 -right-2 text-xs text-[#107793] font-mono animate-pulse">BETA</span>
           </h1>
           
-          <p className="text-base sm:text-lg text-[#d9e8dd] max-w-2xl mx-auto leading-relaxed mb-6 menu-entrance stagger-1">
+          <p className={`text-base sm:text-lg text-[#d9e8dd] max-w-2xl mx-auto leading-relaxed mb-6 ${getAnimationClass('menu-entrance', 'stagger-1')}`}>
             Dive into the ultimate music timeline challenge! Guess when songs hit the charts, arrange tracks in perfect chronological order, and discover just how well you know your favorite tunes through the decades.
           </p>
           
-          <div className={`bg-gradient-to-r from-[#a53b8b]/40 to-[#4a4f5b]/40 backdrop-blur-sm p-4 rounded-xl max-w-xl mx-auto border border-[#a53b8b]/30 menu-entrance stagger-2 transition-all duration-500 ${tipChanging ? 'opacity-50 transform scale-95' : 'opacity-100 transform scale-100'}`}>
+          <div className={`bg-gradient-to-r from-[#a53b8b]/40 to-[#4a4f5b]/40 backdrop-blur-sm p-4 rounded-xl max-w-xl mx-auto border border-[#a53b8b]/30 ${getAnimationClass('menu-entrance', 'stagger-2')} transition-all duration-500 ${tipChanging ? 'opacity-50 transform scale-95' : 'opacity-100 transform scale-100'}`}>
             <p className="text-sm text-[#d9e8dd] italic">
               <span className="text-[#a53b8b] font-semibold mr-2">♪ Tip:</span>
               {shuffledTips.length > 0 ? shuffledTips[currentTip] : tips[0]}
@@ -216,7 +244,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           <div className="space-y-4">
             <Button
               onClick={onCreateRoom}
-              className="w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow menu-entrance stagger-3"
+              className={`w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow ${getAnimationClass('menu-entrance', 'stagger-3')}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#107793]/0 via-[#107793]/10 to-[#107793]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
               <Play className="h-5 w-5 mr-3 group-hover:animate-pulse" />
@@ -226,7 +254,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             
             <Button
               onClick={onJoinRoom}
-              className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow menu-entrance stagger-4"
+              className={`w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow ${getAnimationClass('menu-entrance', 'stagger-4')}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
               <Smartphone className="h-5 w-5 mr-3 group-hover:animate-wiggle" />
@@ -238,30 +266,30 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
 
         {/* Game Instructions */}
         <div className="max-w-5xl mx-auto mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-3 menu-entrance stagger-5">
+          <h2 className={`text-3xl sm:text-4xl font-bold text-white text-center mb-3 ${getAnimationClass('menu-entrance', 'stagger-5')}`}>
             Game Instructions
           </h2>
-          <p className="text-center text-[#d9e8dd] text-base mb-10 menu-entrance stagger-6">Everything you need to know to become a music timeline master!</p>
+          <p className={`text-center text-[#d9e8dd] text-base mb-10 ${getAnimationClass('menu-entrance', 'stagger-6')}`}>Everything you need to know to become a music timeline master!</p>
           
           {/* What You Need Section */}
           <div className="mb-10">
             <h3 className="text-xl font-semibold text-[#4CC9F0] mb-6 text-center">🎵 What You Need to Prepare</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-[#1A1A2E] border border-[#4CC9F0]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-1">
+              <Card className={`bg-[#1A1A2E] border border-[#4CC9F0]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-1')}`}>
                 <Smartphone className="h-10 w-10 text-[#4CC9F0] mx-auto mb-4 animate-pulse" />
                 <h4 className="text-white font-semibold text-lg mb-3">Mobile Device</h4>
                 <p className="text-[#4CC9F0] text-sm mb-2">Players need a smartphone or tablet to join and play</p>
                 <p className="text-[#4CC9F0] text-xs italic">Any modern browser works perfectly!</p>
               </Card>
               
-              <Card className="bg-[#1A1A2E] border border-[#F72585]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-2">
+              <Card className={`bg-[#1A1A2E] border border-[#F72585]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-2')}`}>
                 <Radio className="h-10 w-10 text-[#F72585] mx-auto mb-4 animate-bounce" />
                 <h4 className="text-white font-semibold text-lg mb-3">Spotify Playlist</h4>
                 <p className="text-[#F72585] text-sm mb-2">Create or find a public Spotify playlist with your favorite songs</p>
                 <p className="text-[#F72585] text-xs italic">The more diverse, the better the challenge!</p>
               </Card>
               
-              <Card className="bg-[#1A1A2E] border border-[#7209B7]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 stagger-fade-in stagger-3">
+              <Card className={`bg-[#1A1A2E] border border-[#7209B7]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-3')}`}>
                 <Users className="h-10 w-10 text-[#7209B7] mx-auto mb-4 animate-wiggle" />
                 <h4 className="text-white font-semibold text-lg mb-3">Friends (2-8 Players)</h4>
                 <p className="text-[#7209B7] text-sm mb-2">Gather your crew for an epic music showdown</p>
@@ -378,7 +406,6 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </p>
           
           <p className="text-[#4a4f5b] text-xs max-w-md mx-auto leading-relaxed">
-            
             Rythmy doesn't judge your questionable music taste (even if your friends do).
           </p>
           
