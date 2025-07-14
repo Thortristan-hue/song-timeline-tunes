@@ -9,31 +9,48 @@ import { Button } from '@/components/ui/button';
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0">
-      <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl" />
-
-      {/* Add the background image */}
+      {/* Background image - moved to the bottom layer */}
       <div
-        className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-50"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url('/timeliner_bg.jpeg')", // Path to the background image in public folder
-          zIndex: 10,
+          backgroundImage: "url('/timeliner_bg.jpeg')",
+          zIndex: 1,
         }}
       />
 
-      {/* Gradient overlay */}
+      {/* Gradient overlay - above background image */}
       <div
-        className="absolute inset-0 bg-gradient-to-br from-slate-950/60 via-transparent to-slate-900/40 pointer-events-none"
-        style={{ zIndex: 5 }}
+        className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-slate-900/60"
+        style={{ zIndex: 2 }}
       />
 
-      {/* Ambient effects */}
-      <div className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '4s' }} />
-      <div className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" style={{ animationDuration: '6s', animationDelay: '1s' }} />
+      {/* Animated blur effects - above gradient */}
+      <div 
+        className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" 
+        style={{ zIndex: 3 }}
+      />
+      <div 
+        className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" 
+        style={{ zIndex: 3, animationDelay: '2s' }} 
+      />
+      <div 
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl"
+        style={{ zIndex: 3 }}
+      />
+
+      {/* Ambient effects - top layer of background */}
+      <div 
+        className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" 
+        style={{ zIndex: 4, animationDuration: '4s' }} 
+      />
+      <div 
+        className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" 
+        style={{ zIndex: 4, animationDuration: '6s', animationDelay: '1s' }} 
+      />
     </div>
   );
 }
+
 function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
