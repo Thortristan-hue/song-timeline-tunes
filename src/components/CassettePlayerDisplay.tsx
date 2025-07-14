@@ -94,28 +94,24 @@ export const CassettePlayerDisplay = ({
                   }}
                 />
 
-                <div className="absolute inset-0 flex flex-col justify-end pb-4">
-                  <div className="flex justify-between items-start px-2">
-                    <span className={`text-black font-bold text-xs max-w-[60px] truncate transition-all duration-300 ${
+                <div className="absolute inset-0 flex flex-col justify-between p-2">
+                  {/* Name text in purple area (top) */}
+                  <div className="flex justify-start">
+                    <span className={`text-white font-bold text-xs max-w-[60px] truncate bg-purple-900/50 px-1 rounded transition-all duration-300 ${
                       isCurrent ? 'animate-pulse' : ''
                     }`}>
                       {player.name}
                     </span>
-                    <span className={`text-black font-bold text-xs bg-white/80 rounded px-0.5 transition-all duration-300 ${
-                      isCurrent ? 'bg-white animate-bounce' : ''
+                  </div>
+                  
+                  {/* Card number in pink area (bottom right) */}
+                  <div className="flex justify-end">
+                    <span className={`text-white font-bold text-xs bg-pink-600/70 rounded px-1 transition-all duration-300 ${
+                      isCurrent ? 'bg-pink-500 animate-bounce' : ''
                     }`}>
                       {player.timeline.length}
                     </span>
                   </div>
-                </div>
-
-                <div className="absolute bottom-1.5 left-3 right-3 h-1 bg-black/20 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full bg-black/70 rounded-full transition-all duration-500 ${
-                      isCurrent ? 'bg-gradient-to-r from-[#107793] to-[#a53b8b] animate-shimmer' : ''
-                    }`}
-                    style={{ width: `${(player.timeline.length / 10) * 100}%` }}
-                  />
                 </div>
 
                 {isCurrent && (

@@ -84,12 +84,16 @@ function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCoun
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-black/50 backdrop-blur-2xl rounded-2xl flex items-center justify-center border-2 border-white/15 shadow-xl">
-            <Crown className="h-7 w-7 text-white" />
+          <div className="w-12 h-12 relative overflow-hidden">
+            <img 
+              src="/Vinyl_rythm.png" 
+              alt="Rythmy Logo" 
+              className="w-full h-full object-contain drop-shadow-lg"
+            />
           </div>
           <div>
-            <div className="text-white font-black text-3xl tracking-tight drop-shadow-lg">Timeliner</div>
-            <div className="text-white/80 text-base font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
+            <div className="text-white font-black text-2xl tracking-tight drop-shadow-lg">Timeliner</div>
+            <div className="text-white/80 text-sm font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
           </div>
         </div>
 
@@ -133,23 +137,21 @@ function RecordPlayerSection({
               isPlaying ? 'animate-spin' : 'hover:scale-110'
             }`}>
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
-              <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
-                </div>
-                
-                <div className="absolute inset-4 border border-white/10 rounded-full"></div>
-                <div className="absolute inset-8 border border-white/10 rounded-full"></div>
-                <div className="absolute inset-12 border border-white/10 rounded-full"></div>
-              </div>
               
               <Button
                 onClick={onPlayPause}
-                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                className="relative w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group p-0"
                 disabled={!currentSong?.preview_url}
               >
-                <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
-                  {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
+                <img 
+                  src="/Vinyl2_rythm.png" 
+                  alt="Play/Pause Mystery Song" 
+                  className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
+                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
+                  </div>
                 </div>
               </Button>
             </div>

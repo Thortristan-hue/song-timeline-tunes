@@ -176,9 +176,12 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* Header */}
         <div className="text-center pt-12 sm:pt-16 mb-8 sm:mb-12">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-2xl flex items-center justify-center shadow-lg shadow-[#107793]/20 relative overflow-hidden logo-bounce">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
-              <Music className="h-8 w-8 sm:h-10 sm:w-10 text-[#107793] animate-wiggle" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 relative overflow-hidden logo-bounce">
+              <img 
+                src="/Vinyl_rythm.png" 
+                alt="Rythmy Logo" 
+                className="w-full h-full object-contain drop-shadow-lg hover:scale-105 transition-transform duration-300"
+              />
             </div>
           </div>
           

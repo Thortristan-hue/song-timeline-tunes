@@ -118,8 +118,12 @@ export default function MobilePlayerLobby({
           
           {/* Header */}
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto">
-              <Music className="h-8 w-8 text-white" />
+            <div className="w-16 h-16 relative overflow-hidden mx-auto">
+              <img 
+                src="/Vinyl_rythm.png" 
+                alt="Rythmy Logo" 
+                className="w-full h-full object-contain drop-shadow-lg"
+              />
             </div>
             
             <div className="space-y-2">
