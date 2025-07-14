@@ -208,9 +208,12 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
             <div className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-8 rounded-3xl shadow-lg shadow-[#107793]/10">
               {/* Header */}
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#a53b8b] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#a53b8b]/20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#a53b8b]/10 to-transparent"></div>
-                  <Palette className="h-8 w-8 text-[#a53b8b]" />
+                <div className="w-12 h-12 relative overflow-hidden mx-auto mb-6">
+                  <img 
+                    src="/Vinyl_rythm.png" 
+                    alt="Rythmy Logo" 
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
                 </div>
                 <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Set up your player</h1>
                 <p className="text-[#d9e8dd] text-base leading-relaxed font-medium">
@@ -417,9 +420,12 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
             {/* Header */}
             <div className="text-center mb-10">
               <div className="relative mb-6">
-                <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-[#107793]/20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
-                  <Smartphone className="h-8 w-8 text-[#107793]" />
+                <div className="w-12 h-12 relative overflow-hidden mx-auto">
+                  <img 
+                    src="/Vinyl_rythm.png" 
+                    alt="Rythmy Logo" 
+                    className="w-full h-full object-contain drop-shadow-lg"
+                  />
                 </div>
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#4CC9F0] rounded-full flex items-center justify-center shadow-lg">
                   <Wifi className="h-3 w-3 text-white" />

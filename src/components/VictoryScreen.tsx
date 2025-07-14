@@ -57,8 +57,12 @@ export function VictoryScreen({ winner, players, onPlayAgain, onBackToMenu }: Vi
         {/* Enhanced Trophy Icon */}
         <div className="relative mb-8 animate-bounce-in">
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full blur-2xl scale-150 animate-pulse" />
-          <div className="relative w-24 h-24 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20 hover-glow">
-            <Trophy className="h-12 w-12 text-yellow-400 animate-wiggle" />
+          <div className="relative w-20 h-20 overflow-hidden mx-auto">
+            <img 
+              src="/Vinyl_rythm.png" 
+              alt="Rythmy Logo" 
+              className="w-full h-full object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-300"
+            />
           </div>
         </div>
 

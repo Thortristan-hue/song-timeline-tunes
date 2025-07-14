@@ -245,98 +245,105 @@ export function HostLobby({
       
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 sm:p-8">
+        <div className="flex justify-between items-center p-4 sm:p-6">
           <Button
             onClick={() => {
               soundEffects.playButtonClick();
               onBackToMenu();
             }}
-            className="bg-[#0e1f2f]/60 hover:bg-[#0e1f2f]/80 border border-[#107793]/30 text-white h-12 px-6 text-base font-medium 
+            className="bg-[#0e1f2f]/60 hover:bg-[#0e1f2f]/80 border border-[#107793]/30 text-white h-10 px-4 text-sm font-medium 
                      rounded-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-[#107793]/10"
           >
-            <ArrowLeft className="h-4 w-4 mr-3" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Menu
           </Button>
           
           <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            <div className="flex items-center justify-center mb-2">
+              <img 
+                src="/Vinyl_rythm.png" 
+                alt="Rythmy Logo" 
+                className="w-8 h-8 object-contain drop-shadow-lg"
+              />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
               Party Setup
             </h1>
-            <p className="text-[#d9e8dd] font-medium">Get ready to jam with friends</p>
+            <p className="text-[#d9e8dd] font-medium text-sm">Get ready to jam with friends</p>
           </div>
           
-          <div className="w-32" />
+          <div className="w-24" />
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl w-full">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl w-full">
             
             {/* Left Column - Room Info & Controls */}
             <div className="space-y-6">
               
               {/* Room Code Card */}
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 sm:p-8 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
-                <div className="text-center space-y-6">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 sm:p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
+                <div className="text-center space-y-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                    <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
                       Room Code
                     </h2>
-                    <p className="text-[#d9e8dd] font-medium">Your crew needs this magic code</p>
+                    <p className="text-[#d9e8dd] font-medium text-sm">Your crew needs this magic code</p>
                   </div>
                   
                   <div className="relative group">
-                    <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white text-3xl sm:text-4xl font-bold font-mono px-6 py-4 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg backdrop-blur-sm">
+                    <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white text-2xl sm:text-3xl font-bold font-mono px-4 py-3 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg backdrop-blur-sm">
                       {lobbyCode}
                     </div>
                     
                     <Button
                       onClick={copyToClipboard}
                       size="sm"
-                      className="absolute -top-2 -right-2 bg-gradient-to-r from-[#107793] to-[#0e1f2f] hover:from-[#0e1f2f] hover:to-[#107793] text-white rounded-full w-12 h-12 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 border-0"
+                      className="absolute -top-1 -right-1 bg-gradient-to-r from-[#107793] to-[#0e1f2f] hover:from-[#0e1f2f] hover:to-[#107793] text-white rounded-full w-10 h-10 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 border-0"
                     >
-                      {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
                   
                   {/* QR Code */}
-                  <div className="flex justify-center pt-4">
-                    <div className="p-4 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border border-[#4a4f5b]/30">
+                  <div className="flex justify-center pt-2">
+                    <div className="p-3 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border border-[#4a4f5b]/30">
                       <QRCodeGenerator 
                         value={gameUrl}
-                        size={120}
+                        size={100}
                       />
                     </div>
                   </div>
-                  <p className="text-[#d9e8dd] font-medium text-sm">
+                  <p className="text-[#d9e8dd] font-medium text-xs">
                     Or scan this groovy code
                   </p>
                 </div>
               </Card>
 
               {/* Playlist Section */}
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
-                <div className="flex items-center gap-3 mb-4">
-                  <Music2 className="h-6 w-6 text-[#4CC9F0]" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-3">
+                  <Music2 className="h-5 w-5 text-[#4CC9F0]" />
+                  <h3 className="text-lg font-bold text-white tracking-tight">
                     The Playlist
                   </h3>
                 </div>
                 
-                <div className="bg-[#4CC9F0]/10 border border-[#4CC9F0]/30 rounded-2xl p-4 backdrop-blur-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                <div className="bg-[#4CC9F0]/10 border border-[#4CC9F0]/30 rounded-2xl p-3 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
                     <div>
-                      <div className="text-[#4CC9F0] font-bold tracking-tight">
+                      <div className="text-[#4CC9F0] font-bold tracking-tight text-sm">
                         Default bangers loaded
                       </div>
-                      <div className="text-[#d9e8dd] font-medium text-sm">
+                      <div className="text-[#d9e8dd] font-medium text-xs">
                         Mix of hits from every era
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="mt-4 opacity-40 pointer-events-none">
+                <div className="mt-3 opacity-40 pointer-events-none">
                   <PlaylistLoader
                     onPlaylistLoaded={(success, count) => {
                       if (success) {
@@ -360,38 +367,38 @@ export function HostLobby({
                   onStartGame();
                 }}
                 disabled={players.length < 1}
-                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
+                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
-                <Play className="h-6 w-6 mr-3" />
+                <Play className="h-5 w-5 mr-2" />
                 {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
               </Button>
             </div>
 
             {/* Right Column - Players */}
             <div>
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 h-full rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
-                <div className="flex items-center gap-3 mb-6">
-                  <Users className="h-6 w-6 text-[#4CC9F0]" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 h-full rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-4">
+                  <Users className="h-5 w-5 text-[#4CC9F0]" />
+                  <h3 className="text-lg font-bold text-white tracking-tight">
                     The Squad ({players.length})
                   </h3>
                   {players.length > 0 && (
-                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                    <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
                   )}
                 </div>
                 
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-72 overflow-y-auto">
                   {players.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
+                    <div className="text-center py-8">
+                      <div className="w-12 h-12 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-[#4a4f5b]/10 to-transparent"></div>
-                        <Users className="h-8 w-8 text-[#4a4f5b]" />
+                        <Users className="h-6 w-6 text-[#4a4f5b]" />
                       </div>
-                      <p className="text-white text-lg font-bold mb-2 tracking-tight">
+                      <p className="text-white text-base font-bold mb-1 tracking-tight">
                         Waiting for friends
                       </p>
-                      <p className="text-[#d9e8dd] font-medium">
+                      <p className="text-[#d9e8dd] font-medium text-sm">
                         Share that room code above!
                       </p>
                     </div>
@@ -399,27 +406,27 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-4 p-4 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm"
+                        className="flex items-center gap-3 p-3 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm"
                       >
-                        <div className="text-lg font-bold text-[#4CC9F0] tracking-tight">
+                        <div className="text-base font-bold text-[#4CC9F0] tracking-tight">
                           {index + 1}
                         </div>
                         
                         <div 
-                          className="w-5 h-5 rounded-full shadow-md border-2 border-white/20"
+                          className="w-4 h-4 rounded-full shadow-md border-2 border-white/20"
                           style={{ backgroundColor: player.color }}
                         />
                         
                         <div className="flex-1">
-                          <div className="text-white font-bold tracking-tight">
+                          <div className="text-white font-bold tracking-tight text-sm">
                             {player.name}
                           </div>
-                          <div className="text-[#d9e8dd] text-sm font-medium">
+                          <div className="text-[#d9e8dd] text-xs font-medium">
                             Ready to jam
                           </div>
                         </div>
                         
-                        <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                        <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
                       </div>
                     ))
                   )}
@@ -430,8 +437,8 @@ export function HostLobby({
         </div>
 
         {/* Footer disclaimer */}
-        <div className="p-6 text-center">
-          <p className="text-[#d9e8dd]/70 text-sm font-medium max-w-md mx-auto">
+        <div className="p-4 text-center">
+          <p className="text-[#d9e8dd]/70 text-xs font-medium max-w-md mx-auto">
             This groovy creation is just for friends to jam together • Not affiliated with any music service
           </p>
         </div>
