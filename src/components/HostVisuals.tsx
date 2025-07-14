@@ -13,7 +13,7 @@ export function HostGameBackground() {
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          backgroundImage: "url('/src/assets/timeliner_bg.jpg')",
+          backgroundImage: "url('/src/assets/rythmy_bg.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
