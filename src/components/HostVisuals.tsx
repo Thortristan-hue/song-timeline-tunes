@@ -5,12 +5,12 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
-// Host Background Component
+// Enhanced Host Background Component with graffiti-inspired effects
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Background image with fixed positioning */}
-      <div 
+      {/* Graffiti-inspired background */}
+      <div
         className="fixed inset-0 w-full h-full"
         style={{
           backgroundImage: "url('/src/assets/timeliner_bg.jpg')",
@@ -18,37 +18,60 @@ export function HostGameBackground() {
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           zIndex: 1,
+          filter: 'contrast(1.2) brightness(0.8)'
         }}
       />
 
-      {/* Gradient overlay */}
-      <div
-        className="absolute inset-0 bg-gradient-to-br from-slate-950/70 via-slate-900/50 to-slate-900/60"
-        style={{ zIndex: 2 }}
+      {/* Chaotic overlay mimicking spray paint drips */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-800/60 to-black/70"
+        style={{
+          zIndex: 2,
+          mixBlendMode: 'overlay'
+        }}
       />
 
-      {/* Animated blur effects */}
+      {/* Abstract graffiti effects */}
       <div 
-        className="absolute top-20 left-20 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" 
-        style={{ zIndex: 3 }}
+        className="absolute top-20 left-20 w-96 h-96 bg-gray-500/10 rounded-full blur-3xl animate-pulse" 
+        style={{
+          zIndex: 3,
+          mixBlendMode: 'overlay'
+        }}
       />
       <div 
-        className="absolute bottom-32 right-32 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl animate-pulse" 
-        style={{ zIndex: 3, animationDelay: '2s' }} 
+        className="absolute bottom-32 right-32 w-80 h-80 bg-gray-300/5 rounded-full blur-3xl animate-pulse" 
+        style={{
+          zIndex: 3,
+          animationDelay: '2s',
+          mixBlendMode: 'overlay'
+        }} 
       />
       <div 
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/4 rounded-full blur-3xl"
-        style={{ zIndex: 3 }}
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gray-600/4 rounded-full blur-3xl"
+        style={{
+          zIndex: 3,
+          mixBlendMode: 'overlay'
+        }}
       />
 
-      {/* Ambient effects */}
+      {/* Graffiti drips and ambient chaos */}
       <div 
-        className="absolute top-10 right-10 w-32 h-32 bg-cyan-400/5 rounded-full blur-2xl animate-ping" 
-        style={{ zIndex: 4, animationDuration: '4s' }} 
+        className="absolute top-10 right-10 w-32 h-32 bg-gray-400/5 rounded-full blur-2xl animate-ping" 
+        style={{
+          zIndex: 4,
+          animationDuration: '4s',
+          mixBlendMode: 'overlay'
+        }} 
       />
       <div 
-        className="absolute bottom-10 left-10 w-40 h-40 bg-pink-400/5 rounded-full blur-2xl animate-ping" 
-        style={{ zIndex: 4, animationDuration: '6s', animationDelay: '1s' }} 
+        className="absolute bottom-10 left-10 w-40 h-40 bg-gray-700/5 rounded-full blur-2xl animate-ping" 
+        style={{
+          zIndex: 4,
+          animationDuration: '6s',
+          animationDelay: '1s',
+          mixBlendMode: 'overlay'
+        }} 
       />
     </div>
   );
@@ -491,21 +514,17 @@ export function HostGameView({
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   
-  // Handle card placement result and transitions
   useEffect(() => {
     if (cardPlacementResult) {
-      // Show the result modal for 4 seconds before starting transition
       setShowResultModal(true);
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
         setAnimationStage('exiting');
         
-        // Wait for exit animation to complete before switching players
         const transitionTimer = setTimeout(() => {
           setDisplayedPlayer(currentTurnPlayer);
           setAnimationStage('entering');
           
-          // Wait for enter animation to complete
           const enterTimer = setTimeout(() => {
             setAnimationStage('idle');
           }, 1500);
@@ -518,7 +537,6 @@ export function HostGameView({
       
       return () => clearTimeout(resultTimer);
     } else if (transitioning) {
-      // Regular transition without placement result
       setAnimationStage('exiting');
       setTimeout(() => {
         setDisplayedPlayer(currentTurnPlayer);
@@ -531,7 +549,7 @@ export function HostGameView({
   }, [currentTurnPlayer, transitioning, cardPlacementResult]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
       <HostGameBackground />
       <HostHeader roomCode={roomCode} playersCount={players.length} />
       <RecordPlayerSection 
