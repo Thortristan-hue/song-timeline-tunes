@@ -85,21 +85,24 @@ export function HostLobby({
 
   if (!roomCreated || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
-        {/* Enhanced Dark Background Effects */}
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0b14] via-[#16213e] to-[#1a1b2e] relative overflow-hidden">
+        {/* Enhanced Loading Background Effects */}
         <div className="absolute inset-0">
-          {/* Main glow effects */}
-          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+          {/* Main radial gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/8 via-transparent to-[#ec4899]/6" />
+          
+          {/* Dynamic glow effects */}
+          <div className="absolute top-1/4 left-1/4 w-40 h-40 bg-[#6366f1]/12 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-1/2 right-1/4 w-48 h-48 bg-[#8b5cf6]/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 left-1/2 w-44 h-44 bg-[#ec4899]/8 rounded-full blur-3xl animate-pulse" />
           
           {/* Additional scattered glows */}
-          <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
-          <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
+          <div className="absolute top-16 right-16 w-32 h-32 bg-[#fbbf24]/6 rounded-full blur-2xl" />
+          <div className="absolute bottom-32 left-16 w-36 h-36 bg-[#06b6d4]/8 rounded-full blur-2xl" />
           
           {/* Floating music notes */}
           <div className="absolute inset-0 overflow-hidden">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(10)].map((_, i) => (
               <div 
                 key={i}
                 className="absolute animate-float opacity-20"
@@ -111,41 +114,41 @@ export function HostLobby({
                 }}
               >
                 {i % 2 === 0 ? (
-                  <Music2 className="h-4 w-4 text-[#107793]" />
+                  <Music2 className="h-5 w-5 text-[#6366f1]" />
                 ) : (
-                  <Volume2 className="h-3 w-3 text-[#a53b8b]" />
+                  <Volume2 className="h-4 w-4 text-[#8b5cf6]" />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Geometric shapes */}
+          {/* Enhanced geometric shapes */}
           <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 1200 800" fill="none">
             {/* Music note shapes */}
-            <circle cx="200" cy="200" r="4" fill="#107793" opacity="0.4" />
-            <circle cx="1000" cy="300" r="6" fill="#a53b8b" opacity="0.4" />
-            <circle cx="400" cy="600" r="3" fill="#4a4f5b" opacity="0.4" />
+            <circle cx="200" cy="200" r="6" fill="#6366f1" opacity="0.4" />
+            <circle cx="1000" cy="300" r="8" fill="#8b5cf6" opacity="0.4" />
+            <circle cx="400" cy="600" r="5" fill="#ec4899" opacity="0.4" />
             
             {/* Connecting lines */}
-            <path d="M200 200 L400 250 L600 230" stroke="#107793" strokeWidth="1" opacity="0.3" />
-            <path d="M1000 300 L800 400 L700 380" stroke="#a53b8b" strokeWidth="1" opacity="0.3" />
+            <path d="M200 200 L400 250 L600 230" stroke="#6366f1" strokeWidth="2" opacity="0.3" />
+            <path d="M1000 300 L800 400 L700 380" stroke="#8b5cf6" strokeWidth="2" opacity="0.3" />
             
             {/* Sound waves */}
-            <path d="M300 400 Q350 380, 400 400 Q450 420, 500 400" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
-            <path d="M300 420 Q350 400, 400 420 Q450 440, 500 420" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+            <path d="M300 400 Q350 380, 400 400 Q450 420, 500 400" stroke="#ec4899" strokeWidth="2" opacity="0.2" />
+            <path d="M300 420 Q350 400, 400 420 Q450 440, 500 420" stroke="#ec4899" strokeWidth="2" opacity="0.2" />
           </svg>
         </div>
         
         <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
           <div className="text-center">
-            <div className="w-20 h-20 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#107793]/20 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
-              <Music2 className="h-10 w-10 text-[#107793] animate-bounce" />
+            <div className="w-24 h-24 bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 border-2 border-[#6366f1]/30 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-[#6366f1]/20 relative overflow-hidden backdrop-blur-xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/10 to-transparent"></div>
+              <Music2 className="h-12 w-12 text-[#6366f1] animate-bounce" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
+            <h1 className="text-4xl font-black text-white mb-4 tracking-tight">
               Setting up your room
             </h1>
-            <p className="text-[#d9e8dd] font-medium">This'll just take a second...</p>
+            <p className="text-[#e2e8f0] font-bold text-lg">This'll just take a second...</p>
           </div>
         </div>
       </div>
@@ -155,117 +158,132 @@ export function HostLobby({
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
-      {/* Enhanced Dark Background Effects */}
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0b14] via-[#16213e] to-[#1a1b2e] relative overflow-hidden">
+      {/* Enhanced Layered Background Effects */}
       <div className="absolute inset-0">
-        {/* Main glow effects */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+        {/* Main radial gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/8 via-transparent to-[#ec4899]/6" />
         
-        {/* Additional scattered glows */}
-        <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
-        <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
-        <div className="absolute top-1/3 left-1/6 w-20 h-20 bg-[#4a4f5b]/4 rounded-full blur-lg" />
-        <div className="absolute bottom-1/3 right-1/6 w-32 h-32 bg-[#107793]/4 rounded-full blur-lg" />
+        {/* Dynamic glow effects with improved colors */}
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-[#6366f1]/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/2 right-1/4 w-56 h-56 bg-[#8b5cf6]/8 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        <div className="absolute bottom-1/4 left-1/2 w-52 h-52 bg-[#ec4899]/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
         
-        {/* New ambient lighting */}
-        <div className="absolute top-3/4 left-1/3 w-64 h-64 bg-[#a53b8b]/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute top-1/6 right-1/3 w-72 h-72 bg-[#0e1f2f]/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute -bottom-20 left-1/2 w-96 h-96 bg-[#4a4f5b]/20 rounded-full blur-3xl" />
+        {/* Additional ambient lighting layers */}
+        <div className="absolute top-16 right-16 w-40 h-40 bg-[#fbbf24]/8 rounded-full blur-2xl" />
+        <div className="absolute bottom-32 left-16 w-44 h-44 bg-[#06b6d4]/6 rounded-full blur-2xl" />
+        <div className="absolute top-1/3 left-1/6 w-36 h-36 bg-[#8b5cf6]/5 rounded-full blur-xl" />
+        <div className="absolute bottom-1/3 right-1/6 w-48 h-48 bg-[#6366f1]/5 rounded-full blur-xl" />
         
-        {/* Geometric shapes */}
+        {/* Large ambient background shapes */}
+        <div className="absolute top-3/4 left-1/3 w-96 h-96 bg-[#ec4899]/4 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute top-1/6 right-1/3 w-[500px] h-[500px] bg-[#16213e]/12 rounded-full blur-3xl animate-pulse-slow" style={{animationDelay: '1.5s'}} />
+        <div className="absolute -bottom-40 left-1/2 w-[700px] h-[700px] bg-[#1a1b2e]/20 rounded-full blur-3xl" />
+        
+        {/* Enhanced geometric musical shapes */}
         <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1200 800" fill="none">
-          {/* Music equipment shapes */}
-          <rect x="100" y="100" width="60" height="40" rx="8" fill="#107793" opacity="0.2" transform="rotate(-10 130 120)" />
-          <circle cx="120" cy="130" r="4" fill="#107793" opacity="0.3" />
-          <circle cx="140" cy="130" r="4" fill="#107793" opacity="0.3" />
+          {/* Music equipment silhouettes */}
+          <rect x="120" y="120" width="100" height="60" rx="15" fill="#6366f1" opacity="0.12" transform="rotate(-15 170 150)" />
+          <circle cx="150" cy="160" r="8" fill="#6366f1" opacity="0.15" />
+          <circle cx="180" cy="160" r="8" fill="#6366f1" opacity="0.15" />
           
-          <rect x="1000" y="200" width="60" height="40" rx="8" fill="#a53b8b" opacity="0.2" transform="rotate(15 1030 220)" />
-          <circle cx="1020" cy="230" r="4" fill="#a53b8b" opacity="0.3" />
-          <circle cx="1040" cy="230" r="4" fill="#a53b8b" opacity="0.3" />
+          <rect x="1000" y="200" width="100" height="60" rx="15" fill="#8b5cf6" opacity="0.12" transform="rotate(20 1050 230)" />
+          <circle cx="1030" cy="240" r="8" fill="#8b5cf6" opacity="0.15" />
+          <circle cx="1060" cy="240" r="8" fill="#8b5cf6" opacity="0.15" />
           
-          {/* Vinyl records */}
-          <circle cx="200" cy="600" r="25" stroke="#4a4f5b" strokeWidth="2" fill="none" opacity="0.2" />
-          <circle cx="200" cy="600" r="4" fill="#4a4f5b" opacity="0.3" />
+          {/* Enhanced vinyl records */}
+          <circle cx="240" cy="600" r="45" stroke="#ec4899" strokeWidth="3" fill="none" opacity="0.12" />
+          <circle cx="240" cy="600" r="25" stroke="#ec4899" strokeWidth="2" fill="none" opacity="0.08" />
+          <circle cx="240" cy="600" r="8" fill="#ec4899" opacity="0.15" />
           
-          <circle cx="1050" cy="150" r="20" stroke="#107793" strokeWidth="2" fill="none" opacity="0.2" />
-          <circle cx="1050" cy="150" r="3" fill="#107793" opacity="0.3" />
+          <circle cx="1050" cy="150" r="40" stroke="#fbbf24" strokeWidth="3" fill="none" opacity="0.12" />
+          <circle cx="1050" cy="150" r="22" stroke="#fbbf24" strokeWidth="2" fill="none" opacity="0.08" />
+          <circle cx="1050" cy="150" r="6" fill="#fbbf24" opacity="0.15" />
           
-          {/* Music notes */}
-          <circle cx="300" cy="200" r="4" fill="#a53b8b" opacity="0.3" />
-          <path d="M304 200 L304 170" stroke="#a53b8b" strokeWidth="2" opacity="0.3" />
-          <path d="M304 170 L314 175" stroke="#a53b8b" strokeWidth="2" opacity="0.3" />
+          {/* Enhanced musical notes with more detail */}
+          <g opacity="0.15">
+            <circle cx="350" cy="250" r="8" fill="#06b6d4" />
+            <path d="M358 250 L358 200" stroke="#06b6d4" strokeWidth="4" />
+            <path d="M358 200 L378 208" stroke="#06b6d4" strokeWidth="4" />
+            <circle cx="370" cy="212" r="6" fill="#06b6d4" />
+          </g>
           
-          <circle cx="850" cy="500" r="4" fill="#107793" opacity="0.3" />
-          <path d="M854 500 L854 470" stroke="#107793" strokeWidth="2" opacity="0.3" />
-          <path d="M854 470 L864 475" stroke="#107793" strokeWidth="2" opacity="0.3" />
+          <g opacity="0.15">
+            <circle cx="900" cy="550" r="8" fill="#6366f1" />
+            <path d="M908 550 L908 500" stroke="#6366f1" strokeWidth="4" />
+            <path d="M908 500 L928 508" stroke="#6366f1" strokeWidth="4" />
+            <circle cx="920" cy="512" r="6" fill="#6366f1" />
+          </g>
           
-          {/* Sound waves */}
-          <path d="M400 300 Q450 280, 500 300 Q550 320, 600 300" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
-          <path d="M400 320 Q450 300, 500 320 Q550 340, 600 320" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
-          <path d="M400 340 Q450 320, 500 340 Q550 360, 600 340" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+          {/* Enhanced sound waves */}
+          <path d="M450 320 Q520 285, 590 320 Q660 355, 730 320" stroke="#8b5cf6" strokeWidth="3" opacity="0.12" />
+          <path d="M450 345 Q520 310, 590 345 Q660 380, 730 345" stroke="#8b5cf6" strokeWidth="3" opacity="0.1" />
+          <path d="M450 370 Q520 335, 590 370 Q660 405, 730 370" stroke="#8b5cf6" strokeWidth="3" opacity="0.08" />
           
-          {/* Connecting lines */}
-          <path d="M200 200 L400 250 L600 230" stroke="#107793" strokeWidth="1" opacity="0.2" />
-          <path d="M1000 300 L800 400 L700 380" stroke="#a53b8b" strokeWidth="1" opacity="0.2" />
+          {/* Connecting energy lines */}
+          <path d="M240 220 L450 290 L660 270" stroke="#6366f1" strokeWidth="2" opacity="0.12" />
+          <path d="M1000 340 L840 440 L740 420" stroke="#ec4899" strokeWidth="2" opacity="0.12" />
+          <path d="M350 640 L550 600 L750 610" stroke="#06b6d4" strokeWidth="2" opacity="0.12" />
         </svg>
         
-        {/* Floating music notes */}
+        {/* Enhanced floating music icons */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(18)].map((_, i) => (
             <div 
               key={i}
-              className="absolute animate-float opacity-20"
+              className="absolute animate-float opacity-15"
               style={{
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
-                animation: `float ${10 + Math.random() * 20}s linear infinite`,
-                animationDelay: `${Math.random() * 5}s`,
+                animation: `float ${15 + Math.random() * 30}s linear infinite`,
+                animationDelay: `${Math.random() * 8}s`,
               }}
             >
-              {i % 4 === 0 ? (
-                <Music2 className="h-3 w-3 text-[#107793]" />
-              ) : i % 4 === 1 ? (
-                <Volume2 className="h-4 w-4 text-[#a53b8b]" />
-              ) : i % 4 === 2 ? (
-                <Radio className="h-3 w-3 text-[#4a4f5b]" />
+              {i % 5 === 0 ? (
+                <Music2 className="h-5 w-5 text-[#6366f1]" />
+              ) : i % 5 === 1 ? (
+                <Volume2 className="h-6 w-6 text-[#8b5cf6]" />
+              ) : i % 5 === 2 ? (
+                <Radio className="h-5 w-5 text-[#ec4899]" />
+              ) : i % 5 === 3 ? (
+                <Headphones className="h-5 w-5 text-[#fbbf24]" />
               ) : (
-                <Headphones className="h-3 w-3 text-[#4CC9F0]" />
+                <Music className="h-4 w-4 text-[#06b6d4]" />
               )}
             </div>
           ))}
         </div>
         
-        {/* Noise texture overlay */}
+        {/* Subtle noise texture overlay */}
         <div className="absolute inset-0 opacity-[0.015] bg-gradient-to-r from-transparent via-white to-transparent mix-blend-overlay" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3Ccircle cx='27' cy='27' r='1'/%3E%3Ccircle cx='47' cy='47' r='1'/%3E%3Ccircle cx='17' cy='37' r='1'/%3E%3Ccircle cx='37' cy='17' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.25'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='34' cy='34' r='1'/%3E%3Ccircle cx='56' cy='56' r='1'/%3E%3Ccircle cx='78' cy='78' r='1'/%3E%3Ccircle cx='23' cy='45' r='1'/%3E%3Ccircle cx='45' cy='23' r='1'/%3E%3Ccircle cx='67' cy='67' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
         }} />
       </div>
       
       <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="flex justify-between items-center p-6 sm:p-8">
-          <Button
+          <button
             onClick={() => {
               soundEffects.playButtonClick();
               onBackToMenu();
             }}
-            className="bg-[#0e1f2f]/60 hover:bg-[#0e1f2f]/80 border border-[#107793]/30 text-white h-12 px-6 text-base font-medium 
-                     rounded-xl backdrop-blur-xl transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-[#107793]/10"
+            className="bg-gradient-to-r from-[#6366f1]/15 to-[#8b5cf6]/15 hover:from-[#6366f1]/25 hover:to-[#8b5cf6]/25 border border-[#6366f1]/20 text-white h-14 px-8 text-base font-bold rounded-2xl backdrop-blur-xl transition-all duration-500 hover:scale-105 active:scale-95 shadow-xl shadow-[#6366f1]/10 hover:shadow-[#6366f1]/20 group"
           >
-            <ArrowLeft className="h-4 w-4 mr-3" />
-            Back to Menu
-          </Button>
+            <div className="flex items-center">
+              <ArrowLeft className="h-5 w-5 mr-3 group-hover:-translate-x-1 transition-transform duration-300" />
+              Back to Menu
+            </div>
+          </button>
           
           <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            <h1 className="text-4xl sm:text-5xl font-black text-transparent bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] bg-clip-text tracking-tight">
               Party Setup
             </h1>
-            <p className="text-[#d9e8dd] font-medium">Get ready to jam with friends</p>
+            <p className="text-[#e2e8f0] font-bold text-lg mt-2">Get ready to jam with friends</p>
           </div>
           
-          <div className="w-32" />
+          <div className="w-36" />
         </div>
 
         <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
@@ -274,69 +292,70 @@ export function HostLobby({
             {/* Left Column - Room Info & Controls */}
             <div className="space-y-6">
               
-              {/* Room Code Card */}
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 sm:p-8 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
-                <div className="text-center space-y-6">
+              {/* Enhanced Room Code Card */}
+              <div className="bg-gradient-to-br from-[#6366f1]/12 via-[#8b5cf6]/8 to-[#6366f1]/6 backdrop-blur-3xl border border-[#6366f1]/20 p-8 sm:p-10 rounded-3xl shadow-2xl shadow-[#6366f1]/10 hover:shadow-[#6366f1]/20 transition-all duration-500 hover:scale-[1.02] group">
+                <div className="text-center space-y-8">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                    <h2 className="text-3xl font-black text-white mb-3 tracking-tight">
                       Room Code
                     </h2>
-                    <p className="text-[#d9e8dd] font-medium">Your crew needs this magic code</p>
+                    <p className="text-[#e2e8f0] font-bold text-lg">Your crew needs this magic code</p>
                   </div>
                   
-                  <div className="relative group">
-                    <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white text-3xl sm:text-4xl font-bold font-mono px-6 py-4 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg backdrop-blur-sm">
+                  <div className="relative group/code">
+                    <div className="bg-gradient-to-r from-[#1a1b2e]/80 to-[#16213e]/80 border border-[#6366f1]/30 text-white text-4xl sm:text-5xl font-black font-mono px-8 py-6 rounded-3xl tracking-widest transition-all duration-300 group-hover/code:scale-105 shadow-2xl backdrop-blur-sm group-hover/code:shadow-[#6366f1]/20">
                       {lobbyCode}
                     </div>
                     
-                    <Button
+                    <button
                       onClick={copyToClipboard}
-                      size="sm"
-                      className="absolute -top-2 -right-2 bg-gradient-to-r from-[#107793] to-[#0e1f2f] hover:from-[#0e1f2f] hover:to-[#107793] text-white rounded-full w-12 h-12 p-0 shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 border-0"
+                      className="absolute -top-3 -right-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#8b5cf6] hover:to-[#ec4899] text-white rounded-full w-16 h-16 p-0 shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 border-0 group-hover/code:shadow-[#6366f1]/30"
                     >
-                      {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                    </Button>
+                      {copied ? <Check className="h-6 w-6" /> : <Copy className="h-6 w-6" />}
+                    </button>
                   </div>
                   
-                  {/* QR Code */}
+                  {/* Enhanced QR Code */}
                   <div className="flex justify-center pt-4">
-                    <div className="p-4 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border border-[#4a4f5b]/30">
+                    <div className="p-6 bg-white rounded-3xl shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-[#6366f1]/20 hover:border-[#6366f1]/40">
                       <QRCodeGenerator 
                         value={gameUrl}
-                        size={120}
+                        size={140}
                       />
                     </div>
                   </div>
-                  <p className="text-[#d9e8dd] font-medium text-sm">
-                    Or scan this groovy code
+                  <p className="text-[#e2e8f0] font-bold text-lg">
+                    Or scan this groovy code ✨
                   </p>
                 </div>
-              </Card>
+              </div>
 
-              {/* Playlist Section */}
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
-                <div className="flex items-center gap-3 mb-4">
-                  <Music2 className="h-6 w-6 text-[#4CC9F0]" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">
+              {/* Enhanced Playlist Section */}
+              <div className="bg-gradient-to-br from-[#06b6d4]/12 via-[#8b5cf6]/8 to-[#06b6d4]/6 backdrop-blur-3xl border border-[#06b6d4]/20 p-8 rounded-3xl shadow-2xl shadow-[#06b6d4]/10 hover:shadow-[#06b6d4]/20 transition-all duration-500 group">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#06b6d4]/20 to-[#8b5cf6]/20 rounded-2xl flex items-center justify-center">
+                    <Music2 className="h-6 w-6 text-[#06b6d4]" />
+                  </div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">
                     The Playlist
                   </h3>
                 </div>
                 
-                <div className="bg-[#4CC9F0]/10 border border-[#4CC9F0]/30 rounded-2xl p-4 backdrop-blur-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                <div className="bg-gradient-to-r from-[#06b6d4]/15 to-[#8b5cf6]/10 border border-[#06b6d4]/25 rounded-2xl p-6 backdrop-blur-sm group-hover:bg-gradient-to-r group-hover:from-[#06b6d4]/20 group-hover:to-[#8b5cf6]/15 transition-all duration-300">
+                  <div className="flex items-center gap-4">
+                    <div className="w-4 h-4 bg-[#06b6d4] rounded-full animate-pulse" />
                     <div>
-                      <div className="text-[#4CC9F0] font-bold tracking-tight">
+                      <div className="text-[#06b6d4] font-black text-lg tracking-tight">
                         Default bangers loaded
                       </div>
-                      <div className="text-[#d9e8dd] font-medium text-sm">
+                      <div className="text-[#e2e8f0] font-bold text-base">
                         Mix of hits from every era
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="mt-4 opacity-40 pointer-events-none">
+                <div className="mt-6 opacity-40 pointer-events-none">
                   <PlaylistLoader
                     onPlaylistLoaded={(success, count) => {
                       if (success) {
@@ -347,51 +366,55 @@ export function HostLobby({
                     isDarkMode={true}
                   />
                 </div>
-                <p className="text-xs text-[#d9e8dd]/60 mt-2 font-medium">
+                <p className="text-sm text-[#e2e8f0]/60 mt-3 font-bold">
                   Custom playlists dropping soon ✨
                 </p>
-              </Card>
+              </div>
 
-              {/* Start Game Button */}
-              <Button
+              {/* Enhanced Start Game Button */}
+              <button
                 onClick={() => {
                   console.log('🎮 Starting game with players:', players);
                   soundEffects.playGameStart();
                   onStartGame();
                 }}
                 disabled={players.length < 1}
-                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
+                className="w-full bg-gradient-to-r from-[#ec4899] via-[#8b5cf6] to-[#6366f1] text-white h-20 text-xl font-black rounded-3xl transition-all duration-500 shadow-2xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group hover:shadow-[#ec4899]/30"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
-                <Play className="h-6 w-6 mr-3" />
-                {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
-              </Button>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform -skew-x-12 group-hover:animate-shimmer"></div>
+                <div className="relative z-10 flex items-center justify-center">
+                  <Play className="h-7 w-7 mr-4" />
+                  {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
+                </div>
+              </button>
             </div>
 
-            {/* Right Column - Players */}
+            {/* Enhanced Players Section */}
             <div>
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-6 h-full rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
-                <div className="flex items-center gap-3 mb-6">
-                  <Users className="h-6 w-6 text-[#4CC9F0]" />
-                  <h3 className="text-xl font-bold text-white tracking-tight">
+              <div className="bg-gradient-to-br from-[#fbbf24]/12 via-[#8b5cf6]/8 to-[#fbbf24]/6 backdrop-blur-3xl border border-[#fbbf24]/20 p-8 h-full rounded-3xl shadow-2xl shadow-[#fbbf24]/10 hover:shadow-[#fbbf24]/20 transition-all duration-500 group">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#fbbf24]/20 to-[#8b5cf6]/20 rounded-2xl flex items-center justify-center">
+                    <Users className="h-6 w-6 text-[#fbbf24]" />
+                  </div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">
                     The Squad ({players.length})
                   </h3>
                   {players.length > 0 && (
-                    <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                    <div className="w-4 h-4 bg-[#fbbf24] rounded-full animate-pulse" />
                   )}
                 </div>
                 
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                   {players.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#4a4f5b]/10 to-transparent"></div>
-                        <Users className="h-8 w-8 text-[#4a4f5b]" />
+                    <div className="text-center py-16">
+                      <div className="w-20 h-20 bg-gradient-to-br from-[#fbbf24]/15 to-[#8b5cf6]/15 border-2 border-[#fbbf24]/30 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-[#fbbf24]/20 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#fbbf24]/10 to-transparent"></div>
+                        <Users className="h-10 w-10 text-[#fbbf24]" />
                       </div>
-                      <p className="text-white text-lg font-bold mb-2 tracking-tight">
+                      <p className="text-white text-xl font-black mb-3 tracking-tight">
                         Waiting for friends
                       </p>
-                      <p className="text-[#d9e8dd] font-medium">
+                      <p className="text-[#e2e8f0] font-bold">
                         Share that room code above!
                       </p>
                     </div>
@@ -399,39 +422,39 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-4 p-4 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm"
+                        className="flex items-center gap-5 p-5 bg-gradient-to-r from-[#1a1b2e]/60 to-[#16213e]/60 border border-[#fbbf24]/20 rounded-3xl transition-all duration-300 hover:bg-gradient-to-r hover:from-[#1a1b2e]/80 hover:to-[#16213e]/80 hover:scale-[1.02] shadow-lg backdrop-blur-sm hover:shadow-[#fbbf24]/10"
                       >
-                        <div className="text-lg font-bold text-[#4CC9F0] tracking-tight">
+                        <div className="text-xl font-black text-[#fbbf24] tracking-tight w-8">
                           {index + 1}
                         </div>
                         
                         <div 
-                          className="w-5 h-5 rounded-full shadow-md border-2 border-white/20"
+                          className="w-6 h-6 rounded-full shadow-lg border-2 border-white/30"
                           style={{ backgroundColor: player.color }}
                         />
                         
                         <div className="flex-1">
-                          <div className="text-white font-bold tracking-tight">
+                          <div className="text-white font-black text-lg tracking-tight">
                             {player.name}
                           </div>
-                          <div className="text-[#d9e8dd] text-sm font-medium">
-                            Ready to jam
+                          <div className="text-[#e2e8f0] text-sm font-bold">
+                            Ready to jam ✨
                           </div>
                         </div>
                         
-                        <div className="w-3 h-3 bg-[#4CC9F0] rounded-full animate-pulse" />
+                        <div className="w-4 h-4 bg-[#fbbf24] rounded-full animate-pulse" />
                       </div>
                     ))
                   )}
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Footer disclaimer */}
+        {/* Enhanced Footer disclaimer */}
         <div className="p-6 text-center">
-          <p className="text-[#d9e8dd]/70 text-sm font-medium max-w-md mx-auto">
+          <p className="text-[#e2e8f0]/70 text-base font-bold max-w-lg mx-auto">
             This groovy creation is just for friends to jam together • Not affiliated with any music service
           </p>
         </div>
