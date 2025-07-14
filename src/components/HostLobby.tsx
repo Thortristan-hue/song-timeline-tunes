@@ -243,9 +243,9 @@ export function HostLobby({
         }} />
       </div>
       
-      <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="relative z-10 h-screen flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 sm:p-6">
+        <div className="flex justify-between items-center p-4 sm:p-6 flex-shrink-0">
           <Button
             onClick={() => {
               soundEffects.playButtonClick();
@@ -275,11 +275,11 @@ export function HostLobby({
           <div className="w-24" />
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl w-full">
+        <div className="flex-1 flex items-start justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl w-full max-h-full">
             
             {/* Left Column - Room Info & Controls */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               
               {/* Room Code Card */}
               <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 sm:p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
@@ -307,12 +307,14 @@ export function HostLobby({
                   
                   {/* QR Code */}
                   <div className="flex justify-center pt-2">
-                    <div className="p-3 bg-white rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 border border-[#4a4f5b]/30">
-                      <QRCodeGenerator 
-                        value={gameUrl}
-                        size={100}
-                      />
-                    </div>
+                    <QRCodeGenerator 
+                      value={gameUrl}
+                      size={140}
+                      bgColor="#0e1f2f"
+                      fgColor="#4CC9F0"
+                      showLabels={false}
+                      className="p-4 bg-[#0e1f2f]/80 border border-[#4CC9F0]/30 rounded-2xl shadow-lg transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                    />
                   </div>
                   <p className="text-[#d9e8dd] font-medium text-xs">
                     Or scan this groovy code
@@ -358,8 +360,11 @@ export function HostLobby({
                   Custom playlists dropping soon ✨
                 </p>
               </Card>
+            </div>
 
-              {/* Start Game Button */}
+            {/* Right Column - Players */}
+            <div className="flex flex-col">
+              {/* Start Game Button - Moved to top */}
               <Button
                 onClick={() => {
                   console.log('🎮 Starting game with players:', players);
@@ -367,17 +372,14 @@ export function HostLobby({
                   onStartGame();
                 }}
                 disabled={players.length < 1}
-                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
+                className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group mb-4"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
                 <Play className="h-5 w-5 mr-2" />
                 {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
               </Button>
-            </div>
 
-            {/* Right Column - Players */}
-            <div>
-              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 h-full rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 flex-1 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 min-h-0">
                 <div className="flex items-center gap-3 mb-4">
                   <Users className="h-5 w-5 text-[#4CC9F0]" />
                   <h3 className="text-lg font-bold text-white tracking-tight">
@@ -388,7 +390,7 @@ export function HostLobby({
                   )}
                 </div>
                 
-                <div className="space-y-2 max-h-72 overflow-y-auto">
+                <div className="space-y-2 overflow-y-auto flex-1">
                   {players.length === 0 ? (
                     <div className="text-center py-8">
                       <div className="w-12 h-12 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
@@ -437,7 +439,7 @@ export function HostLobby({
         </div>
 
         {/* Footer disclaimer */}
-        <div className="p-4 text-center">
+        <div className="p-4 text-center flex-shrink-0">
           <p className="text-[#d9e8dd]/70 text-xs font-medium max-w-md mx-auto">
             This groovy creation is just for friends to jam together • Not affiliated with any music service
           </p>
