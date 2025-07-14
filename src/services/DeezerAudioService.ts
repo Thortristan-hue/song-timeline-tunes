@@ -4,7 +4,7 @@
  * Handles fetching track metadata and extracting MP3 preview URLs
  */
 export class DeezerAudioService {
-  private static readonly PROXY_BASE = 'https://timeliner-proxy.thortristanjd.workers.dev/';
+  private static readonly PROXY_BASE = 'https://rythmy-proxy.thortristanjd.workers.dev/';
   private static readonly DEEZER_API = 'https://api.deezer.com/track/';
   private static readonly AUDIO_CACHE = new Map<string, string>();
 

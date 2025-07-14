@@ -85,7 +85,7 @@ export function useGameLogic(
   // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization with 20 songs with preview fetching
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
-      console.log('🎵 Playlist already initialized, skipping...');
+      console.log('Playlist already initialized, skipping initialization');
       setGameState(prev => ({ ...prev, phase: 'ready' }));
       return;
     }
@@ -93,7 +93,7 @@ export function useGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🚀 PERFORMANCE FIX: Loading ${MAX_SONGS_PER_SESSION} songs WITH previews to prevent API spam`);
+      console.log(`Loading ${MAX_SONGS_PER_SESSION} songs with audio previews to optimize performance`);
       const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
@@ -105,8 +105,8 @@ export function useGameLogic(
         throw new Error(`Not enough songs with valid audio previews (${optimizedSongs.length}/8 minimum)`);
       }
 
-      console.log(`📊 API PERFORMANCE: Got ${optimizedSongs.length} songs with working previews`);
-      console.log(`⚡ PERFORMANCE COMPLETE: ${optimizedSongs.length} songs ready with previews`);
+      console.log(`Successfully loaded ${optimizedSongs.length} songs with working audio previews`);
+      console.log(`Game initialization complete: ${optimizedSongs.length} songs ready for gameplay`);
 
       setGameState(prev => ({
         ...prev,
@@ -118,10 +118,10 @@ export function useGameLogic(
         playlistInitialized: true
       }));
 
-      console.log(`🎯 OPTIMIZED GAME START: Ready with ${optimizedSongs.length} songs with working previews`);
+      console.log(`Game ready to start with ${optimizedSongs.length} validated songs`);
 
     } catch (error) {
-      console.error('❌ Game initialization failed:', error);
+      console.error('Game initialization failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to initialize game';
       setGameState(prev => ({ ...prev, loadingError: errorMsg, playlistInitialized: false }));
       
@@ -151,7 +151,7 @@ export function useGameLogic(
     },
     initializeGame,
     startNewTurn: () => {
-      console.log('🎯 Turn management handled by GameService');
+      console.log('Turn management handled by GameService');
     }
   };
 }
