@@ -13,7 +13,7 @@ export function HostGameBackground() {
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          backgroundImage: "url('/src/assets/timeliner_bg.jpg')",
+          backgroundImage: "url('/timeliner_bg.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -77,7 +77,9 @@ export function HostGameBackground() {
   );
 }
 
-function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
+function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCount?: number }) {
+  const safeRoomCode = roomCode || 'XXXX';
+  const safePlayersCount = playersCount || 0;
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
@@ -95,12 +97,12 @@ function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount
           <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-white" />
-              <div className="text-white font-black text-xl">{playersCount}</div>
+              <div className="text-white font-black text-xl">{safePlayersCount}</div>
             </div>
           </div>
 
           <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
-            <div className="text-white font-mono text-xl font-black tracking-wider">{roomCode}</div>
+            <div className="text-white font-mono text-xl font-black tracking-wider">{safeRoomCode}</div>
           </div>
         </div>
       </div>
@@ -240,19 +242,28 @@ function HostTimelineDisplay({
   isActive, 
   placementResult 
 }: { 
-  currentPlayer: Player; 
-  isActive: boolean;
+  currentPlayer?: Player; 
+  isActive?: boolean;
   placementResult?: { correct: boolean; song: Song };
 }) {
+  // Safety checks with better defaults
+  const safeCurrentPlayer = currentPlayer || {
+    id: 'unknown',
+    name: 'Unknown Player',
+    timeline: [],
+    color: '#ffffff'
+  };
+  const safeIsActive = isActive ?? true;
+
   const [visibleCards, setVisibleCards] = useState(0);
   const [newCardIndex, setNewCardIndex] = useState<number | null>(null);
   const [isEntering, setIsEntering] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const cardCount = currentPlayer.timeline.length;
+  const cardCount = safeCurrentPlayer.timeline.length;
   const gapSize = Math.max(12, 50 - cardCount * 2);
 
   useEffect(() => {
-    if (isActive) {
+    if (safeIsActive) {
       setIsEntering(true);
       setIsExiting(false);
       let count = 0;
@@ -275,11 +286,11 @@ function HostTimelineDisplay({
       const exitTimer = setTimeout(() => setIsExiting(false), 1000);
       return () => clearTimeout(exitTimer);
     }
-  }, [isActive, cardCount]);
+  }, [safeIsActive, cardCount]);
 
   useEffect(() => {
-    if (currentPlayer.timeline.length > 0 && placementResult) {
-      const newIndex = currentPlayer.timeline.findIndex(
+    if (safeCurrentPlayer.timeline.length > 0 && placementResult) {
+      const newIndex = safeCurrentPlayer.timeline.findIndex(
         song => song.id === placementResult.song.id
       );
       if (newIndex >= 0) {
@@ -287,7 +298,7 @@ function HostTimelineDisplay({
         setTimeout(() => setNewCardIndex(null), 2000);
       }
     }
-  }, [currentPlayer.timeline, placementResult]);
+  }, [safeCurrentPlayer.timeline, placementResult]);
 
   return (
     <div 
@@ -296,19 +307,19 @@ function HostTimelineDisplay({
       } ${isExiting ? 'animate-epic-timeline-exit' : ''}`}
       style={{
         gap: `${gapSize}px`,
-        transform: isActive ? 'translateY(0) scale(1)' : 'translateY(60px) scale(0.85)',
-        opacity: isActive ? 1 : 0.4,
-        filter: isActive ? 'blur(0px)' : 'blur(4px)'
+        transform: safeIsActive ? 'translateY(0) scale(1)' : 'translateY(60px) scale(0.85)',
+        opacity: safeIsActive ? 1 : 0.4,
+        filter: safeIsActive ? 'blur(0px)' : 'blur(4px)'
       }}
     >
-      {currentPlayer.timeline.length === 0 ? (
+      {safeCurrentPlayer.timeline.length === 0 ? (
         <div className={`text-white/60 italic py-8 text-xl transition-all duration-1000 ${
-          isActive ? 'animate-text-elegant-fade-in' : 'opacity-0'
+          safeIsActive ? 'animate-text-elegant-fade-in' : 'opacity-0'
         }`}>
-          {currentPlayer.name} hasn't placed any cards yet
+          {safeCurrentPlayer.name} hasn't placed any cards yet
         </div>
       ) : (
-        currentPlayer.timeline.map((song, index) => (
+        safeCurrentPlayer.timeline.map((song, index) => (
           <div 
             key={song.id}
             className={`transition-all duration-900 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'} ${
@@ -499,18 +510,32 @@ export function HostGameView({
   cardPlacementResult,
   transitioning
 }: {
-  currentTurnPlayer: Player;
+  currentTurnPlayer?: Player;
   previousPlayer?: Player;
-  currentSong: Song | null;
-  roomCode: string;
-  players: Player[];
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-  transitioning: boolean;
+  currentSong?: Song | null;
+  roomCode?: string;
+  players?: Player[];
+  mysteryCardRevealed?: boolean;
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
+  cardPlacementResult?: { correct: boolean; song: Song } | null;
+  transitioning?: boolean;
 }) {
-  const [displayedPlayer, setDisplayedPlayer] = useState(currentTurnPlayer);
+  // Safety checks and fallbacks with better error handling
+  const safeCurrentTurnPlayer = currentTurnPlayer || {
+    id: 'unknown',
+    name: 'Unknown Player',
+    timeline: [],
+    color: '#ffffff'
+  };
+  const safePlayers = players || [];
+  const safeRoomCode = roomCode || 'XXXX';
+  const safeMysteryCardRevealed = mysteryCardRevealed ?? false;
+  const safeIsPlaying = isPlaying ?? false;
+  const safeTransitioning = transitioning ?? false;
+  const safeOnPlayPause = onPlayPause || (() => console.log('Play/Pause not implemented'));
+
+  const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   
@@ -522,7 +547,7 @@ export function HostGameView({
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
-          setDisplayedPlayer(currentTurnPlayer);
+          setDisplayedPlayer(safeCurrentTurnPlayer);
           setAnimationStage('entering');
           
           const enterTimer = setTimeout(() => {
@@ -536,27 +561,27 @@ export function HostGameView({
       }, 4000);
       
       return () => clearTimeout(resultTimer);
-    } else if (transitioning) {
+    } else if (safeTransitioning) {
       setAnimationStage('exiting');
       setTimeout(() => {
-        setDisplayedPlayer(currentTurnPlayer);
+        setDisplayedPlayer(safeCurrentTurnPlayer);
         setAnimationStage('entering');
         setTimeout(() => setAnimationStage('idle'), 1500);
       }, 1200);
     } else {
-      setDisplayedPlayer(currentTurnPlayer);
+      setDisplayedPlayer(safeCurrentTurnPlayer);
     }
-  }, [currentTurnPlayer, transitioning, cardPlacementResult]);
+  }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       <HostGameBackground />
-      <HostHeader roomCode={roomCode} playersCount={players.length} />
+      <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
       <RecordPlayerSection 
         currentSong={currentSong}
-        mysteryCardRevealed={mysteryCardRevealed}
-        isPlaying={isPlaying}
-        onPlayPause={onPlayPause}
+        mysteryCardRevealed={safeMysteryCardRevealed}
+        isPlaying={safeIsPlaying}
+        onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
       
@@ -572,8 +597,8 @@ export function HostGameView({
 
       <div className="absolute bottom-6 left-6 right-6 z-10">
         <CassettePlayerDisplay 
-          players={players} 
-          currentPlayerId={currentTurnPlayer.id}
+          players={safePlayers} 
+          currentPlayerId={safeCurrentTurnPlayer.id}
         />
       </div>
 
@@ -605,8 +630,8 @@ export function HostGameView({
             </div>
             <div className="text-white/70 text-2xl animate-epic-text-slide-up">
               {cardPlacementResult.correct ? 
-                `${currentTurnPlayer.name} scored a point!` : 
-                `Better luck next time, ${currentTurnPlayer.name}!`
+                `${safeCurrentTurnPlayer.name} scored a point!` : 
+                `Better luck next time, ${safeCurrentTurnPlayer.name}!`
               }
             </div>
           </div>
