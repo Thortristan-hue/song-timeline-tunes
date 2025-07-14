@@ -35,9 +35,9 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "Save water, drink longero",
     "Flirting with the bartender may not get you a free drink, but it's worth a shot.",
     "Check the Hesburger app for new coupons.",
-    "Sleep is a poor substitute for caffeine."
-    "I put the ‘pro’ in procrastination."
-    "I’m not an alcoholic—alcoholics go to meetings. I go to bars."
+    "Sleep is a poor substitute for caffeine.",
+    "I put the ‘pro’ in procrastination.",
+    "I’m not an alcoholic—alcoholics go to meetings. I go to bars.",
     "I drink because I’m a people person, and people are the worst."
   ];
 
