@@ -3,147 +3,69 @@
 
 /* CSS Custom Properties for consistent design */
 :root {
-  /* Enhanced Color Palette - Improved harmony and depth */
-  --timeliner-primary: #6366f1;        /* Indigo - main brand color */
-  --timeliner-secondary: #ec4899;      /* Pink - secondary accent */
-  --timeliner-accent: #06b6d4;         /* Cyan - tertiary accent */
-  --timeliner-accent-warm: #f59e0b;    /* Amber - warm accent */
-  --timeliner-success: #10b981;        /* Emerald - success states */
-  --timeliner-warning: #f59e0b;        /* Amber - warnings */
-  --timeliner-error: #ef4444;          /* Red - errors */
+  /* Color Palette - Enhanced for better contrast */
+  --timeliner-primary: #8b5cf6;
+  --timeliner-secondary: #ec4899;
+  --timeliner-accent: #06b6d4;
+  --timeliner-success: #10b981;
+  --timeliner-warning: #f59e0b;
+  --timeliner-error: #ef4444;
   
-  /* Music-themed accent colors */
-  --timeliner-music-purple: #8b5cf6;   /* Deep purple for musical elements */
-  --timeliner-music-gold: #fbbf24;     /* Gold for highlights */
-  --timeliner-music-neon: #00f5ff;     /* Neon cyan for energy */
-  
-  /* Text colors with enhanced contrast */
+  /* Text colors with proper contrast */
   --timeliner-text-primary: #ffffff;
   --timeliner-text-secondary: #e2e8f0;
   --timeliner-text-muted: #94a3b8;
-  --timeliner-text-accent: #a78bfa;
   --timeliner-text-dark: #1e293b;
   
-  /* Background colors with more depth */
-  --timeliner-bg-primary: #0a0b14;      /* Deep navy base */
-  --timeliner-bg-secondary: #1a1b2e;    /* Elevated surface */
-  --timeliner-bg-tertiary: #16213e;     /* Card backgrounds */
-  --timeliner-bg-surface: rgba(26, 27, 46, 0.85);
+  /* Background colors */
+  --timeliner-bg-primary: #0f172a;
+  --timeliner-bg-secondary: #1e293b;
+  --timeliner-bg-card: rgba(30, 41, 59, 0.8);
   
-  /* Enhanced gradients for more visual depth */
-  --timeliner-bg-gradient: linear-gradient(135deg, 
-    #0a0b14 0%, 
-    #16213e 20%, 
-    #1a1b2e 40%, 
-    #2d1b69 70%, 
-    #4c1d95 100%);
-    
-  --timeliner-bg-gradient-radial: radial-gradient(ellipse at center, 
-    rgba(99, 102, 241, 0.15) 0%, 
-    rgba(139, 92, 246, 0.1) 30%, 
-    rgba(26, 27, 46, 0.95) 70%, 
-    #0a0b14 100%);
-    
-  --timeliner-card-gradient: linear-gradient(135deg, 
-    rgba(99, 102, 241, 0.12) 0%, 
-    rgba(139, 92, 246, 0.08) 50%, 
-    rgba(236, 72, 153, 0.06) 100%);
-    
-  --timeliner-button-gradient: linear-gradient(135deg, 
-    var(--timeliner-primary) 0%, 
-    var(--timeliner-music-purple) 50%, 
-    var(--timeliner-secondary) 100%);
+  /* Gradients */
+  --timeliner-bg-gradient: linear-gradient(135deg, #0f172a 0%, #581c87 25%, #312e81 50%, #7c3aed 100%);
+  --timeliner-card-gradient: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+  --timeliner-button-gradient: linear-gradient(135deg, var(--timeliner-primary) 0%, var(--timeliner-secondary) 100%);
   
-  /* Enhanced shadows for better depth */
-  --timeliner-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.3);
-  --timeliner-shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.3);
-  --timeliner-shadow-lg: 0 10px 25px -5px rgb(0 0 0 / 0.5), 0 4px 12px -4px rgb(0 0 0 / 0.4);
-  --timeliner-shadow-xl: 0 20px 40px -10px rgb(0 0 0 / 0.6), 0 8px 20px -6px rgb(0 0 0 / 0.5);
-  --timeliner-shadow-glow: 0 0 30px rgba(99, 102, 241, 0.4);
-  --timeliner-shadow-glow-warm: 0 0 25px rgba(251, 191, 36, 0.3);
-  --timeliner-shadow-glow-pink: 0 0 35px rgba(236, 72, 153, 0.3);
+  /* Shadows with better definition */
+  --timeliner-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --timeliner-shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --timeliner-shadow-lg: 0 10px 20px -5px rgb(0 0 0 / 0.4), 0 4px 8px -4px rgb(0 0 0 / 0.3);
+  --timeliner-shadow-glow: 0 0 30px rgba(139, 92, 246, 0.4);
   
   /* ... keep existing code (spacing, radius, typography) */
 }
 
-/* Enhanced Base Design Classes */
+/* Base Design Classes with improved contrast */
 .timeliner-bg {
   background: var(--timeliner-bg-gradient);
-  position: relative;
   color: var(--timeliner-text-primary);
-}
-
-.timeliner-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--timeliner-bg-gradient-radial);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.timeliner-bg > * {
-  position: relative;
-  z-index: 2;
 }
 
 .timeliner-card {
   background: var(--timeliner-card-gradient);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-lg);
   box-shadow: var(--timeliner-shadow-lg);
   color: var(--timeliner-text-primary);
-  position: relative;
-  overflow: hidden;
-}
-
-.timeliner-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  pointer-events: none;
 }
 
 .timeliner-button {
   background: var(--timeliner-button-gradient);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--timeliner-radius-md);
   color: var(--timeliner-text-primary);
   font-weight: 600;
-  padding: 16px 32px;
+  padding: var(--timeliner-space-md) var(--timeliner-space-lg);
   box-shadow: var(--timeliner-shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.timeliner-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left 0.5s ease;
 }
 
 .timeliner-button:hover {
   transform: translateY(-2px);
   box-shadow: var(--timeliner-shadow-glow);
   color: var(--timeliner-text-primary);
-}
-
-.timeliner-button:hover::before {
-  left: 100%;
 }
 
 .timeliner-button:active {

@@ -5,116 +5,102 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
-// Enhanced Host Background Component with sophisticated visual effects
+// Enhanced Host Background Component with graffiti-inspired effects
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Enhanced gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0a0b14] via-[#16213e] to-[#1a1b2e]" />
-      
-      {/* Main radial gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/8 via-transparent to-[#ec4899]/6" />
+      {/* Graffiti-inspired background */}
+      <div
+        className="fixed inset-0 w-full h-full"
+        style={{
+          backgroundImage: "url('/src/assets/timeliner_bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          zIndex: 1,
+          filter: 'contrast(1.2) brightness(0.8)'
+        }}
+      />
 
-      {/* Dynamic sophisticated glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#6366f1]/8 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute top-1/2 right-1/4 w-72 h-72 bg-[#8b5cf6]/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-      <div className="absolute bottom-1/4 left-1/2 w-60 h-60 bg-[#ec4899]/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-      
-      {/* Large ambient background shapes */}
-      <div className="absolute top-3/4 left-1/3 w-96 h-96 bg-[#fbbf24]/4 rounded-full blur-3xl animate-pulse-slow" />
-      <div className="absolute top-1/6 right-1/3 w-[500px] h-[500px] bg-[#06b6d4]/3 rounded-full blur-3xl animate-pulse-slow" style={{animationDelay: '1.5s'}} />
-      <div className="absolute -bottom-40 left-1/2 w-[800px] h-[800px] bg-[#16213e]/15 rounded-full blur-3xl" />
+      {/* Chaotic overlay mimicking spray paint drips */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-800/60 to-black/70"
+        style={{
+          zIndex: 2,
+          mixBlendMode: 'overlay'
+        }}
+      />
 
-      {/* Enhanced geometric musical shapes */}
-      <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 1200 800" fill="none">
-        {/* Music equipment silhouettes */}
-        <rect x="150" y="150" width="120" height="80" rx="20" fill="#6366f1" opacity="0.1" transform="rotate(-18 210 190)" />
-        <circle cx="180" cy="200" r="10" fill="#6366f1" opacity="0.12" />
-        <circle cx="220" cy="200" r="10" fill="#6366f1" opacity="0.12" />
-        
-        <rect x="1000" y="200" width="120" height="80" rx="20" fill="#8b5cf6" opacity="0.1" transform="rotate(25 1060 240)" />
-        <circle cx="1030" cy="250" r="10" fill="#8b5cf6" opacity="0.12" />
-        <circle cx="1070" cy="250" r="10" fill="#8b5cf6" opacity="0.12" />
-        
-        {/* Enhanced vinyl records */}
-        <circle cx="280" cy="650" r="60" stroke="#ec4899" strokeWidth="4" fill="none" opacity="0.1" />
-        <circle cx="280" cy="650" r="35" stroke="#ec4899" strokeWidth="3" fill="none" opacity="0.08" />
-        <circle cx="280" cy="650" r="12" fill="#ec4899" opacity="0.12" />
-        
-        <circle cx="1050" cy="120" r="50" stroke="#fbbf24" strokeWidth="4" fill="none" opacity="0.1" />
-        <circle cx="1050" cy="120" r="30" stroke="#fbbf24" strokeWidth="3" fill="none" opacity="0.08" />
-        <circle cx="1050" cy="120" r="8" fill="#fbbf24" opacity="0.12" />
-        
-        {/* Enhanced sound waves */}
-        <path d="M500 350 Q580 310, 660 350 Q740 390, 820 350" stroke="#8b5cf6" strokeWidth="4" opacity="0.1" />
-        <path d="M500 380 Q580 340, 660 380 Q740 420, 820 380" stroke="#8b5cf6" strokeWidth="4" opacity="0.08" />
-        <path d="M500 410 Q580 370, 660 410 Q740 450, 820 410" stroke="#8b5cf6" strokeWidth="4" opacity="0.06" />
-        
-        {/* Connecting energy lines */}
-        <path d="M280 280 L500 350 L720 330" stroke="#6366f1" strokeWidth="3" opacity="0.1" />
-        <path d="M1000 360 L880 460 L780 440" stroke="#ec4899" strokeWidth="3" opacity="0.1" />
-      </svg>
-      
-      {/* Enhanced floating music icons */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-          <div 
-            key={i}
-            className="absolute animate-float opacity-10"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animation: `float ${20 + Math.random() * 40}s linear infinite`,
-              animationDelay: `${Math.random() * 10}s`,
-            }}
-          >
-            {i % 5 === 0 ? (
-              <Music className="h-6 w-6 text-[#6366f1]" />
-            ) : i % 5 === 1 ? (
-              <Play className="h-7 w-7 text-[#8b5cf6]" />
-            ) : i % 5 === 2 ? (
-              <Users className="h-6 w-6 text-[#ec4899]" />
-            ) : i % 5 === 3 ? (
-              <Crown className="h-6 w-6 text-[#fbbf24]" />
-            ) : (
-              <Check className="h-5 w-5 text-[#06b6d4]" />
-            )}
-          </div>
-        ))}
-      </div>
-      
-      {/* Subtle texture overlay */}
-      <div className="absolute inset-0 opacity-[0.01] bg-gradient-to-r from-transparent via-white to-transparent mix-blend-overlay" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.2'%3E%3Ccircle cx='15' cy='15' r='1'/%3E%3Ccircle cx='45' cy='45' r='1'/%3E%3Ccircle cx='75' cy='75' r='1'/%3E%3Ccircle cx='105' cy='105' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }} />
+      {/* Abstract graffiti effects */}
+      <div 
+        className="absolute top-20 left-20 w-96 h-96 bg-gray-500/10 rounded-full blur-3xl animate-pulse" 
+        style={{
+          zIndex: 3,
+          mixBlendMode: 'overlay'
+        }}
+      />
+      <div 
+        className="absolute bottom-32 right-32 w-80 h-80 bg-gray-300/5 rounded-full blur-3xl animate-pulse" 
+        style={{
+          zIndex: 3,
+          animationDelay: '2s',
+          mixBlendMode: 'overlay'
+        }} 
+      />
+      <div 
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gray-600/4 rounded-full blur-3xl"
+        style={{
+          zIndex: 3,
+          mixBlendMode: 'overlay'
+        }}
+      />
+
+      {/* Graffiti drips and ambient chaos */}
+      <div 
+        className="absolute top-10 right-10 w-32 h-32 bg-gray-400/5 rounded-full blur-2xl animate-ping" 
+        style={{
+          zIndex: 4,
+          animationDuration: '4s',
+          mixBlendMode: 'overlay'
+        }} 
+      />
+      <div 
+        className="absolute bottom-10 left-10 w-40 h-40 bg-gray-700/5 rounded-full blur-2xl animate-ping" 
+        style={{
+          zIndex: 4,
+          animationDuration: '6s',
+          animationDelay: '1s',
+          mixBlendMode: 'overlay'
+        }} 
+      />
     </div>
   );
 }
 
 function HostHeader({ roomCode, playersCount }: { roomCode: string; playersCount: number }) {
   return (
-    <div className="absolute top-6 left-6 right-6 z-40">
+    <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#6366f1]/20 to-[#8b5cf6]/20 backdrop-blur-3xl rounded-3xl flex items-center justify-center border-2 border-[#6366f1]/30 shadow-2xl shadow-[#6366f1]/20">
-            <Crown className="h-8 w-8 text-[#6366f1]" />
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-black/50 backdrop-blur-2xl rounded-2xl flex items-center justify-center border-2 border-white/15 shadow-xl">
+            <Crown className="h-7 w-7 text-white" />
           </div>
           <div>
-            <div className="text-white font-black text-4xl tracking-tight drop-shadow-2xl bg-gradient-to-r from-[#6366f1] via-[#8b5cf6] to-[#ec4899] bg-clip-text text-transparent">RYTHMY</div>
-            <div className="text-white/90 text-lg font-bold bg-gradient-to-r from-[#6366f1]/15 to-[#8b5cf6]/15 backdrop-blur-xl rounded-full px-4 py-2 border border-[#6366f1]/20 shadow-lg">Host Display</div>
+            <div className="text-white font-black text-3xl tracking-tight drop-shadow-lg">Timeliner</div>
+            <div className="text-white/80 text-base font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="bg-gradient-to-r from-[#fbbf24]/15 to-[#06b6d4]/15 backdrop-blur-3xl px-8 py-4 rounded-3xl border-2 border-[#fbbf24]/30 shadow-2xl shadow-[#fbbf24]/20">
-            <div className="flex items-center gap-4">
-              <Users className="h-6 w-6 text-[#fbbf24]" />
-              <div className="text-white font-black text-2xl">{playersCount}</div>
+        <div className="flex items-center gap-4">
+          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-white" />
+              <div className="text-white font-black text-xl">{playersCount}</div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-[#ec4899]/15 to-[#8b5cf6]/15 backdrop-blur-3xl px-8 py-4 rounded-3xl border-2 border-[#ec4899]/30 shadow-2xl shadow-[#ec4899]/20">
-            <div className="text-white font-mono text-2xl font-black tracking-wider">{roomCode}</div>
+          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
+            <div className="text-white font-mono text-xl font-black tracking-wider">{roomCode}</div>
           </div>
         </div>
       </div>
@@ -136,38 +122,38 @@ function RecordPlayerSection({
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }) {
   return (
-    <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-30">
+    <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
-        <div className="text-center space-y-10 max-w-lg">
+        <div className="text-center space-y-8 max-w-sm">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#fbbf24]/15 via-[#ec4899]/10 to-[#6366f1]/15 rounded-full blur-3xl animate-pulse scale-150"></div>
-            <div className={`relative w-48 h-48 mx-auto transition-all duration-500 ${
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
+            <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
               isPlaying ? 'animate-spin' : 'hover:scale-110'
             }`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-[#fbbf24]/20 to-[#ec4899]/20 rounded-full blur-2xl"></div>
-              <div className="relative w-full h-full bg-gradient-to-br from-[#1a1b2e] via-[#16213e] to-[#0a0b14] rounded-full shadow-2xl border-4 border-white/30">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
+              <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-4 border-white/40">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[#ec4899] to-[#8b5cf6] rounded-full border-4 border-white/40 shadow-2xl"></div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-4 border-white/50 shadow-xl"></div>
                 </div>
                 
-                <div className="absolute inset-6 border border-white/10 rounded-full"></div>
+                <div className="absolute inset-4 border border-white/10 rounded-full"></div>
+                <div className="absolute inset-8 border border-white/10 rounded-full"></div>
                 <div className="absolute inset-12 border border-white/10 rounded-full"></div>
-                <div className="absolute inset-16 border border-white/10 rounded-full"></div>
               </div>
               
-              <button
+              <Button
                 onClick={onPlayPause}
-                className="absolute inset-0 w-full h-full bg-transparent hover:bg-white/5 border-0 rounded-full transition-all duration-300 group"
+                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                 disabled={!currentSong?.preview_url}
               >
-                <div className="text-white text-5xl group-hover:scale-125 transition-transform duration-300 drop-shadow-2xl">
-                  {isPlaying ? <Pause className="w-12 h-12" /> : <Play className="w-12 h-12 ml-1" />}
+                <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
+                  {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
                 </div>
-              </button>
+              </Button>
             </div>
           </div>
-          <div className="text-white/95 text-xl font-black bg-gradient-to-r from-[#6366f1]/15 to-[#8b5cf6]/15 backdrop-blur-xl rounded-3xl px-8 py-4 border border-[#6366f1]/25 shadow-xl">
-            🎵 Mystery Song Playing
+          <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+            Mystery Song Playing
           </div>
         </div>
       </div>
@@ -192,21 +178,22 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
 
   return (
     <div 
-      className={`w-40 h-40 rounded-3xl flex flex-col items-center justify-between p-5 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl border border-white/10
-        ${isActive ? 'ring-4 ring-[#10b981] ring-opacity-80 shadow-[#10b981]/30' : ''}
+      className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
+        ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
         ${isDropping ? 'animate-ultimate-bang' : ''}`}
       style={{ 
-        background: `linear-gradient(135deg, hsl(${hue}, 65%, 35%), hsl(${hue}, 70%, 25%), hsl(${hue}, 75%, 30%))`,
-        boxShadow: '0 15px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
+        backgroundColor: `hsl(${hue}, 70%, 25%)`,
+        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
+        boxShadow: '0 12px 35px rgba(0,0,0,0.5)'
       }}
     >
-      <div className="text-sm font-bold w-full text-center truncate">
+      <div className="text-sm font-semibold w-full text-center truncate">
         {song.deezer_artist}
       </div>
-      <div className="text-5xl font-black my-auto text-white drop-shadow-lg">
+      <div className="text-4xl font-black my-auto">
         {song.release_year}
       </div>
-      <div className="text-xs font-medium w-full text-center truncate opacity-90">
+      <div className="text-xs italic w-full text-center truncate opacity-90">
         {song.deezer_title}
       </div>
       
