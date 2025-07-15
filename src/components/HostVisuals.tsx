@@ -165,12 +165,17 @@ function RecordPlayerSection({
   );
 }
 
-function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
+function HostTimelineCard({ song, isActive, placementResult }: { 
+  song: Song; 
+  isActive?: boolean;
+  placementResult?: { correct: boolean; song: Song } | null;
+}) {
   const artistHash = Array.from(song.deezer_artist).reduce(
     (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
   );
   const hue = Math.abs(artistHash) % 360;
   const [isDropping, setIsDropping] = useState(false);
+  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   
   useEffect(() => {
     if (isActive) {
@@ -180,11 +185,28 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
     }
   }, [isActive]);
 
+  // Trigger host feedback animation when placement result changes
+  useEffect(() => {
+    if (placementResult && placementResult.song.id === song.id) {
+      const animationClass = placementResult.correct 
+        ? 'animate-host-feedback-correct' 
+        : 'animate-host-feedback-incorrect';
+      
+      setFeedbackAnimation(animationClass);
+      
+      // Clear animation after it completes
+      setTimeout(() => {
+        setFeedbackAnimation('');
+      }, 1000);
+    }
+  }, [placementResult, song.id]);
+
   return (
     <div 
       className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
         ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
-        ${isDropping ? 'animate-ultimate-bang' : ''}`}
+        ${isDropping ? 'animate-ultimate-bang' : ''}
+        ${feedbackAnimation}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 25%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
@@ -336,6 +358,7 @@ function HostTimelineDisplay({
             <HostTimelineCard 
               song={song} 
               isActive={placementResult?.song.id === song.id}
+              placementResult={placementResult}
             />
           </div>
         ))
