@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, MoveRight, MoveLeft } from 'lucide-react';
@@ -63,6 +64,21 @@ export default function MobilePlayerGameView({
   // Calculate positions for gaps and cards
   const totalItems = timelineCards.length + 1; // +1 for final gap
   const totalWidth = (totalItems * ITEM_SPACING) + (2 * SIDE_PADDING);
+
+  // Viewport height fix for mobile browsers
+  useEffect(() => {
+    const setVh = () => {
+      document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+      document.documentElement.style.setProperty('--mobile-viewport-height', `${window.innerHeight}px`);
+    };
+    setVh();
+    window.addEventListener('resize', setVh);
+    window.addEventListener('orientationchange', setVh);
+    return () => {
+      window.removeEventListener('resize', setVh);
+      window.removeEventListener('orientationchange', setVh);
+    };
+  }, []);
 
   // Handle container resize
   useEffect(() => {
@@ -247,16 +263,6 @@ export default function MobilePlayerGameView({
 
   // Reset state when turn changes - center the middle gap
   useEffect(() => {
-
-// Viewport height fix for mobile browsers
-useEffect(() => {
-  const setVh = () => {
-    document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
-  };
-  setVh();
-  window.addEventListener('resize', setVh);
-  return () => window.removeEventListener('resize', setVh);
-}, []);
     if (isMyTurn && !gameEnded) {
       setHasConfirmed(false);
       
@@ -377,294 +383,294 @@ useEffect(() => {
       showHostFeedback={false} // Mobile players don't show host feedback
       hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
     >
-      <div className="mobile-game-view min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
-      {/* Enhanced Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-32 right-32 w-48 h-48 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/4 rounded-full blur-3xl" />
-      </div>
+      <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+        {/* Enhanced Background Effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-32 right-32 w-48 h-48 bg-purple-500/6 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/4 rounded-full blur-3xl" />
+        </div>
 
-      {/* Player Header */}
-      <div className="relative z-10 pt-2 pb-1 px-4 flex-shrink-0">
-        <div className="text-center">
-          <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-1">
-            {currentPlayer.name}
-          </div>
-          <div className="text-white/80 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-full px-3 py-1 border border-white/20 inline-block">
-            {gameEnded ? 'Game Over' : 
-             isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
+        {/* Player Header */}
+        <div className="relative z-10 pt-2 pb-1 px-4 flex-shrink-0">
+          <div className="text-center">
+            <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-1">
+              {currentPlayer.name}
+            </div>
+            <div className="text-white/80 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-full px-3 py-1 border border-white/20 inline-block">
+              {gameEnded ? 'Game Over' : 
+               isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Mystery Song Preview */}
-      {isMyTurn && !gameEnded && (
-        <div className="relative z-10 flex items-center justify-center px-4 py-2 flex-shrink-0">
-          <div className="text-center space-y-2">
-            <div className="relative">
-              <div className={`relative w-20 h-20 mx-auto transition-all duration-500 ${
-                isPlaying ? 'animate-spin' : 'hover:scale-110'
-              }`}>
-                <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50"></div>
+        {/* Mystery Song Preview */}
+        {isMyTurn && !gameEnded && (
+          <div className="relative z-10 flex items-center justify-center px-4 py-2 flex-shrink-0">
+            <div className="text-center space-y-2">
+              <div className="relative">
+                <div className={`relative w-20 h-20 mx-auto transition-all duration-500 ${
+                  isPlaying ? 'animate-spin' : 'hover:scale-110'
+                }`}>
+                  <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50"></div>
+                    </div>
+                    
+                    {/* Vinyl grooves effect */}
+                    <div className="absolute inset-2 border border-white/10 rounded-full"></div>
+                    <div className="absolute inset-3 border border-white/10 rounded-full"></div>
                   </div>
                   
-                  {/* Vinyl grooves effect */}
-                  <div className="absolute inset-2 border border-white/10 rounded-full"></div>
-                  <div className="absolute inset-3 border border-white/10 rounded-full"></div>
+                  <Button
+                    onClick={onPlayPause}
+                    className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                    disabled={!currentSong?.preview_url}
+                  >
+                    <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    </div>
+                  </Button>
                 </div>
-                
-                <Button
-                  onClick={onPlayPause}
-                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
-                  disabled={!currentSong?.preview_url}
-                >
-                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                  </div>
-                </Button>
               </div>
-            </div>
-            <div className="text-white/90 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1 border border-white/20">
-              Tap vinyl to preview
+              <div className="text-white/90 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1 border border-white/20">
+                Tap vinyl to preview
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Waiting screen */}
-      {!isMyTurn && !gameEnded && (
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
-              <Music className="w-8 h-8 text-white/90 animate-pulse" />
-            </div>
-            <div className="text-lg font-bold text-white">
-              {currentTurnPlayer.name} is playing
-            </div>
-            <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-xl px-3 py-1 border border-white/20">
-              Wait for your turn
+        {/* Waiting screen */}
+        {!isMyTurn && !gameEnded && (
+          <div className="flex-1 flex items-center justify-center px-4">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
+                <Music className="w-8 h-8 text-white/90 animate-pulse" />
+              </div>
+              <div className="text-lg font-bold text-white">
+                {currentTurnPlayer.name} is playing
+              </div>
+              <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-xl px-3 py-1 border border-white/20">
+                Wait for your turn
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Timeline Placement Interface */}
-      {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-3 flex-1 flex flex-col min-h-0" ref={containerRef}>
-          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-2 border border-white/25 flex-1 flex flex-col min-h-0">
-            {/* Center line indicator */}
-            <div className="relative mb-2">
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-6 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-                
+        {/* Timeline Placement Interface */}
+        {isMyTurn && !gameEnded && (
+          <div className="relative z-10 px-3 flex-1 flex flex-col min-h-0" ref={containerRef}>
+            <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-2 border border-white/25 flex-1 flex flex-col min-h-0">
+              {/* Center line indicator */}
+              <div className="relative mb-2">
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-6 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
+                  
+                </div>
               </div>
-            </div>
 
-            <div className="text-center text-white/90 text-sm font-semibold mb-2">
-              Scroll to position the gap at center
-            </div>
-            
-            {/* Position indicator */}
-            <div className="text-center mb-2">
-              <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-2 py-1 border border-white/30">
-                <span className="text-white/80 text-xs">
-                  Position: {snappedPosition === 0 ? 'Before first' : 
-                           snappedPosition === timelineCards.length ? 'After last' :
-                           `Between ${timelineCards[snappedPosition - 1]?.release_year} & ${timelineCards[snappedPosition]?.release_year}`}
-                </span>
+              <div className="text-center text-white/90 text-sm font-semibold mb-2">
+                Scroll to position the gap at center
               </div>
-            </div>
+              
+              {/* Position indicator */}
+              <div className="text-center mb-2">
+                <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-2 py-1 border border-white/30">
+                  <span className="text-white/80 text-xs">
+                    Position: {snappedPosition === 0 ? 'Before first' : 
+                             snappedPosition === timelineCards.length ? 'After last' :
+                             `Between ${timelineCards[snappedPosition - 1]?.release_year} & ${timelineCards[snappedPosition]?.release_year}`}
+                  </span>
+                </div>
+              </div>
 
-            {/* Carousel Timeline */}
-            <div className="flex-1 flex items-center carousel-container min-h-0">
-              <div 
-                ref={scrollViewRef}
-                className="overflow-x-auto scrollbar-hide w-full"
-                onScroll={handleScroll}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onMouseDown={handleTouchStart}
-                onMouseUp={handleTouchEnd}
-                onMouseLeave={handleTouchEnd}
-                style={{
-                  WebkitOverflowScrolling: 'touch',
-scrollBehavior: 'auto',
-                  perspective: '1000px'
-                }}
-              >
+              {/* Carousel Timeline */}
+              <div className="flex-1 flex items-center min-h-0 max-h-64">
                 <div 
-                  className="flex items-center py-2 relative" 
-                  style={{ 
-                    width: `${totalWidth}px`,
-                    height: '120px'
+                  ref={scrollViewRef}
+                  className="overflow-x-auto scrollbar-hide w-full h-32"
+                  onScroll={handleScroll}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={handleTouchStart}
+                  onMouseUp={handleTouchEnd}
+                  onMouseLeave={handleTouchEnd}
+                  style={{
+                    WebkitOverflowScrolling: 'touch',
+                    scrollBehavior: 'auto',
+                    perspective: '1000px'
                   }}
                 >
-                  {/* Render gaps and cards */}
-                  {Array.from({ length: totalItems }, (_, gapIndex) => {
-                    const gapX = SIDE_PADDING + (gapIndex * ITEM_SPACING);
-                    const cardIndex = gapIndex;
-                    const hasCard = cardIndex < timelineCards.length;
-                    
-                    return (
-                      <React.Fragment key={`gap-${gapIndex}`}>
-                        {/* Gap indicator */}
-                        <div
-                          className="absolute flex items-center justify-center"
-                          style={{
-                            left: `${gapX - (GAP_WIDTH / 2)}px`,
-                            width: `${GAP_WIDTH}px`,
-                            height: '110px',
-                            ...getCarouselTransform(gapX)
-                          }}
-                        >
-                          <div 
-                            className={cn(
-                              "w-full h-20 rounded-xl border-2 border-dashed transition-all duration-500 flex items-center justify-center",
-                              snappedPosition === gapIndex ? 
-                              "border-green-400 bg-green-400/25 shadow-lg scale-110" : 
-                              "border-white/50 bg-white/10",
-                            )}
-                          >
-                            <div className={cn(
-                              "w-2 h-2 rounded-full transition-all duration-500",
-                              snappedPosition === gapIndex ? "bg-green-400 shadow-lg animate-pulse" : "bg-white/70"
-                            )}></div>
-                          </div>
-                        </div>
-
-                        {/* Card (if exists) - Square cards */}
-                        {hasCard && (
+                  <div 
+                    className="flex items-center py-2 relative" 
+                    style={{ 
+                      width: `${totalWidth}px`,
+                      height: '120px'
+                    }}
+                  >
+                    {/* Render gaps and cards */}
+                    {Array.from({ length: totalItems }, (_, gapIndex) => {
+                      const gapX = SIDE_PADDING + (gapIndex * ITEM_SPACING);
+                      const cardIndex = gapIndex;
+                      const hasCard = cardIndex < timelineCards.length;
+                      
+                      return (
+                        <React.Fragment key={`gap-${gapIndex}`}>
+                          {/* Gap indicator */}
                           <div
-                            className="absolute flex items-center justify-center cursor-pointer"
+                            className="absolute flex items-center justify-center"
                             style={{
-                              left: `${gapX + (GAP_WIDTH / 2) + 5}px`,
-                              width: `${CARD_WIDTH}px`,
-                              height: `${CARD_HEIGHT}px`,
-                              ...getCarouselTransform(gapX + (GAP_WIDTH / 2) + 5 + (CARD_WIDTH / 2))
+                              left: `${gapX - (GAP_WIDTH / 2)}px`,
+                              width: `${GAP_WIDTH}px`,
+                              height: '110px',
+                              ...getCarouselTransform(gapX)
                             }}
-                            onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
                           >
-                            {(() => {
-                              const song = timelineCards[cardIndex];
-                              const artistHash = Array.from(song.deezer_artist).reduce(
-                                (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
-                              );
-                              const hue = Math.abs(artistHash) % 360;
-                              
-                              return (
-                                <div 
-                                  className="w-full h-full rounded-xl border border-white/40 flex flex-col items-center justify-between p-2 text-white shadow-xl"
-                                  style={{ 
-                                    backgroundColor: `hsl(${hue}, 70%, 25%)`,
-                                    backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
-                                  }}
-                                >
-                                  {/* Artist name */}
-                                  <div className="text-sm font-bold text-center w-full leading-tight">
-                                    {wrapText(song.deezer_artist, 16).split('\n').map((line, i) => (
-                                      <div key={i}>{line}</div>
-                                    ))}
-                                  </div>
-                                  
-                                  {/* Year - larger for square cards */}
-                                  <div className="text-2xl font-black text-center">
-                                    {song.release_year}
-                                  </div>
-                                  
-                                  {/* Song title */}
-                                  <div className="text-sm italic text-center w-full leading-tight text-white/90">
-                                    {wrapText(song.deezer_title, 14).split('\n').map((line, i) => (
-                                      <div key={i}>{line}</div>
-                                    ))}
-                                  </div>
-                                  
-                                  {song.preview_url && (
-                                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center">
-                                      {playingPreviewId === song.id ? (
-                                        <Pause className="w-2.5 h-2.5 text-white" />
-                                      ) : (
-                                        <Play className="w-2.5 h-2.5 text-white" />
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            <div 
+                              className={cn(
+                                "w-full h-20 rounded-xl border-2 border-dashed transition-all duration-500 flex items-center justify-center",
+                                snappedPosition === gapIndex ? 
+                                "border-green-400 bg-green-400/25 shadow-lg scale-110" : 
+                                "border-white/50 bg-white/10",
+                              )}
+                            >
+                              <div className={cn(
+                                "w-2 h-2 rounded-full transition-all duration-500",
+                                snappedPosition === gapIndex ? "bg-green-400 shadow-lg animate-pulse" : "bg-white/70"
+                              )}></div>
+                            </div>
                           </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+
+                          {/* Card (if exists) - Square cards */}
+                          {hasCard && (
+                            <div
+                              className="absolute flex items-center justify-center cursor-pointer"
+                              style={{
+                                left: `${gapX + (GAP_WIDTH / 2) + 5}px`,
+                                width: `${CARD_WIDTH}px`,
+                                height: `${CARD_HEIGHT}px`,
+                                ...getCarouselTransform(gapX + (GAP_WIDTH / 2) + 5 + (CARD_WIDTH / 2))
+                              }}
+                              onClick={() => timelineCards[cardIndex].preview_url && playPreview(timelineCards[cardIndex].preview_url, timelineCards[cardIndex].id)}
+                            >
+                              {(() => {
+                                const song = timelineCards[cardIndex];
+                                const artistHash = Array.from(song.deezer_artist).reduce(
+                                  (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
+                                );
+                                const hue = Math.abs(artistHash) % 360;
+                                
+                                return (
+                                  <div 
+                                    className="w-full h-full rounded-xl border border-white/40 flex flex-col items-center justify-between p-2 text-white shadow-xl"
+                                    style={{ 
+                                      backgroundColor: `hsl(${hue}, 70%, 25%)`,
+                                      backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
+                                    }}
+                                  >
+                                    {/* Artist name */}
+                                    <div className="text-sm font-bold text-center w-full leading-tight">
+                                      {wrapText(song.deezer_artist, 16).split('\n').map((line, i) => (
+                                        <div key={i}>{line}</div>
+                                      ))}
+                                    </div>
+                                    
+                                    {/* Year - larger for square cards */}
+                                    <div className="text-2xl font-black text-center">
+                                      {song.release_year}
+                                    </div>
+                                    
+                                    {/* Song title */}
+                                    <div className="text-sm italic text-center w-full leading-tight text-white/90">
+                                      {wrapText(song.deezer_title, 14).split('\n').map((line, i) => (
+                                        <div key={i}>{line}</div>
+                                      ))}
+                                    </div>
+                                    
+                                    {song.preview_url && (
+                                      <div className="absolute bottom-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center">
+                                        {playingPreviewId === song.id ? (
+                                          <Pause className="w-2.5 h-2.5 text-white" />
+                                        ) : (
+                                          <Play className="w-2.5 h-2.5 text-white" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Navigation hints */}
+              <div className="flex justify-between items-center mt-2 text-white/70 text-xs bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1">
+                <div className="flex items-center">
+                  <MoveLeft className="w-3 h-3 mr-1" />
+                  <span></span>
+                </div>
+                <div className="flex items-center">
+                  <span></span>
+                  <MoveRight className="w-3 h-3 ml-1" />
                 </div>
               </div>
             </div>
-            
-            {/* Navigation hints */}
-            <div className="flex justify-between items-center mt-2 text-white/70 text-xs bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1">
-              <div className="flex items-center">
-                <MoveLeft className="w-3 h-3 mr-1" />
-                <span></span>
-              </div>
-              <div className="flex items-center">
-                <span></span>
-                <MoveRight className="w-3 h-3 ml-1" />
-              </div>
+          </div>
+        )}
+
+        {/* Confirm Button */}
+        {isMyTurn && !gameEnded && (
+          <div className="relative z-10 px-3 pb-2 flex-shrink-0">
+            <Button
+              onClick={handleConfirmPlacement}
+              disabled={hasConfirmed || isSubmitting}
+              className={cn(
+                "w-full h-11 text-white font-black text-base rounded-2xl border-0 shadow-2xl transition-all duration-300",
+                hasConfirmed || isSubmitting ? 
+                "bg-gradient-to-r from-gray-600 to-gray-700" :
+                "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:scale-105 active:scale-95"
+              )}
+            >
+              {isSubmitting ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>PLACING...</span>
+                </div>
+              ) : hasConfirmed ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <Check className="w-4 h-4" />
+                  <span>PLACED!</span>
+                </div>
+              ) : (
+                'CONFIRM PLACEMENT'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="relative z-10 pb-1 flex-shrink-0">
+          <div className="text-center">
+            <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
+              RYTHMY
             </div>
           </div>
         </div>
-      )}
 
-      {/* Confirm Button */}
-      {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-3 pb-2 flex-shrink-0">
-          <Button
-            onClick={handleConfirmPlacement}
-            disabled={hasConfirmed || isSubmitting}
-            className={cn(
-              "w-full h-11 text-white font-black text-base rounded-2xl border-0 shadow-2xl transition-all duration-300",
-              hasConfirmed || isSubmitting ? 
-              "bg-gradient-to-r from-gray-600 to-gray-700" :
-              "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:scale-105 active:scale-95"
-            )}
-          >
-            {isSubmitting ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                <span>PLACING...</span>
-              </div>
-            ) : hasConfirmed ? (
-              <div className="flex items-center justify-center space-x-2">
-                <Check className="w-4 h-4" />
-                <span>PLACED!</span>
-              </div>
-            ) : (
-              'CONFIRM PLACEMENT'
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="relative z-10 pb-1 flex-shrink-0">
-        <div className="text-center">
-          <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
-            RYTHMY
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+        <style>{`
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
       </div>
     </CardPlacementAnimations>
   );
