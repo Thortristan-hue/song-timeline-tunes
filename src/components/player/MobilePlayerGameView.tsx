@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
 
@@ -166,24 +166,28 @@ export default function MobilePlayerGameView({
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 120; // Approximate card width + gap
-    const totalWidth = (timelineSongs.length + 1) * cardWidth;
+    const cardWidth = 132; // Updated for new card size (w-32 = 128px + 4px margin)
+    const gapWidth = 48; // Updated for new gap size (w-12 = 48px)
+    const totalWidth = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth);
     
     // Calculate scroll position to center the selected gap
     let targetScroll;
     if (position === 0) {
-      // Before first card
-      targetScroll = 0;
+      // Before first card - center the first gap
+      targetScroll = (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
-      // After last card
-      targetScroll = totalWidth - containerWidth;
+      // After last card - center the last gap
+      targetScroll = totalWidth - (gapWidth / 2) - (containerWidth / 2);
     } else {
       // Between cards - center the gap
-      targetScroll = (position * cardWidth) - (containerWidth / 2) + (cardWidth / 2);
+      const cardsBeforeGap = position;
+      const gapsBeforeGap = position;
+      const positionInTimeline = (gapsBeforeGap * gapWidth) + (cardsBeforeGap * cardWidth) + (gapWidth / 2);
+      targetScroll = positionInTimeline - (containerWidth / 2);
     }
     
     // Ensure scroll position is within bounds
-    targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - containerWidth));
+    targetScroll = Math.max(0, Math.min(targetScroll, carousel.scrollWidth - containerWidth));
     
     isScrollingRef.current = true;
     carousel.scrollTo({
@@ -204,17 +208,35 @@ export default function MobilePlayerGameView({
     const carousel = carouselRef.current;
     const scrollLeft = carousel.scrollLeft;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 120;
+    const cardWidth = 132; // Updated for new card size
+    const gapWidth = 48; // Updated for new gap size
     
     // Calculate which position is closest to center
     const centerPoint = scrollLeft + (containerWidth / 2);
-    const positionIndex = Math.round(centerPoint / cardWidth);
-    const clampedPosition = Math.max(0, Math.min(positionIndex, totalPositions - 1));
     
-    if (clampedPosition !== selectedPosition) {
-      setSelectedPosition(clampedPosition);
+    // Find the closest gap position
+    let closestPosition = 0;
+    let minDistance = Infinity;
+    
+    for (let i = 0; i <= timelineSongs.length; i++) {
+      let gapCenter;
+      if (i === 0) {
+        gapCenter = gapWidth / 2;
+      } else {
+        gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + (gapWidth / 2);
+      }
+      
+      const distance = Math.abs(centerPoint - gapCenter);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPosition = i;
+      }
     }
-  }, [selectedPosition, totalPositions]);
+    
+    if (closestPosition !== selectedPosition) {
+      setSelectedPosition(closestPosition);
+    }
+  }, [selectedPosition, totalPositions, timelineSongs.length]);
 
   // Effect to scroll to position when it changes
   useEffect(() => {
@@ -251,34 +273,26 @@ export default function MobilePlayerGameView({
         )}
       >
         <div className="text-center space-y-6 max-w-sm w-full animate-in slide-in-from-bottom-8 duration-700">
-          {/* Result icon with enhanced animation */}
+          {/* Result icon with more subtle animation */}
           <div className="relative">
             <div className={cn(
               "text-8xl mb-4 font-black transition-all duration-700",
-              isCorrect ? 'animate-bounce text-white drop-shadow-2xl' : 'animate-pulse text-white drop-shadow-2xl scale-110'
+              isCorrect ? 'animate-pulse text-white drop-shadow-2xl' : 'animate-pulse text-white drop-shadow-2xl scale-110'
             )}>
               {isCorrect ? '✓' : '✗'}
             </div>
-            {/* Celebration effects for correct placement */}
+            {/* Toned down celebration effects for correct placement */}
             {isCorrect && (
-              <>
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-4xl animate-ping opacity-75">
-                  ✨
-                </div>
-                <div className="absolute top-4 right-4 text-3xl animate-bounce delay-150 opacity-75">
-                  🎉
-                </div>
-                <div className="absolute top-4 left-4 text-3xl animate-bounce delay-300 opacity-75">
-                  🎊
-                </div>
-              </>
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-2xl animate-pulse opacity-50">
+                ✨
+              </div>
             )}
           </div>
           
-          {/* Result text with enhanced animation */}
+          {/* Result text with more subtle animation */}
           <div className={cn(
             "text-5xl font-black text-white drop-shadow-2xl transition-all duration-500",
-            isCorrect ? 'animate-bounce' : 'animate-pulse scale-105'
+            isCorrect ? 'animate-pulse' : 'animate-pulse scale-105'
           )}>
             {isCorrect ? 'CORRECT!' : 'INCORRECT'}
           </div>
@@ -301,10 +315,9 @@ export default function MobilePlayerGameView({
             </div>
           </div>
           
-          {/* Score indicator with enhanced feedback */}
+          {/* Score indicator with more subtle feedback */}
           <div className={cn(
-            "text-white text-xl font-bold transition-all duration-500",
-            isCorrect && "animate-bounce"
+            "text-white text-xl font-bold transition-all duration-500"
           )}>
             {isCorrect ? (
               <div className="space-y-2">
@@ -434,10 +447,10 @@ export default function MobilePlayerGameView({
                     }}
                     onScroll={handleCarouselScroll}
                   >
-                    {/* Gap before first card */}
+                    {/* Gap before first card - reduced width */}
                     <div 
                       className={cn(
-                        "flex-shrink-0 w-16 h-24 flex items-center justify-center transition-all duration-300",
+                        "flex-shrink-0 w-12 h-36 flex items-center justify-center transition-all duration-300",
                         selectedPosition === 0 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                       )}
                       style={{ scrollSnapAlign: 'center' }}
@@ -451,26 +464,37 @@ export default function MobilePlayerGameView({
 
                     {timelineSongs.map((song, index) => (
                       <React.Fragment key={song.id}>
-                        {/* Song card */}
+                        {/* Song card - redesigned to match host display */}
                         <div
-                          className="flex-shrink-0 w-24 h-24 mx-2 bg-white/15 backdrop-blur-sm rounded-xl border border-white/30 transition-all duration-200 hover:bg-white/20 active:scale-95 cursor-pointer"
+                          className="flex-shrink-0 w-32 h-36 mx-1 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 transition-all duration-200 hover:bg-white/15 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative"
                           style={{ scrollSnapAlign: 'center' }}
                           onClick={() => song.preview_url && handleSongPreview(song)}
                         >
-                          <div className="p-2 h-full flex flex-col justify-between">
-                            <div className="flex-shrink-0 w-full h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                              {song.release_year.slice(-2)}
+                          {/* Gradient overlay like host cards */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                          
+                          <div className="p-3 h-full flex flex-col items-center justify-center text-white relative z-10">
+                            {/* Calendar icon like host cards */}
+                            <Calendar className="h-5 w-5 mb-2 opacity-70" />
+                            
+                            {/* Year prominently displayed */}
+                            <div className="text-lg font-bold mb-1">
+                              {song.release_year}
                             </div>
-                            <div className="flex-1 min-h-0 flex flex-col justify-center">
-                              <div className="text-white font-semibold text-xs text-center leading-tight line-clamp-2 mb-1">
-                                {song.deezer_title}
-                              </div>
-                              <div className="text-white/70 text-xs text-center truncate">
-                                {song.deezer_artist}
-                              </div>
+                            
+                            {/* Song title with proper truncation */}
+                            <div className="text-xs text-center opacity-80 leading-tight max-w-28 mb-1">
+                              {song.deezer_title.length > 16 ? song.deezer_title.substring(0, 16) + '...' : song.deezer_title}
                             </div>
+                            
+                            {/* Artist with proper truncation */}
+                            <div className="text-xs text-center opacity-60 leading-tight max-w-28 mb-2">
+                              {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
+                            </div>
+                            
+                            {/* Play/pause indicator */}
                             {song.preview_url && (
-                              <div className="flex-shrink-0 flex justify-center mt-1">
+                              <div className="flex justify-center">
                                 {playingPreviewId === song.id ? (
                                   <Pause className="w-3 h-3 text-white" />
                                 ) : (
@@ -481,10 +505,10 @@ export default function MobilePlayerGameView({
                           </div>
                         </div>
                         
-                        {/* Gap after this card */}
+                        {/* Gap after this card - reduced width */}
                         <div 
                           className={cn(
-                            "flex-shrink-0 w-16 h-24 flex items-center justify-center transition-all duration-300",
+                            "flex-shrink-0 w-12 h-36 flex items-center justify-center transition-all duration-300",
                             selectedPosition === index + 1 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                           )}
                           style={{ scrollSnapAlign: 'center' }}
@@ -498,10 +522,13 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Extra space for last position */}
-                    <div className="flex-shrink-0 w-16"></div>
+                    {/* Enhanced edge buffers for better scrolling experience */}
+                    <div className="flex-shrink-0 w-32"></div>
                   </div>
                 </div>
+
+                {/* Additional buffer space after carousel for proper centering */}
+                <div className="flex-shrink-0 w-32"></div>
 
                 {/* Position navigation */}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/20">
