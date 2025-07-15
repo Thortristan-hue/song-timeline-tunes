@@ -140,6 +140,7 @@ export function CardPlacementAnimations({
   return (
     <div ref={containerRef} className="relative w-full h-full">
       {/* Main game content with enhanced animation classes */}
+      {/* Host feedback animations only applied when showHostFeedback=true (host view only) */}
       <div className={`w-full h-full transition-all duration-500 ${currentAnimation} ${
         showHostFeedback ? (hostFeedbackType === 'correct' ? 'animate-host-feedback-correct' : 'animate-host-feedback-incorrect') : ''
       }`}>

@@ -5,7 +5,7 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
-// Host Feedback Component for subtle visual feedback
+// Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
   show, 
   type 
@@ -17,44 +17,81 @@ function HostFeedbackOverlay({
 
   return (
     <div className="fixed inset-0 pointer-events-none z-20">
+      {/* Main background feedback effect */}
       <div className={`w-full h-full transition-all duration-1200 ${
         type === 'correct' ? 'animate-host-feedback-correct' : 'animate-host-feedback-incorrect'
       }`} />
       
-      {/* Subtle sparkle effects for correct answers */}
+      {/* Enhanced visual feedback for correct answers */}
       {type === 'correct' && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          {Array.from({ length: 6 }, (_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping opacity-60"
-              style={{
-                left: `${50 + Math.cos((i * Math.PI) / 3) * 15}%`,
-                top: `${50 + Math.sin((i * Math.PI) / 3) * 15}%`,
-                animationDelay: `${i * 0.2}s`,
-                animationDuration: '1.5s'
-              }}
-            />
-          ))}
-        </div>
+        <>
+          {/* Central success indicator */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-6xl animate-bounce text-green-400 font-bold drop-shadow-lg">
+              ✓
+            </div>
+          </div>
+          
+          {/* Enhanced sparkle effects */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                key={i}
+                className="absolute w-3 h-3 bg-green-400 rounded-full animate-ping opacity-80"
+                style={{
+                  left: `${50 + Math.cos((i * Math.PI) / 4) * 25}%`,
+                  top: `${50 + Math.sin((i * Math.PI) / 4) * 25}%`,
+                  animationDelay: `${i * 0.15}s`,
+                  animationDuration: '1.2s'
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Top-right corner indicator for host */}
+          <div className="absolute top-4 right-4 bg-green-500/20 backdrop-blur-md rounded-full px-4 py-2 border border-green-400/30">
+            <div className="flex items-center gap-2 text-green-400 font-semibold">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span>Correct!</span>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Subtle error indication for incorrect answers */}
+      {/* Enhanced visual feedback for incorrect answers */}
       {type === 'incorrect' && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div
-              key={i}
-              className="absolute w-3 h-3 bg-red-400/40 rounded-full animate-pulse opacity-50"
-              style={{
-                left: `${50 + Math.cos((i * Math.PI) / 2) * 20}%`,
-                top: `${50 + Math.sin((i * Math.PI) / 2) * 20}%`,
-                animationDelay: `${i * 0.3}s`,
-                animationDuration: '1s'
-              }}
-            />
-          ))}
-        </div>
+        <>
+          {/* Central miss indicator */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-6xl animate-pulse text-red-400 font-bold drop-shadow-lg">
+              ✗
+            </div>
+          </div>
+          
+          {/* Enhanced error effects */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div
+                key={i}
+                className="absolute w-4 h-4 bg-red-400/60 rounded-full animate-pulse opacity-70"
+                style={{
+                  left: `${50 + Math.cos((i * Math.PI) / 3) * 30}%`,
+                  top: `${50 + Math.sin((i * Math.PI) / 3) * 30}%`,
+                  animationDelay: `${i * 0.2}s`,
+                  animationDuration: '1s'
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Top-right corner indicator for host */}
+          <div className="absolute top-4 right-4 bg-red-500/20 backdrop-blur-md rounded-full px-4 py-2 border border-red-400/30">
+            <div className="flex items-center gap-2 text-red-400 font-semibold">
+              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+              <span>Try Again!</span>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -627,7 +664,11 @@ export function HostGameView({
       
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
-        setShowHostFeedback(false);
+        // Keep host feedback visible a bit longer for better host awareness
+        const hostFeedbackTimer = setTimeout(() => {
+          setShowHostFeedback(false);
+        }, 2000); // Extra 2 seconds for host feedback after modal closes
+        
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
@@ -638,10 +679,16 @@ export function HostGameView({
             setAnimationStage('idle');
           }, 1500);
           
-          return () => clearTimeout(enterTimer);
+          return () => {
+            clearTimeout(enterTimer);
+            clearTimeout(hostFeedbackTimer);
+          };
         }, 1200);
         
-        return () => clearTimeout(transitionTimer);
+        return () => {
+          clearTimeout(transitionTimer);
+          clearTimeout(hostFeedbackTimer);
+        };
       }, 4000);
       
       return () => clearTimeout(resultTimer);
