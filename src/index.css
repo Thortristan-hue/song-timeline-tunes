@@ -145,32 +145,22 @@
       height: var(--mobile-viewport-height);
       min-height: var(--mobile-viewport-height);
       max-height: var(--mobile-viewport-height);
-      /* Use safe areas for horizontal padding only */
+      /* Apply safe areas directly to prevent content cut-off */
+      padding-top: var(--safe-area-inset-top);
+      padding-bottom: var(--safe-area-inset-bottom);
       padding-left: var(--safe-area-inset-left);
       padding-right: var(--safe-area-inset-right);
       /* Prevent scrolling on the main container */
       overflow: hidden;
-      /* Position to account for safe areas without double-padding */
-      position: relative;
       /* Ensure flexbox fills available height */
       display: flex;
       flex-direction: column;
     }
     
-    /* Apply safe area top margin only to the first child to avoid double padding */
-    .mobile-game-view > *:first-child {
-      margin-top: var(--safe-area-inset-top);
-    }
-    
-    /* Apply safe area bottom margin only to the last child */
-    .mobile-game-view > *:last-child {
-      margin-bottom: var(--safe-area-inset-bottom);
-    }
-    
-    /* Responsive carousel constraints - use more available height */
+    /* Responsive carousel constraints - account for safe areas in main container */
     .mobile-game-view .carousel-container {
-      max-height: calc(var(--mobile-usable-height) - 180px);
-      min-height: 250px;
+      max-height: calc(var(--mobile-usable-height) - 200px);
+      min-height: 200px;
       flex: 1;
     }
   }
