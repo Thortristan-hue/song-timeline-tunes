@@ -16,6 +16,9 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  
+  /* Calculated usable height minus safe areas */
+  --mobile-usable-height: calc(var(--mobile-viewport-height) - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
 }
 
 @layer base {
@@ -138,22 +141,27 @@
     
     /* Fix mobile scrolling issues */
     .mobile-game-view {
-      /* Use calculated viewport height */
+      /* Use full viewport height */
       height: var(--mobile-viewport-height);
       min-height: var(--mobile-viewport-height);
-      /* Account for iOS safe areas */
+      max-height: var(--mobile-viewport-height);
+      /* Apply safe areas directly to prevent content cut-off */
       padding-top: var(--safe-area-inset-top);
       padding-bottom: var(--safe-area-inset-bottom);
       padding-left: var(--safe-area-inset-left);
       padding-right: var(--safe-area-inset-right);
       /* Prevent scrolling on the main container */
       overflow: hidden;
+      /* Ensure flexbox fills available height */
+      display: flex;
+      flex-direction: column;
     }
     
-    /* Responsive carousel constraints */
+    /* Responsive carousel constraints - account for safe areas in main container */
     .mobile-game-view .carousel-container {
-      max-height: calc(var(--mobile-viewport-height) - 200px);
+      max-height: calc(var(--mobile-usable-height) - 200px);
       min-height: 200px;
+      flex: 1;
     }
   }
 }

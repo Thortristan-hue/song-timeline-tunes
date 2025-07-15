@@ -242,7 +242,7 @@ export function GameHeader({ roomCode, currentPlayer, currentTurnPlayer, isMyTur
               <Crown className="h-6 w-6 text-white" />
             </div>
             <div>
-              <div className="text-white font-semibold text-2xl tracking-tight">Timeliner</div>
+              <div className="text-white font-semibold text-2xl tracking-tight">Rythmy</div>
               <div className="text-white/60 text-base">Put the song in the right place</div>
             </div>
           </div>

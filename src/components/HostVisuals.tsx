@@ -184,7 +184,7 @@ function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCoun
             />
           </div>
           <div>
-            <div className="text-white font-black text-2xl tracking-tight drop-shadow-lg">Timeliner</div>
+            <div className="text-white font-black text-2xl tracking-tight drop-shadow-lg">Rythmy</div>
             <div className="text-white/80 text-sm font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
           </div>
         </div>
