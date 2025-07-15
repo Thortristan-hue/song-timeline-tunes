@@ -475,6 +475,47 @@ export class GameService {
     console.log('✅ Game ended successfully in database');
   }
 
+  static async resetGameForReplay(roomId: string): Promise<void> {
+    try {
+      // Reset room to lobby phase
+      const { error: roomError } = await supabase
+        .from('game_rooms')
+        .update({
+          phase: 'lobby',
+          current_turn: 0,
+          current_player_id: null,
+          current_song: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId);
+
+      if (roomError) {
+        console.error('Failed to reset room:', roomError);
+        throw roomError;
+      }
+
+      // Reset all players' timelines and scores
+      const { error: playersError } = await supabase
+        .from('players')
+        .update({
+          timeline: [],
+          score: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('room_id', roomId);
+
+      if (playersError) {
+        console.error('Failed to reset players:', playersError);
+        throw playersError;
+      }
+
+      console.log('✅ Game reset successfully for replay');
+    } catch (error) {
+      console.error('❌ Failed to reset game:', error);
+      throw error;
+    }
+  }
+
   static async getFreshAudioUrl(song: Song): Promise<string> {
     try {
       if (song.preview_url) {
