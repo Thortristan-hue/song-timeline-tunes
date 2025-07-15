@@ -5,6 +5,26 @@ import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-rea
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
 
+// Throttle utility for performance optimization
+const throttle = (func: Function, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout> | null;
+  let lastExecTime = 0;
+  return function (this: any, ...args: any[]) {
+    const currentTime = Date.now();
+    
+    if (currentTime - lastExecTime > delay) {
+      func.apply(this, args);
+      lastExecTime = currentTime;
+    } else {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func.apply(this, args);
+        lastExecTime = Date.now();
+      }, delay - (currentTime - lastExecTime));
+    }
+  };
+};
+
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
   currentTurnPlayer: Player;
@@ -43,6 +63,7 @@ export default function MobilePlayerGameView({
   const audioCleanupRef = useRef<() => void>();
   const carouselRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Get sorted timeline songs for placement
   const timelineSongs = currentPlayer.timeline
@@ -193,24 +214,28 @@ export default function MobilePlayerGameView({
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px (no margin)
-    const gapWidth = 6; // Updated for minimal gap size (w-1.5 = 6px)
-    const totalWidth = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth);
+    const cardWidth = 128; // w-32 = 128px
+    const gapWidth = 6; // w-1.5 = 6px
+    const edgeBuffer = 160; // Substantial edge buffer for proper scrolling
     
     // Calculate scroll position to center the selected gap
     let targetScroll;
+    
     if (position === 0) {
       // Before first card - center the first gap
-      targetScroll = (gapWidth / 2) - (containerWidth / 2);
+      targetScroll = edgeBuffer + (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
       // After last card - center the last gap
-      targetScroll = totalWidth - (gapWidth / 2) - (containerWidth / 2);
+      const cardsWidth = timelineSongs.length * cardWidth;
+      const gapsWidth = (timelineSongs.length + 1) * gapWidth;
+      const totalContentWidth = cardsWidth + gapsWidth;
+      targetScroll = edgeBuffer + totalContentWidth - (gapWidth / 2) - (containerWidth / 2);
     } else {
       // Between cards - center the gap
       const cardsBeforeGap = position;
-      const gapsBeforeGap = position;
-      const positionInTimeline = (gapsBeforeGap * gapWidth) + (cardsBeforeGap * cardWidth) + (gapWidth / 2);
-      targetScroll = positionInTimeline - (containerWidth / 2);
+      const gapsBeforeTargetGap = position;
+      const positionInTimeline = (gapsBeforeTargetGap * gapWidth) + (cardsBeforeGap * cardWidth) + (gapWidth / 2);
+      targetScroll = edgeBuffer + positionInTimeline - (containerWidth / 2);
     }
     
     // Ensure scroll position is within bounds
@@ -222,48 +247,63 @@ export default function MobilePlayerGameView({
       behavior: 'smooth'
     });
     
-    // Reset scrolling flag after animation
-    setTimeout(() => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Reset scrolling flag after animation with proper timing
+    scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 300);
+    }, 500); // Increased timeout for smoother experience
   }, [timelineSongs.length]);
 
   // Handle scroll events to update selected position based on scroll position
-  const handleCarouselScroll = useCallback(() => {
-    if (!carouselRef.current || isScrollingRef.current) return;
-    
-    const carousel = carouselRef.current;
-    const scrollLeft = carousel.scrollLeft;
-    const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px (no margin)
-    const gapWidth = 6; // Updated for minimal gap size
-    
-    // Calculate which position is closest to center
-    const centerPoint = scrollLeft + (containerWidth / 2);
-    
-    // Find the closest gap position
-    let closestPosition = 0;
-    let minDistance = Infinity;
-    
-    for (let i = 0; i <= timelineSongs.length; i++) {
-      let gapCenter;
-      if (i === 0) {
-        gapCenter = gapWidth / 2;
-      } else {
-        gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + (gapWidth / 2);
+  const handleCarouselScroll = useCallback(
+    throttle(() => {
+      if (!carouselRef.current || isScrollingRef.current) return;
+      
+      const carousel = carouselRef.current;
+      const scrollLeft = carousel.scrollLeft;
+      const containerWidth = carousel.clientWidth;
+      const cardWidth = 128; // w-32 = 128px
+      const gapWidth = 6; // w-1.5 = 6px
+      const edgeBuffer = 160; // Account for edge buffer
+      
+      // Calculate which position is closest to center
+      const centerPoint = scrollLeft + (containerWidth / 2);
+      const adjustedCenterPoint = centerPoint - edgeBuffer; // Adjust for edge buffer
+      
+      // Find the closest gap position with improved accuracy
+      let closestPosition = 0;
+      let minDistance = Infinity;
+      
+      for (let i = 0; i <= timelineSongs.length; i++) {
+        let gapCenter;
+        if (i === 0) {
+          gapCenter = gapWidth / 2;
+        } else if (i === timelineSongs.length) {
+          // Last gap after all cards
+          const cardsWidth = timelineSongs.length * cardWidth;
+          const gapsWidth = timelineSongs.length * gapWidth;
+          gapCenter = cardsWidth + gapsWidth + (gapWidth / 2);
+        } else {
+          // Gap between cards
+          gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + (gapWidth / 2);
+        }
+        
+        const distance = Math.abs(adjustedCenterPoint - gapCenter);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPosition = i;
+        }
       }
       
-      const distance = Math.abs(centerPoint - gapCenter);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestPosition = i;
+      if (closestPosition !== selectedPosition) {
+        setSelectedPosition(closestPosition);
       }
-    }
-    
-    if (closestPosition !== selectedPosition) {
-      setSelectedPosition(closestPosition);
-    }
-  }, [selectedPosition, timelineSongs.length]);
+    }, 16) // ~60fps throttling for smooth performance
+  , [selectedPosition, timelineSongs.length]);
 
   // Effect to scroll to position when it changes
   useEffect(() => {
@@ -274,6 +314,9 @@ export default function MobilePlayerGameView({
   useEffect(() => {
     return () => {
       audioCleanupRef.current?.();
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -462,13 +505,16 @@ export default function MobilePlayerGameView({
                     ref={carouselRef}
                     className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{ 
-                      scrollSnapType: 'x mandatory',
+                      scrollSnapType: 'x proximity', // Changed from mandatory to proximity for better mobile experience
                       scrollBehavior: 'smooth',
                       WebkitOverflowScrolling: 'touch'
                     }}
                     onScroll={handleCarouselScroll}
                   >
-                    {/* Gap before first card - minimal width */}
+                    {/* Large edge buffer at start for proper scrolling */}
+                    <div className="flex-shrink-0 w-40"></div>
+                    
+                    {/* Gap before first card */}
                     <div 
                       className={cn(
                         "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
@@ -515,7 +561,7 @@ export default function MobilePlayerGameView({
                           </div>
                         </div>
                         
-                        {/* Gap after this card - minimal width */}
+                        {/* Gap after this card */}
                         <div 
                           className={cn(
                             "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
@@ -532,8 +578,8 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Minimal edge buffer for proper scrolling */}
-                    <div className="flex-shrink-0 w-8"></div>
+                    {/* Large edge buffer at end for proper scrolling */}
+                    <div className="flex-shrink-0 w-40"></div>
                   </div>
                 </div>
 
