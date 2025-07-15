@@ -3,6 +3,11 @@
 
 /* CSS Custom Properties for consistent design */
 :root {
+  /* Mobile-safe viewport calculations */
+  --mobile-vh: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  --mobile-safe-height: calc(100vh - env(safe-area-inset-top));
+  --mobile-full-height: calc(100dvh - env(safe-area-inset-top));
+  
   /* Color Palette - Enhanced for better contrast */
   --timeliner-primary: #8b5cf6;
   --timeliner-secondary: #ec4899;
@@ -191,6 +196,53 @@
   background: rgba(15, 23, 42, 0.9);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile viewport utilities */
+.mobile-safe-height {
+  height: var(--mobile-safe-height);
+  min-height: var(--mobile-safe-height);
+}
+
+.mobile-full-height {
+  height: var(--mobile-full-height);
+  min-height: var(--mobile-full-height);
+}
+
+.mobile-vh {
+  height: var(--mobile-vh);
+  min-height: var(--mobile-vh);
+}
+
+/* Responsive mobile-first design utilities */
+@media (max-width: 768px) {
+  .mobile-container {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .mobile-game-view {
+    height: var(--mobile-safe-height);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Fallback for browsers that don't support dvh */
+@supports not (height: 100dvh) {
+  :root {
+    --mobile-full-height: calc(100vh - env(safe-area-inset-top));
+  }
+}
+
+/* Enhanced support for various mobile browsers */
+@supports (height: 100dvh) {
+  :root {
+    --mobile-full-height: calc(100dvh - env(safe-area-inset-top));
+  }
 }
 
 /* ... keep existing code (responsive adjustments and background effects) */

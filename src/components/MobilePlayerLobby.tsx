@@ -78,7 +78,8 @@ export default function MobilePlayerLobby({
 
   if (room?.phase === 'playing') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="mobile-container bg-black flex items-center justify-center p-6"
+           style={{ minHeight: 'var(--mobile-safe-height)' }}>
         <div className="w-full max-w-sm bg-gray-900 rounded-3xl p-8 shadow-2xl text-center border border-gray-800">
           <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Gamepad2 className="h-10 w-10 text-white" />
@@ -92,7 +93,8 @@ export default function MobilePlayerLobby({
 
   if (!room || !currentPlayer) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="mobile-container bg-black flex items-center justify-center p-6"
+           style={{ minHeight: 'var(--mobile-safe-height)' }}>
         <div className="w-full max-w-sm bg-gray-900 rounded-3xl p-8 shadow-2xl text-center border border-gray-800">
           <div className="w-16 h-16 bg-red-900/50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-red-800/30">
             <Users className="h-8 w-8 text-red-400" />
@@ -111,7 +113,8 @@ export default function MobilePlayerLobby({
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="mobile-container bg-black"
+         style={{ minHeight: 'var(--mobile-safe-height)' }}>
       {/* Safe area for iPhone */}
       <div className="pt-safe-top pb-safe-bottom">
         <div className="px-6 py-8 space-y-6">
