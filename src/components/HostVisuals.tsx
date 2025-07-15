@@ -643,7 +643,9 @@ export function HostGameView({
     id: 'unknown',
     name: 'Unknown Player',
     timeline: [],
-    color: '#ffffff'
+    color: '#ffffff',
+    timelineColor: '#ffffff',
+    score: 0
   };
   const safePlayers = players || [];
   const safeRoomCode = roomCode || 'XXXX';
