@@ -364,6 +364,8 @@ export default function MobilePlayerGameView({
       isMyTurn={isMyTurn}
       onAnimationComplete={handleAnimationComplete}
       animationState={animationState}
+      showHostFeedback={false} // Mobile players don't show host feedback
+      hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
     >
       <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden">
       {/* Enhanced Background Effects */}

@@ -5,6 +5,61 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
+// Host Feedback Component for subtle visual feedback
+function HostFeedbackOverlay({ 
+  show, 
+  type 
+}: { 
+  show: boolean; 
+  type: 'correct' | 'incorrect' 
+}) {
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-20">
+      <div className={`w-full h-full transition-all duration-1200 ${
+        type === 'correct' ? 'animate-host-feedback-correct' : 'animate-host-feedback-incorrect'
+      }`} />
+      
+      {/* Subtle sparkle effects for correct answers */}
+      {type === 'correct' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping opacity-60"
+              style={{
+                left: `${50 + Math.cos((i * Math.PI) / 3) * 15}%`,
+                top: `${50 + Math.sin((i * Math.PI) / 3) * 15}%`,
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: '1.5s'
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Subtle error indication for incorrect answers */}
+      {type === 'incorrect' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute w-3 h-3 bg-red-400/40 rounded-full animate-pulse opacity-50"
+              style={{
+                left: `${50 + Math.cos((i * Math.PI) / 2) * 20}%`,
+                top: `${50 + Math.sin((i * Math.PI) / 2) * 20}%`,
+                animationDelay: `${i * 0.3}s`,
+                animationDuration: '1s'
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Enhanced Host Background Component with graffiti-inspired effects
 export function HostGameBackground() {
   return (
@@ -563,12 +618,16 @@ export function HostGameView({
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showHostFeedback, setShowHostFeedback] = useState(false);
   
   useEffect(() => {
     if (cardPlacementResult) {
       setShowResultModal(true);
+      setShowHostFeedback(true);
+      
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
+        setShowHostFeedback(false);
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
@@ -608,6 +667,12 @@ export function HostGameView({
         isPlaying={safeIsPlaying}
         onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
+      />
+      
+      {/* Host Feedback Overlay */}
+      <HostFeedbackOverlay 
+        show={showHostFeedback}
+        type={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
       />
       
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
