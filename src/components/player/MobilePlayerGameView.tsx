@@ -247,6 +247,16 @@ export default function MobilePlayerGameView({
 
   // Reset state when turn changes - center the middle gap
   useEffect(() => {
+
+// Viewport height fix for mobile browsers
+useEffect(() => {
+  const setVh = () => {
+    document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
+  };
+  setVh();
+  window.addEventListener('resize', setVh);
+  return () => window.removeEventListener('resize', setVh);
+}, []);
     if (isMyTurn && !gameEnded) {
       setHasConfirmed(false);
       
@@ -367,7 +377,7 @@ export default function MobilePlayerGameView({
       showHostFeedback={false} // Mobile players don't show host feedback
       hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
     >
-      <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
+      <div className="mobile-game-view min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
@@ -481,7 +491,7 @@ export default function MobilePlayerGameView({
                 onMouseLeave={handleTouchEnd}
                 style={{
                   WebkitOverflowScrolling: 'touch',
-                  scrollBehavior: isScrolling ? 'auto' : 'smooth',
+scrollBehavior: 'auto',
                   perspective: '1000px'
                 }}
               >
