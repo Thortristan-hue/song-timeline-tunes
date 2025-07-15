@@ -181,12 +181,12 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           {[...Array(50)].map((_, i) => (
             <div 
               key={i}
-              className="absolute floating-particle opacity-20"
+              className="absolute floating-particle opacity-40"
               style={{
                 top: `${Math.random() * 120 - 20}%`,
                 left: `${Math.random() * 120 - 20}%`,
-                animationDuration: `${35 + Math.random() * 15}s`,
-                animationDelay: `${Math.random() * 20}s`,
+                animationDuration: `${35 + Math.random() * 45}s`,
+                animationDelay: `${Math.random() * 60}s`,
               }}
             >
               {i % 4 === 0 ? (
