@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import MobileVictoryScreen from '@/components/player/MobileVictoryScreen';
 import { HostGameView } from '@/components/HostVisuals';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +21,7 @@ interface GamePlayProps {
   customSongs: Song[];
   connectionStatus?: ConnectionStatusType;
   onReconnect?: () => void;
+  onReplayGame?: () => void;
 }
 
 export function GamePlay({
@@ -31,7 +33,8 @@ export function GamePlay({
   onSetCurrentSong,
   customSongs,
   connectionStatus,
-  onReconnect
+  onReconnect,
+  onReplayGame
 }: GamePlayProps) {
   const soundEffects = useSoundEffects();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -319,6 +322,37 @@ export function GamePlay({
     }
   };
 
+  // Handle replay functionality
+  const handleReplay = async () => {
+    if (!isHost || !room?.id) return;
+    
+    try {
+      // Reset game state
+      setGameEnded(false);
+      setGameInitialized(false);
+      setInitializationError(null);
+      setCardPlacementResult(null);
+      setMysteryCardRevealed(false);
+      setIsPlaying(false);
+      
+      // Clean up audio
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+      
+      // Reset room to lobby phase and restart
+      await GameService.resetGameForReplay(room.id);
+      
+      // Call parent replay handler if provided
+      if (onReplayGame) {
+        onReplayGame();
+      }
+    } catch (error) {
+      console.error('Failed to restart game:', error);
+    }
+  };
+
   // Show initialization error
   if (initializationError) {
     return (
@@ -333,9 +367,23 @@ export function GamePlay({
     );
   }
 
-  // Show game over screen
+  // Show mobile victory screen for players, enhanced victory screen for hosts
   if (gameEnded) {
     const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
+    
+    // Mobile victory screen for players
+    if (!isHost && winningPlayer) {
+      return (
+        <MobileVictoryScreen
+          winningPlayer={winningPlayer}
+          allPlayers={activePlayers}
+          onReplay={handleReplay}
+          roomCode={room.lobby_code}
+        />
+      );
+    }
+    
+    // Host victory screen (unchanged for now)
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10">

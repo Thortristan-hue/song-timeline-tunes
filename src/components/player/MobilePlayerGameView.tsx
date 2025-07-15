@@ -193,8 +193,8 @@ export default function MobilePlayerGameView({
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 132; // w-32 = 128px + 4px margin
-    const gapWidth = 10; // Updated for minimal gap size (w-2.5 = 10px)
+    const cardWidth = 128; // w-32 = 128px (no margin)
+    const gapWidth = 6; // Updated for minimal gap size (w-1.5 = 6px)
     const totalWidth = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth);
     
     // Calculate scroll position to center the selected gap
@@ -235,8 +235,8 @@ export default function MobilePlayerGameView({
     const carousel = carouselRef.current;
     const scrollLeft = carousel.scrollLeft;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 132; // w-32 = 128px + 4px margin
-    const gapWidth = 10; // Updated for minimal gap size
+    const cardWidth = 128; // w-32 = 128px (no margin)
+    const gapWidth = 6; // Updated for minimal gap size
     
     // Calculate which position is closest to center
     const centerPoint = scrollLeft + (containerWidth / 2);
@@ -285,7 +285,7 @@ export default function MobilePlayerGameView({
     }
   }, [isMyTurn, gameEnded, totalPositions]);
 
-  // Show result overlay with enhanced animation
+  // Show result overlay with refined, tasteful design
   if (cardPlacementResult) {
     const isCorrect = cardPlacementResult.correct;
     
@@ -295,66 +295,59 @@ export default function MobilePlayerGameView({
           "fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-500",
           "px-4 pt-safe-top pb-safe-bottom",
           isCorrect 
-            ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-700' 
-            : 'bg-gradient-to-br from-red-500 via-red-600 to-red-700'
+            ? 'bg-gradient-to-br from-green-600 via-green-700 to-green-800' 
+            : 'bg-gradient-to-br from-red-600 via-red-700 to-red-800'
         )}
       >
-        <div className="text-center space-y-6 max-w-sm w-full animate-in slide-in-from-bottom-8 duration-700">
-          {/* Result icon with more subtle animation */}
+        <div className="text-center space-y-6 max-w-sm w-full animate-in slide-in-from-bottom-4 duration-500">
+          {/* Result icon with elegant animation */}
           <div className="relative">
             <div className={cn(
-              "text-8xl mb-4 font-black transition-all duration-700",
-              isCorrect ? 'animate-pulse text-white drop-shadow-2xl' : 'animate-pulse text-white drop-shadow-2xl scale-110'
+              "text-6xl mb-4 font-light transition-all duration-500",
+              isCorrect ? 'text-white drop-shadow-lg' : 'text-white drop-shadow-lg'
             )}>
               {isCorrect ? '✓' : '✗'}
             </div>
-            {/* Toned down celebration effects for correct placement */}
-            {isCorrect && (
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 text-2xl animate-pulse opacity-50">
-                ✨
-              </div>
-            )}
           </div>
           
-          {/* Result text with more subtle animation */}
+          {/* Result text with refined styling */}
           <div className={cn(
-            "text-5xl font-black text-white drop-shadow-2xl transition-all duration-500",
-            isCorrect ? 'animate-pulse' : 'animate-pulse scale-105'
+            "text-3xl font-semibold text-white drop-shadow-lg transition-all duration-300"
           )}>
-            {isCorrect ? 'CORRECT!' : 'INCORRECT'}
+            {isCorrect ? 'Correct!' : 'Incorrect'}
           </div>
           
-          {/* Song info with slide-in animation */}
-          <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-6 border-4 border-white shadow-2xl animate-in slide-in-from-bottom-4 duration-500 delay-200">
-            <div className="text-xl font-bold text-gray-900 mb-3 leading-tight">
+          {/* Song info with elegant slide-in animation */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-white/30 shadow-xl animate-in slide-in-from-bottom-2 duration-400 delay-150">
+            <div className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
               {cardPlacementResult.song.deezer_title}
             </div>
-            <div className="text-lg text-gray-700 mb-4 font-medium">
+            <div className="text-base text-gray-700 mb-3 font-medium">
               by {cardPlacementResult.song.deezer_artist}
             </div>
             <div className={cn(
-              "inline-block text-white px-6 py-3 rounded-full font-black text-2xl shadow-xl transition-all duration-300",
+              "inline-block text-white px-4 py-2 rounded-xl font-semibold text-lg shadow-md transition-all duration-200",
               isCorrect 
-                ? 'bg-gradient-to-r from-green-600 to-green-700 animate-pulse' 
-                : 'bg-gradient-to-r from-red-600 to-red-700'
+                ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                : 'bg-gradient-to-r from-red-500 to-red-600'
             )}>
               {cardPlacementResult.song.release_year}
             </div>
           </div>
           
-          {/* Score indicator with more subtle feedback */}
+          {/* Score indicator with subtle feedback */}
           <div className={cn(
-            "text-white text-xl font-bold transition-all duration-500"
+            "text-white text-lg font-medium transition-all duration-300"
           )}>
             {isCorrect ? (
-              <div className="space-y-2">
-                <div className="text-2xl">🏆 Perfect Placement! 🏆</div>
-                <div>+1 Point for {currentPlayer.name}!</div>
+              <div className="space-y-1">
+                <div className="text-xl">Perfect Placement!</div>
+                <div className="text-sm opacity-90">+1 Point for {currentPlayer.name}</div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="text-xl">❌ Not quite right ❌</div>
-                <div>No points this round</div>
+              <div className="space-y-1">
+                <div className="text-lg">Not quite right</div>
+                <div className="text-sm opacity-90">Try again next time</div>
               </div>
             )}
           </div>
@@ -467,17 +460,18 @@ export default function MobilePlayerGameView({
                   {/* Scrollable carousel */}
                   <div 
                     ref={carouselRef}
-                    className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide pb-4"
+                    className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{ 
                       scrollSnapType: 'x mandatory',
-                      scrollBehavior: 'smooth'
+                      scrollBehavior: 'smooth',
+                      WebkitOverflowScrolling: 'touch'
                     }}
                     onScroll={handleCarouselScroll}
                   >
                     {/* Gap before first card - minimal width */}
                     <div 
                       className={cn(
-                        "flex-shrink-0 w-2.5 h-32 flex items-center justify-center transition-all duration-300",
+                        "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
                         selectedPosition === 0 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                       )}
                       style={{ scrollSnapAlign: 'center' }}
@@ -491,31 +485,31 @@ export default function MobilePlayerGameView({
 
                     {timelineSongs.map((song, index) => (
                       <React.Fragment key={song.id}>
-                        {/* Song card - square with new layout */}
+                        {/* Song card - optimized layout */}
                         <div
                           className={cn(
-                            "flex-shrink-0 w-32 h-32 mx-1 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative",
+                            "flex-shrink-0 w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative",
                             `bg-gradient-to-br ${getRandomCardColor(song.id)}`
                           )}
                           style={{ scrollSnapAlign: 'center' }}
                           onClick={() => song.preview_url && handleSongPreview(song)}
                         >
                           {/* Subtle gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl" />
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                           
                           <div className="p-3 h-full flex flex-col items-center justify-center text-white relative z-10">
-                            {/* Artist name - medium lettering, white */}
-                            <div className="text-sm font-medium text-center mb-2 leading-tight max-w-28">
+                            {/* Artist name - optimized typography */}
+                            <div className="text-sm font-semibold text-center mb-2 leading-tight max-w-28 text-white/95">
                               {song.deezer_artist.length > 15 ? song.deezer_artist.substring(0, 15) + '...' : song.deezer_artist}
                             </div>
                             
-                            {/* Song release year - large lettering, white */}
-                            <div className="text-xl font-bold mb-2">
+                            {/* Song release year - prominent display */}
+                            <div className="text-xl font-bold mb-2 text-white">
                               {song.release_year}
                             </div>
                             
-                            {/* Song title - small italic lettering, white */}
-                            <div className="text-xs text-center italic opacity-90 leading-tight max-w-28">
+                            {/* Song title - refined styling */}
+                            <div className="text-xs text-center italic text-white/90 leading-tight max-w-28">
                               {song.deezer_title.length > 18 ? song.deezer_title.substring(0, 18) + '...' : song.deezer_title}
                             </div>
                           </div>
@@ -524,7 +518,7 @@ export default function MobilePlayerGameView({
                         {/* Gap after this card - minimal width */}
                         <div 
                           className={cn(
-                            "flex-shrink-0 w-2.5 h-32 flex items-center justify-center transition-all duration-300",
+                            "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
                             selectedPosition === index + 1 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                           )}
                           style={{ scrollSnapAlign: 'center' }}
@@ -538,13 +532,10 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Enhanced edge buffers for better scrolling experience */}
-                    <div className="flex-shrink-0 w-32"></div>
+                    {/* Minimal edge buffer for proper scrolling */}
+                    <div className="flex-shrink-0 w-8"></div>
                   </div>
                 </div>
-
-                {/* Additional buffer space after carousel for proper centering */}
-                <div className="flex-shrink-0 w-32"></div>
 
                 {/* Position navigation */}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/20">
