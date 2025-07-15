@@ -4,6 +4,20 @@
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
+/* Mobile viewport height and safe area variables */
+:root {
+  /* Viewport height variables for mobile */
+  --vh: 1vh;
+  --mobile-safe-height: 100vh;
+  --mobile-viewport-height: 100vh;
+  
+  /* iOS safe area support */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -99,5 +113,47 @@
 
   body {
     @apply bg-background text-foreground;
+    /* Prevent iOS Safari bounce scrolling */
+    overscroll-behavior: none;
+    /* Fix iOS viewport height issues */
+    min-height: 100vh;
+    min-height: var(--mobile-viewport-height);
+  }
+  
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    html, body {
+      /* Disable iOS Safari bounce scrolling */
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+      /* Prevent zoom on double-tap */
+      touch-action: manipulation;
+    }
+    
+    /* Full height containers for mobile */
+    #root {
+      min-height: 100vh;
+      min-height: var(--mobile-viewport-height);
+    }
+    
+    /* Fix mobile scrolling issues */
+    .mobile-game-view {
+      /* Use calculated viewport height */
+      height: var(--mobile-viewport-height);
+      min-height: var(--mobile-viewport-height);
+      /* Account for iOS safe areas */
+      padding-top: var(--safe-area-inset-top);
+      padding-bottom: var(--safe-area-inset-bottom);
+      padding-left: var(--safe-area-inset-left);
+      padding-right: var(--safe-area-inset-right);
+      /* Prevent scrolling on the main container */
+      overflow: hidden;
+    }
+    
+    /* Responsive carousel constraints */
+    .mobile-game-view .carousel-container {
+      max-height: calc(var(--mobile-viewport-height) - 200px);
+      min-height: 200px;
+    }
   }
 }
