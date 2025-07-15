@@ -16,6 +16,9 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  
+  /* Calculated usable height minus safe areas */
+  --mobile-usable-height: calc(var(--mobile-viewport-height) - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
 }
 
 @layer base {
@@ -138,22 +141,37 @@
     
     /* Fix mobile scrolling issues */
     .mobile-game-view {
-      /* Use calculated viewport height */
+      /* Use full viewport height */
       height: var(--mobile-viewport-height);
       min-height: var(--mobile-viewport-height);
-      /* Account for iOS safe areas */
-      padding-top: var(--safe-area-inset-top);
-      padding-bottom: var(--safe-area-inset-bottom);
+      max-height: var(--mobile-viewport-height);
+      /* Use safe areas for horizontal padding only */
       padding-left: var(--safe-area-inset-left);
       padding-right: var(--safe-area-inset-right);
       /* Prevent scrolling on the main container */
       overflow: hidden;
+      /* Position to account for safe areas without double-padding */
+      position: relative;
+      /* Ensure flexbox fills available height */
+      display: flex;
+      flex-direction: column;
     }
     
-    /* Responsive carousel constraints */
+    /* Apply safe area top margin only to the first child to avoid double padding */
+    .mobile-game-view > *:first-child {
+      margin-top: var(--safe-area-inset-top);
+    }
+    
+    /* Apply safe area bottom margin only to the last child */
+    .mobile-game-view > *:last-child {
+      margin-bottom: var(--safe-area-inset-bottom);
+    }
+    
+    /* Responsive carousel constraints - use more available height */
     .mobile-game-view .carousel-container {
-      max-height: calc(var(--mobile-viewport-height) - 200px);
-      min-height: 200px;
+      max-height: calc(var(--mobile-usable-height) - 180px);
+      min-height: 250px;
+      flex: 1;
     }
   }
 }

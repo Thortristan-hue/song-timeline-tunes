@@ -10,19 +10,30 @@ let isInitialized = false;
  * This fixes the mobile viewport height issues where 100vh doesn't work correctly
  */
 function calculateViewportHeight() {
+  // Use visual viewport when available (modern browsers), fallback to window.innerHeight
+  const height = window.visualViewport?.height || window.innerHeight;
+  const width = window.visualViewport?.width || window.innerWidth;
+  
   // Calculate actual viewport height
-  const vh = window.innerHeight * 0.01;
-  const viewportHeight = `${window.innerHeight}px`;
+  const vh = height * 0.01;
+  const viewportHeight = `${height}px`;
   
   // Set CSS variables
   document.documentElement.style.setProperty('--vh', `${vh}px`);
   document.documentElement.style.setProperty('--mobile-viewport-height', viewportHeight);
   
-  // Calculate safe height (viewport height minus potential safe areas)
-  // This will be overridden by CSS env() if supported, otherwise fallback to viewport height
-  document.documentElement.style.setProperty('--mobile-safe-height', viewportHeight);
+  // For mobile safe height, use visual viewport height if available to account for dynamic UI
+  const safeHeight = window.visualViewport?.height || window.innerHeight;
+  document.documentElement.style.setProperty('--mobile-safe-height', `${safeHeight}px`);
   
-  console.log('Viewport height updated:', { vh, viewportHeight, innerHeight: window.innerHeight });
+  console.log('Viewport height updated:', { 
+    vh, 
+    viewportHeight, 
+    height, 
+    width,
+    visualViewport: !!window.visualViewport,
+    innerHeight: window.innerHeight 
+  });
 }
 
 /**

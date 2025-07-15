@@ -367,11 +367,7 @@ export default function MobilePlayerGameView({
       showHostFeedback={false} // Mobile players don't show host feedback
       hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
     >
-      <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden"
-           style={{ 
-             height: 'var(--mobile-viewport-height)',
-             minHeight: 'var(--mobile-viewport-height)'
-           }}>
+      <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
@@ -380,9 +376,9 @@ export default function MobilePlayerGameView({
       </div>
 
       {/* Player Header */}
-      <div className="relative z-10 pt-4 pb-2 px-4 flex-shrink-0">
+      <div className="relative z-10 pt-2 pb-1 px-4 flex-shrink-0">
         <div className="text-center">
-          <div className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-1">
+          <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 tracking-wide mb-1">
             {currentPlayer.name}
           </div>
           <div className="text-white/80 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-full px-3 py-1 border border-white/20 inline-block">
@@ -394,20 +390,20 @@ export default function MobilePlayerGameView({
 
       {/* Mystery Song Preview */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 flex items-center justify-center px-4 py-3 flex-shrink-0">
-          <div className="text-center space-y-3">
+        <div className="relative z-10 flex items-center justify-center px-4 py-2 flex-shrink-0">
+          <div className="text-center space-y-2">
             <div className="relative">
-              <div className={`relative w-24 h-24 mx-auto transition-all duration-500 ${
+              <div className={`relative w-20 h-20 mx-auto transition-all duration-500 ${
                 isPlaying ? 'animate-spin' : 'hover:scale-110'
               }`}>
                 <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40">
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-6 h-6 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50"></div>
+                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50"></div>
                   </div>
                   
                   {/* Vinyl grooves effect */}
                   <div className="absolute inset-2 border border-white/10 rounded-full"></div>
-                  <div className="absolute inset-4 border border-white/10 rounded-full"></div>
+                  <div className="absolute inset-3 border border-white/10 rounded-full"></div>
                 </div>
                 
                 <Button
@@ -415,13 +411,13 @@ export default function MobilePlayerGameView({
                   className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                   disabled={!currentSong?.preview_url}
                 >
-                  <div className="text-white text-xl group-hover:scale-125 transition-transform duration-300">
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
                   </div>
                 </Button>
               </div>
             </div>
-            <div className="text-white/90 text-sm font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-3 py-1 border border-white/20">
+            <div className="text-white/90 text-xs font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-2 py-1 border border-white/20">
               Tap vinyl to preview
             </div>
           </div>
@@ -447,22 +443,22 @@ export default function MobilePlayerGameView({
 
       {/* Timeline Placement Interface */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-3 flex-1 flex flex-col" ref={containerRef}>
-          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex-1 flex flex-col">
+        <div className="relative z-10 px-3 flex-1 flex flex-col min-h-0" ref={containerRef}>
+          <div className="bg-white/15 backdrop-blur-2xl rounded-3xl p-2 border border-white/25 flex-1 flex flex-col min-h-0">
             {/* Center line indicator */}
-            <div className="relative mb-3">
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-8 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
+            <div className="relative mb-2">
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-0.5 h-6 bg-gradient-to-b from-yellow-400 to-orange-400 shadow-lg z-20 rounded-full"></div>
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold whitespace-nowrap bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
                 
               </div>
             </div>
 
-            <div className="text-center text-white/90 text-sm font-semibold mb-3">
+            <div className="text-center text-white/90 text-sm font-semibold mb-2">
               Scroll to position the gap at center
             </div>
             
             {/* Position indicator */}
-            <div className="text-center mb-3">
+            <div className="text-center mb-2">
               <div className="inline-block bg-white/20 backdrop-blur-xl rounded-full px-2 py-1 border border-white/30">
                 <span className="text-white/80 text-xs">
                   Position: {snappedPosition === 0 ? 'Before first' : 
@@ -473,7 +469,7 @@ export default function MobilePlayerGameView({
             </div>
 
             {/* Carousel Timeline */}
-            <div className="flex-1 flex items-center carousel-container">
+            <div className="flex-1 flex items-center carousel-container min-h-0">
               <div 
                 ref={scrollViewRef}
                 className="overflow-x-auto scrollbar-hide w-full"
@@ -490,10 +486,10 @@ export default function MobilePlayerGameView({
                 }}
               >
                 <div 
-                  className="flex items-center py-4 relative" 
+                  className="flex items-center py-2 relative" 
                   style={{ 
                     width: `${totalWidth}px`,
-                    height: '130px'
+                    height: '120px'
                   }}
                 >
                   {/* Render gaps and cards */}
@@ -613,12 +609,12 @@ export default function MobilePlayerGameView({
 
       {/* Confirm Button */}
       {isMyTurn && !gameEnded && (
-        <div className="relative z-10 px-3 pb-3 flex-shrink-0">
+        <div className="relative z-10 px-3 pb-2 flex-shrink-0">
           <Button
             onClick={handleConfirmPlacement}
             disabled={hasConfirmed || isSubmitting}
             className={cn(
-              "w-full h-12 text-white font-black text-base rounded-2xl border-0 shadow-2xl transition-all duration-300",
+              "w-full h-11 text-white font-black text-base rounded-2xl border-0 shadow-2xl transition-all duration-300",
               hasConfirmed || isSubmitting ? 
               "bg-gradient-to-r from-gray-600 to-gray-700" :
               "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:scale-105 active:scale-95"
@@ -642,7 +638,7 @@ export default function MobilePlayerGameView({
       )}
 
       {/* Footer */}
-      <div className="relative z-10 pb-2 flex-shrink-0">
+      <div className="relative z-10 pb-1 flex-shrink-0">
         <div className="text-center">
           <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
             TIMELINER
