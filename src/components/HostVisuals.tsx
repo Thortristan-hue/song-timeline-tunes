@@ -5,6 +5,61 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
+// Host Feedback Component for subtle visual feedback
+function HostFeedbackOverlay({ 
+  show, 
+  type 
+}: { 
+  show: boolean; 
+  type: 'correct' | 'incorrect' 
+}) {
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-20">
+      <div className={`w-full h-full transition-all duration-1200 ${
+        type === 'correct' ? 'animate-host-feedback-correct' : 'animate-host-feedback-incorrect'
+      }`} />
+      
+      {/* Subtle sparkle effects for correct answers */}
+      {type === 'correct' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-green-400 rounded-full animate-ping opacity-60"
+              style={{
+                left: `${50 + Math.cos((i * Math.PI) / 3) * 15}%`,
+                top: `${50 + Math.sin((i * Math.PI) / 3) * 15}%`,
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: '1.5s'
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Subtle error indication for incorrect answers */}
+      {type === 'incorrect' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div
+              key={i}
+              className="absolute w-3 h-3 bg-red-400/40 rounded-full animate-pulse opacity-50"
+              style={{
+                left: `${50 + Math.cos((i * Math.PI) / 2) * 20}%`,
+                top: `${50 + Math.sin((i * Math.PI) / 2) * 20}%`,
+                animationDelay: `${i * 0.3}s`,
+                animationDuration: '1s'
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Enhanced Host Background Component with graffiti-inspired effects
 export function HostGameBackground() {
   return (
@@ -165,12 +220,17 @@ function RecordPlayerSection({
   );
 }
 
-function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
+function HostTimelineCard({ song, isActive, placementResult }: { 
+  song: Song; 
+  isActive?: boolean;
+  placementResult?: { correct: boolean; song: Song } | null;
+}) {
   const artistHash = Array.from(song.deezer_artist).reduce(
     (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
   );
   const hue = Math.abs(artistHash) % 360;
   const [isDropping, setIsDropping] = useState(false);
+  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   
   useEffect(() => {
     if (isActive) {
@@ -180,11 +240,28 @@ function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }
     }
   }, [isActive]);
 
+  // Trigger host feedback animation when placement result changes
+  useEffect(() => {
+    if (placementResult && placementResult.song.id === song.id) {
+      const animationClass = placementResult.correct 
+        ? 'animate-host-feedback-correct' 
+        : 'animate-host-feedback-incorrect';
+      
+      setFeedbackAnimation(animationClass);
+      
+      // Clear animation after it completes
+      setTimeout(() => {
+        setFeedbackAnimation('');
+      }, 1000);
+    }
+  }, [placementResult, song.id]);
+
   return (
     <div 
       className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
         ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
-        ${isDropping ? 'animate-ultimate-bang' : ''}`}
+        ${isDropping ? 'animate-ultimate-bang' : ''}
+        ${feedbackAnimation}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 25%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
@@ -336,6 +413,7 @@ function HostTimelineDisplay({
             <HostTimelineCard 
               song={song} 
               isActive={placementResult?.song.id === song.id}
+              placementResult={placementResult}
             />
           </div>
         ))
@@ -540,12 +618,16 @@ export function HostGameView({
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showHostFeedback, setShowHostFeedback] = useState(false);
   
   useEffect(() => {
     if (cardPlacementResult) {
       setShowResultModal(true);
+      setShowHostFeedback(true);
+      
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
+        setShowHostFeedback(false);
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
@@ -585,6 +667,12 @@ export function HostGameView({
         isPlaying={safeIsPlaying}
         onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
+      />
+      
+      {/* Host Feedback Overlay */}
+      <HostFeedbackOverlay 
+        show={showHostFeedback}
+        type={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
       />
       
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
