@@ -212,8 +212,8 @@ export default function MobilePlayerGameView({
     const cardWidth = 128; // w-32 = 128px
     const gapWidth = 6; // w-1.5 = 6px
     
-    // Enhanced edge buffer for better mobile scrolling
-    const edgeBuffer = Math.max(windowWidth * 0.48, 320); // Increased buffer
+    // Enhanced edge buffer for better mobile scrolling with larger buffer areas
+    const edgeBuffer = Math.max(windowWidth * 0.6, 400); // Significantly increased buffer
     
     // Calculate precise scroll position to center the selected gap
     let targetScroll;
@@ -222,10 +222,11 @@ export default function MobilePlayerGameView({
       // Before first card - center the first gap
       targetScroll = edgeBuffer + (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
-      // After last card - center the last gap  
+      // After last card - center the last gap with enhanced right buffer
       const totalCardsWidth = timelineSongs.length * cardWidth;
       const totalGapsWidth = (timelineSongs.length + 1) * gapWidth;
       const lastGapCenter = totalCardsWidth + totalGapsWidth - (gapWidth / 2);
+      const rightBuffer = Math.max(480, windowWidth * 0.65); // Use larger right buffer
       targetScroll = edgeBuffer + lastGapCenter - (containerWidth / 2);
     } else {
       // Between cards - improved centering calculation
@@ -265,8 +266,8 @@ export default function MobilePlayerGameView({
     const cardWidth = 128; // w-32 = 128px
     const gapWidth = 6; // w-1.5 = 6px
     
-    // Enhanced edge buffer for better mobile experience
-    const edgeBuffer = Math.max(windowWidth * 0.48, 320); // Increased buffer
+    // Enhanced edge buffer for better mobile experience with larger buffer areas
+    const edgeBuffer = Math.max(windowWidth * 0.6, 400); // Significantly increased buffer
     
     // Calculate which position is closest to center
     const centerPoint = scrollLeft + (containerWidth / 2);
@@ -532,7 +533,7 @@ export default function MobilePlayerGameView({
                     onScroll={scrollHandler}
                   >
                     {/* Enhanced edge buffer at start for better mobile scrolling */}
-                    <div className="flex-shrink-0" style={{ width: `${Math.max(320, windowWidth * 0.48)}px` }}></div>
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
                     
                     {/* Gap before first card */}
                     <div 
@@ -598,8 +599,8 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Enhanced edge buffer at end for better mobile scrolling */}
-                    <div className="flex-shrink-0" style={{ width: `${Math.max(320, windowWidth * 0.48)}px` }}></div>
+                    {/* Enhanced edge buffer at end for better mobile scrolling with extra emphasis on rightmost card */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(480, windowWidth * 0.65)}px` }}></div>
                   </div>
                 </div>
 
