@@ -369,8 +369,8 @@ export default function MobilePlayerGameView({
     >
       <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden"
            style={{ 
-             height: 'var(--mobile-safe-height)',
-             minHeight: 'var(--mobile-safe-height)'
+             height: 'var(--mobile-viewport-height)',
+             minHeight: 'var(--mobile-viewport-height)'
            }}>
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
@@ -473,7 +473,7 @@ export default function MobilePlayerGameView({
             </div>
 
             {/* Carousel Timeline */}
-            <div className="flex-1 flex items-center">
+            <div className="flex-1 flex items-center carousel-container">
               <div 
                 ref={scrollViewRef}
                 className="overflow-x-auto scrollbar-hide w-full"
