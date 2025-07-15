@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host Visual Feedback Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1f2937, #111827);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .demo-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #10b981;
+        }
+        
+        .demo-description {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            color: #d1d5db;
+        }
+        
+        .feedback-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+        
+        .feedback-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            padding: 2rem;
+            position: relative;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .correct-demo {
+            border: 2px solid #10b981;
+        }
+        
+        .incorrect-demo {
+            border: 2px solid #ef4444;
+        }
+        
+        .feedback-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .correct-icon {
+            color: #10b981;
+            animation: bounce 2s infinite;
+        }
+        
+        .incorrect-icon {
+            color: #ef4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .feedback-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .feedback-description {
+            font-size: 1rem;
+            color: #d1d5db;
+            margin-bottom: 1.5rem;
+        }
+        
+        .sparkles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: sparkle-ping 1.5s ease-out infinite;
+        }
+        
+        .error-pulse {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: rgba(239, 68, 68, 0.6);
+            border-radius: 50%;
+            animation: error-pulse 1s ease-in-out infinite;
+        }
+        
+        .corner-indicator {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .correct-indicator {
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+        
+        .incorrect-indicator {
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .correct-dot {
+            background: #10b981;
+        }
+        
+        .incorrect-dot {
+            background: #ef4444;
+        }
+        
+        .changes-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: left;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .changes-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #10b981;
+        }
+        
+        .change-item {
+            margin-bottom: 0.8rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .change-item::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+        
+        @keyframes sparkle-ping {
+            0% { opacity: 0.8; transform: scale(0.8); }
+            70% { opacity: 0; transform: scale(2); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+        
+        @keyframes error-pulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.5); }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1 class="demo-title">Enhanced Host Visual Feedback</h1>
+        <p class="demo-description">
+            The host now receives clear, prominent visual feedback when players make guesses, 
+            while player views remain completely unaffected.
+        </p>
+        
+        <div class="feedback-demo">
+            <div class="feedback-box correct-demo">
+                <div class="corner-indicator correct-indicator">
+                    <div class="indicator-dot correct-dot"></div>
+                    <span>Correct!</span>
+                </div>
+                
+                <div class="sparkles">
+                    <div class="sparkle" style="left: 25%; top: 30%; animation-delay: 0s;"></div>
+                    <div class="sparkle" style="left: 75%; top: 25%; animation-delay: 0.2s;"></div>
+                    <div class="sparkle" style="left: 20%; top: 70%; animation-delay: 0.4s;"></div>
+                    <div class="sparkle" style="left: 80%; top: 75%; animation-delay: 0.6s;"></div>
+                    <div class="sparkle" style="left: 50%; top: 20%; animation-delay: 0.8s;"></div>
+                    <div class="sparkle" style="left: 30%; top: 50%; animation-delay: 1s;"></div>
+                    <div class="sparkle" style="left: 70%; top: 60%; animation-delay: 1.2s;"></div>
+                    <div class="sparkle" style="left: 60%; top: 40%; animation-delay: 1.4s;"></div>
+                </div>
+                
+                <div class="feedback-icon correct-icon">✓</div>
+                <div class="feedback-title" style="color: #10b981;">Player Got It Right!</div>
+                <div class="feedback-description">
+                    Host sees prominent checkmark, sparkle effects, and corner notification.
+                    Enhanced animations provide clear positive feedback.
+                </div>
+            </div>
+            
+            <div class="feedback-box incorrect-demo">
+                <div class="corner-indicator incorrect-indicator">
+                    <div class="indicator-dot incorrect-dot"></div>
+                    <span>Try Again!</span>
+                </div>
+                
+                <div class="sparkles">
+                    <div class="error-pulse" style="left: 30%; top: 35%; animation-delay: 0s;"></div>
+                    <div class="error-pulse" style="left: 70%; top: 30%; animation-delay: 0.3s;"></div>
+                    <div class="error-pulse" style="left: 25%; top: 65%; animation-delay: 0.6s;"></div>
+                    <div class="error-pulse" style="left: 75%; top: 70%; animation-delay: 0.9s;"></div>
+                    <div class="error-pulse" style="left: 50%; top: 25%; animation-delay: 1.2s;"></div>
+                    <div class="error-pulse" style="left: 45%; top: 75%; animation-delay: 1.5s;"></div>
+                </div>
+                
+                <div class="feedback-icon incorrect-icon">✗</div>
+                <div class="feedback-title" style="color: #ef4444;">Player Missed</div>
+                <div class="feedback-description">
+                    Host sees subtle X mark, pulse effects, and encouraging corner notification.
+                    Feedback is clear but not discouraging.
+                </div>
+            </div>
+        </div>
+        
+        <div class="changes-list">
+            <h2 class="changes-title">Key Improvements Made</h2>
+            <div class="change-item">Enhanced host feedback overlay with prominent visual indicators</div>
+            <div class="change-item">Added central checkmark (✓) and X mark (✗) for immediate recognition</div>
+            <div class="change-item">Implemented corner notification badges for persistent host awareness</div>
+            <div class="change-item">Improved CSS animations with better brightness and scale effects</div>
+            <div class="change-item">Extended feedback duration (6 seconds total vs 4 seconds)</div>
+            <div class="change-item">Enhanced sparkle and pulse effects for better visual impact</div>
+            <div class="change-item">Verified complete isolation from player view animations</div>
+            <div class="change-item">Added safety comments to prevent cross-contamination</div>
+        </div>
+    </div>
+</body>
+</html>
