@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, MoveRight, MoveLeft } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { CardPlacementAnimations } from '@/components/CardPlacementAnimations';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -40,8 +39,6 @@ export default function MobilePlayerGameView({
   const [containerWidth, setContainerWidth] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [animationState, setAnimationState] = useState<'idle' | 'cassette-to-timeline' | 'timeline-to-cassette' | 'card-falling' | 'incorrect-fall'>('idle');
-  const [turnTransition, setTurnTransition] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollViewRef = useRef<HTMLDivElement>(null);
@@ -220,17 +217,7 @@ export default function MobilePlayerGameView({
     setHasConfirmed(true);
 
     try {
-      const result = await onPlaceCard(currentSong, snappedPosition);
-      
-      // Trigger appropriate animation based on result
-      if (result.success) {
-        // Show the card falling animation based on whether it was correct
-        if (cardPlacementResult?.correct) {
-          setAnimationState('card-falling');
-        } else {
-          setAnimationState('incorrect-fall');
-        }
-      }
+      await onPlaceCard(currentSong, snappedPosition);
     } catch (error) {
       console.error('Failed to place card:', error);
     } finally {
@@ -239,22 +226,10 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // Handle animation completion
-  const handleAnimationComplete = () => {
-    setAnimationState('idle');
-    setTurnTransition(false);
-  };
-
   // Reset state when turn changes - center the middle gap
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
       setHasConfirmed(false);
-      
-      // Trigger cassette to timeline animation when it becomes my turn
-      if (!turnTransition) {
-        setTurnTransition(true);
-        setAnimationState('cassette-to-timeline');
-      }
       
       // Calculate which gap should be in the center (middle of all gaps)
       const middleGapIndex = Math.floor(timelineCards.length / 2);
@@ -271,9 +246,6 @@ export default function MobilePlayerGameView({
           });
         }, 100);
       }
-    } else if (!isMyTurn && turnTransition) {
-      // Trigger timeline to cassette animation when turn ends
-      setAnimationState('timeline-to-cassette');
     }
     
     return () => {
@@ -285,7 +257,7 @@ export default function MobilePlayerGameView({
         clearTimeout(scrollTimeout.current);
       }
     };
-  }, [isMyTurn, gameEnded, containerWidth, timelineCards.length, turnTransition]);
+  }, [isMyTurn, gameEnded, containerWidth, timelineCards.length]);
 
   // Kahoot-style result overlay
   if (cardPlacementResult) {
@@ -359,15 +331,7 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <CardPlacementAnimations
-      currentSong={currentSong}
-      isMyTurn={isMyTurn}
-      onAnimationComplete={handleAnimationComplete}
-      animationState={animationState}
-      showHostFeedback={false} // Mobile players don't show host feedback
-      hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
-    >
-      <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden">
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
@@ -655,7 +619,6 @@ export default function MobilePlayerGameView({
           display: none;
         }
       `}</style>
-      </div>
-    </CardPlacementAnimations>
+    </div>
   );
 }

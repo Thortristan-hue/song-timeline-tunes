@@ -5,98 +5,6 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Button } from '@/components/ui/button';
 
-// Enhanced Host Feedback Component for clear visual feedback visible only to host
-function HostFeedbackOverlay({ 
-  show, 
-  type 
-}: { 
-  show: boolean; 
-  type: 'correct' | 'incorrect' 
-}) {
-  if (!show) return null;
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-20">
-      {/* Main background feedback effect */}
-      <div className={`w-full h-full transition-all duration-1200 ${
-        type === 'correct' ? 'animate-host-feedback-correct' : 'animate-host-feedback-incorrect'
-      }`} />
-      
-      {/* Enhanced visual feedback for correct answers */}
-      {type === 'correct' && (
-        <>
-          {/* Central success indicator */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-6xl animate-bounce text-green-400 font-bold drop-shadow-lg">
-              ✓
-            </div>
-          </div>
-          
-          {/* Enhanced sparkle effects */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {Array.from({ length: 8 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute w-3 h-3 bg-green-400 rounded-full animate-ping opacity-80"
-                style={{
-                  left: `${50 + Math.cos((i * Math.PI) / 4) * 25}%`,
-                  top: `${50 + Math.sin((i * Math.PI) / 4) * 25}%`,
-                  animationDelay: `${i * 0.15}s`,
-                  animationDuration: '1.2s'
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Top-right corner indicator for host */}
-          <div className="absolute top-4 right-4 bg-green-500/20 backdrop-blur-md rounded-full px-4 py-2 border border-green-400/30">
-            <div className="flex items-center gap-2 text-green-400 font-semibold">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span>Correct!</span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Enhanced visual feedback for incorrect answers */}
-      {type === 'incorrect' && (
-        <>
-          {/* Central miss indicator */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-6xl animate-pulse text-red-400 font-bold drop-shadow-lg">
-              ✗
-            </div>
-          </div>
-          
-          {/* Enhanced error effects */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute w-4 h-4 bg-red-400/60 rounded-full animate-pulse opacity-70"
-                style={{
-                  left: `${50 + Math.cos((i * Math.PI) / 3) * 30}%`,
-                  top: `${50 + Math.sin((i * Math.PI) / 3) * 30}%`,
-                  animationDelay: `${i * 0.2}s`,
-                  animationDuration: '1s'
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Top-right corner indicator for host */}
-          <div className="absolute top-4 right-4 bg-red-500/20 backdrop-blur-md rounded-full px-4 py-2 border border-red-400/30">
-            <div className="flex items-center gap-2 text-red-400 font-semibold">
-              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-              <span>Try Again!</span>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 // Enhanced Host Background Component with graffiti-inspired effects
 export function HostGameBackground() {
   return (
@@ -257,17 +165,12 @@ function RecordPlayerSection({
   );
 }
 
-function HostTimelineCard({ song, isActive, placementResult }: { 
-  song: Song; 
-  isActive?: boolean;
-  placementResult?: { correct: boolean; song: Song } | null;
-}) {
+function HostTimelineCard({ song, isActive }: { song: Song; isActive?: boolean }) {
   const artistHash = Array.from(song.deezer_artist).reduce(
     (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
   );
   const hue = Math.abs(artistHash) % 360;
   const [isDropping, setIsDropping] = useState(false);
-  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   
   useEffect(() => {
     if (isActive) {
@@ -277,28 +180,11 @@ function HostTimelineCard({ song, isActive, placementResult }: {
     }
   }, [isActive]);
 
-  // Trigger host feedback animation when placement result changes
-  useEffect(() => {
-    if (placementResult && placementResult.song.id === song.id) {
-      const animationClass = placementResult.correct 
-        ? 'animate-host-feedback-correct' 
-        : 'animate-host-feedback-incorrect';
-      
-      setFeedbackAnimation(animationClass);
-      
-      // Clear animation after it completes
-      setTimeout(() => {
-        setFeedbackAnimation('');
-      }, 1000);
-    }
-  }, [placementResult, song.id]);
-
   return (
     <div 
       className={`w-36 h-36 rounded-2xl flex flex-col items-center justify-between p-4 text-white transition-all duration-700 hover:scale-110 cursor-pointer relative shadow-2xl
         ${isActive ? 'ring-4 ring-green-400 ring-opacity-80 shadow-green-400/30' : ''}
-        ${isDropping ? 'animate-ultimate-bang' : ''}
-        ${feedbackAnimation}`}
+        ${isDropping ? 'animate-ultimate-bang' : ''}`}
       style={{ 
         backgroundColor: `hsl(${hue}, 70%, 25%)`,
         backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
@@ -450,7 +336,6 @@ function HostTimelineDisplay({
             <HostTimelineCard 
               song={song} 
               isActive={placementResult?.song.id === song.id}
-              placementResult={placementResult}
             />
           </div>
         ))
@@ -655,20 +540,12 @@ export function HostGameView({
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
-  const [showHostFeedback, setShowHostFeedback] = useState(false);
   
   useEffect(() => {
     if (cardPlacementResult) {
       setShowResultModal(true);
-      setShowHostFeedback(true);
-      
       const resultTimer = setTimeout(() => {
         setShowResultModal(false);
-        // Keep host feedback visible a bit longer for better host awareness
-        const hostFeedbackTimer = setTimeout(() => {
-          setShowHostFeedback(false);
-        }, 2000); // Extra 2 seconds for host feedback after modal closes
-        
         setAnimationStage('exiting');
         
         const transitionTimer = setTimeout(() => {
@@ -679,16 +556,10 @@ export function HostGameView({
             setAnimationStage('idle');
           }, 1500);
           
-          return () => {
-            clearTimeout(enterTimer);
-            clearTimeout(hostFeedbackTimer);
-          };
+          return () => clearTimeout(enterTimer);
         }, 1200);
         
-        return () => {
-          clearTimeout(transitionTimer);
-          clearTimeout(hostFeedbackTimer);
-        };
+        return () => clearTimeout(transitionTimer);
       }, 4000);
       
       return () => clearTimeout(resultTimer);
@@ -714,12 +585,6 @@ export function HostGameView({
         isPlaying={safeIsPlaying}
         onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
-      />
-      
-      {/* Host Feedback Overlay */}
-      <HostFeedbackOverlay 
-        show={showHostFeedback}
-        type={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
       />
       
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
