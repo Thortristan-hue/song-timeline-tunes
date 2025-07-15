@@ -641,7 +641,7 @@ export default function MobilePlayerGameView({
       <div className="relative z-10 pb-1 flex-shrink-0">
         <div className="text-center">
           <div className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
-            TIMELINER
+            RYTHMY
           </div>
         </div>
       </div>

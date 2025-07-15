@@ -1,5 +1,5 @@
 /**
- * Timeliner - Centralized Animation System
+ * Rythmy - Centralized Animation System
  * Manages all animations, transitions, and visual effects
  */
 

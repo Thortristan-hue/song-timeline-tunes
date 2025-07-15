@@ -162,7 +162,7 @@ export function VictoryScreen({ winner, players, onPlayAgain, onBackToMenu }: Vi
         {/* Thank You Message */}
         <div className="mt-12 text-center animate-fade-in-up stagger-6">
           <div className="text-white/50 text-lg">
-            Thanks for playing Timeliner!
+            Thanks for playing Rythmy!
           </div>
           <div className="text-white/30 text-sm mt-2">
             Hope you discovered some great music along the way
