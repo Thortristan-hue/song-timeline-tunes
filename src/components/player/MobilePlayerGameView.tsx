@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
@@ -38,11 +38,27 @@ export default function MobilePlayerGameView({
   const [error, setError] = useState<string | null>(null);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
+  const [windowWidth, setWindowWidth] = useState<number>(768); // Default fallback
 
   // Refs for performance optimization and carousel control
   const audioCleanupRef = useRef<() => void>();
   const carouselRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Get window width safely for dynamic calculations
+  useEffect(() => {
+    const updateWindowWidth = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Set initial width
+    updateWindowWidth();
+    
+    // Listen for resize events
+    window.addEventListener('resize', updateWindowWidth);
+    return () => window.removeEventListener('resize', updateWindowWidth);
+  }, []);
 
   // Get sorted timeline songs for placement
   const timelineSongs = currentPlayer.timeline
@@ -187,83 +203,124 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // Scroll carousel to center the selected position
+  // Scroll carousel to center the selected position - improved for mobile
   const scrollToPosition = useCallback((position: number) => {
     if (!carouselRef.current || isScrollingRef.current) return;
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px (no margin)
-    const gapWidth = 6; // Updated for minimal gap size (w-1.5 = 6px)
-    const totalWidth = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth);
+    const cardWidth = 128; // w-32 = 128px
+    const gapWidth = 6; // w-1.5 = 6px
     
-    // Calculate scroll position to center the selected gap
+    // Enhanced edge buffer for better mobile scrolling
+    const edgeBuffer = Math.max(windowWidth * 0.48, 320); // Increased buffer
+    
+    // Calculate precise scroll position to center the selected gap
     let targetScroll;
+    
     if (position === 0) {
       // Before first card - center the first gap
-      targetScroll = (gapWidth / 2) - (containerWidth / 2);
+      targetScroll = edgeBuffer + (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
-      // After last card - center the last gap
-      targetScroll = totalWidth - (gapWidth / 2) - (containerWidth / 2);
+      // After last card - center the last gap  
+      const totalCardsWidth = timelineSongs.length * cardWidth;
+      const totalGapsWidth = (timelineSongs.length + 1) * gapWidth;
+      const lastGapCenter = totalCardsWidth + totalGapsWidth - (gapWidth / 2);
+      targetScroll = edgeBuffer + lastGapCenter - (containerWidth / 2);
     } else {
-      // Between cards - center the gap
-      const cardsBeforeGap = position;
-      const gapsBeforeGap = position;
-      const positionInTimeline = (gapsBeforeGap * gapWidth) + (cardsBeforeGap * cardWidth) + (gapWidth / 2);
-      targetScroll = positionInTimeline - (containerWidth / 2);
+      // Between cards - improved centering calculation
+      const gapCenter = (position * (cardWidth + gapWidth)) + (gapWidth / 2);
+      targetScroll = edgeBuffer + gapCenter - (containerWidth / 2);
     }
     
     // Ensure scroll position is within bounds
     targetScroll = Math.max(0, Math.min(targetScroll, carousel.scrollWidth - containerWidth));
     
     isScrollingRef.current = true;
+    
+    // Use smoother scrolling with shorter duration for mobile
     carousel.scrollTo({
       left: targetScroll,
       behavior: 'smooth'
     });
     
-    // Reset scrolling flag after animation
-    setTimeout(() => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Reset scrolling flag with optimized timing
+    scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 300);
-  }, [timelineSongs.length]);
+    }, 300); // Reduced timeout for better responsiveness
+  }, [timelineSongs.length, windowWidth]);
 
-  // Handle scroll events to update selected position based on scroll position
+  // Handle scroll events to update selected position - simplified for better mobile performance
   const handleCarouselScroll = useCallback(() => {
     if (!carouselRef.current || isScrollingRef.current) return;
     
     const carousel = carouselRef.current;
     const scrollLeft = carousel.scrollLeft;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px (no margin)
-    const gapWidth = 6; // Updated for minimal gap size
+    const cardWidth = 128; // w-32 = 128px
+    const gapWidth = 6; // w-1.5 = 6px
+    
+    // Enhanced edge buffer for better mobile experience
+    const edgeBuffer = Math.max(windowWidth * 0.48, 320); // Increased buffer
     
     // Calculate which position is closest to center
     const centerPoint = scrollLeft + (containerWidth / 2);
+    const adjustedCenterPoint = centerPoint - edgeBuffer;
     
-    // Find the closest gap position
+    // Find the closest gap position with simplified calculation
     let closestPosition = 0;
     let minDistance = Infinity;
     
     for (let i = 0; i <= timelineSongs.length; i++) {
       let gapCenter;
       if (i === 0) {
+        // First gap
         gapCenter = gapWidth / 2;
+      } else if (i === timelineSongs.length) {
+        // Last gap after all cards
+        gapCenter = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth) - (gapWidth / 2);
       } else {
-        gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + (gapWidth / 2);
+        // Gap between cards - simplified calculation
+        gapCenter = (i * (cardWidth + gapWidth)) + (gapWidth / 2);
       }
       
-      const distance = Math.abs(centerPoint - gapCenter);
+      const distance = Math.abs(adjustedCenterPoint - gapCenter);
       if (distance < minDistance) {
         minDistance = distance;
         closestPosition = i;
       }
     }
     
+    // Only update if position actually changed
     if (closestPosition !== selectedPosition) {
       setSelectedPosition(closestPosition);
     }
-  }, [selectedPosition, timelineSongs.length]);
+  }, [selectedPosition, timelineSongs.length, windowWidth]);
+
+  // Simplified scroll handler for better mobile performance
+  const scrollHandler = useMemo(() => {
+    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+    
+    return () => {
+      // Clear any existing timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      // Immediate update for responsive feedback
+      handleCarouselScroll();
+      
+      // Debounced update for final position
+      scrollTimeout = setTimeout(() => {
+        handleCarouselScroll();
+      }, 50); // Reduced delay for better responsiveness
+    };
+  }, [handleCarouselScroll]);
 
   // Effect to scroll to position when it changes
   useEffect(() => {
@@ -274,6 +331,9 @@ export default function MobilePlayerGameView({
   useEffect(() => {
     return () => {
       audioCleanupRef.current?.();
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -446,38 +506,44 @@ export default function MobilePlayerGameView({
 
                 {/* Horizontal carousel container */}
                 <div className="flex-1 relative">
-                  {/* Center line indicator */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-0.5 h-full bg-green-500/60 z-10 pointer-events-none">
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 rounded-full w-3 h-3 animate-pulse">
+                  {/* Center line indicator - improved visibility and positioning */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-3/4 bg-green-400/80 z-10 pointer-events-none rounded-full shadow-lg">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-400 rounded-full w-4 h-4 animate-pulse shadow-lg border-2 border-white/50">
                     </div>
                   </div>
                   
-                  {/* Selection indicator at center */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold z-20 pointer-events-none animate-bounce">
+                  {/* Selection indicator at center - improved visibility */}
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-400 text-white px-4 py-2 rounded-full text-sm font-bold z-20 pointer-events-none animate-bounce shadow-lg border-2 border-white/30">
                     Place Here
                   </div>
 
-                  {/* Scrollable carousel */}
+                  {/* Scrollable carousel with optimized mobile touch handling */}
                   <div 
                     ref={carouselRef}
                     className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{ 
-                      scrollSnapType: 'x mandatory',
+                      scrollSnapType: 'x mandatory', // More precise snapping for better mobile control
                       scrollBehavior: 'smooth',
-                      WebkitOverflowScrolling: 'touch'
+                      WebkitOverflowScrolling: 'touch', // Enable momentum scrolling on iOS
+                      scrollbarWidth: 'none', // Hide scrollbar on Firefox
+                      msOverflowStyle: 'none', // Hide scrollbar on IE/Edge
+                      touchAction: 'pan-x' // Allow only horizontal panning for better touch control
                     }}
-                    onScroll={handleCarouselScroll}
+                    onScroll={scrollHandler}
                   >
-                    {/* Gap before first card - minimal width */}
+                    {/* Enhanced edge buffer at start for better mobile scrolling */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(320, windowWidth * 0.48)}px` }}></div>
+                    
+                    {/* Gap before first card */}
                     <div 
                       className={cn(
                         "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
-                        selectedPosition === 0 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
+                        selectedPosition === 0 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                       )}
                       style={{ scrollSnapAlign: 'center' }}
                     >
                       {selectedPosition === 0 && (
-                        <div className="text-green-400 text-xs font-bold text-center leading-tight">
+                        <div className="text-green-300 text-xs font-bold text-center leading-tight">
                           Start
                         </div>
                       )}
@@ -515,16 +581,16 @@ export default function MobilePlayerGameView({
                           </div>
                         </div>
                         
-                        {/* Gap after this card - minimal width */}
+                        {/* Gap after this card */}
                         <div 
                           className={cn(
                             "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
-                            selectedPosition === index + 1 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
+                            selectedPosition === index + 1 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                           )}
                           style={{ scrollSnapAlign: 'center' }}
                         >
                           {selectedPosition === index + 1 && (
-                            <div className="text-green-400 text-xs font-bold text-center leading-tight">
+                            <div className="text-green-300 text-xs font-bold text-center leading-tight">
                               Gap {index + 1}
                             </div>
                           )}
@@ -532,8 +598,8 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Minimal edge buffer for proper scrolling */}
-                    <div className="flex-shrink-0 w-8"></div>
+                    {/* Enhanced edge buffer at end for better mobile scrolling */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(320, windowWidth * 0.48)}px` }}></div>
                   </div>
                 </div>
 
