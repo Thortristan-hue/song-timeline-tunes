@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +48,33 @@ export default function MobilePlayerGameView({
   const timelineSongs = currentPlayer.timeline
     .filter(song => song !== null)
     .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+
+  // Generate random colors for cards
+  const getRandomCardColor = (songId: string) => {
+    // Use song ID as seed for consistent colors
+    const colors = [
+      'from-blue-600 to-blue-700',
+      'from-purple-600 to-purple-700', 
+      'from-green-600 to-green-700',
+      'from-red-600 to-red-700',
+      'from-yellow-600 to-yellow-700',
+      'from-pink-600 to-pink-700',
+      'from-indigo-600 to-indigo-700',
+      'from-teal-600 to-teal-700',
+      'from-orange-600 to-orange-700',
+      'from-cyan-600 to-cyan-700'
+    ];
+    
+    // Simple hash function for consistent color selection
+    let hash = 0;
+    for (let i = 0; i < songId.length; i++) {
+      const char = songId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;
@@ -166,8 +193,8 @@ export default function MobilePlayerGameView({
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 132; // Updated for new card size (w-32 = 128px + 4px margin)
-    const gapWidth = 48; // Updated for new gap size (w-12 = 48px)
+    const cardWidth = 132; // w-32 = 128px + 4px margin
+    const gapWidth = 10; // Updated for minimal gap size (w-2.5 = 10px)
     const totalWidth = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth);
     
     // Calculate scroll position to center the selected gap
@@ -208,8 +235,8 @@ export default function MobilePlayerGameView({
     const carousel = carouselRef.current;
     const scrollLeft = carousel.scrollLeft;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 132; // Updated for new card size
-    const gapWidth = 48; // Updated for new gap size
+    const cardWidth = 132; // w-32 = 128px + 4px margin
+    const gapWidth = 10; // Updated for minimal gap size
     
     // Calculate which position is closest to center
     const centerPoint = scrollLeft + (containerWidth / 2);
@@ -236,7 +263,7 @@ export default function MobilePlayerGameView({
     if (closestPosition !== selectedPosition) {
       setSelectedPosition(closestPosition);
     }
-  }, [selectedPosition, totalPositions, timelineSongs.length]);
+  }, [selectedPosition, timelineSongs.length]);
 
   // Effect to scroll to position when it changes
   useEffect(() => {
@@ -447,10 +474,10 @@ export default function MobilePlayerGameView({
                     }}
                     onScroll={handleCarouselScroll}
                   >
-                    {/* Gap before first card - reduced width */}
+                    {/* Gap before first card - minimal width */}
                     <div 
                       className={cn(
-                        "flex-shrink-0 w-12 h-36 flex items-center justify-center transition-all duration-300",
+                        "flex-shrink-0 w-2.5 h-32 flex items-center justify-center transition-all duration-300",
                         selectedPosition === 0 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                       )}
                       style={{ scrollSnapAlign: 'center' }}
@@ -464,51 +491,40 @@ export default function MobilePlayerGameView({
 
                     {timelineSongs.map((song, index) => (
                       <React.Fragment key={song.id}>
-                        {/* Song card - redesigned to match host display */}
+                        {/* Song card - square with new layout */}
                         <div
-                          className="flex-shrink-0 w-32 h-36 mx-1 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 transition-all duration-200 hover:bg-white/15 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative"
+                          className={cn(
+                            "flex-shrink-0 w-32 h-32 mx-1 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative",
+                            `bg-gradient-to-br ${getRandomCardColor(song.id)}`
+                          )}
                           style={{ scrollSnapAlign: 'center' }}
                           onClick={() => song.preview_url && handleSongPreview(song)}
                         >
-                          {/* Gradient overlay like host cards */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                          {/* Subtle gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl" />
                           
                           <div className="p-3 h-full flex flex-col items-center justify-center text-white relative z-10">
-                            {/* Calendar icon like host cards */}
-                            <Calendar className="h-5 w-5 mb-2 opacity-70" />
+                            {/* Artist name - medium lettering, white */}
+                            <div className="text-sm font-medium text-center mb-2 leading-tight max-w-28">
+                              {song.deezer_artist.length > 15 ? song.deezer_artist.substring(0, 15) + '...' : song.deezer_artist}
+                            </div>
                             
-                            {/* Year prominently displayed */}
-                            <div className="text-lg font-bold mb-1">
+                            {/* Song release year - large lettering, white */}
+                            <div className="text-xl font-bold mb-2">
                               {song.release_year}
                             </div>
                             
-                            {/* Song title with proper truncation */}
-                            <div className="text-xs text-center opacity-80 leading-tight max-w-28 mb-1">
-                              {song.deezer_title.length > 16 ? song.deezer_title.substring(0, 16) + '...' : song.deezer_title}
+                            {/* Song title - small italic lettering, white */}
+                            <div className="text-xs text-center italic opacity-90 leading-tight max-w-28">
+                              {song.deezer_title.length > 18 ? song.deezer_title.substring(0, 18) + '...' : song.deezer_title}
                             </div>
-                            
-                            {/* Artist with proper truncation */}
-                            <div className="text-xs text-center opacity-60 leading-tight max-w-28 mb-2">
-                              {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
-                            </div>
-                            
-                            {/* Play/pause indicator */}
-                            {song.preview_url && (
-                              <div className="flex justify-center">
-                                {playingPreviewId === song.id ? (
-                                  <Pause className="w-3 h-3 text-white" />
-                                ) : (
-                                  <Play className="w-3 h-3 text-white/70" />
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
                         
-                        {/* Gap after this card - reduced width */}
+                        {/* Gap after this card - minimal width */}
                         <div 
                           className={cn(
-                            "flex-shrink-0 w-12 h-36 flex items-center justify-center transition-all duration-300",
+                            "flex-shrink-0 w-2.5 h-32 flex items-center justify-center transition-all duration-300",
                             selectedPosition === index + 1 && "bg-green-500/20 rounded-xl border-2 border-green-500/50"
                           )}
                           style={{ scrollSnapAlign: 'center' }}
