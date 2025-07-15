@@ -178,7 +178,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         
         {/* Floating music notes with enhanced animations */}
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(12)].map((_, i) => (
+          {[...Array(50)].map((_, i) => (
             <div 
               key={i}
               className="absolute floating-particle opacity-20"
