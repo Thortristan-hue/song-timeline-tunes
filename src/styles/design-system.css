@@ -229,6 +229,44 @@
     display: flex;
     flex-direction: column;
   }
+  
+  /* Ensure content doesn't overflow on small screens */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Mobile-specific adjustments for better UX */
+  .mobile-viewport-fix {
+    /* Fix for iOS Safari address bar behavior */
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* Additional mobile breakpoints */
+@media (max-width: 480px) {
+  .mobile-container {
+    padding-left: max(env(safe-area-inset-left), 1rem);
+    padding-right: max(env(safe-area-inset-right), 1rem);
+  }
+}
+
+/* Landscape mobile orientation */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-game-view {
+    /* Reduce padding in landscape to maximize space */
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+/* iPhone X and newer safe area optimizations */
+@supports (padding: max(0px)) {
+  .mobile-container {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* Fallback for browsers that don't support dvh */
