@@ -5,7 +5,7 @@ import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-rea
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
 
-// Throttle utility for performance optimization
+// Optimized throttle utility for smooth mobile performance
 const throttle = <T extends (...args: Parameters<T>) => ReturnType<T>>(func: T, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let lastExecTime = 0;
@@ -22,6 +22,15 @@ const throttle = <T extends (...args: Parameters<T>) => ReturnType<T>>(func: T, 
         lastExecTime = Date.now();
       }, delay - (currentTime - lastExecTime));
     }
+  };
+};
+
+// Debounce utility for reducing excessive updates during fast scrolling
+const debounce = <T extends (...args: Parameters<T>) => ReturnType<T>>(func: T, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
   };
 };
 
@@ -58,12 +67,27 @@ export default function MobilePlayerGameView({
   const [error, setError] = useState<string | null>(null);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
   const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
+  const [windowWidth, setWindowWidth] = useState<number>(768); // Default fallback
 
   // Refs for performance optimization and carousel control
   const audioCleanupRef = useRef<() => void>();
   const carouselRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Get window width safely for dynamic calculations
+  useEffect(() => {
+    const updateWindowWidth = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Set initial width
+    updateWindowWidth();
+    
+    // Listen for resize events
+    window.addEventListener('resize', updateWindowWidth);
+    return () => window.removeEventListener('resize', updateWindowWidth);
+  }, []);
 
   // Get sorted timeline songs for placement
   const timelineSongs = currentPlayer.timeline
@@ -208,7 +232,7 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // Scroll carousel to center the selected position
+  // Scroll carousel to center the selected position - optimized for mobile
   const scrollToPosition = useCallback((position: number) => {
     if (!carouselRef.current || isScrollingRef.current) return;
     
@@ -216,9 +240,12 @@ export default function MobilePlayerGameView({
     const containerWidth = carousel.clientWidth;
     const cardWidth = 128; // w-32 = 128px
     const gapWidth = 6; // w-1.5 = 6px
-    const edgeBuffer = Math.max(240, containerWidth * 0.4); // Dynamic edge buffer for better mobile experience
     
-    // Calculate scroll position to center the selected gap
+    // Dynamic edge buffer based on screen size for better mobile experience
+    const baseBuffer = Math.max(windowWidth * 0.45, 280); // Increased minimum buffer
+    const edgeBuffer = Math.min(baseBuffer, windowWidth * 0.5); // Cap at 50% of screen width
+    
+    // Calculate scroll position to center the selected gap with improved accuracy
     let targetScroll;
     
     if (position === 0) {
@@ -231,7 +258,7 @@ export default function MobilePlayerGameView({
       const totalContentWidth = cardsWidth + gapsWidth;
       targetScroll = edgeBuffer + totalContentWidth - (gapWidth / 2) - (containerWidth / 2);
     } else {
-      // Between cards - center the gap
+      // Between cards - center the gap with improved calculation
       const cardsBeforeGap = position;
       const gapsBeforeTargetGap = position;
       const positionInTimeline = (gapsBeforeTargetGap * gapWidth) + (cardsBeforeGap * cardWidth) + (gapWidth / 2);
@@ -242,6 +269,8 @@ export default function MobilePlayerGameView({
     targetScroll = Math.max(0, Math.min(targetScroll, carousel.scrollWidth - containerWidth));
     
     isScrollingRef.current = true;
+    
+    // Use smoother scrolling for mobile with reduced animation time
     carousel.scrollTo({
       left: targetScroll,
       behavior: 'smooth'
@@ -252,13 +281,13 @@ export default function MobilePlayerGameView({
       clearTimeout(scrollTimeoutRef.current);
     }
     
-    // Reset scrolling flag after animation with proper timing for mobile
+    // Reset scrolling flag with optimized timing for mobile
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 600); // Increased timeout for smoother mobile experience
-  }, [timelineSongs.length]);
+    }, 350); // Reduced timeout for better responsiveness
+  }, [timelineSongs.length, windowWidth]);
 
-  // Handle scroll events to update selected position based on scroll position
+  // Handle scroll events to update selected position - optimized for mobile touch
   const handleCarouselScroll = useCallback(() => {
     if (!carouselRef.current || isScrollingRef.current) return;
     
@@ -267,13 +296,16 @@ export default function MobilePlayerGameView({
     const containerWidth = carousel.clientWidth;
     const cardWidth = 128; // w-32 = 128px
     const gapWidth = 6; // w-1.5 = 6px
-    const edgeBuffer = Math.max(240, containerWidth * 0.4); // Dynamic edge buffer
     
-    // Calculate which position is closest to center
+    // Use same dynamic edge buffer calculation as scrollToPosition
+    const baseBuffer = Math.max(windowWidth * 0.45, 280);
+    const edgeBuffer = Math.min(baseBuffer, windowWidth * 0.5);
+    
+    // Calculate which position is closest to center with improved accuracy
     const centerPoint = scrollLeft + (containerWidth / 2);
     const adjustedCenterPoint = centerPoint - edgeBuffer; // Adjust for edge buffer
     
-    // Find the closest gap position with improved accuracy
+    // Find the closest gap position with better tolerance for touch scrolling
     let closestPosition = 0;
     let minDistance = Infinity;
     
@@ -287,8 +319,8 @@ export default function MobilePlayerGameView({
         const gapsWidth = timelineSongs.length * gapWidth;
         gapCenter = cardsWidth + gapsWidth + (gapWidth / 2);
       } else {
-        // Gap between cards
-        gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + (gapWidth / 2);
+        // Gap between cards - improved calculation
+        gapCenter = (i * gapWidth) + ((i - 1) * cardWidth) + cardWidth + (gapWidth / 2);
       }
       
       const distance = Math.abs(adjustedCenterPoint - gapCenter);
@@ -298,16 +330,22 @@ export default function MobilePlayerGameView({
       }
     }
     
+    // Only update if position actually changed to reduce unnecessary re-renders
     if (closestPosition !== selectedPosition) {
       setSelectedPosition(closestPosition);
     }
-  }, [selectedPosition, timelineSongs.length]);
+  }, [selectedPosition, timelineSongs.length, windowWidth]);
 
-  // Throttled scroll handler for better performance
-  const throttledScrollHandler = useMemo(
-    () => throttle(handleCarouselScroll, 32), // ~30fps throttling for smooth mobile performance
-    [handleCarouselScroll]
-  );
+  // Optimized scroll handler with both throttling and debouncing for smooth mobile experience
+  const throttledScrollHandler = useMemo(() => {
+    const throttled = throttle(handleCarouselScroll, 16); // ~60fps for smooth updates
+    const debounced = debounce(handleCarouselScroll, 100); // Final update after scrolling stops
+    
+    return (event: Event) => {
+      throttled();
+      debounced();
+    };
+  }, [handleCarouselScroll]);
 
   // Effect to scroll to position when it changes
   useEffect(() => {
@@ -504,19 +542,21 @@ export default function MobilePlayerGameView({
                     Place Here
                   </div>
 
-                  {/* Scrollable carousel */}
+                  {/* Scrollable carousel with optimized mobile touch handling */}
                   <div 
                     ref={carouselRef}
                     className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                     style={{ 
-                      scrollSnapType: 'x mandatory', // More decisive snap for better mobile feel
+                      scrollSnapType: 'x proximity', // Less aggressive snapping for better mobile feel
                       scrollBehavior: 'smooth',
-                      WebkitOverflowScrolling: 'touch'
+                      WebkitOverflowScrolling: 'touch', // Enable momentum scrolling on iOS
+                      scrollbarWidth: 'none', // Hide scrollbar on Firefox
+                      msOverflowStyle: 'none' // Hide scrollbar on IE/Edge
                     }}
                     onScroll={throttledScrollHandler}
                   >
-                    {/* Large edge buffer at start for proper scrolling - increased for mobile */}
-                    <div className="flex-shrink-0 w-60"></div>
+                    {/* Enhanced edge buffer at start for improved mobile scrolling */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(280, windowWidth * 0.45)}px` }}></div>
                     
                     {/* Gap before first card */}
                     <div 
@@ -582,8 +622,8 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Large edge buffer at end for proper scrolling - increased for mobile */}
-                    <div className="flex-shrink-0 w-60"></div>
+                    {/* Enhanced edge buffer at end for improved mobile scrolling */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(280, windowWidth * 0.45)}px` }}></div>
                   </div>
                 </div>
 
