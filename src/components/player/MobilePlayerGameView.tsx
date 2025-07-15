@@ -367,7 +367,11 @@ export default function MobilePlayerGameView({
       showHostFeedback={false} // Mobile players don't show host feedback
       hostFeedbackType={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
     >
-      <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden">
+      <div className="mobile-game-view bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col overflow-hidden"
+           style={{ 
+             height: 'var(--mobile-safe-height)',
+             minHeight: 'var(--mobile-safe-height)'
+           }}>
       {/* Enhanced Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />

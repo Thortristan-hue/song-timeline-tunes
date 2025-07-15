@@ -89,7 +89,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
 
   if (joinState === 'joiningRoom') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+      <div className="mobile-container bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden"
+           style={{ minHeight: 'var(--mobile-safe-height)' }}>
         {/* Background Effects */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
@@ -119,7 +120,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
           </div>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-6">
+        <div className="relative z-10 flex flex-col items-center justify-center p-6"
+             style={{ minHeight: 'var(--mobile-safe-height)' }}>
           <div className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-8 rounded-3xl text-center max-w-sm w-full shadow-lg shadow-[#107793]/10">
             <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-[#107793]/20 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
@@ -149,7 +151,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
 
   if (joinState === 'enterDetails') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+      <div className="mobile-container bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden"
+           style={{ minHeight: 'var(--mobile-safe-height)' }}>
         {/* Background Effects */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
@@ -190,7 +193,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
           }} />
         </div>
 
-        <div className="relative z-10 flex flex-col min-h-screen p-6">
+        <div className="relative z-10 flex flex-col p-6"
+             style={{ minHeight: 'var(--mobile-safe-height)' }}>
           {/* Header */}
           <div className="mb-8">
             <Button
@@ -322,7 +326,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
 
   // Default state: enterCode
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+    <div className="mobile-container bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden"
+         style={{ minHeight: 'var(--mobile-safe-height)' }}>
       {/* Enhanced Dark Background Effects */}
       <div className="absolute inset-0">
         {/* Main glow effects */}
@@ -393,7 +398,8 @@ export function MobileJoinFlow({ onJoinRoom, onBackToMenu, isLoading = false, au
         }} />
       </div>
       
-      <div className="relative z-10 flex flex-col min-h-screen p-6">
+      <div className="relative z-10 flex flex-col p-6"
+           style={{ minHeight: 'var(--mobile-safe-height)' }}>
         {/* Header */}
         <div className="mb-8">
           <Button

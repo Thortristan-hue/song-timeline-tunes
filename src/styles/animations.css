@@ -64,7 +64,7 @@
     filter: brightness(1.2); 
   }
   100% { 
-    transform: translateY(-50vh) scale(0.95) rotateX(0deg); 
+    transform: translateY(calc(-50vh + env(safe-area-inset-top, 0px))) scale(0.95) rotateX(0deg); 
     opacity: 1; 
     filter: brightness(1); 
   }
@@ -72,7 +72,7 @@
 
 @keyframes timeline-to-cassette {
   0% { 
-    transform: translateY(-50vh) scale(0.95) rotateX(0deg); 
+    transform: translateY(calc(-50vh + env(safe-area-inset-top, 0px))) scale(0.95) rotateX(0deg); 
     opacity: 1; 
     filter: brightness(1); 
   }
@@ -95,22 +95,22 @@
 
 @keyframes card-fall-correct {
   0% { 
-    transform: translateY(-120vh) rotate(0deg) scale(1); 
+    transform: translateY(calc(-120vh + env(safe-area-inset-top, 0px))) rotate(0deg) scale(1); 
     opacity: 1; 
     filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.5)); 
   }
   25% { 
-    transform: translateY(-80vh) rotate(25deg) scale(1.1); 
+    transform: translateY(calc(-80vh + env(safe-area-inset-top, 0px))) rotate(25deg) scale(1.1); 
     opacity: 0.9; 
     filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.7)); 
   }
   60% { 
-    transform: translateY(-40vh) rotate(-15deg) scale(1.05); 
+    transform: translateY(calc(-40vh + env(safe-area-inset-top, 0px))) rotate(-15deg) scale(1.05); 
     opacity: 0.95; 
     filter: drop-shadow(0 0 20px rgba(34, 197, 94, 0.8)); 
   }
   90% { 
-    transform: translateY(-5vh) rotate(5deg) scale(0.98); 
+    transform: translateY(calc(-5vh + env(safe-area-inset-top, 0px))) rotate(5deg) scale(0.98); 
     opacity: 1; 
     filter: drop-shadow(0 0 25px rgba(34, 197, 94, 0.9)); 
   }
@@ -123,12 +123,12 @@
 
 @keyframes card-fall-incorrect {
   0% { 
-    transform: translateY(-120vh) rotate(0deg) scale(1); 
+    transform: translateY(calc(-120vh + env(safe-area-inset-top, 0px))) rotate(0deg) scale(1); 
     opacity: 1; 
     filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5)); 
   }
   25% { 
-    transform: translateY(-60vh) rotate(180deg) scale(1.15); 
+    transform: translateY(calc(-60vh + env(safe-area-inset-top, 0px))) rotate(180deg) scale(1.15); 
     opacity: 0.8; 
     filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.7)); 
   }
@@ -138,12 +138,12 @@
     filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.8)); 
   }
   75% { 
-    transform: translateY(60vh) rotate(540deg) scale(0.8); 
+    transform: translateY(calc(60vh - env(safe-area-inset-bottom, 0px))) rotate(540deg) scale(0.8); 
     opacity: 0.3; 
     filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5)); 
   }
   100% { 
-    transform: translateY(150vh) rotate(720deg) scale(0.5); 
+    transform: translateY(calc(150vh - env(safe-area-inset-bottom, 0px))) rotate(720deg) scale(0.5); 
     opacity: 0; 
     filter: drop-shadow(0 0 0px rgba(239, 68, 68, 0)); 
   }
@@ -301,7 +301,7 @@
 @keyframes card-throw {
   0% { transform: translateY(0) scale(1); opacity: 1; }
   50% { transform: translateY(-30px) scale(1.1); opacity: 0.8; }
-  100% { transform: translateY(100vh) scale(0.8); opacity: 0; }
+  100% { transform: translateY(calc(100vh - env(safe-area-inset-bottom, 0px))) scale(0.8); opacity: 0; }
 }
 
 @keyframes card-placement {
@@ -429,7 +429,7 @@
 @keyframes floating-particle {
   0% { 
     opacity: 0.4; 
-    transform: translateY(100vh) scale(0.8) rotate(0deg); 
+    transform: translateY(calc(100vh - env(safe-area-inset-bottom, 0px))) scale(0.8) rotate(0deg); 
   }
   20% { 
     opacity: 0.6; 
@@ -439,7 +439,7 @@
   }
   100% { 
     opacity: 0.3; 
-    transform: translateY(-10vh) scale(1.1) rotate(360deg); 
+    transform: translateY(calc(-10vh + env(safe-area-inset-top, 0px))) scale(1.1) rotate(360deg); 
   }
 }
 
@@ -472,7 +472,7 @@
   }
   100% { 
     opacity: 0; 
-    transform: translateY(100vh) rotate(720deg); 
+    transform: translateY(calc(100vh - env(safe-area-inset-bottom, 0px))) rotate(720deg); 
   }
 }
 

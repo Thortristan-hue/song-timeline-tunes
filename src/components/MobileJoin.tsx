@@ -45,7 +45,10 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 flex flex-col">
+    <div className="mobile-container bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 flex flex-col"
+         style={{ 
+           minHeight: 'var(--mobile-safe-height)'
+         }}>
       {/* Subtle background elements */}
       <div className="absolute top-32 left-8 w-64 h-64 bg-blue-500/3 rounded-full blur-3xl" />
       <div className="absolute bottom-40 right-8 w-48 h-48 bg-purple-500/2 rounded-full blur-3xl" />
