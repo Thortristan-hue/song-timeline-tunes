@@ -1,6 +1,16 @@
 
 export type GamePhase = 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
 
+export type GameMode = 'classic' | 'fiend' | 'sprint';
+
+export interface GameModeSettings {
+  // Fiend Mode settings
+  rounds?: number;
+  
+  // Sprint Mode settings
+  targetCards?: number;
+}
+
 export interface GameState {
   phase: GamePhase;
   currentTurn: number;
@@ -50,6 +60,8 @@ export interface GameRoom {
   host_id: string;
   host_name: string;
   phase: 'lobby' | 'playing' | 'finished';
+  gamemode: GameMode;
+  gamemode_settings: GameModeSettings;
   songs: Song[];
   created_at: string;
   updated_at: string;

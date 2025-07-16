@@ -32,6 +32,7 @@ function Index() {
     joinRoom,
     updatePlayer,
     updateRoomSongs,
+    updateRoomGamemode,
     startGame,
     leaveRoom,
     placeCard,
@@ -213,6 +214,7 @@ function Index() {
 
           {gamePhase === 'hostLobby' && (
             <HostLobby
+              room={room}
               lobbyCode={room?.lobby_code || ''}
               players={players}
               onStartGame={handleStartGame}
@@ -221,6 +223,7 @@ function Index() {
               isLoading={isLoading}
               createRoom={handleCreateRoom}
               onKickPlayer={handleKickPlayer}
+              updateRoomGamemode={updateRoomGamemode}
             />
           )}
 
