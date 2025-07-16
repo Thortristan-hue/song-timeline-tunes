@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Music, Star, Calendar } from 'lucide-react';
 import { Player, Song } from '@/types/game';
+import { getArtistColor, truncateText } from '@/lib/utils';
 
 interface HostCurrentPlayerTimelineProps {
   currentTurnPlayer: Player;
@@ -71,89 +72,106 @@ export function HostCurrentPlayerTimeline({
   }, [cardPlacementResult]);
 
   return (
-    <div className="absolute bottom-6 left-6 right-6 z-20">
-      <div className={`bg-white/12 backdrop-blur-2xl rounded-3xl p-4 shadow-xl border border-white/10 transition-all duration-500 ${feedbackAnimation} ${
-        timelineState === 'exiting' ? 'animate-timeline-pack-away' :
-        timelineState === 'entering' ? 'animate-timeline-scatter-in' :
-        'opacity-100 transform-none'
-      }`}>
-        <div className="flex items-center gap-3 mb-4">
-          <div 
-            className="w-4 h-4 rounded-full shadow-sm"
-            style={{ backgroundColor: currentTurnPlayer.color }}
-          />
-          <h3 className="text-white text-xl font-semibold">
-            {currentTurnPlayer.name}'s Timeline
-          </h3>
-          <Star className="h-5 w-5 text-yellow-400" />
-          <div className="text-white/60 text-sm">
-            {currentTurnPlayer.timeline.length}/10 cards
+    <div className="flex justify-center items-center w-full z-20">
+      <div className="flex gap-2 items-center overflow-x-auto pb-2">
+        {currentTurnPlayer.timeline.length === 0 ? (
+          <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
+            <Music className="h-8 w-8 opacity-50" />
+            <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
           </div>
-        </div>
-        
-        <div className="flex gap-2 items-center overflow-x-auto pb-2">
-          {currentTurnPlayer.timeline.length === 0 ? (
-            <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
-              <Music className="h-8 w-8 opacity-50" />
-              <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
-            </div>
-          ) : (
-            <>
-              {/* Gap before first card */}
-              <div 
-                className={`w-2 h-24 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                  highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
-                }`}
-              />
-              
-              {currentTurnPlayer.timeline.map((song, index) => (
-                <React.Fragment key={`${song.deezer_title}-${index}`}>
-                  {/* Song card with enhanced animations */}
-                  <div
-                    className={`min-w-32 h-24 rounded-2xl flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative bg-white/10 backdrop-blur-xl ${
-                      cardPlacementResult && cardPlacementResult.correct && index === currentTurnPlayer.timeline.length - 1 ? 'animate-card-place-correct' : ''
-                    } ${
-                      !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
-                    } ${
-                      timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
-                    }`}
-                    style={{
-                      animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
-                                     timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
-                                     '0s',
-                      transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
-                    <Calendar className="h-4 w-4 mb-1 opacity-70 relative z-10" />
-                    <div className="text-center relative z-10 space-y-0.5">
-                      <div className="text-lg font-bold">
-                        {song.release_year}
-                      </div>
-                      <div className="text-xs px-2 opacity-80 leading-tight max-w-28">
-                        {song.deezer_title.length > 14 ? song.deezer_title.substring(0, 14) + '...' : song.deezer_title}
-                      </div>
-                      <div className="text-xs px-2 opacity-60 leading-tight max-w-28">
-                        {song.deezer_artist.length > 10 ? song.deezer_artist.substring(0, 10) + '...' : song.deezer_artist}
-                      </div>
+        ) : (
+          <>
+            {/* Gap before first card */}
+            <div 
+              className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+              }`}
+            />
+            
+            {currentTurnPlayer.timeline.map((song, index) => (
+              <React.Fragment key={`${song.deezer_title}-${index}`}>
+                {/* Song card with enhanced animations - now square and consistent */}
+                <div
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
+                    cardPlacementResult && cardPlacementResult.correct && index === currentTurnPlayer.timeline.length - 1 ? 'animate-epic-card-drop' : ''
+                  } ${
+                    !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
+                  } ${
+                    timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
+                  }`}
+                  style={{
+                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
+                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
+                    animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
+                                   timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
+                                   '0s',
+                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                  
+                  <div className="text-center relative z-10 space-y-0.5 w-full">
+                    {/* Artist name - medium, white, wrapped, max 20 letters per line */}
+                    <div className="text-sm font-medium text-white">
+                      {truncateText(song.deezer_artist, 20)}
+                    </div>
+                    
+                    {/* Song release year - large, white */}
+                    <div className="text-4xl font-black text-white my-auto">
+                      {song.release_year}
+                    </div>
+                    
+                    {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
+                    <div className="text-xs italic text-white opacity-90">
+                      {truncateText(song.deezer_title, 20)}
                     </div>
                   </div>
-                  
-                  {/* Gap after this card */}
-                  <div 
-                    className={`w-2 h-24 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                      highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
-                    }`}
-                  />
-                </React.Fragment>
-              ))}
-            </>
-          )}
-        </div>
+                </div>
+                
+                {/* Gap after this card */}
+                <div 
+                  className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                    highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+                  }`}
+                />
+              </React.Fragment>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Enhanced CSS animations for turn transitions */}
       <style jsx>{`
+        @keyframes epic-card-drop {
+          0% {
+            transform: scale(0.5) translateY(-120px) rotateZ(-20deg) rotateX(90deg);
+            opacity: 0;
+            filter: blur(8px);
+          }
+          25% {
+            transform: scale(1.4) translateY(20px) rotateZ(8deg) rotateX(15deg);
+            opacity: 0.7;
+            filter: blur(3px);
+            box-shadow: 0 0 0 25px rgba(255,255,255,0.2), 0 20px 60px rgba(0,0,0,0.7);
+          }
+          50% {
+            transform: scale(0.9) translateY(-12px) rotateZ(-3deg) rotateX(-8deg);
+            opacity: 1;
+            filter: blur(0px);
+            box-shadow: 0 0 0 40px rgba(255,255,255,0.15), 0 25px 70px rgba(0,0,0,0.6);
+          }
+          75% {
+            transform: scale(1.08) translateY(5px) rotateZ(2deg) rotateX(3deg);
+            box-shadow: 0 0 0 20px rgba(255,255,255,0.08), 0 15px 45px rgba(0,0,0,0.5);
+          }
+          100% {
+            transform: scale(1) translateY(0) rotateZ(0deg) rotateX(0deg);
+            opacity: 1;
+            filter: blur(0px);
+            box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 12px 35px rgba(0,0,0,0.5);
+          }
+        }
+
         @keyframes timeline-pack-away {
           0% {
             opacity: 1;
@@ -199,25 +217,6 @@ export function HostCurrentPlayerTimeline({
           }
         }
 
-        @keyframes card-place-correct {
-          0% {
-            transform: translateY(-50px) scale(0.8);
-            opacity: 0;
-          }
-          25% {
-            transform: translateY(10px) scale(1.1);
-            opacity: 0.8;
-          }
-          50% {
-            transform: translateY(-5px) scale(1.05);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(0) scale(1);
-            opacity: 1;
-          }
-        }
-
         .animate-timeline-pack-away {
           animation: timeline-pack-away 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
         }
@@ -230,8 +229,8 @@ export function HostCurrentPlayerTimeline({
           animation: cards-pack-up 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
         }
 
-        .animate-card-place-correct {
-          animation: card-place-correct 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-epic-card-drop {
+          animation: epic-card-drop 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
       `}</style>
     </div>

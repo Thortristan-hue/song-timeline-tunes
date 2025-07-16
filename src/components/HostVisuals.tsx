@@ -5,6 +5,7 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { Button } from '@/components/ui/button';
+import { getArtistColor, truncateText } from '@/lib/utils';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
@@ -263,10 +264,7 @@ function HostTimelineCard({ song, isActive, placementResult }: {
   isActive?: boolean;
   placementResult?: { correct: boolean; song: Song } | null;
 }) {
-  const artistHash = Array.from(song.deezer_artist).reduce(
-    (acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0
-  );
-  const hue = Math.abs(artistHash) % 360;
+  const cardColor = getArtistColor(song.deezer_artist);
   const [isDropping, setIsDropping] = useState(false);
   const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   
@@ -301,19 +299,24 @@ function HostTimelineCard({ song, isActive, placementResult }: {
         ${isDropping ? 'animate-ultimate-bang' : ''}
         ${feedbackAnimation}`}
       style={{ 
-        backgroundColor: `hsl(${hue}, 70%, 25%)`,
-        backgroundImage: `linear-gradient(135deg, hsl(${hue}, 70%, 20%), hsl(${hue}, 70%, 35%))`,
+        backgroundColor: cardColor.backgroundColor,
+        backgroundImage: cardColor.backgroundImage,
         boxShadow: '0 12px 35px rgba(0,0,0,0.5)'
       }}
     >
-      <div className="text-sm font-semibold w-full text-center truncate">
-        {song.deezer_artist}
+      {/* Artist name - medium, white, wrapped, max 20 letters per line */}
+      <div className="text-sm font-medium w-full text-center text-white">
+        {truncateText(song.deezer_artist, 20)}
       </div>
-      <div className="text-4xl font-black my-auto">
+      
+      {/* Song release year - large, white */}
+      <div className="text-4xl font-black my-auto text-white">
         {song.release_year}
       </div>
-      <div className="text-xs italic w-full text-center truncate opacity-90">
-        {song.deezer_title}
+      
+      {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
+      <div className="text-xs italic w-full text-center text-white opacity-90">
+        {truncateText(song.deezer_title, 20)}
       </div>
       
       <style>{`
