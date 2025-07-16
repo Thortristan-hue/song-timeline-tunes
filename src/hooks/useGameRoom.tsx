@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Song, Player, GameRoom } from '@/types/game';
+import { Song, Player, GameRoom, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 import { useRealtimeSubscription, SubscriptionConfig } from '@/hooks/useRealtimeSubscription';
@@ -24,6 +24,8 @@ interface DatabaseGameRoom {
   host_id: string;
   host_name: string;
   phase: string;
+  gamemode?: string;
+  gamemode_settings?: any;
   songs: Song[];
   current_turn?: number;
   current_song?: Song | null;
@@ -147,6 +149,8 @@ export function useGameRoom() {
             host_id: roomData.host_id,
             host_name: roomData.host_name || '',
             phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+            gamemode: (roomData.gamemode as GameMode) || 'classic',
+            gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
             songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
             created_at: roomData.created_at,
             updated_at: roomData.updated_at,
@@ -180,7 +184,7 @@ export function useGameRoom() {
     fetchPlayers(room.id);
   }, [room?.id, fetchPlayers]);
 
-  const createRoom = useCallback(async (hostName: string): Promise<string | null> => {
+  const createRoom = useCallback(async (hostName: string, gamemode: GameMode = 'classic', gamemodeSettings: GameModeSettings = {}): Promise<string | null> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -189,7 +193,7 @@ export function useGameRoom() {
       const lobbyCode = generateLobbyCode();
       hostSessionId.current = sessionId;
 
-      console.log('🏠 Creating room with host session ID:', sessionId);
+      console.log('🏠 Creating room with host session ID:', sessionId, 'gamemode:', gamemode);
 
       const { data, error } = await supabase
         .from('game_rooms')
@@ -197,7 +201,9 @@ export function useGameRoom() {
           lobby_code: lobbyCode,
           host_id: sessionId,
           host_name: hostName,
-          phase: 'lobby'
+          phase: 'lobby',
+          gamemode: gamemode,
+          gamemode_settings: gamemodeSettings as any
         })
         .select()
         .single();
@@ -212,6 +218,8 @@ export function useGameRoom() {
         host_id: data.host_id,
         host_name: data.host_name || hostName,
         phase: data.phase as 'lobby' | 'playing' | 'finished',
+        gamemode: (data.gamemode as GameMode) || 'classic',
+        gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
         songs: Array.isArray(data.songs) ? data.songs as unknown as Song[] : [],
         created_at: data.created_at,
         updated_at: data.updated_at,
@@ -306,6 +314,8 @@ export function useGameRoom() {
         host_id: roomData.host_id,
         host_name: roomData.host_name || '',
         phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+        gamemode: (roomData.gamemode as GameMode) || 'classic',
+        gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
         songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
         created_at: roomData.created_at,
         updated_at: roomData.updated_at,
@@ -390,6 +400,34 @@ export function useGameRoom() {
       return true;
     } catch (error) {
       console.error('Failed to update room songs:', error);
+      return false;
+    }
+  }, [room, isHost]);
+
+  const updateRoomGamemode = useCallback(async (gamemode: GameMode, gamemodeSettings: GameModeSettings): Promise<boolean> => {
+    if (!room || !isHost) return false;
+
+    try {
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ 
+          gamemode: gamemode,
+          gamemode_settings: gamemodeSettings as any
+        })
+        .eq('id', room.id);
+
+      if (error) throw error;
+      
+      // Update local state
+      setRoom(prev => prev ? {
+        ...prev,
+        gamemode,
+        gamemode_settings: gamemodeSettings
+      } : null);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to update room gamemode:', error);
       return false;
     }
   }, [room, isHost]);
@@ -545,6 +583,7 @@ export function useGameRoom() {
     joinRoom,
     updatePlayer,
     updateRoomSongs,
+    updateRoomGamemode,
     startGame,
     leaveRoom,
     placeCard,

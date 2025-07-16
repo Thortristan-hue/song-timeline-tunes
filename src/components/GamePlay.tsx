@@ -3,6 +3,10 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import MobileVictoryScreen from '@/components/player/MobileVictoryScreen';
 import { HostGameView } from '@/components/HostVisuals';
+import { FiendModePlayerView } from '@/components/fiend/FiendModePlayerView';
+import { FiendModeHostView } from '@/components/fiend/FiendModeHostView';
+import { SprintModePlayerView } from '@/components/sprint/SprintModePlayerView';
+import { SprintModeHostView } from '@/components/sprint/SprintModeHostView';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -49,6 +53,12 @@ export function GamePlay({
   const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
   const [highlightedGapIndex, setHighlightedGapIndex] = useState<number | null>(null);
   const [mobileViewport, setMobileViewport] = useState<{ startIndex: number; endIndex: number; totalCards: number } | null>(null);
+  
+  // Gamemode-specific state
+  const [currentRound, setCurrentRound] = useState(1);
+  const [playerGuesses, setPlayerGuesses] = useState<Record<string, { year: number; accuracy: number; points: number }>>({});
+  const [playerTimeouts, setPlayerTimeouts] = useState<Record<string, number>>({});
+  const [recentPlacements, setRecentPlacements] = useState<Record<string, { correct: boolean; song: Song; timestamp: number }>>({});
 
   // Audio management - MOBILE OPTIMIZED
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -377,6 +387,115 @@ export function GamePlay({
     setMobileViewport(viewportInfo);
   };
 
+  // Fiend Mode specific handlers
+  const handleFiendModeGuess = async (year: number): Promise<{ success: boolean; accuracy?: number; points?: number }> => {
+    if (!currentPlayer || !currentMysteryCard) {
+      return { success: false };
+    }
+
+    try {
+      const actualYear = parseInt(currentMysteryCard.release_year);
+      const yearDifference = Math.abs(year - actualYear);
+      
+      // Calculate accuracy percentage (100% for exact, decreasing by 2% per year off)
+      const accuracy = Math.max(0, 100 - (yearDifference * 2));
+      
+      // Calculate points based on accuracy (max 100 points)
+      const points = Math.round(accuracy);
+      
+      // Update player score
+      const newScore = currentPlayer.score + points;
+      await GameService.updatePlayerScore(room.id, currentPlayer.id, newScore);
+      
+      // Store the guess result
+      setPlayerGuesses(prev => ({
+        ...prev,
+        [currentPlayer.id]: { year, accuracy, points }
+      }));
+      
+      soundEffects.playCardSuccess();
+      
+      return { success: true, accuracy, points };
+    } catch (error) {
+      console.error('Failed to submit Fiend Mode guess:', error);
+      return { success: false };
+    }
+  };
+
+  // Sprint Mode specific handlers
+  const handleSprintModePlace = async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean }> => {
+    if (!currentPlayer) {
+      return { success: false };
+    }
+
+    try {
+      // Check if placement is correct
+      const playerTimeline = currentPlayer.timeline
+        .filter(s => s !== null)
+        .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+      
+      const songYear = parseInt(song.release_year);
+      const beforeSong = position > 0 ? playerTimeline[position - 1] : null;
+      const afterSong = position < playerTimeline.length ? playerTimeline[position] : null;
+      
+      const beforeYear = beforeSong ? parseInt(beforeSong.release_year) : 0;
+      const afterYear = afterSong ? parseInt(afterSong.release_year) : 9999;
+      
+      const isCorrect = songYear >= beforeYear && songYear <= afterYear;
+      
+      if (isCorrect) {
+        // Add card to timeline
+        const result = await onPlaceCard(song, position);
+        
+        // Track placement result
+        setRecentPlacements(prev => ({
+          ...prev,
+          [currentPlayer.id]: { correct: true, song, timestamp: Date.now() }
+        }));
+        
+        soundEffects.playCardSuccess();
+        return { success: true, correct: true };
+      } else {
+        // Start timeout
+        setPlayerTimeouts(prev => ({
+          ...prev,
+          [currentPlayer.id]: 5
+        }));
+        
+        // Track placement result
+        setRecentPlacements(prev => ({
+          ...prev,
+          [currentPlayer.id]: { correct: false, song, timestamp: Date.now() }
+        }));
+        
+        // Countdown timeout
+        let timeRemaining = 5;
+        const timeoutInterval = setInterval(() => {
+          timeRemaining--;
+          setPlayerTimeouts(prev => ({
+            ...prev,
+            [currentPlayer.id]: timeRemaining
+          }));
+          
+          if (timeRemaining <= 0) {
+            clearInterval(timeoutInterval);
+            setPlayerTimeouts(prev => {
+              const newTimeouts = { ...prev };
+              delete newTimeouts[currentPlayer.id];
+              return newTimeouts;
+            });
+          }
+        }, 1000);
+        
+        soundEffects.playCardError();
+        return { success: true, correct: false };
+      }
+    } catch (error) {
+      console.error('Failed to place Sprint Mode card:', error);
+      return { success: false };
+    }
+  };
+
   // Show initialization error
   if (initializationError) {
     return (
@@ -459,36 +578,91 @@ export function GamePlay({
         />
       )}
       
-      {isHost ? (
-        <HostGameView
-          currentTurnPlayer={currentTurnPlayer}
-          currentSong={currentMysteryCard}
-          roomCode={room.lobby_code}
-          players={activePlayers}
-          mysteryCardRevealed={mysteryCardRevealed}
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          cardPlacementResult={cardPlacementResult}
-          transitioning={false}
-          highlightedGapIndex={highlightedGapIndex}
-          mobileViewport={mobileViewport}
-        />
+      {/* Render different views based on gamemode */}
+      {room.gamemode === 'fiend' ? (
+        isHost ? (
+          <FiendModeHostView
+            players={activePlayers}
+            currentSong={currentMysteryCard}
+            roundNumber={currentRound}
+            totalRounds={room.gamemode_settings?.rounds || 5}
+            roomCode={room.lobby_code}
+            timeLeft={30}
+            playerGuesses={playerGuesses}
+          />
+        ) : (
+          <FiendModePlayerView
+            currentPlayer={currentPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onSubmitGuess={handleFiendModeGuess}
+            gameEnded={gameEnded}
+            roundNumber={currentRound}
+            totalRounds={room.gamemode_settings?.rounds || 5}
+            timeLeft={30}
+          />
+        )
+      ) : room.gamemode === 'sprint' ? (
+        isHost ? (
+          <SprintModeHostView
+            players={activePlayers}
+            currentSong={currentMysteryCard}
+            targetCards={room.gamemode_settings?.targetCards || 10}
+            roomCode={room.lobby_code}
+            timeLeft={30}
+            playerTimeouts={playerTimeouts}
+            recentPlacements={recentPlacements}
+          />
+        ) : (
+          <SprintModePlayerView
+            currentPlayer={currentPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={handleSprintModePlace}
+            gameEnded={gameEnded}
+            targetCards={room.gamemode_settings?.targetCards || 10}
+            timeLeft={30}
+            isInTimeout={playerTimeouts[currentPlayer?.id] > 0}
+            timeoutRemaining={playerTimeouts[currentPlayer?.id] || 0}
+          />
+        )
       ) : (
-        <MobilePlayerGameView
-          currentPlayer={currentPlayer}
-          currentTurnPlayer={currentTurnPlayer}
-          currentSong={currentMysteryCard}
-          roomCode={room.lobby_code}
-          isMyTurn={isMyTurn}
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          onPlaceCard={handlePlaceCard}
-          mysteryCardRevealed={mysteryCardRevealed}
-          cardPlacementResult={cardPlacementResult}
-          gameEnded={gameEnded}
-          onHighlightGap={handleHighlightGap}
-          onViewportChange={handleViewportChange}
-        />
+        // Classic gamemode (existing behavior)
+        isHost ? (
+          <HostGameView
+            currentTurnPlayer={currentTurnPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            players={activePlayers}
+            mysteryCardRevealed={mysteryCardRevealed}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            cardPlacementResult={cardPlacementResult}
+            transitioning={false}
+            highlightedGapIndex={highlightedGapIndex}
+            mobileViewport={mobileViewport}
+          />
+        ) : (
+          <MobilePlayerGameView
+            currentPlayer={currentPlayer}
+            currentTurnPlayer={currentTurnPlayer}
+            currentSong={currentMysteryCard}
+            roomCode={room.lobby_code}
+            isMyTurn={isMyTurn}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={handlePlaceCard}
+            mysteryCardRevealed={mysteryCardRevealed}
+            cardPlacementResult={cardPlacementResult}
+            gameEnded={gameEnded}
+            onHighlightGap={handleHighlightGap}
+            onViewportChange={handleViewportChange}
+          />
+        )
       )}
     </div>
   );

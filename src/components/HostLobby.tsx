@@ -2,14 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Headphones, X } from 'lucide-react';
-import { Player, Song } from '@/types/game';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Headphones, X, Settings, Gamepad2, Timer, Target } from 'lucide-react';
+import { Player, Song, GameRoom, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface HostLobbyProps {
+  room: GameRoom | null;
   lobbyCode: string;
   players: Player[];
   onStartGame: () => Promise<void>;
@@ -18,9 +22,11 @@ interface HostLobbyProps {
   isLoading: boolean;
   createRoom: () => Promise<boolean>;
   onKickPlayer?: (playerId: string) => void;
+  updateRoomGamemode: (gamemode: GameMode, settings: GameModeSettings) => Promise<boolean>;
 }
 
 export function HostLobby({
+  room,
   lobbyCode,
   players,
   onStartGame,
@@ -28,12 +34,17 @@ export function HostLobby({
   setCustomSongs,
   isLoading,
   createRoom,
-  onKickPlayer
+  onKickPlayer,
+  updateRoomGamemode
 }: HostLobbyProps) {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
   const [copied, setCopied] = useState(false);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
+  
+  // Gamemode state
+  const [selectedGamemode, setSelectedGamemode] = useState<GameMode>(room?.gamemode || 'classic');
+  const [gamemodeSettings, setGamemodeSettings] = useState<GameModeSettings>(room?.gamemode_settings || {});
 
   // Debug logging for player updates
   useEffect(() => {
@@ -88,6 +99,51 @@ export function HostLobby({
           title: "Player removed",
           description: `${playerName} has been removed from the lobby`,
         });
+      }
+    }
+  };
+
+  // Handle gamemode changes
+  const handleGamemodeChange = async (newGamemode: GameMode) => {
+    setSelectedGamemode(newGamemode);
+    
+    // Set default settings for the new gamemode
+    let defaultSettings: GameModeSettings = {};
+    if (newGamemode === 'fiend') {
+      defaultSettings = { rounds: 5 };
+    } else if (newGamemode === 'sprint') {
+      defaultSettings = { targetCards: 10 };
+    }
+    
+    setGamemodeSettings(defaultSettings);
+    
+    // Update the room in the database
+    if (room) {
+      const success = await updateRoomGamemode(newGamemode, defaultSettings);
+      if (success) {
+        soundEffects.playButtonClick();
+        toast({
+          title: "Game mode updated",
+          description: `Switched to ${newGamemode === 'classic' ? 'Classic/Timeliner' : newGamemode === 'fiend' ? 'Fiend Mode' : 'Sprint Mode'}`,
+        });
+      } else {
+        toast({
+          title: "Failed to update",
+          description: "Could not change game mode",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleSettingsChange = async (key: keyof GameModeSettings, value: number) => {
+    const newSettings = { ...gamemodeSettings, [key]: value };
+    setGamemodeSettings(newSettings);
+    
+    if (room) {
+      const success = await updateRoomGamemode(selectedGamemode, newSettings);
+      if (success) {
+        soundEffects.playButtonClick();
       }
     }
   };
@@ -338,6 +394,117 @@ export function HostLobby({
                 </div>
               </Card>
 
+              {/* Game Mode Selection */}
+              <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 sm:p-6 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 hover:scale-[1.02]">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Gamepad2 className="h-5 w-5 text-[#a53b8b]" />
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      Game Mode
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <Label htmlFor="gamemode-select" className="text-[#d9e8dd] font-medium text-sm">
+                      Choose your adventure
+                    </Label>
+                    <Select value={selectedGamemode} onValueChange={handleGamemodeChange}>
+                      <SelectTrigger className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white rounded-xl h-12 transition-all duration-300 hover:bg-[#1A1A2E]/90">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1A1A2E] border border-[#4a4f5b]/30 rounded-xl">
+                        <SelectItem value="classic" className="text-white hover:bg-[#4a4f5b]/20 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Music2 className="h-4 w-4 text-[#4CC9F0]" />
+                            <div>
+                              <div className="font-semibold">Classic/Timeliner</div>
+                              <div className="text-xs text-[#d9e8dd]/70">Place cards in timeline • First to 10 wins</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="fiend" className="text-white hover:bg-[#4a4f5b]/20 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Radio className="h-4 w-4 text-[#a53b8b]" />
+                            <div>
+                              <div className="font-semibold">Fiend Mode</div>
+                              <div className="text-xs text-[#d9e8dd]/70">Guess the year on timeline • Score by accuracy</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="sprint" className="text-white hover:bg-[#4a4f5b]/20 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Timer className="h-4 w-4 text-[#107793]" />
+                            <div>
+                              <div className="font-semibold">Sprint Mode</div>
+                              <div className="text-xs text-[#d9e8dd]/70">Simultaneous play • Race to target</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Game Mode Settings */}
+                  {selectedGamemode === 'fiend' && (
+                    <div className="space-y-3 pt-2 border-t border-[#4a4f5b]/20">
+                      <Label className="text-[#d9e8dd] font-medium text-sm">Number of Rounds</Label>
+                      <div className="space-y-2">
+                        <Slider
+                          value={[gamemodeSettings.rounds || 5]}
+                          onValueChange={([value]) => handleSettingsChange('rounds', value)}
+                          max={15}
+                          min={3}
+                          step={1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-[#d9e8dd]/70">
+                          <span>3 rounds</span>
+                          <span className="text-[#a53b8b] font-semibold">{gamemodeSettings.rounds || 5} rounds</span>
+                          <span>15 rounds</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedGamemode === 'sprint' && (
+                    <div className="space-y-3 pt-2 border-t border-[#4a4f5b]/20">
+                      <Label className="text-[#d9e8dd] font-medium text-sm">Target Cards</Label>
+                      <div className="space-y-2">
+                        <Slider
+                          value={[gamemodeSettings.targetCards || 10]}
+                          onValueChange={([value]) => handleSettingsChange('targetCards', value)}
+                          max={20}
+                          min={5}
+                          step={1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-[#d9e8dd]/70">
+                          <span>5 cards</span>
+                          <span className="text-[#107793] font-semibold">{gamemodeSettings.targetCards || 10} cards</span>
+                          <span>20 cards</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedGamemode === 'classic' && (
+                    <div className="bg-[#4CC9F0]/10 border border-[#4CC9F0]/30 rounded-2xl p-3 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
+                        <div>
+                          <div className="text-[#4CC9F0] font-bold tracking-tight text-sm">
+                            The classic experience
+                          </div>
+                          <div className="text-[#d9e8dd] font-medium text-xs">
+                            Build your timeline, first to 10 cards wins!
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
               {/* Playlist Section */}
               <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500">
                 <div className="flex items-center gap-3 mb-3">
@@ -392,7 +559,8 @@ export function HostLobby({
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
                 <Play className="h-5 w-5 mr-2" />
-                {players.length < 1 ? 'Waiting for the squad...' : `Start the party! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
+                {players.length < 1 ? 'Waiting for the squad...' : 
+                  `Start ${selectedGamemode === 'classic' ? 'Classic' : selectedGamemode === 'fiend' ? 'Fiend Mode' : 'Sprint Mode'}! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
               </Button>
 
               <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 flex-1 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 min-h-0">
