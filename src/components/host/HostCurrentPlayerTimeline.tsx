@@ -2,12 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Music, Star, Calendar } from 'lucide-react';
-import { Player } from '@/types/game';
+import { Player, Song } from '@/types/game';
 
 interface HostCurrentPlayerTimelineProps {
   currentTurnPlayer: Player;
   previousTurnPlayer?: Player;
-  cardPlacementResult?: { correct: boolean; song: any } | null;
+  cardPlacementResult?: { correct: boolean; song: Song } | null;
   highlightedGapIndex?: number | null;
   isTransitioning?: boolean;
 }

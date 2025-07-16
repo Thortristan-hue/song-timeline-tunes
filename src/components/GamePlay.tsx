@@ -10,9 +10,11 @@ import { GameService } from '@/services/gameService';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useRealtimeSubscription';
+import { GameRoom } from '@/types/game';
+import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
 
 interface GamePlayProps {
-  room: any;
+  room: GameRoom;
   players: Player[];
   currentPlayer: Player | null;
   isHost: boolean;
@@ -49,7 +51,7 @@ export function GamePlay({
 
   // Audio management - MOBILE OPTIMIZED
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
-  const audioChannelRef = useRef<any>(null);
+  const audioChannelRef = useRef<BroadcastChannel | null>(null);
 
   const {
     gameState,
@@ -390,7 +392,6 @@ export function GamePlay({
     
     // Import the game over screens
     const MobileGameOverScreen = React.lazy(() => import('@/components/player/MobileGameOverScreen'));
-    const { HostGameOverScreen } = require('@/components/host/HostGameOverScreen');
     
     // Mobile game over screen for players
     if (!isHost) {

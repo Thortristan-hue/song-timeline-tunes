@@ -5,6 +5,32 @@ import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 import { useRealtimeSubscription, SubscriptionConfig } from '@/hooks/useRealtimeSubscription';
+import type { Json } from '@/integrations/supabase/types';
+
+interface DatabasePlayer {
+  id: string;
+  name: string;
+  color: string;
+  timeline_color: string;
+  score: number;
+  timeline: Song[];
+  room_id: string;
+  created_at: string;
+}
+
+interface DatabaseGameRoom {
+  id: string;
+  lobby_code: string;
+  host_id: string;
+  host_name: string;
+  phase: string;
+  songs: Song[];
+  current_turn?: number;
+  current_song?: Song | null;
+  current_player_id?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -33,7 +59,7 @@ export function useGameRoom() {
   };
 
   // Convert database player to frontend player
-  const convertPlayer = useCallback((dbPlayer: any): Player => {
+  const convertPlayer = useCallback((dbPlayer: DatabasePlayer): Player => {
     return {
       id: dbPlayer.id,
       name: dbPlayer.name,
@@ -105,7 +131,7 @@ export function useGameRoom() {
         filter: `id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
-          const roomData = payload.new as any;
+          const roomData = payload.new as DatabaseGameRoom;
           
           // CRITICAL FIX: Properly cast current_song from Json to Song
           let currentSong: Song | null = null;
@@ -357,7 +383,7 @@ export function useGameRoom() {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update({ songs: songs as any })
+        .update({ songs: songs as unknown as Json })
         .eq('id', room.id);
 
       if (error) throw error;
@@ -443,7 +469,7 @@ export function useGameRoom() {
           const { error } = await supabase
             .from('players')
             .update({
-              timeline: [randomSong] as any
+              timeline: [randomSong] as unknown as Json
             })
             .eq('id', player.id);
 

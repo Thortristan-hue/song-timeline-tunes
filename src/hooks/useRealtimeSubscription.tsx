@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface SubscriptionConfig {
   channelName: string;
   table: string;
   filter?: string;
-  onUpdate: (payload: any) => void;
-  onError?: (error: any) => void;
+  onUpdate: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
+  onError?: (error: Error) => void;
 }
 
 export interface ConnectionStatus {
@@ -45,7 +45,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     }
   }, []);
 
-  const handleConnectionError = useCallback((error: any, context: string) => {
+  const handleConnectionError = useCallback((error: Error, context: string) => {
     console.warn(`📡 Subscription error in ${context}:`, error);
     
     setConnectionStatus(prev => ({
