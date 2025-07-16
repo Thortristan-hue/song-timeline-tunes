@@ -412,6 +412,7 @@ export function GamePlay({
         winner={winningPlayer}
         players={activePlayers}
         onPlayAgain={handleReplay}
+        onRestartWithSamePlayers={handleReplay} // For now, both do the same thing
         onBackToMenu={handleBackToMenu}
         roomCode={room.lobby_code}
       />

@@ -156,6 +156,19 @@ function Index() {
     await updatePlayer({ name, color });
   };
 
+  const handleRestartWithSamePlayers = () => {
+    // Reset game state but keep same players
+    setGamePhase('hostLobby');
+    setWinner(null);
+    soundEffects.playButtonClick();
+  };
+
+  const handleKickPlayer = async (playerId: string) => {
+    // For now, this is a placeholder - would need to implement actual kick functionality
+    // in the useGameRoom hook and backend
+    console.log('Would kick player:', playerId);
+  };
+
   const handlePlayAgain = () => {
     setGamePhase('hostLobby');
     setWinner(null);
@@ -203,6 +216,7 @@ function Index() {
               setCustomSongs={setCustomSongs}
               isLoading={isLoading}
               createRoom={handleCreateRoom}
+              onKickPlayer={handleKickPlayer}
             />
           )}
 
@@ -245,6 +259,7 @@ function Index() {
               winner={winner}
               players={players}
               onPlayAgain={handlePlayAgain}
+              onRestartWithSamePlayers={isHost ? handleRestartWithSamePlayers : undefined}
               onBackToMenu={handleBackToMenu}
             />
           )}
