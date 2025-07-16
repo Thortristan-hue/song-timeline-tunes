@@ -45,6 +45,7 @@ export function GamePlay({
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [gameInitialized, setGameInitialized] = useState(false);
   const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
+  const [highlightedGapIndex, setHighlightedGapIndex] = useState<number | null>(null);
 
   // Audio management - MOBILE OPTIMIZED
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -365,6 +366,10 @@ export function GamePlay({
     }
   };
 
+  const handleHighlightGap = (gapIndex: number | null) => {
+    setHighlightedGapIndex(gapIndex);
+  };
+
   // Show initialization error
   if (initializationError) {
     return (
@@ -458,6 +463,7 @@ export function GamePlay({
           onPlayPause={handlePlayPause}
           cardPlacementResult={cardPlacementResult}
           transitioning={false}
+          highlightedGapIndex={highlightedGapIndex}
         />
       ) : (
         <MobilePlayerGameView
@@ -472,6 +478,7 @@ export function GamePlay({
           mysteryCardRevealed={mysteryCardRevealed}
           cardPlacementResult={cardPlacementResult}
           gameEnded={gameEnded}
+          onHighlightGap={handleHighlightGap}
         />
       )}
     </div>
