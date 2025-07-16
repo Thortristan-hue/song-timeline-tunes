@@ -19,7 +19,10 @@ export function QRCodeGenerator({
   fgColor = "#000000",
   showLabels = true
 }: QRCodeGeneratorProps) {
+  // Create the join URL with the room code as a parameter
   const joinUrl = `${window.location.origin}?join=${encodeURIComponent(value)}`;
+  
+  console.log('🔗 QR Code generated for URL:', joinUrl);
   
   return (
     <div className={`text-center space-y-3 ${className}`}>

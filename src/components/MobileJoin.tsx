@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,12 +9,27 @@ interface MobileJoinProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
   onBackToMenu: () => void;
   isLoading?: boolean;
+  autoJoinCode?: string;
 }
 
-export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: MobileJoinProps) {
+export function MobileJoin({ 
+  onJoinRoom, 
+  onBackToMenu, 
+  isLoading = false, 
+  autoJoinCode = '' 
+}: MobileJoinProps) {
   const [lobbyCode, setLobbyCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
+
+  // Auto-fill the lobby code if provided via QR scan
+  useEffect(() => {
+    if (autoJoinCode && autoJoinCode.trim()) {
+      console.log('🔗 Auto-filling lobby code from QR:', autoJoinCode);
+      setLobbyCode(autoJoinCode.trim().toUpperCase());
+      setError('');
+    }
+  }, [autoJoinCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,11 +38,13 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
     setError('');
     
     try {
+      console.log('🎮 Attempting to join room:', { lobbyCode: lobbyCode.trim(), playerName: playerName.trim() });
       const success = await onJoinRoom(lobbyCode.trim().toUpperCase(), playerName.trim());
       if (!success) {
         setError('Hmm, that didn\'t work. Double-check the code?');
       }
     } catch (err) {
+      console.error('❌ Join room error:', err);
       setError('Something went wrong. Give it another try!');
     }
   };
@@ -67,6 +85,17 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
 
       {/* Main content */}
       <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10">
+        {/* QR Code Success Message */}
+        {autoJoinCode && (
+          <div className="text-center mb-6">
+            <div className="bg-green-500/10 border border-green-400/20 rounded-2xl p-4 backdrop-blur-xl">
+              <p className="text-green-300 text-sm font-medium">
+                ✅ QR code scanned! Room code filled automatically
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Disclaimer */}
         <div className="text-center mb-8">
           <p className="text-sm text-white/50 leading-relaxed">
@@ -88,12 +117,12 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
             </div>
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Join the fun</h1>
             <p className="text-white/60 text-base leading-relaxed font-medium">
-              Got a code from your friend? Let's get you in!
+              {autoJoinCode ? 'Code detected! Just add your name below' : 'Got a code from your friend? Let\'s get you in!'}
             </p>
           </div>
 
           {/* Form */}
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Lobby Code Input */}
             <div>
               <label htmlFor="lobbyCode" className="block text-lg font-semibold text-white mb-3 tracking-tight">
@@ -114,7 +143,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
                 inputMode="text"
               />
               <p className="text-white/40 text-sm mt-2 text-center font-medium">
-                Ask your friend for the 6-character code
+                {autoJoinCode ? 'Code filled from QR scan' : 'Ask your friend for the 6-character code'}
               </p>
             </div>
 
@@ -135,6 +164,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
                 maxLength={20}
                 autoCapitalize="words"
                 autoCorrect="off"
+                autoFocus={!!autoJoinCode}
               />
             </div>
 
@@ -147,7 +177,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
 
             {/* Join Button */}
             <Button
-              onClick={handleSubmit}
+              type="submit"
               disabled={!lobbyCode.trim() || !playerName.trim() || isLoading}
               className="w-full bg-white text-black hover:bg-white/90 font-semibold h-16 text-lg 
                        rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 
@@ -162,7 +192,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading = false }: Mobi
                 'Join Game'
               )}
             </Button>
-          </div>
+          </form>
 
           {/* Help text */}
           <div className="mt-8 pt-6 border-t border-white/10">

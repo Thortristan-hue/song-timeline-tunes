@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -17,7 +18,7 @@ function Index() {
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [playerName, setPlayerName] = useState('');
   const [winner, setWinner] = useState<any>(null);
-  const [autoJoinCode, setAutoJoinCode] = useState<string>(''); // New state for QR code join
+  const [autoJoinCode, setAutoJoinCode] = useState<string>('');
 
   const {
     room,
@@ -45,20 +46,24 @@ function Index() {
     roomPhase: room?.phase,
     isHost,
     playersCount: players.length,
-    currentPlayer: currentPlayer?.name
+    currentPlayer: currentPlayer?.name,
+    autoJoinCode
   });
 
-  // Check for auto-join from URL parameters (QR code)
+  // Enhanced auto-join from URL parameters (QR code)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join');
     
     if (joinCode && gamePhase === 'menu') {
-      console.log('🔗 Auto-joining from URL:', joinCode);
-      setAutoJoinCode(joinCode.toUpperCase());
+      const cleanCode = joinCode.trim().toUpperCase();
+      console.log('🔗 Auto-joining from URL parameter:', cleanCode);
+      setAutoJoinCode(cleanCode);
       setGamePhase('mobileJoin');
-      // Clear the URL parameter after processing
-      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Clear the URL parameter after processing to prevent re-triggering
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
     }
   }, [gamePhase]);
 
