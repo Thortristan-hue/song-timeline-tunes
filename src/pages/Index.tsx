@@ -16,7 +16,7 @@ function Index() {
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [playerName, setPlayerName] = useState('');
-  const [winner, setWinner] = useState<any>(null);
+  const [winner, setWinner] = useState<Player | null>(null);
   const [autoJoinCode, setAutoJoinCode] = useState<string>('');
 
   const {
@@ -81,7 +81,7 @@ function Index() {
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {

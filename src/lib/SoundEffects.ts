@@ -31,7 +31,8 @@ export class SoundEffects {
     if (this.initialized || typeof window === 'undefined') return;
 
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      this.audioContext = AudioContextConstructor ? new AudioContextConstructor() : null;
       this.initialized = true;
       console.log('🎵 Audio system initialized');
       

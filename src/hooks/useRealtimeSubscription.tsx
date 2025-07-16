@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface SubscriptionConfig {
   channelName: string;
   table: string;
   filter?: string;
-  onUpdate: (payload: any) => void;
-  onError?: (error: any) => void;
+  onUpdate: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
+  onError?: (error: Error) => void;
 }
 
 export interface ConnectionStatus {
@@ -45,7 +45,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     }
   }, []);
 
-  const handleConnectionError = useCallback((error: any, context: string) => {
+  const handleConnectionError = useCallback((error: Error, context: string) => {
     console.warn(`📡 Subscription error in ${context}:`, error);
     
     setConnectionStatus(prev => ({
@@ -145,6 +145,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       console.error('❌ Failed to setup subscription:', error);
       handleConnectionError(error, 'setup');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configs, cleanup, handleConnectionError]);
 
   const scheduleReconnect = useCallback(() => {
@@ -215,7 +216,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     }
 
     return cleanup;
-  }, [connect, cleanup]);
+  }, [connect, cleanup, configs.length]);
 
   // Handle page visibility changes (reconnect when page becomes visible)
   useEffect(() => {

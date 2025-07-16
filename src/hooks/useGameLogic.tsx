@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Song, Player } from '@/types/game';
+import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -25,7 +25,7 @@ const MAX_SONGS_PER_SESSION = 20;
 export function useGameLogic(
   roomId: string | null, 
   allPlayers: Player[],
-  roomData: any = null,
+  roomData: GameRoom | null = null,
   onSetCurrentSong?: (Song: Song) => Promise<void>
 ) {
   const { toast } = useToast();
@@ -80,7 +80,7 @@ export function useGameLogic(
         phase: roomData.phase === 'playing' ? 'playing' : prev.phase
       }));
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn]);
+  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData]);
 
   // CRITICAL PERFORMANCE FIX: Ultra-efficient initialization with 20 songs with preview fetching
   const initializeGame = useCallback(async () => {

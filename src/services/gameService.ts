@@ -2,6 +2,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { Player, Song, GameRoom } from '@/types/game';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
+import type { Json } from '@/integrations/supabase/types';
+
+export type DatabasePlayer = Database['public']['Tables']['players']['Row'];
+export type DatabaseRoom = Database['public']['Tables']['game_rooms']['Row'];
+
+// Helper type for database JSON data that might contain Song objects
+interface JsonSongData {
+  id: string;
+  deezer_title: string;
+  deezer_artist: string;
+  deezer_album?: string;
+  release_year: string;
+  genre?: string;
+  cardColor: string;
+  preview_url?: string;
+  deezer_url?: string;
+}
+
+interface MoveData {
+  song?: JsonSongData;
+  position?: number;
+  playerId?: string;
+}
 
 export type DatabasePlayer = Database['public']['Tables']['players']['Row'];
 export type DatabaseRoom = Database['public']['Tables']['game_rooms']['Row'];
@@ -21,25 +44,26 @@ export class GameService {
   }
 
   // Helper function to safely convert JSON to Song type
-  private static convertJsonToSong(jsonData: any): Song | null {
+  private static convertJsonToSong(jsonData: unknown): Song | null {
     if (!jsonData || typeof jsonData !== 'object') {
       return null;
     }
 
-    if (!jsonData.id || !jsonData.deezer_title || !jsonData.deezer_artist) {
+    const data = jsonData as Record<string, unknown>;
+    if (!data.id || !data.deezer_title || !data.deezer_artist) {
       return null;
     }
 
     return {
-      id: jsonData.id,
-      deezer_title: jsonData.deezer_title,
-      deezer_artist: jsonData.deezer_artist,
-      deezer_album: jsonData.deezer_album || '',
-      release_year: jsonData.release_year || '',
-      genre: jsonData.genre || '',
-      cardColor: jsonData.cardColor || '',
-      preview_url: jsonData.preview_url,
-      deezer_url: jsonData.deezer_url
+      id: String(data.id),
+      deezer_title: String(data.deezer_title),
+      deezer_artist: String(data.deezer_artist),
+      deezer_album: String(data.deezer_album || ''),
+      release_year: String(data.release_year || ''),
+      genre: String(data.genre || ''),
+      cardColor: String(data.cardColor || ''),
+      preview_url: data.preview_url ? String(data.preview_url) : undefined,
+      deezer_url: data.deezer_url ? String(data.deezer_url) : undefined
     };
   }
 
@@ -74,7 +98,7 @@ export class GameService {
       if (!error && gameMoves) {
         gameMoves.forEach(move => {
           if (move.move_data && typeof move.move_data === 'object') {
-            const moveData = move.move_data as any;
+            const moveData = move.move_data as MoveData;
             if (moveData.oldMysteryCard) {
               usedSongIds.add(moveData.oldMysteryCard);
             }
@@ -157,7 +181,7 @@ export class GameService {
       const { error } = await supabase
         .from('players')
         .update({
-          timeline: [startingCard] as any,
+          timeline: [startingCard] as unknown as Json,
           score: 1 // Start with 1 point for the starting card
         })
         .eq('id', player.id);
@@ -191,7 +215,7 @@ export class GameService {
       .update({
         current_turn: randomPlayerIndex,
         current_player_id: firstPlayerId,
-        current_song: initialMysteryCard as any,
+        current_song: initialMysteryCard as unknown as Json,
         phase: 'playing',
         updated_at: new Date().toISOString()
       })
@@ -253,7 +277,7 @@ export class GameService {
       const { error: updateError } = await supabase
         .from('players')
         .update({
-          timeline: finalTimeline as any,
+          timeline: finalTimeline as unknown as Json,
           score: newScore,
           last_active: new Date().toISOString()
         })
@@ -272,7 +296,7 @@ export class GameService {
         
         const updatedPlayer = this.convertDatabasePlayerToPlayer({
           ...playerData,
-          timeline: finalTimeline as any,
+          timeline: finalTimeline as unknown as Json,
           score: newScore
         });
         
@@ -339,7 +363,7 @@ export class GameService {
         .from('game_rooms')
         .update({
           current_turn: nextTurn,
-          current_song: nextMysteryCard as any,
+          current_song: nextMysteryCard as unknown as Json,
           current_player_id: nextPlayerId,
           updated_at: new Date().toISOString()
         })
@@ -392,7 +416,7 @@ export class GameService {
       .update({
         current_turn: newPlayerIndex,
         current_song_index: songIndex,
-        current_song: mysteryCard as any,
+        current_song: mysteryCard as unknown as Json,
         updated_at: new Date().toISOString()
       })
       .eq('id', roomId);
@@ -411,7 +435,7 @@ export class GameService {
     const { error } = await supabase
       .from('players')
       .update({
-        timeline: newTimeline as any,
+        timeline: newTimeline as unknown as Json,
         score: newScore,
         last_active: new Date().toISOString()
       })
@@ -427,7 +451,7 @@ export class GameService {
     roomId: string,
     playerId: string,
     moveType: 'card_placement' | 'turn_advance' | 'game_end',
-    moveData: any
+    moveData: Record<string, unknown>
   ): Promise<void> {
     const { error } = await supabase
       .from('game_moves')
@@ -453,7 +477,7 @@ export class GameService {
   }
 
   static async endGame(roomId: string, winnerId?: string): Promise<void> {
-    const updateData: any = {
+    const updateData: Partial<DatabaseRoom> = {
       phase: 'finished',
       updated_at: new Date().toISOString()
     };
@@ -536,7 +560,7 @@ export class GameService {
     const { error } = await supabase
       .from('game_rooms')
       .update({
-        current_song: song as any,
+        current_song: song as unknown as Json,
         updated_at: new Date().toISOString()
       })
       .eq('id', roomId);

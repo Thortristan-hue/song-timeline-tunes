@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
@@ -661,14 +661,14 @@ export function HostGameView({
   highlightedGapIndex?: number | null;
 }) {
   // Safety checks and fallbacks with better error handling
-  const safeCurrentTurnPlayer = currentTurnPlayer || {
+  const safeCurrentTurnPlayer = useMemo(() => currentTurnPlayer || {
     id: 'unknown',
     name: 'Unknown Player',
     timeline: [],
     color: '#ffffff',
     timelineColor: '#ffffff',
     score: 0
-  };
+  }, [currentTurnPlayer]);
   const safePlayers = players || [];
   const safeRoomCode = roomCode || 'XXXX';
   const safeMysteryCardRevealed = mysteryCardRevealed ?? false;

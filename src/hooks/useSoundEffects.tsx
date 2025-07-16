@@ -43,7 +43,8 @@ export function useSoundEffects() {
   // Web Audio API for generating softer, more polished fallback sounds
   const createAudioContext = useCallback(() => {
     try {
-      return new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      return AudioContextConstructor ? new AudioContextConstructor() : null;
     } catch (error) {
       // AudioContext not supported, fallback sounds will be used
       return null;
