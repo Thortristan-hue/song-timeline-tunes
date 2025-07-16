@@ -649,7 +649,8 @@ export function HostGameView({
   onPlayPause,
   cardPlacementResult,
   transitioning,
-  highlightedGapIndex
+  highlightedGapIndex,
+  mobileViewport
 }: {
   currentTurnPlayer?: Player;
   previousPlayer?: Player;
@@ -662,6 +663,7 @@ export function HostGameView({
   cardPlacementResult?: { correct: boolean; song: Song } | null;
   transitioning?: boolean;
   highlightedGapIndex?: number | null;
+  mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
 }) {
   // Safety checks and fallbacks with better error handling
   const safeCurrentTurnPlayer = useMemo(() => currentTurnPlayer || {
@@ -756,6 +758,7 @@ export function HostGameView({
             previousTurnPlayer={previousPlayer}
             cardPlacementResult={cardPlacementResult}
             highlightedGapIndex={highlightedGapIndex}
+            mobileViewport={mobileViewport}
             isTransitioning={animationStage === 'exiting' || animationStage === 'entering'}
           />
         </div>

@@ -18,6 +18,7 @@ interface MobilePlayerGameViewProps {
   cardPlacementResult: { correct: boolean; song: Song } | null;
   gameEnded: boolean;
   onHighlightGap?: (gapIndex: number | null) => void;
+  onViewportChange?: (viewportInfo: { startIndex: number; endIndex: number; totalCards: number } | null) => void;
 }
 
 export default function MobilePlayerGameView({
@@ -32,7 +33,8 @@ export default function MobilePlayerGameView({
   mysteryCardRevealed,
   cardPlacementResult,
   gameEnded,
-  onHighlightGap
+  onHighlightGap,
+  onViewportChange
 }: MobilePlayerGameViewProps) {
   // Core state management
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
@@ -225,7 +227,7 @@ export default function MobilePlayerGameView({
     
     const carousel = carouselRef.current;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px
+    const cardWidth = 144; // w-36 = 144px (updated for larger cards)
     const gapWidth = 6; // w-1.5 = 6px
     
     // Enhanced edge buffer for better mobile scrolling with larger buffer areas
@@ -271,14 +273,61 @@ export default function MobilePlayerGameView({
     }, 300); // Reduced timeout for better responsiveness
   }, [timelineSongs.length, windowWidth]);
 
-  // Handle scroll events to update selected position - simplified for better mobile performance
+  // Calculate current viewport (which cards are visible) and notify host
+  const calculateViewport = useCallback(() => {
+    if (!carouselRef.current || !onViewportChange) return;
+    
+    const carousel = carouselRef.current;
+    const scrollLeft = carousel.scrollLeft;
+    const containerWidth = carousel.clientWidth;
+    const cardWidth = 144; // w-36 = 144px
+    const gapWidth = 6; // w-1.5 = 6px
+    const edgeBuffer = Math.max(windowWidth * 0.6, 400);
+    
+    // Calculate visible range of cards
+    const viewportStart = scrollLeft;
+    const viewportEnd = scrollLeft + containerWidth;
+    
+    // Adjust for edge buffer
+    const adjustedStart = Math.max(0, viewportStart - edgeBuffer);
+    const adjustedEnd = viewportEnd - edgeBuffer;
+    
+    // Calculate which card indices are visible
+    let startIndex = -1;
+    let endIndex = -1;
+    
+    for (let i = 0; i < timelineSongs.length; i++) {
+      const cardStart = edgeBuffer + (i * (cardWidth + gapWidth)) + gapWidth;
+      const cardEnd = cardStart + cardWidth;
+      
+      // Check if card intersects with viewport
+      if (cardEnd > adjustedStart && cardStart < adjustedEnd) {
+        if (startIndex === -1) startIndex = i;
+        endIndex = i;
+      }
+    }
+    
+    // If we have visible cards, send viewport info to host
+    if (startIndex !== -1 && endIndex !== -1) {
+      onViewportChange({
+        startIndex,
+        endIndex,
+        totalCards: timelineSongs.length
+      });
+    } else {
+      // No cards visible (scrolled to edges)
+      onViewportChange(null);
+    }
+  }, [timelineSongs.length, windowWidth, onViewportChange]);
+
+  // Handle scroll events to update selected position and viewport - enhanced for viewport tracking
   const handleCarouselScroll = useCallback(() => {
     if (!carouselRef.current || isScrollingRef.current) return;
     
     const carousel = carouselRef.current;
     const scrollLeft = carousel.scrollLeft;
     const containerWidth = carousel.clientWidth;
-    const cardWidth = 128; // w-32 = 128px
+    const cardWidth = 144; // w-36 = 144px (updated for larger cards)
     const gapWidth = 6; // w-1.5 = 6px
     
     // Enhanced edge buffer for better mobile experience with larger buffer areas
@@ -318,7 +367,10 @@ export default function MobilePlayerGameView({
     if (closestPosition !== selectedPosition) {
       setSelectedPosition(closestPosition);
     }
-  }, [selectedPosition, timelineSongs.length, windowWidth]);
+    
+    // Update viewport information for host
+    calculateViewport();
+  }, [selectedPosition, timelineSongs.length, windowWidth, calculateViewport]);
 
   // Simplified scroll handler for better mobile performance
   const scrollHandler = useMemo(() => {
@@ -355,13 +407,15 @@ export default function MobilePlayerGameView({
     };
   }, []);
 
-  // Reset position when turn changes
+  // Reset position when turn changes and update viewport
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
       setSelectedPosition(Math.floor(totalPositions / 2)); // Start in middle
       setError(null);
+      // Calculate initial viewport when turn starts
+      setTimeout(() => calculateViewport(), 100); // Small delay to ensure scroll position is set
     }
-  }, [isMyTurn, gameEnded, totalPositions]);
+  }, [isMyTurn, gameEnded, totalPositions, calculateViewport]);
 
   // Sync highlighted gap with host when position changes
   useEffect(() => {
@@ -559,10 +613,10 @@ export default function MobilePlayerGameView({
                   {/* Enhanced edge buffer at start for better mobile scrolling */}
                   <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
                   
-                  {/* Gap before first card - adjusted for square cards */}
+                  {/* Gap before first card - adjusted for larger cards */}
                   <div 
                     className={cn(
-                      "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
+                      "flex-shrink-0 w-1.5 h-36 flex items-center justify-center transition-all duration-300",
                       selectedPosition === 0 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                     )}
                     style={{ scrollSnapAlign: 'center' }}
@@ -574,10 +628,10 @@ export default function MobilePlayerGameView({
                       const cardColor = getCardColor(song);
                       return (
                         <React.Fragment key={song.id}>
-                        {/* Song card - now square and consistent with host */}
+                        {/* Song card - now identical to host timeline */}
                         <div
                           className={cn(
-                            "flex-shrink-0 w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative"
+                            "flex-shrink-0 w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative"
                           )}
                           style={{ 
                             scrollSnapAlign: 'center',
@@ -589,19 +643,19 @@ export default function MobilePlayerGameView({
                           {/* Subtle gradient overlay */}
                           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                           
-                          <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                          <div className="p-4 h-full flex flex-col items-center justify-between text-white relative z-10">
                             {/* Artist name - medium, white, wrapped, max 20 chars per line */}
                             <div className="text-sm font-medium text-center leading-tight max-w-full text-white">
                               {truncateText(song.deezer_artist, 20)}
                             </div>
                             
-                            {/* Song release year - large, white */}
-                            <div className="text-2xl font-bold text-white">
+                            {/* Song release year - large, white - now identical to host */}
+                            <div className="text-4xl font-black text-white">
                               {song.release_year}
                             </div>
                             
                             {/* Song title - small, italic, white, wrapped, max 20 chars per line */}
-                            <div className="text-xs text-center italic text-white leading-tight max-w-full">
+                            <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90">
                               {truncateText(song.deezer_title, 20)}
                             </div>
                           </div>
@@ -610,7 +664,7 @@ export default function MobilePlayerGameView({
                         {/* Gap after this card */}
                         <div 
                           className={cn(
-                            "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
+                            "flex-shrink-0 w-1.5 h-36 flex items-center justify-center transition-all duration-300",
                             selectedPosition === index + 1 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                           )}
                           style={{ scrollSnapAlign: 'center' }}

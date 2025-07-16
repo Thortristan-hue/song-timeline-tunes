@@ -10,6 +10,7 @@ interface HostCurrentPlayerTimelineProps {
   previousTurnPlayer?: Player;
   cardPlacementResult?: { correct: boolean; song: Song } | null;
   highlightedGapIndex?: number | null;
+  mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
   isTransitioning?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function HostCurrentPlayerTimeline({
   previousTurnPlayer,
   cardPlacementResult, 
   highlightedGapIndex,
+  mobileViewport,
   isTransitioning = false
 }: HostCurrentPlayerTimelineProps) {
   const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
@@ -98,6 +100,8 @@ export function HostCurrentPlayerTimeline({
                     !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
                   } ${
                     timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
+                  } ${
+                    mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
                   }`}
                   style={{
                     backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
@@ -108,6 +112,13 @@ export function HostCurrentPlayerTimeline({
                     transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
                   }}
                 >
+                  {/* Mobile viewport indicator badge */}
+                  {mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex && (
+                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg animate-pulse border border-blue-300">
+                      👀
+                    </div>
+                  )}
+                  
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                   
                   <div className="text-center relative z-10 space-y-0.5 w-full">
@@ -139,6 +150,18 @@ export function HostCurrentPlayerTimeline({
           </>
         )}
       </div>
+
+      {/* Mobile Viewport Indicator */}
+      {mobileViewport && (
+        <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2">
+          <div className="bg-blue-500/20 backdrop-blur-md rounded-xl px-4 py-2 border border-blue-400/30">
+            <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span>Mobile viewing: Cards {mobileViewport.startIndex + 1}-{mobileViewport.endIndex + 1} of {mobileViewport.totalCards}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced CSS animations for turn transitions */}
       <style jsx>{`

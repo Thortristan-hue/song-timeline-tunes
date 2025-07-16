@@ -48,6 +48,7 @@ export function GamePlay({
   const [gameInitialized, setGameInitialized] = useState(false);
   const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
   const [highlightedGapIndex, setHighlightedGapIndex] = useState<number | null>(null);
+  const [mobileViewport, setMobileViewport] = useState<{ startIndex: number; endIndex: number; totalCards: number } | null>(null);
 
   // Audio management - MOBILE OPTIMIZED
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -372,6 +373,10 @@ export function GamePlay({
     setHighlightedGapIndex(gapIndex);
   };
 
+  const handleViewportChange = (viewportInfo: { startIndex: number; endIndex: number; totalCards: number } | null) => {
+    setMobileViewport(viewportInfo);
+  };
+
   // Show initialization error
   if (initializationError) {
     return (
@@ -466,6 +471,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
           transitioning={false}
           highlightedGapIndex={highlightedGapIndex}
+          mobileViewport={mobileViewport}
         />
       ) : (
         <MobilePlayerGameView
@@ -481,6 +487,7 @@ export function GamePlay({
           cardPlacementResult={cardPlacementResult}
           gameEnded={gameEnded}
           onHighlightGap={handleHighlightGap}
+          onViewportChange={handleViewportChange}
         />
       )}
     </div>
