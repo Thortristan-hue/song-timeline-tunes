@@ -121,20 +121,24 @@ export function HostCurrentPlayerTimeline({
                   
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                   
-                  <div className="text-center relative z-10 space-y-0.5 w-full">
+                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-2">
                     {/* Artist name - medium, white, wrapped, max 20 letters per line */}
-                    <div className="text-sm font-medium text-white">
-                      {truncateText(song.deezer_artist, 20)}
+                    <div className="text-sm font-medium text-white leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_artist, 20)}
+                      </div>
                     </div>
                     
                     {/* Song release year - large, white */}
-                    <div className="text-4xl font-black text-white my-auto">
+                    <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
                       {song.release_year}
                     </div>
                     
                     {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
-                    <div className="text-xs italic text-white opacity-90">
-                      {truncateText(song.deezer_title, 20)}
+                    <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_title, 20)}
+                      </div>
                     </div>
                   </div>
                 </div>

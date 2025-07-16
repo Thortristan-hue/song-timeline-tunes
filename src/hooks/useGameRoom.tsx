@@ -489,6 +489,49 @@ export function useGameRoom() {
     }
   }, [room, isHost, players, fetchPlayers]);
 
+  const kickPlayer = useCallback(async (playerId: string): Promise<boolean> => {
+    if (!room || !isHost) {
+      console.error('Cannot kick player: not host or no room');
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('👟 Kicking player:', playerId);
+
+      // Remove player from database
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId)
+        .eq('room_id', room.id);
+
+      if (error) {
+        console.error('❌ Failed to kick player:', error);
+        setError('Failed to remove player');
+        return false;
+      }
+
+      console.log('✅ Player kicked successfully');
+      
+      // Refresh players list
+      await fetchPlayers(room.id);
+      
+      toast({
+        title: "Player removed",
+        description: "Player has been removed from the lobby",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error kicking player:', error);
+      setError('Failed to remove player');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [room, isHost, fetchPlayers, toast]);
+
   return {
     room,
     players,
@@ -506,6 +549,7 @@ export function useGameRoom() {
     leaveRoom,
     placeCard,
     setCurrentSong,
-    assignStartingCards
+    assignStartingCards,
+    kickPlayer
   };
 }

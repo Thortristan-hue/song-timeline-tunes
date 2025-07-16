@@ -41,12 +41,6 @@ export function HostLobby({
     console.log('🧍 HostLobby: Player count:', players.length);
   }, [players]);
 
-  useEffect(() => {
-    if (!roomCreated && !isLoading) {
-      handleCreateRoom();
-    }
-  }, [roomCreated, isLoading, handleCreateRoom]);
-
   const handleCreateRoom = useCallback(async () => {
     console.log('🏠 Creating room...');
     const success = await createRoom();
@@ -58,6 +52,12 @@ export function HostLobby({
       console.error('❌ Failed to create room');
     }
   }, [createRoom, soundEffects]);
+
+  useEffect(() => {
+    if (!roomCreated && !isLoading) {
+      handleCreateRoom();
+    }
+  }, [roomCreated, isLoading, handleCreateRoom]);
 
   const copyToClipboard = async () => {
     try {
