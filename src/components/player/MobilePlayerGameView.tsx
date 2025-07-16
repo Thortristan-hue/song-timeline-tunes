@@ -17,6 +17,7 @@ interface MobilePlayerGameViewProps {
   mysteryCardRevealed: boolean;
   cardPlacementResult: { correct: boolean; song: Song } | null;
   gameEnded: boolean;
+  onHighlightGap?: (gapIndex: number | null) => void;
 }
 
 export default function MobilePlayerGameView({
@@ -30,7 +31,8 @@ export default function MobilePlayerGameView({
   onPlaceCard,
   mysteryCardRevealed,
   cardPlacementResult,
-  gameEnded
+  gameEnded,
+  onHighlightGap
 }: MobilePlayerGameViewProps) {
   // Core state management
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
@@ -222,11 +224,11 @@ export default function MobilePlayerGameView({
       // Before first card - center the first gap
       targetScroll = edgeBuffer + (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
-      // After last card - center the last gap with enhanced right buffer
+      // After last card - center the last gap, moving toward center like leftmost gap
       const totalCardsWidth = timelineSongs.length * cardWidth;
       const totalGapsWidth = (timelineSongs.length + 1) * gapWidth;
       const lastGapCenter = totalCardsWidth + totalGapsWidth - (gapWidth / 2);
-      const rightBuffer = Math.max(480, windowWidth * 0.65); // Use larger right buffer
+      // Use same edge buffer as left side for symmetrical behavior
       targetScroll = edgeBuffer + lastGapCenter - (containerWidth / 2);
     } else {
       // Between cards - improved centering calculation
@@ -346,6 +348,13 @@ export default function MobilePlayerGameView({
     }
   }, [isMyTurn, gameEnded, totalPositions]);
 
+  // Sync highlighted gap with host when position changes
+  useEffect(() => {
+    if (isMyTurn && onHighlightGap) {
+      onHighlightGap(selectedPosition);
+    }
+  }, [selectedPosition, isMyTurn, onHighlightGap]);
+
   // Show result overlay with refined, tasteful design
   if (cardPlacementResult) {
     const isCorrect = cardPlacementResult.correct;
@@ -461,45 +470,18 @@ export default function MobilePlayerGameView({
 
           {/* Game interface */}
           {isMyTurn && !gameEnded && (
-            <>
-              {/* Mystery song preview */}
-              <div className="flex-shrink-0 text-center py-6">
-                <div className="space-y-4">
-                  <div className="relative inline-block">
-                    <div className={cn(
-                      "w-24 h-24 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
-                      isPlaying && "animate-spin"
-                    )}>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-6 h-6 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
-                      </div>
-                      
-                      {/* Vinyl grooves */}
-                      <div className="absolute inset-2 border border-white/10 rounded-full" />
-                      <div className="absolute inset-3 border border-white/10 rounded-full" />
-                    </div>
-                    
-                    <Button
-                      onClick={onPlayPause}
-                      className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
-                      disabled={!currentSong?.preview_url}
-                    >
-                      <div className="text-white text-xl group-hover:scale-125 transition-transform duration-300">
-                        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
-                      </div>
-                    </Button>
-                  </div>
-                  
-                  <div className="text-white/90 text-sm font-semibold bg-white/10 backdrop-blur-xl rounded-xl px-3 py-2 border border-white/20 inline-block">
-                    Mystery Song - Tap to preview
+            <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex flex-col min-h-0">
+                <div className="text-center mb-3">
+                  <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
+                  <div className="text-white/80 text-sm">
+                    Position: {getPositionDescription(selectedPosition)}
                   </div>
                 </div>
-              </div>
 
-              {/* Timeline display - Horizontal Carousel */}
-              <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
-                <div className="text-center mb-4">
-                  <div className="text-white text-lg font-semibold mb-2">Your Timeline</div>
+              {/* Timeline display - Horizontal Carousel - Reduced height */}
+              <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex flex-col min-h-0">
+                <div className="text-center mb-3">
+                  <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
                   <div className="text-white/80 text-sm">
                     Position: {getPositionDescription(selectedPosition)}
                   </div>
@@ -507,14 +489,42 @@ export default function MobilePlayerGameView({
 
                 {/* Horizontal carousel container */}
                 <div className="flex-1 relative">
+                  {/* Vinyl mystery button positioned at timeline center */}
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
+                    <div className="relative">
+                      <div className={cn(
+                        "w-16 h-16 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                        isPlaying && "animate-spin"
+                      )}>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-4 h-4 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
+                        </div>
+                        
+                        {/* Vinyl grooves */}
+                        <div className="absolute inset-1 border border-white/10 rounded-full" />
+                        <div className="absolute inset-2 border border-white/10 rounded-full" />
+                      </div>
+                      
+                      <Button
+                        onClick={onPlayPause}
+                        className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                        disabled={!currentSong?.preview_url}
+                      >
+                        <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                  
                   {/* Center line indicator - improved visibility and positioning */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-3/4 bg-green-400/80 z-10 pointer-events-none rounded-full shadow-lg">
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-400 rounded-full w-4 h-4 animate-pulse shadow-lg border-2 border-white/50">
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-2/3 bg-green-400/80 z-10 pointer-events-none rounded-full shadow-lg">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-400 rounded-full w-3 h-3 animate-pulse shadow-lg border-2 border-white/50">
                     </div>
                   </div>
                   
                   {/* Selection indicator at center - improved visibility */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-400 text-white px-4 py-2 rounded-full text-sm font-bold z-20 pointer-events-none animate-bounce shadow-lg border-2 border-white/30">
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-400 text-white px-3 py-1 rounded-full text-xs font-bold z-20 pointer-events-none animate-bounce shadow-lg border-2 border-white/30">
                     Place Here
                   </div>
 
@@ -535,27 +545,23 @@ export default function MobilePlayerGameView({
                     {/* Enhanced edge buffer at start for better mobile scrolling */}
                     <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
                     
-                    {/* Gap before first card */}
+                    {/* Gap before first card - reduced height */}
                     <div 
                       className={cn(
-                        "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
+                        "flex-shrink-0 w-1.5 h-20 flex items-center justify-center transition-all duration-300",
                         selectedPosition === 0 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                       )}
                       style={{ scrollSnapAlign: 'center' }}
                     >
-                      {selectedPosition === 0 && (
-                        <div className="text-green-300 text-xs font-bold text-center leading-tight">
-                          Start
-                        </div>
-                      )}
+                      {/* Only visual indicator, no text */}
                     </div>
 
                     {timelineSongs.map((song, index) => (
                       <React.Fragment key={song.id}>
-                        {/* Song card - optimized layout */}
+                        {/* Song card - reduced height */}
                         <div
                           className={cn(
-                            "flex-shrink-0 w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative",
+                            "flex-shrink-0 w-32 h-20 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative",
                             `bg-gradient-to-br ${getRandomCardColor(song.id)}`
                           )}
                           style={{ scrollSnapAlign: 'center' }}
@@ -564,48 +570,44 @@ export default function MobilePlayerGameView({
                           {/* Subtle gradient overlay */}
                           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                           
-                          <div className="p-3 h-full flex flex-col items-center justify-center text-white relative z-10">
-                            {/* Artist name - optimized typography */}
-                            <div className="text-sm font-semibold text-center mb-2 leading-tight max-w-28 text-white/95">
-                              {song.deezer_artist.length > 15 ? song.deezer_artist.substring(0, 15) + '...' : song.deezer_artist}
+                          <div className="p-2 h-full flex flex-col items-center justify-center text-white relative z-10">
+                            {/* Artist name - compact */}
+                            <div className="text-xs font-semibold text-center mb-1 leading-tight max-w-28 text-white/95">
+                              {song.deezer_artist.length > 12 ? song.deezer_artist.substring(0, 12) + '...' : song.deezer_artist}
                             </div>
                             
                             {/* Song release year - prominent display */}
-                            <div className="text-xl font-bold mb-2 text-white">
+                            <div className="text-lg font-bold mb-1 text-white">
                               {song.release_year}
                             </div>
                             
-                            {/* Song title - refined styling */}
+                            {/* Song title - compact */}
                             <div className="text-xs text-center italic text-white/90 leading-tight max-w-28">
-                              {song.deezer_title.length > 18 ? song.deezer_title.substring(0, 18) + '...' : song.deezer_title}
+                              {song.deezer_title.length > 15 ? song.deezer_title.substring(0, 15) + '...' : song.deezer_title}
                             </div>
                           </div>
                         </div>
                         
-                        {/* Gap after this card */}
+                        {/* Gap after this card - reduced height */}
                         <div 
                           className={cn(
-                            "flex-shrink-0 w-1.5 h-32 flex items-center justify-center transition-all duration-300",
+                            "flex-shrink-0 w-1.5 h-20 flex items-center justify-center transition-all duration-300",
                             selectedPosition === index + 1 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
                           )}
                           style={{ scrollSnapAlign: 'center' }}
                         >
-                          {selectedPosition === index + 1 && (
-                            <div className="text-green-300 text-xs font-bold text-center leading-tight">
-                              Gap {index + 1}
-                            </div>
-                          )}
+                          {/* Only visual indicator, no text */}
                         </div>
                       </React.Fragment>
                     ))}
                     
-                    {/* Enhanced edge buffer at end for better mobile scrolling with extra emphasis on rightmost card */}
-                    <div className="flex-shrink-0" style={{ width: `${Math.max(480, windowWidth * 0.65)}px` }}></div>
+                    {/* Edge buffer at end - same size as start for symmetrical gap centering */}
+                    <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
                   </div>
                 </div>
 
-                {/* Position navigation */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/20">
+                {/* Position navigation - adjusted for smaller timeline */}
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
                   <Button
                     onClick={() => navigatePosition('prev')}
                     disabled={selectedPosition === 0}
@@ -627,7 +629,7 @@ export default function MobilePlayerGameView({
                   </Button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 

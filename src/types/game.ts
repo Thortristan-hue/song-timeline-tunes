@@ -20,6 +20,7 @@ export interface GameState {
   cardPlacementCorrect: boolean | null;
   mysteryCardRevealed: boolean;
   gameEnded: boolean;
+  highlightedGapIndex: number | null;
 }
 
 export interface Song {

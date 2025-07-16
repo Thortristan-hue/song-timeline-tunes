@@ -356,11 +356,13 @@ function HostTimelineCard({ song, isActive, placementResult }: {
 function HostTimelineDisplay({ 
   currentPlayer, 
   isActive, 
-  placementResult 
+  placementResult,
+  highlightedGapIndex
 }: { 
   currentPlayer?: Player; 
   isActive?: boolean;
   placementResult?: { correct: boolean; song: Song };
+  highlightedGapIndex?: number | null;
 }) {
   // Safety checks with better defaults
   const safeCurrentPlayer = currentPlayer || {
@@ -435,25 +437,42 @@ function HostTimelineDisplay({
           {safeCurrentPlayer.name} hasn't placed any cards yet
         </div>
       ) : (
-        safeCurrentPlayer.timeline.map((song, index) => (
+        <>
+          {/* Gap before first card */}
           <div 
-            key={song.id}
-            className={`transition-all duration-900 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'} ${
-              newCardIndex === index ? 'animate-epic-card-drop' : ''
+            className={`w-3 h-32 transition-all duration-300 rounded-xl ${
+              highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60' : ''
             }`}
-            style={{
-              transitionDelay: `${index * 100}ms`,
-              transformOrigin: 'bottom center',
-              filter: index < visibleCards ? 'blur(0px)' : 'blur(5px)'
-            }}
-          >
-            <HostTimelineCard 
-              song={song} 
-              isActive={placementResult?.song.id === song.id}
-              placementResult={placementResult}
-            />
-          </div>
-        ))
+          />
+          
+          {safeCurrentPlayer.timeline.map((song, index) => (
+            <React.Fragment key={song.id}>
+              <div 
+                className={`transition-all duration-900 ${index < visibleCards ? 'opacity-100 scale-100' : 'opacity-0 scale-60'} ${
+                  newCardIndex === index ? 'animate-epic-card-drop' : ''
+                }`}
+                style={{
+                  transitionDelay: `${index * 100}ms`,
+                  transformOrigin: 'bottom center',
+                  filter: index < visibleCards ? 'blur(0px)' : 'blur(5px)'
+                }}
+              >
+                <HostTimelineCard 
+                  song={song} 
+                  isActive={placementResult?.song.id === song.id}
+                  placementResult={placementResult}
+                />
+              </div>
+              
+              {/* Gap after this card */}
+              <div 
+                className={`w-3 h-32 transition-all duration-300 rounded-xl ${
+                  highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60' : ''
+                }`}
+              />
+            </React.Fragment>
+          ))}
+        </>
       )}
       
       {placementResult && (
@@ -625,7 +644,8 @@ export function HostGameView({
   isPlaying,
   onPlayPause,
   cardPlacementResult,
-  transitioning
+  transitioning,
+  highlightedGapIndex
 }: {
   currentTurnPlayer?: Player;
   previousPlayer?: Player;
@@ -637,6 +657,7 @@ export function HostGameView({
   onPlayPause?: () => void;
   cardPlacementResult?: { correct: boolean; song: Song } | null;
   transitioning?: boolean;
+  highlightedGapIndex?: number | null;
 }) {
   // Safety checks and fallbacks with better error handling
   const safeCurrentTurnPlayer = currentTurnPlayer || {
@@ -730,6 +751,7 @@ export function HostGameView({
             currentPlayer={displayedPlayer} 
             isActive={animationStage !== 'exiting'}
             placementResult={cardPlacementResult}
+            highlightedGapIndex={highlightedGapIndex}
           />
         </div>
       </div>
