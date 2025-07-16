@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,9 +45,9 @@ export function HostLobby({
     if (!roomCreated && !isLoading) {
       handleCreateRoom();
     }
-  }, [roomCreated, isLoading]);
+  }, [roomCreated, isLoading, handleCreateRoom]);
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = useCallback(async () => {
     console.log('🏠 Creating room...');
     const success = await createRoom();
     if (success) {
@@ -57,7 +57,7 @@ export function HostLobby({
     } else {
       console.error('❌ Failed to create room');
     }
-  };
+  }, [createRoom, soundEffects]);
 
   const copyToClipboard = async () => {
     try {

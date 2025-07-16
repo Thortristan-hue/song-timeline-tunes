@@ -145,6 +145,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       console.error('❌ Failed to setup subscription:', error);
       handleConnectionError(error, 'setup');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configs, cleanup, handleConnectionError]);
 
   const scheduleReconnect = useCallback(() => {
@@ -215,7 +216,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     }
 
     return cleanup;
-  }, [connect, cleanup]);
+  }, [connect, cleanup, configs.length]);
 
   // Handle page visibility changes (reconnect when page becomes visible)
   useEffect(() => {

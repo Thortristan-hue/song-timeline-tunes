@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
@@ -18,7 +18,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [animationsApplied, setAnimationsApplied] = useState(false);
   const tipIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const tips = [
+  const tips = useMemo(() => [
     "Life is short. Eat kebab.",
     "Don't trust a fart after shwarma.",
     "If you can't be good, at least be good at being bad.",
@@ -39,7 +39,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "I put the 'pro' in procrastination.",
     "I'm not an alcoholic—alcoholics go to meetings. I go to bars.",
     "I drink because I'm a people person, and people are the worst."
-  ];
+  ], []);
 
   // Initialize shuffled tips on component mount only once
   useEffect(() => {
@@ -56,7 +56,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         clearInterval(tipIntervalRef.current);
       }
     };
-  }, []);
+  }, [tips]);
 
   // Enhanced tip cycling with smooth transitions and random order
   useEffect(() => {

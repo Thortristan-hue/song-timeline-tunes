@@ -81,7 +81,7 @@ function Index() {
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {
