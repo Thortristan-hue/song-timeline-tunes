@@ -3,6 +3,7 @@ import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
+import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { Button } from '@/components/ui/button';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
@@ -747,11 +748,12 @@ export function HostGameView({
       
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
         <div className="flex justify-center">
-          <HostTimelineDisplay 
-            currentPlayer={displayedPlayer} 
-            isActive={animationStage !== 'exiting'}
-            placementResult={cardPlacementResult}
+          <HostCurrentPlayerTimeline
+            currentTurnPlayer={displayedPlayer}
+            previousTurnPlayer={previousPlayer}
+            cardPlacementResult={cardPlacementResult}
             highlightedGapIndex={highlightedGapIndex}
+            isTransitioning={animationStage === 'exiting' || animationStage === 'entering'}
           />
         </div>
       </div>

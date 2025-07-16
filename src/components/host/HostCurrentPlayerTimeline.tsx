@@ -6,12 +6,53 @@ import { Player } from '@/types/game';
 
 interface HostCurrentPlayerTimelineProps {
   currentTurnPlayer: Player;
+  previousTurnPlayer?: Player;
   cardPlacementResult?: { correct: boolean; song: any } | null;
   highlightedGapIndex?: number | null;
+  isTransitioning?: boolean;
 }
 
-export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResult, highlightedGapIndex }: HostCurrentPlayerTimelineProps) {
+export function HostCurrentPlayerTimeline({ 
+  currentTurnPlayer, 
+  previousTurnPlayer,
+  cardPlacementResult, 
+  highlightedGapIndex,
+  isTransitioning = false
+}: HostCurrentPlayerTimelineProps) {
   const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
+  const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
+  const [visibleCards, setVisibleCards] = useState<number[]>([]);
+
+  // Handle turn transitions with enhanced animations
+  useEffect(() => {
+    if (isTransitioning) {
+      // Start exit animation for previous player
+      setTimelineState('exiting');
+      
+      // After exit completes, switch to new player and enter
+      setTimeout(() => {
+        setTimelineState('entering');
+        
+        // Animate cards appearing one by one
+        const cardIndices = currentTurnPlayer.timeline.map((_, index) => index);
+        setVisibleCards([]);
+        
+        cardIndices.forEach((index, i) => {
+          setTimeout(() => {
+            setVisibleCards(prev => [...prev, index]);
+          }, i * 150);
+        });
+        
+        setTimeout(() => {
+          setTimelineState('stable');
+        }, cardIndices.length * 150 + 500);
+      }, 1000);
+    } else {
+      // Normal stable state
+      setTimelineState('stable');
+      setVisibleCards(currentTurnPlayer.timeline.map((_, index) => index));
+    }
+  }, [isTransitioning, currentTurnPlayer]);
 
   // Trigger feedback animation when placement result changes
   useEffect(() => {
@@ -31,7 +72,11 @@ export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResu
 
   return (
     <div className="absolute bottom-6 left-6 right-6 z-20">
-      <div className={`bg-white/12 backdrop-blur-2xl rounded-3xl p-4 shadow-xl border border-white/10 transition-all duration-300 ${feedbackAnimation}`}>
+      <div className={`bg-white/12 backdrop-blur-2xl rounded-3xl p-4 shadow-xl border border-white/10 transition-all duration-500 ${feedbackAnimation} ${
+        timelineState === 'exiting' ? 'animate-timeline-pack-away' :
+        timelineState === 'entering' ? 'animate-timeline-scatter-in' :
+        'opacity-100 transform-none'
+      }`}>
         <div className="flex items-center gap-3 mb-4">
           <div 
             className="w-4 h-4 rounded-full shadow-sm"
@@ -42,7 +87,7 @@ export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResu
           </h3>
           <Star className="h-5 w-5 text-yellow-400" />
           <div className="text-white/60 text-sm">
-            {currentTurnPlayer.score}/10 points
+            {currentTurnPlayer.timeline.length}/10 cards
           </div>
         </div>
         
@@ -57,19 +102,26 @@ export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResu
               {/* Gap before first card */}
               <div 
                 className={`w-2 h-24 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                  highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60' : ''
+                  highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
                 }`}
               />
               
               {currentTurnPlayer.timeline.map((song, index) => (
                 <React.Fragment key={`${song.deezer_title}-${index}`}>
-                  {/* Song card - reduced height to match mobile */}
+                  {/* Song card with enhanced animations */}
                   <div
-                    className={`min-w-32 h-24 rounded-2xl flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transform transition-all hover:scale-105 relative bg-white/10 backdrop-blur-xl ${
-                      cardPlacementResult && cardPlacementResult.correct ? 'animate-cards-make-room' : ''
+                    className={`min-w-32 h-24 rounded-2xl flex flex-col items-center justify-center text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative bg-white/10 backdrop-blur-xl ${
+                      cardPlacementResult && cardPlacementResult.correct && index === currentTurnPlayer.timeline.length - 1 ? 'animate-card-place-correct' : ''
+                    } ${
+                      !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
+                    } ${
+                      timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
                     }`}
                     style={{
-                      animationDelay: `${index * 0.1}s`
+                      animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
+                                     timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
+                                     '0s',
+                      transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
                     }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
@@ -90,7 +142,7 @@ export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResu
                   {/* Gap after this card */}
                   <div 
                     className={`w-2 h-24 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                      highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60' : ''
+                      highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
                     }`}
                   />
                 </React.Fragment>
@@ -99,6 +151,89 @@ export function HostCurrentPlayerTimeline({ currentTurnPlayer, cardPlacementResu
           )}
         </div>
       </div>
+
+      {/* Enhanced CSS animations for turn transitions */}
+      <style jsx>{`
+        @keyframes timeline-pack-away {
+          0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: translateY(-20px) scale(0.95);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-200px) scale(0.3);
+          }
+        }
+
+        @keyframes timeline-scatter-in {
+          0% {
+            opacity: 0;
+            transform: translateY(200px) scale(0.3);
+          }
+          50% {
+            opacity: 0.7;
+            transform: translateY(20px) scale(1.05);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes cards-pack-up {
+          0% {
+            opacity: 1;
+            transform: translateX(0) translateY(0) scale(1);
+          }
+          50% {
+            opacity: 0.8;
+            transform: translateX(-10px) translateY(-10px) scale(0.9);
+          }
+          100% {
+            opacity: 0;
+            transform: translateX(-50px) translateY(-100px) scale(0.5);
+          }
+        }
+
+        @keyframes card-place-correct {
+          0% {
+            transform: translateY(-50px) scale(0.8);
+            opacity: 0;
+          }
+          25% {
+            transform: translateY(10px) scale(1.1);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translateY(-5px) scale(1.05);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+
+        .animate-timeline-pack-away {
+          animation: timeline-pack-away 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .animate-timeline-scatter-in {
+          animation: timeline-scatter-in 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .animate-cards-pack-up {
+          animation: cards-pack-up 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .animate-card-place-correct {
+          animation: card-place-correct 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+      `}</style>
     </div>
   );
 }

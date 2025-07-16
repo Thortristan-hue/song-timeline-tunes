@@ -62,6 +62,36 @@ export default function MobilePlayerGameView({
     return () => window.removeEventListener('resize', updateWindowWidth);
   }, []);
 
+  // Handle debug menu clicks
+  const handleDebugClick = () => {
+    const newCount = debugClickCount + 1;
+    setDebugClickCount(newCount);
+    
+    if (newCount === 7) {
+      setShowPasscodeDialog(true);
+      setDebugClickCount(0); // Reset counter
+    }
+    
+    // Reset counter after 5 seconds if not reached 7
+    setTimeout(() => {
+      if (debugClickCount < 6) {
+        setDebugClickCount(0);
+      }
+    }, 5000);
+  };
+
+  // Handle passcode submission
+  const handlePasscodeSubmit = () => {
+    if (passcode === 'IloveYou') {
+      setDebugMode(true);
+      setShowPasscodeDialog(false);
+    } else {
+      setPasscode('');
+      setShowPasscodeDialog(false);
+      setDebugClickCount(0);
+    }
+  };
+
   // Get sorted timeline songs for placement
   const timelineSongs = currentPlayer.timeline
     .filter(song => song !== null)
@@ -97,6 +127,12 @@ export default function MobilePlayerGameView({
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;
 
+  // Debug menu state (Easter egg)
+  const [debugClickCount, setDebugClickCount] = useState(0);
+  const [showPasscodeDialog, setShowPasscodeDialog] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
+  
   // Audio cleanup utility
   const cleanupAudio = useCallback(() => {
     if (previewAudio) {
@@ -224,16 +260,15 @@ export default function MobilePlayerGameView({
       // Before first card - center the first gap
       targetScroll = edgeBuffer + (gapWidth / 2) - (containerWidth / 2);
     } else if (position === timelineSongs.length) {
-      // After last card - center the last gap, moving toward center like leftmost gap
+      // After last card - center the last gap properly
       const totalCardsWidth = timelineSongs.length * cardWidth;
       const totalGapsWidth = (timelineSongs.length + 1) * gapWidth;
-      const lastGapCenter = totalCardsWidth + totalGapsWidth - (gapWidth / 2);
-      // Use same edge buffer as left side for symmetrical behavior
-      targetScroll = edgeBuffer + lastGapCenter - (containerWidth / 2);
+      const lastGapCenter = edgeBuffer + totalCardsWidth + totalGapsWidth - (gapWidth / 2);
+      targetScroll = lastGapCenter - (containerWidth / 2);
     } else {
       // Between cards - improved centering calculation
-      const gapCenter = (position * (cardWidth + gapWidth)) + (gapWidth / 2);
-      targetScroll = edgeBuffer + gapCenter - (containerWidth / 2);
+      const gapCenter = edgeBuffer + (position * (cardWidth + gapWidth)) + (gapWidth / 2);
+      targetScroll = gapCenter - (containerWidth / 2);
     }
     
     // Ensure scroll position is within bounds
@@ -275,7 +310,7 @@ export default function MobilePlayerGameView({
     const centerPoint = scrollLeft + (containerWidth / 2);
     const adjustedCenterPoint = centerPoint - edgeBuffer;
     
-    // Find the closest gap position with simplified calculation
+    // Find the closest gap position with improved calculation for rightmost gap
     let closestPosition = 0;
     let minDistance = Infinity;
     
@@ -285,8 +320,10 @@ export default function MobilePlayerGameView({
         // First gap
         gapCenter = gapWidth / 2;
       } else if (i === timelineSongs.length) {
-        // Last gap after all cards
-        gapCenter = (timelineSongs.length * cardWidth) + ((timelineSongs.length + 1) * gapWidth) - (gapWidth / 2);
+        // Last gap after all cards - improved calculation
+        const totalCardsWidth = timelineSongs.length * cardWidth;
+        const totalGapsWidth = (timelineSongs.length + 1) * gapWidth;
+        gapCenter = totalCardsWidth + totalGapsWidth - (gapWidth / 2);
       } else {
         // Gap between cards - simplified calculation
         gapCenter = (i * (cardWidth + gapWidth)) + (gapWidth / 2);
@@ -446,6 +483,42 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
+        {/* Vinyl Player Section - Moved to top */}
+        {isMyTurn && !gameEnded && (
+          <div className="flex-shrink-0 py-4">
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className={cn(
+                  "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                  isPlaying && "animate-spin"
+                )}>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
+                  </div>
+                  
+                  {/* Vinyl grooves */}
+                  <div className="absolute inset-1 border border-white/10 rounded-full" />
+                  <div className="absolute inset-2 border border-white/10 rounded-full" />
+                  <div className="absolute inset-3 border border-white/10 rounded-full" />
+                </div>
+                
+                <Button
+                  onClick={onPlayPause}
+                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                  disabled={!currentSong?.preview_url}
+                >
+                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  </div>
+                </Button>
+              </div>
+            </div>
+            <div className="text-center mt-2">
+              <div className="text-white/80 text-sm font-medium">Mystery Song</div>
+            </div>
+          </div>
+        )}
+
         {/* Content area */}
         <div className="flex-1 flex flex-col min-h-0">
           
@@ -471,51 +544,25 @@ export default function MobilePlayerGameView({
           {/* Game interface */}
           {isMyTurn && !gameEnded && (
             <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex flex-col min-h-0">
-                <div className="text-center mb-3">
-                  <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
-                  <div className="text-white/80 text-sm">
-                    Position: {getPositionDescription(selectedPosition)}
+              <div className="text-center mb-3">
+                <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
+                <div className="text-white/80 text-sm">
+                  Position: {getPositionDescription(selectedPosition)}
+                </div>
+              </div>
+
+              {/* Timeline display - Horizontal Carousel - No overlapping vinyl */}
+              <div className="flex-1 relative">
+                {/* Center line indicator - improved visibility and positioning */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-2/3 bg-green-400/80 z-10 pointer-events-none rounded-full shadow-lg">
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-400 rounded-full w-3 h-3 animate-pulse shadow-lg border-2 border-white/50">
                   </div>
                 </div>
-
-              {/* Timeline display - Horizontal Carousel - Reduced height */}
-              <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-3 border border-white/25 flex flex-col min-h-0">
-                <div className="text-center mb-3">
-                  <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
-                  <div className="text-white/80 text-sm">
-                    Position: {getPositionDescription(selectedPosition)}
-                  </div>
+                
+                {/* Selection indicator at center - improved visibility */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-green-400 text-white px-3 py-1 rounded-full text-xs font-bold z-20 pointer-events-none animate-bounce shadow-lg border-2 border-white/30">
+                  Place Here
                 </div>
-
-                {/* Horizontal carousel container */}
-                <div className="flex-1 relative">
-                  {/* Vinyl mystery button positioned at timeline center */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-                    <div className="relative">
-                      <div className={cn(
-                        "w-16 h-16 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
-                        isPlaying && "animate-spin"
-                      )}>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-4 h-4 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
-                        </div>
-                        
-                        {/* Vinyl grooves */}
-                        <div className="absolute inset-1 border border-white/10 rounded-full" />
-                        <div className="absolute inset-2 border border-white/10 rounded-full" />
-                      </div>
-                      
-                      <Button
-                        onClick={onPlayPause}
-                        className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
-                        disabled={!currentSong?.preview_url}
-                      >
-                        <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
-                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
                   
                   {/* Center line indicator - improved visibility and positioning */}
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-2/3 bg-green-400/80 z-10 pointer-events-none rounded-full shadow-lg">
@@ -528,33 +575,33 @@ export default function MobilePlayerGameView({
                     Place Here
                   </div>
 
-                  {/* Scrollable carousel with optimized mobile touch handling */}
+                {/* Scrollable carousel with optimized mobile touch handling */}
+                <div 
+                  ref={carouselRef}
+                  className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+                  style={{ 
+                    scrollSnapType: 'x mandatory', // More precise snapping for better mobile control
+                    scrollBehavior: 'smooth',
+                    WebkitOverflowScrolling: 'touch', // Enable momentum scrolling on iOS
+                    scrollbarWidth: 'none', // Hide scrollbar on Firefox
+                    msOverflowStyle: 'none', // Hide scrollbar on IE/Edge
+                    touchAction: 'pan-x' // Allow only horizontal panning for better touch control
+                  }}
+                  onScroll={scrollHandler}
+                >
+                  {/* Enhanced edge buffer at start for better mobile scrolling */}
+                  <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
+                  
+                  {/* Gap before first card - reduced height */}
                   <div 
-                    ref={carouselRef}
-                    className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
-                    style={{ 
-                      scrollSnapType: 'x mandatory', // More precise snapping for better mobile control
-                      scrollBehavior: 'smooth',
-                      WebkitOverflowScrolling: 'touch', // Enable momentum scrolling on iOS
-                      scrollbarWidth: 'none', // Hide scrollbar on Firefox
-                      msOverflowStyle: 'none', // Hide scrollbar on IE/Edge
-                      touchAction: 'pan-x' // Allow only horizontal panning for better touch control
-                    }}
-                    onScroll={scrollHandler}
+                    className={cn(
+                      "flex-shrink-0 w-1.5 h-20 flex items-center justify-center transition-all duration-300",
+                      selectedPosition === 0 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
+                    )}
+                    style={{ scrollSnapAlign: 'center' }}
                   >
-                    {/* Enhanced edge buffer at start for better mobile scrolling */}
-                    <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
-                    
-                    {/* Gap before first card - reduced height */}
-                    <div 
-                      className={cn(
-                        "flex-shrink-0 w-1.5 h-20 flex items-center justify-center transition-all duration-300",
-                        selectedPosition === 0 && "bg-green-400/30 rounded-xl border-2 border-green-400/60"
-                      )}
-                      style={{ scrollSnapAlign: 'center' }}
-                    >
-                      {/* Only visual indicator, no text */}
-                    </div>
+                    {/* Only visual indicator, no text */}
+                  </div>
 
                     {timelineSongs.map((song, index) => (
                       <React.Fragment key={song.id}>
@@ -601,33 +648,32 @@ export default function MobilePlayerGameView({
                       </React.Fragment>
                     ))}
                     
-                    {/* Edge buffer at end - same size as start for symmetrical gap centering */}
-                    <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
-                  </div>
+                  {/* Enhanced edge buffer at end - same size as start for symmetrical gap centering */}
+                  <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
                 </div>
+              </div>
 
-                {/* Position navigation - adjusted for smaller timeline */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
-                  <Button
-                    onClick={() => navigatePosition('prev')}
-                    disabled={selectedPosition === 0}
-                    className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-white" />
-                  </Button>
-                  
-                  <div className="text-white/80 text-xs text-center">
-                    Position {selectedPosition + 1} of {totalPositions}
-                  </div>
-                  
-                  <Button
-                    onClick={() => navigatePosition('next')}
-                    disabled={selectedPosition === totalPositions - 1}
-                    className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-5 h-5 text-white" />
-                  </Button>
+              {/* Position navigation - adjusted for smaller timeline */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
+                <Button
+                  onClick={() => navigatePosition('prev')}
+                  disabled={selectedPosition === 0}
+                  className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-5 h-5 text-white" />
+                </Button>
+                
+                <div className="text-white/80 text-xs text-center">
+                  Position {selectedPosition + 1} of {totalPositions}
                 </div>
+                
+                <Button
+                  onClick={() => navigatePosition('next')}
+                  disabled={selectedPosition === totalPositions - 1}
+                  className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-5 h-5 text-white" />
+                </Button>
               </div>
             </div>
           )}
@@ -667,13 +713,59 @@ export default function MobilePlayerGameView({
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer with Debug Menu */}
         <div className="flex-shrink-0 py-2 text-center">
-          <div className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
-            RYTHMY
+          <div 
+            className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 cursor-pointer"
+            onClick={handleDebugClick}
+          >
+            {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
           </div>
+          {debugMode && currentSong && (
+            <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
+              <div className="font-semibold mb-1">Song Debug Info:</div>
+              <div>Title: {currentSong.deezer_title}</div>
+              <div>Artist: {currentSong.deezer_artist}</div>
+              <div>Release Year: {currentSong.release_year}</div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Passcode Dialog */}
+      {showPasscodeDialog && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-6 border border-white/20 max-w-sm w-full">
+            <div className="text-center mb-4">
+              <div className="text-white text-lg font-semibold mb-2">🔐 Debug Access</div>
+              <div className="text-white/70 text-sm">Enter the secret passcode:</div>
+            </div>
+            <input
+              type="password"
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handlePasscodeSubmit()}
+              placeholder="Enter passcode"
+              className="w-full bg-white/10 border border-white/30 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-white/50 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {setShowPasscodeDialog(false); setPasscode(''); setDebugClickCount(0);}}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePasscodeSubmit}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white border-0 rounded-xl"
+              >
+                Enter
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

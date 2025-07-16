@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlaylistLoader } from '@/components/PlaylistLoader';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Headphones } from 'lucide-react';
+import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Headphones, X } from 'lucide-react';
 import { Player, Song } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -17,6 +17,7 @@ interface HostLobbyProps {
   setCustomSongs: (songs: Song[]) => void;
   isLoading: boolean;
   createRoom: () => Promise<boolean>;
+  onKickPlayer?: (playerId: string) => void;
 }
 
 export function HostLobby({
@@ -26,7 +27,8 @@ export function HostLobby({
   onBackToMenu,
   setCustomSongs,
   isLoading,
-  createRoom
+  createRoom,
+  onKickPlayer
 }: HostLobbyProps) {
   const { toast } = useToast();
   const soundEffects = useSoundEffects();
@@ -73,6 +75,20 @@ export function HostLobby({
         description: "Please copy the code manually",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleKickPlayer = (playerId: string, playerName: string) => {
+    if (onKickPlayer) {
+      const confirmed = confirm(`Remove ${playerName} from the game?`);
+      if (confirmed) {
+        onKickPlayer(playerId);
+        soundEffects.playButtonClick();
+        toast({
+          title: "Player removed",
+          description: `${playerName} has been removed from the lobby`,
+        });
+      }
     }
   };
 
@@ -408,7 +424,7 @@ export function HostLobby({
                     players.map((player, index) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-3 p-3 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm"
+                        className="flex items-center gap-3 p-3 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm group"
                       >
                         <div className="text-base font-bold text-[#4CC9F0] tracking-tight">
                           {index + 1}
@@ -429,6 +445,18 @@ export function HostLobby({
                         </div>
                         
                         <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
+                        
+                        {/* Kick Player Button */}
+                        {onKickPlayer && (
+                          <Button
+                            onClick={() => handleKickPlayer(player.id, player.name)}
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 text-red-400 hover:text-red-300 w-7 h-7 p-0 rounded-full transition-all duration-200"
+                            title={`Remove ${player.name}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     ))
                   )}

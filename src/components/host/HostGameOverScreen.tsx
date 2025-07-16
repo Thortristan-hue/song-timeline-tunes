@@ -8,6 +8,7 @@ interface HostGameOverScreenProps {
   winner: Player;
   players: Player[];
   onPlayAgain: () => void;
+  onRestartWithSamePlayers: () => void;
   onBackToMenu: () => void;
   roomCode: string;
 }
@@ -16,6 +17,7 @@ export function HostGameOverScreen({
   winner, 
   players, 
   onPlayAgain, 
+  onRestartWithSamePlayers,
   onBackToMenu,
   roomCode 
 }: HostGameOverScreenProps) {
@@ -137,14 +139,22 @@ export function HostGameOverScreen({
           </div>
         </div>
 
-        {/* Action Buttons with enhanced interactions */}
-        <div className="flex gap-6 flex-wrap justify-center animate-fade-in-up stagger-5">
+        {/* Enhanced Action Buttons with new restart option */}
+        <div className="flex gap-4 flex-wrap justify-center animate-fade-in-up stagger-5">
           <Button
-            onClick={onPlayAgain}
-            className="bg-white/15 hover:bg-white/20 backdrop-blur-xl rounded-2xl px-8 py-4 text-white font-semibold text-lg border border-white/20 shadow-lg transition-all hover:scale-105 interactive-button hover-glow"
+            onClick={onRestartWithSamePlayers}
+            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 backdrop-blur-xl rounded-2xl px-8 py-4 text-white font-semibold text-lg border-0 shadow-lg transition-all hover:scale-105 interactive-button hover-glow"
           >
             <RefreshCw className="h-6 w-6 mr-3 group-hover:animate-spin" />
-            Play Again
+            Restart with Same Players
+          </Button>
+          
+          <Button
+            onClick={onPlayAgain}
+            className="bg-white/15 hover:bg-white/20 backdrop-blur-xl rounded-2xl px-8 py-4 text-white font-semibold text-lg border border-white/20 shadow-lg transition-all hover:scale-105 interactive-button"
+          >
+            <RefreshCw className="h-6 w-6 mr-3 group-hover:animate-spin" />
+            New Game
           </Button>
           
           <Button
