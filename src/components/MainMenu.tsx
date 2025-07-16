@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
   Music, Users, Trophy, Timer, Play, Smartphone, 
-  Headphones, Star, Radio, Coffee, Zap, Volume2
+  Headphones, Star, Radio, Coffee, Zap, Volume2, Monitor
 } from 'lucide-react';
 
 interface MainMenuProps {
@@ -36,9 +36,9 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
     "Flirting with the bartender may not get you a free drink, but it's worth a shot.",
     "Check the Hesburger app for new coupons.",
     "Sleep is a poor substitute for caffeine.",
-    "I put the ‘pro’ in procrastination.",
-    "I’m not an alcoholic—alcoholics go to meetings. I go to bars.",
-    "I drink because I’m a people person, and people are the worst."
+    "I put the 'pro' in procrastination.",
+    "I'm not an alcoholic—alcoholics go to meetings. I go to bars.",
+    "I drink because I'm a people person, and people are the worst."
   ];
 
   // Initialize shuffled tips on component mount only once
@@ -264,123 +264,116 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </div>
         </div>
 
-        {/* Game Instructions */}
-        <div className="max-w-5xl mx-auto mb-12">
+        {/* How to Play Section */}
+        <div className="max-w-4xl mx-auto mb-12">
           <h2 className={`text-3xl sm:text-4xl font-bold text-white text-center mb-3 ${getAnimationClass('menu-entrance', 'stagger-5')}`}>
-            Game Instructions
+            How to Play
           </h2>
-          <p className={`text-center text-[#d9e8dd] text-base mb-10 ${getAnimationClass('menu-entrance', 'stagger-6')}`}>Everything you need to know to become a music timeline master!</p>
+          <p className={`text-center text-[#d9e8dd] text-base mb-10 ${getAnimationClass('menu-entrance', 'stagger-6')}`}>
+            Build the perfect music timeline! Listen to songs and arrange them chronologically to create a 10-card timeline and win the game.
+          </p>
           
           {/* What You Need Section */}
-          <div className="mb-10">
-            <h3 className="text-xl font-semibold text-[#4CC9F0] mb-6 text-center">🎵 What You Need to Prepare</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className={`bg-[#1A1A2E] border border-[#4CC9F0]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-1')}`}>
-                <Smartphone className="h-10 w-10 text-[#4CC9F0] mx-auto mb-4 animate-pulse" />
-                <h4 className="text-white font-semibold text-lg mb-3">Mobile Device</h4>
-                <p className="text-[#4CC9F0] text-sm mb-2">Players need a smartphone or tablet to join and play</p>
-                <p className="text-[#4CC9F0] text-xs italic">Any modern browser works perfectly!</p>
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-[#4CC9F0] mb-6 text-center">🎵 What You Need</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className={`bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-1')}`}>
+                <Monitor className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3 animate-pulse" />
+                <h4 className="text-white font-semibold text-sm mb-2">Host PC</h4>
+                <p className="text-[#4CC9F0] text-xs">Computer or laptop to host the game and display the main screen</p>
               </Card>
               
-              <Card className={`bg-[#1A1A2E] border border-[#F72585]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-2')}`}>
-                <Radio className="h-10 w-10 text-[#F72585] mx-auto mb-4 animate-bounce" />
-                <h4 className="text-white font-semibold text-lg mb-3">Spotify Playlist</h4>
-                <p className="text-[#F72585] text-sm mb-2">Create or find a public Spotify playlist with your favorite songs</p>
-                <p className="text-[#F72585] text-xs italic">The more diverse, the better the challenge!</p>
+              <Card className={`bg-[#1A1A2E] border border-[#F72585]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-2')}`}>
+                <Smartphone className="h-8 w-8 text-[#F72585] mx-auto mb-3 animate-pulse" />
+                <h4 className="text-white font-semibold text-sm mb-2">Mobile Device</h4>
+                <p className="text-[#F72585] text-xs">Smartphone or tablet for each player to join and play</p>
               </Card>
               
-              <Card className={`bg-[#1A1A2E] border border-[#7209B7]/20 p-6 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-3')}`}>
-                <Users className="h-10 w-10 text-[#7209B7] mx-auto mb-4 animate-wiggle" />
-                <h4 className="text-white font-semibold text-lg mb-3">Friends (2-8 Players)</h4>
-                <p className="text-[#7209B7] text-sm mb-2">Gather your crew for an epic music showdown</p>
-                <p className="text-[#7209B7] text-xs italic">The more music nerds, the merrier!</p>
+              <Card className={`bg-[#1A1A2E] border border-[#7209B7]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-3')}`}>
+                <Radio className="h-8 w-8 text-[#7209B7] mx-auto mb-3 animate-bounce" />
+                <h4 className="text-white font-semibold text-sm mb-2">Spotify Playlist</h4>
+                <p className="text-[#7209B7] text-xs">Public playlist with diverse songs from different decades</p>
+              </Card>
+              
+              <Card className={`bg-[#1A1A2E] border border-[#FF6B35]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-4')}`}>
+                <Users className="h-8 w-8 text-[#FF6B35] mx-auto mb-3 animate-wiggle" />
+                <h4 className="text-white font-semibold text-sm mb-2">2-8 Players</h4>
+                <p className="text-[#FF6B35] text-xs">Friends ready for an epic music timeline challenge</p>
               </Card>
             </div>
           </div>
 
-          {/* How to Play Section */}
-          <div className="mb-10">
-            <h3 className="text-xl font-semibold text-[#A8DADC] mb-6 text-center">🎮 How to Play</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Game Flow Section */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-[#A8DADC] mb-6 text-center">🎮 Game Flow</h3>
+            
+            {/* Step by step process */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-4">
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">1</div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Host Creates Room</h4>
-                    <p className="text-[#d9e8dd] text-sm">Click "Start a Game" and set up your playlist. Share the lobby code or QR code with friends.</p>
+                    <h4 className="text-white font-semibold mb-1">Setup & Join</h4>
+                    <p className="text-[#d9e8dd] text-sm">Host creates room with Spotify playlist. Players scan QR code or enter room code to join.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#a53b8b] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">2</div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Players Join</h4>
-                    <p className="text-[#d9e8dd] text-sm">Use "Join Lobby" to enter the room code and pick your player color. Wait for everyone to join!</p>
+                    <h4 className="text-white font-semibold mb-1">Listen & Place</h4>
+                    <p className="text-[#d9e8dd] text-sm">Each turn, a song plays for 30 seconds. Place it on your timeline where you think it was released.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#4a4f5b] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">3</div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Listen & Guess</h4>
-                    <p className="text-[#d9e8dd] text-sm">When a song plays, place it on the timeline where you think it was released. You have 30 seconds!</p>
+                    <h4 className="text-white font-semibold mb-1">Build Timeline</h4>
+                    <p className="text-[#d9e8dd] text-sm">Correctly placed songs stay in your timeline. Wrong placements get discarded.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">4</div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Score Points</h4>
-                    <p className="text-[#d9e8dd] text-sm">Get points based on how close your guess is. Perfect placements give maximum points!</p>
+                    <h4 className="text-white font-semibold mb-1">Win the Game</h4>
+                    <p className="text-[#d9e8dd] text-sm">First player to build a complete timeline with 10 songs wins!</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-center items-center">
+                <div className="bg-gradient-to-r from-[#1A1A2E] to-[#0e1f2f] border border-[#F72585]/20 p-6 rounded-xl backdrop-blur-sm">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Music className="h-6 w-6 text-[#107793]" />
+                      <span className="text-white text-sm font-medium">Song Plays</span>
+                    </div>
+                    <div className="text-[#F72585] text-xl">↓</div>
+                    <div className="flex items-center space-x-2">
+                      <Timer className="h-6 w-6 text-[#a53b8b]" />
+                      <span className="text-white text-sm font-medium">30s to Decide</span>
+                    </div>
+                    <div className="text-[#F72585] text-xl">↓</div>
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="h-6 w-6 text-[#4a4f5b]" />
+                      <span className="text-white text-sm font-medium">Place on Timeline</span>
+                    </div>
+                    <div className="text-[#F72585] text-xl">↓</div>
+                    <div className="flex items-center space-x-2">
+                      <Trophy className="h-6 w-6 text-[#7209B7]" />
+                      <span className="text-white text-sm font-medium">10 Cards = Win!</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Game Flow Section */}
-          <div>
-            <h3 className="text-xl font-semibold text-[#F72585] mb-6 text-center">⚡ Game Flow Overview</h3>
-            <div className="bg-gradient-to-r from-[#1A1A2E] to-[#0e1f2f] border border-[#F72585]/20 p-8 rounded-xl backdrop-blur-sm">
-              <div className="flex flex-wrap justify-center items-center gap-4 text-center">
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-[#107793] rounded-full flex items-center justify-center mb-2">
-                    <Music className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-sm font-medium">Song Plays</span>
-                </div>
-                
-                <div className="text-[#F72585] text-2xl">→</div>
-                
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-[#a53b8b] rounded-full flex items-center justify-center mb-2">
-                    <Timer className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-sm font-medium">30s Timer</span>
-                </div>
-                
-                <div className="text-[#F72585] text-2xl">→</div>
-                
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-[#4a4f5b] rounded-full flex items-center justify-center mb-2">
-                    <Smartphone className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-sm font-medium">Place Guess</span>
-                </div>
-                
-                <div className="text-[#F72585] text-2xl">→</div>
-                
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-[#7209B7] rounded-full flex items-center justify-center mb-2">
-                    <Trophy className="h-6 w-6 text-white" />
-                  </div>
-                  <span className="text-white text-sm font-medium">Score & Repeat</span>
-                </div>
-              </div>
-              
-              <div className="mt-6 text-center">
+            
+            <div className="text-center">
+              <div className="bg-gradient-to-r from-[#107793]/20 to-[#a53b8b]/20 backdrop-blur-sm p-4 rounded-xl border border-[#107793]/30">
                 <p className="text-[#d9e8dd] text-sm italic">
-                  "Quick rounds keep the energy high! Think fast, trust your musical instincts, and may the best timeline master win! 🎵"
+                  <span className="text-[#4CC9F0] font-semibold">💡 Pro Tip:</span> The closer your guess, the better your chances of keeping the song in your timeline!
                 </p>
               </div>
             </div>
