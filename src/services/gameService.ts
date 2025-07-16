@@ -540,6 +540,29 @@ export class GameService {
     }
   }
 
+  static async updatePlayerScore(roomId: string, playerId: string, newScore: number): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({
+          score: newScore,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', playerId)
+        .eq('room_id', roomId);
+
+      if (error) {
+        console.error('Failed to update player score:', error);
+        throw error;
+      }
+
+      console.log(`✅ Updated player ${playerId} score to ${newScore}`);
+    } catch (error) {
+      console.error('❌ Failed to update player score:', error);
+      throw error;
+    }
+  }
+
   static async getFreshAudioUrl(song: Song): Promise<string> {
     try {
       if (song.preview_url) {
