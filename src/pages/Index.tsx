@@ -8,7 +8,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { Song, GamePhase } from '@/types/game';
+import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 function Index() {
@@ -36,7 +36,8 @@ function Index() {
     leaveRoom,
     placeCard,
     setCurrentSong,
-    assignStartingCards
+    assignStartingCards,
+    kickPlayer
   } = useGameRoom();
 
   // Enhanced debugging for phase transitions
@@ -164,9 +165,12 @@ function Index() {
   };
 
   const handleKickPlayer = async (playerId: string) => {
-    // For now, this is a placeholder - would need to implement actual kick functionality
-    // in the useGameRoom hook and backend
-    console.log('Would kick player:', playerId);
+    if (kickPlayer) {
+      const success = await kickPlayer(playerId);
+      if (success) {
+        soundEffects.playButtonClick();
+      }
+    }
   };
 
   const handlePlayAgain = () => {

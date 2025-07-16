@@ -256,10 +256,12 @@ export default function MobilePlayerGameView({
     
     isScrollingRef.current = true;
     
-    // Use smoother scrolling with shorter duration for mobile
-    carousel.scrollTo({
-      left: targetScroll,
-      behavior: 'smooth'
+    // Use requestAnimationFrame for smoother mobile scrolling
+    requestAnimationFrame(() => {
+      carousel.scrollTo({
+        left: targetScroll,
+        behavior: 'smooth'
+      });
     });
     
     // Clear any existing timeout
@@ -270,7 +272,7 @@ export default function MobilePlayerGameView({
     // Reset scrolling flag with optimized timing
     scrollTimeoutRef.current = setTimeout(() => {
       isScrollingRef.current = false;
-    }, 300); // Reduced timeout for better responsiveness
+    }, 500); // Increased timeout for better mobile compatibility
   }, [timelineSongs.length, windowWidth]);
 
   // Calculate current viewport (which cards are visible) and notify host
@@ -375,6 +377,7 @@ export default function MobilePlayerGameView({
   // Simplified scroll handler for better mobile performance
   const scrollHandler = useMemo(() => {
     let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isScrolling = false;
     
     return () => {
       // Clear any existing timeout
@@ -382,13 +385,18 @@ export default function MobilePlayerGameView({
         clearTimeout(scrollTimeout);
       }
       
-      // Immediate update for responsive feedback
-      handleCarouselScroll();
+      // Prevent excessive updates during rapid scrolling
+      if (!isScrolling) {
+        isScrolling = true;
+        // Immediate update for responsive feedback
+        handleCarouselScroll();
+      }
       
-      // Debounced update for final position
+      // Debounced update for final position with faster response
       scrollTimeout = setTimeout(() => {
         handleCarouselScroll();
-      }, 50); // Reduced delay for better responsiveness
+        isScrolling = false;
+      }, 100); // Reduced delay for better responsiveness
     };
   }, [handleCarouselScroll]);
 
@@ -601,14 +609,21 @@ export default function MobilePlayerGameView({
                   ref={carouselRef}
                   className="flex items-center h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
                   style={{ 
-                    scrollSnapType: 'x mandatory', // More precise snapping for better mobile control
+                    scrollSnapType: 'x proximity', // Changed from mandatory to proximity for better mobile control
                     scrollBehavior: 'smooth',
                     WebkitOverflowScrolling: 'touch', // Enable momentum scrolling on iOS
                     scrollbarWidth: 'none', // Hide scrollbar on Firefox
                     msOverflowStyle: 'none', // Hide scrollbar on IE/Edge
-                    touchAction: 'pan-x' // Allow only horizontal panning for better touch control
+                    touchAction: 'pan-x', // Allow only horizontal panning for better touch control
+                    overscrollBehavior: 'contain' // Prevent scroll chaining on mobile
                   }}
                   onScroll={scrollHandler}
+                  onTouchStart={() => {
+                    // Improve touch responsiveness by clearing ongoing animations
+                    if (scrollTimeoutRef.current) {
+                      clearTimeout(scrollTimeoutRef.current);
+                    }
+                  }}
                 >
                   {/* Enhanced edge buffer at start for better mobile scrolling */}
                   <div className="flex-shrink-0" style={{ width: `${Math.max(400, windowWidth * 0.6)}px` }}></div>
@@ -645,18 +660,22 @@ export default function MobilePlayerGameView({
                           
                           <div className="p-4 h-full flex flex-col items-center justify-between text-white relative z-10">
                             {/* Artist name - medium, white, wrapped, max 20 chars per line */}
-                            <div className="text-sm font-medium text-center leading-tight max-w-full text-white">
-                              {truncateText(song.deezer_artist, 20)}
+                            <div className="text-sm font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                              <div className="break-words">
+                                {truncateText(song.deezer_artist, 20)}
+                              </div>
                             </div>
                             
                             {/* Song release year - large, white - now identical to host */}
-                            <div className="text-4xl font-black text-white">
+                            <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
                               {song.release_year}
                             </div>
                             
                             {/* Song title - small, italic, white, wrapped, max 20 chars per line */}
-                            <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90">
-                              {truncateText(song.deezer_title, 20)}
+                            <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
+                              <div className="break-words">
+                                {truncateText(song.deezer_title, 20)}
+                              </div>
                             </div>
                           </div>
                         </div>
