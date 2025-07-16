@@ -41,6 +41,7 @@ export function GamePlay({
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
+  const [winningPlayer, setWinningPlayer] = useState<Player | null>(null);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [gameInitialized, setGameInitialized] = useState(false);
   const [lastTurnIndex, setLastTurnIndex] = useState<number>(-1);
@@ -125,6 +126,7 @@ export function GamePlay({
     if (winningPlayer && !gameEnded) {
       console.log('🎯 GAME END: Player reached 10 cards:', winningPlayer.name);
       setGameEnded(true);
+      setWinningPlayer(winningPlayer);
       
       if (isHost) {
         GameService.endGame(room.id).catch(error => {
@@ -324,11 +326,12 @@ export function GamePlay({
 
   // Handle replay functionality
   const handleReplay = async () => {
-    if (!isHost || !room?.id) return;
+    if (!room?.id) return;
     
     try {
       // Reset game state
       setGameEnded(false);
+      setWinningPlayer(null);
       setGameInitialized(false);
       setInitializationError(null);
       setCardPlacementResult(null);
@@ -341,8 +344,10 @@ export function GamePlay({
         currentAudioRef.current = null;
       }
       
-      // Reset room to lobby phase and restart
-      await GameService.resetGameForReplay(room.id);
+      if (isHost) {
+        // Reset room to lobby phase and restart
+        await GameService.resetGameForReplay(room.id);
+      }
       
       // Call parent replay handler if provided
       if (onReplayGame) {
@@ -350,6 +355,13 @@ export function GamePlay({
       }
     } catch (error) {
       console.error('Failed to restart game:', error);
+    }
+  };
+
+  const handleBackToMenu = () => {
+    // Call parent handler to go back to menu
+    if (onReplayGame) {
+      onReplayGame();
     }
   };
 
@@ -367,36 +379,37 @@ export function GamePlay({
     );
   }
 
-  // Show mobile victory screen for players, enhanced victory screen for hosts
-  if (gameEnded) {
-    const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
+  // Show game over screens when game ends
+  if (gameEnded && winningPlayer) {
+    const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
     
-    // Mobile victory screen for players
-    if (!isHost && winningPlayer) {
+    // Import the game over screens
+    const MobileGameOverScreen = React.lazy(() => import('@/components/player/MobileGameOverScreen'));
+    const { HostGameOverScreen } = require('@/components/host/HostGameOverScreen');
+    
+    // Mobile game over screen for players
+    if (!isHost) {
       return (
-        <MobileVictoryScreen
-          winningPlayer={winningPlayer}
-          allPlayers={activePlayers}
-          onReplay={handleReplay}
-          roomCode={room.lobby_code}
-        />
+        <React.Suspense fallback={<div>Loading...</div>}>
+          <MobileGameOverScreen
+            winningPlayer={winningPlayer}
+            allPlayers={activePlayers}
+            onPlayAgain={handleReplay}
+            roomCode={room.lobby_code}
+          />
+        </React.Suspense>
       );
     }
     
-    // Host victory screen (unchanged for now)
+    // Host game over screen
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
-        <div className="text-center text-white relative z-10">
-          <div className="text-4xl mb-4">🏆</div>
-          <div className="text-3xl font-bold mb-3">Game Over!</div>
-          {winningPlayer && (
-            <div className="text-xl mb-4">
-              <span style={{ color: winningPlayer.color }}>{winningPlayer.name}</span> wins!
-            </div>
-          )}
-          <div className="text-base text-white/60">Thanks for playing our optimized mobile game!</div>
-        </div>
-      </div>
+      <HostGameOverScreen
+        winner={winningPlayer}
+        players={activePlayers}
+        onPlayAgain={handleReplay}
+        onBackToMenu={handleBackToMenu}
+        roomCode={room.lobby_code}
+      />
     );
   }
 

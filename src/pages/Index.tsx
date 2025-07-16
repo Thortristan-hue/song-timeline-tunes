@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -157,6 +156,12 @@ function Index() {
     await updatePlayer({ name, color });
   };
 
+  const handlePlayAgain = () => {
+    setGamePhase('hostLobby');
+    setWinner(null);
+    soundEffects.playButtonClick();
+  };
+
   // Modern loading state
   if (isLoading && gamePhase !== 'menu') {
     return (
@@ -231,6 +236,7 @@ function Index() {
               customSongs={customSongs}
               connectionStatus={connectionStatus}
               onReconnect={forceReconnect}
+              onReplayGame={handlePlayAgain}
             />
           )}
 
@@ -238,10 +244,7 @@ function Index() {
             <VictoryScreen
               winner={winner}
               players={players}
-              onPlayAgain={() => {
-                setGamePhase('hostLobby');
-                setWinner(null);
-              }}
+              onPlayAgain={handlePlayAgain}
               onBackToMenu={handleBackToMenu}
             />
           )}
