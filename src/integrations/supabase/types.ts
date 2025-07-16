@@ -63,6 +63,8 @@ export type Database = {
           current_song: Json | null
           current_song_index: number | null
           current_turn: number | null
+          gamemode: string | null
+          gamemode_settings: Json | null
           host_id: string
           host_name: string | null
           id: string
@@ -77,6 +79,8 @@ export type Database = {
           current_song?: Json | null
           current_song_index?: number | null
           current_turn?: number | null
+          gamemode?: string | null
+          gamemode_settings?: Json | null
           host_id: string
           host_name?: string | null
           id?: string
@@ -91,6 +95,8 @@ export type Database = {
           current_song?: Json | null
           current_song_index?: number | null
           current_turn?: number | null
+          gamemode?: string | null
+          gamemode_settings?: Json | null
           host_id?: string
           host_name?: string | null
           id?: string
