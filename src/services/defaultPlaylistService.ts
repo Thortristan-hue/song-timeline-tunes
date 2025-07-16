@@ -2,6 +2,31 @@ import { Song } from '@/types/game';
 import defaultPlaylist from '@/data/defaultPlaylist.json';
 import { DeezerAudioService } from './DeezerAudioService';
 
+// Define types for the playlist item formats
+interface PlaylistItemV1 {
+  artist: string;
+  title: string;
+  year: string | number;
+  deezer_link?: string;
+}
+
+interface PlaylistItemV2 {
+  deezer_artist: string;
+  deezer_title: string;
+  deezer_album?: string;
+  release_year: string | number;
+  genre?: string;
+  deezer_url?: string;
+  preview_url?: string;
+}
+
+type PlaylistItem = PlaylistItemV1 | PlaylistItemV2;
+
+interface SongWithOptionalPreview extends Song {
+  deezer_url?: string;
+  preview_url?: string;
+}
+
 /**
  * Service for managing the default song playlist with performance optimizations
  * Now supports both old and new playlist formats!
@@ -138,7 +163,8 @@ class DefaultPlaylistService {
       }
 
       // Try to extract track ID from deezer_url if available
-      const deezerUrl = (song as any).deezer_url;
+      const songWithUrl = song as SongWithOptionalPreview;
+      const deezerUrl = songWithUrl.deezer_url;
       if (deezerUrl) {
         const trackId = deezerUrl.match(/track\/(\d+)/)?.[1];
         if (trackId) {
@@ -158,10 +184,17 @@ class DefaultPlaylistService {
   /**
    * Accepts both v1 and v2 playlist formats and validates
    */
-  private validateSong(item: any): boolean {
-    // Accepts both { title, artist, year, deezer_link } and { deezer_artist, deezer_title, release_year, deezer_url }
-    const hasV2 = !!item.deezer_artist && !!item.deezer_title && !!item.release_year;
-    const hasV1 = !!item.artist && !!item.title && !!item.year;
+  private validateSong(item: PlaylistItem): boolean {
+    // Type guards for different formats
+    const isV1 = (item: PlaylistItem): item is PlaylistItemV1 => 
+      'artist' in item && 'title' in item && 'year' in item;
+    
+    const isV2 = (item: PlaylistItem): item is PlaylistItemV2 => 
+      'deezer_artist' in item && 'deezer_title' in item && 'release_year' in item;
+    
+    const hasV2 = isV2(item);
+    const hasV1 = isV1(item);
+    
     if (!hasV1 && !hasV2) {
       return false;
     }
@@ -178,25 +211,27 @@ class DefaultPlaylistService {
   /**
    * Accepts both v1 and v2 playlist formats and maps to Song
    */
-  private mapToSong(item: any): Song {
-    // v1 legacy fields
-    const isV1 = !!item.artist && !!item.title;
-    // v2 enhanced fields
-    const isV2 = !!item.deezer_artist && !!item.deezer_title;
+  private mapToSong(item: PlaylistItem): Song {
+    // Type guards for different formats
+    const isV1 = (item: PlaylistItem): item is PlaylistItemV1 => 
+      'artist' in item && 'title' in item && 'year' in item;
+    
+    const isV2 = (item: PlaylistItem): item is PlaylistItemV2 => 
+      'deezer_artist' in item && 'deezer_title' in item && 'release_year' in item;
 
-    if (isV1) {
+    if (isV1(item)) {
       return {
         id: Math.random().toString(36).substring(2, 11),
         deezer_title: item.title || 'Unknown Title',
         deezer_artist: item.artist || 'Unknown Artist',
-        deezer_album: item.album || 'Unknown Album',
+        deezer_album: 'Unknown Album',
         release_year: item.year?.toString() || 'Unknown',
-        genre: item.genre || 'Unknown',
+        genre: 'Unknown',
         cardColor: this.generateCardColor(),
-        preview_url: item.preview_url || undefined,
+        preview_url: undefined,
         deezer_url: item.deezer_link || undefined
       };
-    } else if (isV2) {
+    } else if (isV2(item)) {
       return {
         id: Math.random().toString(36).substring(2, 11),
         deezer_title: item.deezer_title || 'Unknown Title',

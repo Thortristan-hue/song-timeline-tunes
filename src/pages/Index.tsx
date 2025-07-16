@@ -16,7 +16,7 @@ function Index() {
   const [gamePhase, setGamePhase] = useState<GamePhase>('menu');
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
   const [playerName, setPlayerName] = useState('');
-  const [winner, setWinner] = useState<any>(null);
+  const [winner, setWinner] = useState<Player | null>(null);
   const [autoJoinCode, setAutoJoinCode] = useState<string>('');
 
   const {
