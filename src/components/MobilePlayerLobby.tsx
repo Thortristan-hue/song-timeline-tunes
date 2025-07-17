@@ -36,7 +36,9 @@ export default function MobilePlayerLobby({
     phase: 'lobby',
     songs: [],
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    gamemode: 'classic',
+    gamemode_settings: {}
   },
   players = [],
   currentPlayer = { 

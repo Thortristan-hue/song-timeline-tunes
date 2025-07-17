@@ -127,25 +127,43 @@ Complete shadcn/ui component collection including:
 - Mobile-optimized audio playback with user interaction requirements
 - Synchronized audio control between host and current player
 
+## Game Modes
+
+### Classic/Timeliner Mode
+- **Turn-based gameplay**: Players take turns placing songs in chronological order
+- **Winning condition**: First player to reach 10 correctly placed cards wins
+- **Mechanics**: Each player has their own timeline, incorrect placements remove the card
+
+### Fiend Mode
+- **Simultaneous guessing**: All players listen to 30-second previews and guess the release year
+- **Scoring system**: Points based on accuracy (closer guesses = more points)
+- **Rounds**: Host selects number of rounds in lobby (default: 5)
+- **Winning condition**: Player with highest total score after all rounds
+
+### Sprint Mode
+- **Real-time racing**: All players compete simultaneously to place cards
+- **Timeout system**: Incorrect placements result in 5-second timeout
+- **Target goal**: Host sets target number of cards (default: 8)
+- **Winning condition**: First player to reach target number of cards
+
 ## Game Flow
 
 ### 1. Game Setup
 - Host creates room and receives unique lobby code
 - Players join via mobile devices using lobby code or QR scan
+- Host selects game mode and configures settings
 - Host can see all connected players as colorful cassette tape players
 
 ### 2. Gameplay
 - Host starts the game, initializing with 20 optimized songs with working audio previews
-- Each player receives a random starting song for their timeline
-- Game presents mystery songs one at a time via spinning record player
-- Current player listens to 30-second preview and places song on their timeline
-- Points awarded for correct chronological placement
-- Incorrect placements remove the song from the timeline
+- **Classic**: Turn-based placement with chronological ordering
+- **Fiend**: Year guessing with accuracy-based scoring
+- **Sprint**: Real-time racing with timeout penalties
 
 ### 3. Victory
-- First player to reach 10 correctly placed songs wins
+- Victory conditions vary by game mode
 - Victory screen displays with celebration effects
-- Game statistics and final timelines shown
+- Game statistics and final results shown
 
 ## Technical Features
 

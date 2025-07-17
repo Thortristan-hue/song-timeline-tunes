@@ -262,34 +262,6 @@ export function FiendModePlayerView({
         </Card>
       </div>
 
-      <style jsx>{`
-        .slider-thumb::-webkit-slider-thumb {
-          appearance: none;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: #4CC9F0;
-          border: 3px solid #ffffff;
-          cursor: pointer;
-          box-shadow: 0 4px 8px rgba(76, 201, 240, 0.3);
-          transition: all 0.2s ease;
-        }
-        
-        .slider-thumb::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 6px 12px rgba(76, 201, 240, 0.5);
-        }
-        
-        .slider-thumb::-moz-range-thumb {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: #4CC9F0;
-          border: 3px solid #ffffff;
-          cursor: pointer;
-          box-shadow: 0 4px 8px rgba(76, 201, 240, 0.3);
-        }
-      `}</style>
     </div>
   );
 }

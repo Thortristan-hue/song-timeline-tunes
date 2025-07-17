@@ -200,7 +200,7 @@ class DefaultPlaylistService {
     }
 
     // Release year logic
-    const year = parseInt((item.release_year ?? item.year)?.toString());
+    const year = parseInt(((item as any).release_year ?? (item as any).year)?.toString());
     if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
       return false;
     }

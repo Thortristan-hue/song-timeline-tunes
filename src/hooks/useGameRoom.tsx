@@ -13,9 +13,9 @@ interface DatabasePlayer {
   color: string;
   timeline_color: string;
   score: number;
-  timeline: Song[];
+  timeline: Json;
   room_id: string;
-  created_at: string;
+  created_at?: string;
 }
 
 interface DatabaseGameRoom {

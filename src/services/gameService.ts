@@ -24,10 +24,13 @@ interface MoveData {
   song?: JsonSongData;
   position?: number;
   playerId?: string;
+  oldMysteryCard?: string;
+  nextMysteryCard?: string;
+  correct?: boolean;
+  newScore?: number;
+  timelineLength?: number;
+  turnAdvanced?: boolean;
 }
-
-export type DatabasePlayer = Database['public']['Tables']['players']['Row'];
-export type DatabaseRoom = Database['public']['Tables']['game_rooms']['Row'];
 
 // Game service functions for managing multiplayer game state
 export class GameService {
@@ -453,14 +456,14 @@ export class GameService {
     moveType: 'card_placement' | 'turn_advance' | 'game_end',
     moveData: Record<string, unknown>
   ): Promise<void> {
-    const { error } = await supabase
-      .from('game_moves')
-      .insert({
-        room_id: roomId,
-        player_id: playerId,
-        move_type: moveType,
-        move_data: moveData
-      });
+      const { error } = await supabase
+        .from('game_moves')
+        .insert({
+          room_id: roomId,
+          player_id: playerId,
+          move_type: moveType,
+          move_data: moveData as Json
+        });
 
     if (error) {
       console.error('Failed to record game move:', error);
@@ -481,10 +484,6 @@ export class GameService {
       phase: 'finished',
       updated_at: new Date().toISOString()
     };
-
-    if (winnerId) {
-      updateData.winner_id = winnerId;
-    }
 
     const { error } = await supabase
       .from('game_rooms')

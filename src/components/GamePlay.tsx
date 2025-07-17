@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useGameLogic } from '@/hooks/useGameLogic';
+import { useClassicGameLogic } from '@/hooks/useClassicGameLogic';
+import { useFiendGameLogic } from '@/hooks/useFiendGameLogic';
+import { useSprintGameLogic } from '@/hooks/useSprintGameLogic';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import MobileVictoryScreen from '@/components/player/MobileVictoryScreen';
 import { HostGameView } from '@/components/HostVisuals';
@@ -64,17 +66,22 @@ export function GamePlay({
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<BroadcastChannel | null>(null);
 
-  const {
-    gameState,
-    setIsPlaying: setGameIsPlaying,
-    initializeGame
-  } = useGameLogic(room?.id, players, room, onSetCurrentSong);
+  // Use appropriate game logic based on gamemode
+  const gamemode = room?.gamemode || 'classic';
+  
+  const classicLogic = useClassicGameLogic(room?.id, players, room, onSetCurrentSong);
+  const fiendLogic = useFiendGameLogic(room?.id, players, room, onSetCurrentSong);
+  const sprintLogic = useSprintGameLogic(room?.id, players, room, onSetCurrentSong);
+  
+  const gameLogic = gamemode === 'fiend' ? fiendLogic : 
+                   gamemode === 'sprint' ? sprintLogic : 
+                   classicLogic;
 
   // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
                            !gameInitialized &&
-                           !gameState.playlistInitialized;
+                           !gameLogic.gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
       console.log('🚀 ENHANCED INIT: Host initializing with 20 song resilient loading...');
@@ -112,14 +119,14 @@ export function GamePlay({
 
       initializeGameOptimal();
     }
-  }, [room?.phase, gameInitialized, gameState.playlistInitialized, isHost, room?.id]);
+  }, [room?.phase, gameInitialized, gameLogic.gameState.playlistInitialized, isHost, room?.id]);
 
   // Initialize game logic after host sets up the room
   useEffect(() => {
-    if (room?.phase === 'playing' && !gameState.playlistInitialized) {
-      initializeGame();
+    if (room?.phase === 'playing' && !gameLogic.gameState.playlistInitialized) {
+      gameLogic.initializeGame();
     }
-  }, [room?.phase, gameState.playlistInitialized, initializeGame]);
+  }, [room?.phase, gameLogic.gameState.playlistInitialized, gameLogic.initializeGame]);
 
   // Track turn changes for mystery card updates
   useEffect(() => {
@@ -181,7 +188,7 @@ export function GamePlay({
       console.log('🎵 Pausing audio');
       currentAudioRef.current.pause();
       setIsPlaying(false);
-      setGameIsPlaying(false);
+      gameLogic.setIsPlaying(false);
       return;
     }
 
@@ -285,7 +292,7 @@ export function GamePlay({
         currentPlayer.id,
         song,
         position,
-        gameState.availableSongs
+        gameLogic.gameState.availableSongs
       );
       
       console.log('📱 PLACEMENT RESULT:', result);

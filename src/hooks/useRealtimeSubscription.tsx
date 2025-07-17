@@ -109,7 +109,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
             
           case 'TIMED_OUT':
             console.warn('⏰ Subscription timed out');
-            handleConnectionError({ message: 'Connection timed out' }, 'timeout');
+            handleConnectionError(new Error('Connection timed out'), 'timeout');
             break;
             
           case 'CLOSED':
@@ -119,7 +119,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
             
           case 'CHANNEL_ERROR':
             console.error('❌ Channel error:', err);
-            handleConnectionError(err || { message: 'Channel error' }, 'channel_error');
+            handleConnectionError(err || new Error('Channel error'), 'channel_error');
             break;
         }
       });
