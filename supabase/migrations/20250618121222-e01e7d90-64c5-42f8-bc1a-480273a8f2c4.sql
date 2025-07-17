@@ -100,16 +100,29 @@ CREATE INDEX idx_game_rooms_lobby_code ON public.game_rooms(lobby_code);
 CREATE INDEX idx_players_room_id ON public.players(room_id);
 CREATE INDEX idx_game_moves_room_id ON public.game_moves(room_id);
 
--- Function to generate unique lobby codes
+-- Function to generate unique lobby codes (5-letter word + digit format)
 CREATE OR REPLACE FUNCTION generate_lobby_code()
 RETURNS TEXT AS $$
 DECLARE
   code TEXT;
   exists_check BOOLEAN;
+  words TEXT[] := ARRAY[
+    'APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE',
+    'STAGE', 'TEMPO', 'CHORD', 'BANDS', 'REMIX', 'VINYL', 'RADIO', 'SONGS', 'ALBUM', 'DISCO',
+    'BLUES', 'SWING', 'FORTE', 'SHARP', 'MINOR', 'MAJOR', 'SCALE', 'NOTES', 'LYRIC', 'VERSE',
+    'CHOIR', 'ORGAN', 'FLUTE', 'HARP', 'CELLO', 'BASS', 'TENOR', 'OPERA', 'JAZZ', 'FOLK',
+    'METAL', 'PUNK', 'ROCK', 'POP', 'SOUL', 'FUNK', 'RAP', 'BEAT', 'DROP', 'WAVE'
+  ];
+  random_word TEXT;
+  random_digit INTEGER;
 BEGIN
   LOOP
-    -- Generate a 6-character alphanumeric code
-    code := upper(substring(md5(random()::text) from 1 for 6));
+    -- Select a random word from the array
+    random_word := words[1 + floor(random() * array_length(words, 1))::int];
+    -- Generate a random digit (0-9)
+    random_digit := floor(random() * 10)::int;
+    -- Combine word and digit
+    code := random_word || random_digit::text;
     
     -- Check if code already exists
     SELECT EXISTS(SELECT 1 FROM game_rooms WHERE lobby_code = code) INTO exists_check;
