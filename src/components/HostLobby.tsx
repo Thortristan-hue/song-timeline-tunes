@@ -225,6 +225,7 @@ export function HostLobby({
   }
 
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
+  console.log('🔗 Generated QR code URL:', gameUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">

@@ -295,13 +295,20 @@ export function useGameRoom() {
       setIsLoading(true);
       setError(null);
 
-      console.log('🎮 Attempting to join room:', lobbyCode);
+      console.log('🎮 Attempting to join room with code:', lobbyCode);
+
+      // Validate lobby code format
+      const lobbyCodeRegex = /^[A-Z]{5}[0-9]$/;
+      if (!lobbyCodeRegex.test(lobbyCode)) {
+        console.error('❌ Invalid lobby code format:', lobbyCode);
+        throw new Error('Invalid lobby code format');
+      }
 
       // First, find the room
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .select('*')
-        .eq('lobby_code', lobbyCode.toUpperCase())
+        .eq('lobby_code', lobbyCode)
         .single();
 
       if (roomError || !roomData) {

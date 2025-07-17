@@ -59,12 +59,21 @@ function Index() {
     if (joinCode && gamePhase === 'menu') {
       const cleanCode = joinCode.trim().toUpperCase();
       console.log('🔗 Auto-joining from URL parameter:', cleanCode);
-      setAutoJoinCode(cleanCode);
-      setGamePhase('mobileJoin');
       
-      // Clear the URL parameter after processing to prevent re-triggering
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      // Validate the lobby code format (5 letters + 1 digit)
+      const lobbyCodeRegex = /^[A-Z]{5}[0-9]$/;
+      if (lobbyCodeRegex.test(cleanCode)) {
+        setAutoJoinCode(cleanCode);
+        setGamePhase('mobileJoin');
+        
+        // Clear the URL parameter after processing to prevent re-triggering
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } else {
+        console.error('❌ Invalid lobby code format:', cleanCode);
+        // Show error toast for invalid format
+        // Note: toast would need to be available here, but keeping it simple for now
+      }
     }
   }, [gamePhase]);
 

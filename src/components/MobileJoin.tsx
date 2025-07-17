@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, Smartphone, Wifi } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, User, Key } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface MobileJoinProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
@@ -12,194 +13,185 @@ interface MobileJoinProps {
   autoJoinCode?: string;
 }
 
-export function MobileJoin({ 
-  onJoinRoom, 
-  onBackToMenu, 
-  isLoading = false, 
-  autoJoinCode = '' 
-}: MobileJoinProps) {
-  const [lobbyCode, setLobbyCode] = useState('');
+export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading, autoJoinCode }: MobileJoinProps) {
+  const [lobbyCode, setLobbyCode] = useState(autoJoinCode || '');
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
+  const soundEffects = useSoundEffects();
+  const { toast } = useToast();
 
-  // Auto-fill the lobby code if provided via QR scan
+  // Update lobbyCode when autoJoinCode changes
   useEffect(() => {
-    if (autoJoinCode && autoJoinCode.trim()) {
-      console.log('🔗 Auto-filling lobby code from QR:', autoJoinCode);
-      setLobbyCode(autoJoinCode.trim().toUpperCase());
-      setError('');
+    if (autoJoinCode) {
+      console.log('🔗 MobileJoin: Setting auto-join code:', autoJoinCode);
+      setLobbyCode(autoJoinCode);
     }
   }, [autoJoinCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lobbyCode.trim() || !playerName.trim()) return;
-    
     setError('');
+
+    if (!playerName.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
+    if (!lobbyCode.trim()) {
+      setError('Please enter a lobby code');
+      return;
+    }
+
+    // Validate lobby code format (5 letters + 1 digit)
+    const cleanCode = lobbyCode.trim().toUpperCase();
+    const lobbyCodeRegex = /^[A-Z]{5}[0-9]$/;
+    
+    if (!lobbyCodeRegex.test(cleanCode)) {
+      setError('Invalid lobby code format. Expected format: APPLE3');
+      return;
+    }
+
+    console.log('🎮 MobileJoin: Attempting to join with code:', cleanCode);
     
     try {
-      console.log('🎮 Attempting to join room:', { lobbyCode: lobbyCode.trim(), playerName: playerName.trim() });
-      const success = await onJoinRoom(lobbyCode.trim().toUpperCase(), playerName.trim());
-      if (!success) {
-        setError('Hmm, that didn\'t work. Double-check the code?');
+      const success = await onJoinRoom(cleanCode, playerName.trim());
+      if (success) {
+        soundEffects.playPlayerJoin();
+      } else {
+        setError('Failed to join room. Please check your lobby code.');
       }
     } catch (err) {
       console.error('❌ Join room error:', err);
-      setError('Something went wrong. Give it another try!');
+      setError('Failed to join room. Please try again.');
     }
   };
 
   const handleLobbyCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (value.length <= 6) {
-      setLobbyCode(value);
-      setError('');
-    }
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPlayerName(e.target.value);
-    setError('');
+    const value = e.target.value.toUpperCase();
+    // Only allow letters and numbers, max 6 characters
+    const filtered = value.replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    setLobbyCode(filtered);
   };
 
   return (
-    <div className="mobile-container bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 flex flex-col"
-         style={{ 
-           minHeight: 'var(--mobile-safe-height)'
-         }}>
-      {/* Subtle background elements */}
-      <div className="absolute top-32 left-8 w-64 h-64 bg-blue-500/3 rounded-full blur-3xl" />
-      <div className="absolute bottom-40 right-8 w-48 h-48 bg-purple-500/2 rounded-full blur-3xl" />
-      
-      {/* Header */}
-      <div className="mb-8 relative z-10">
-        <Button
-          onClick={onBackToMenu}
-          className="bg-white/10 hover:bg-white/20 border-0 text-white h-12 px-6 text-base font-medium 
-                   rounded-2xl backdrop-blur-xl transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4 mr-3" />
-          Back
-        </Button>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10">
-        {/* QR Code Success Message */}
-        {autoJoinCode && (
-          <div className="text-center mb-6">
-            <div className="bg-green-500/10 border border-green-400/20 rounded-2xl p-4 backdrop-blur-xl">
-              <p className="text-green-300 text-sm font-medium">
-                ✅ QR code scanned! Room code filled automatically
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+      {/* Enhanced Dark Background Effects */}
+      <div className="absolute inset-0">
+        {/* Main glow effects */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+        
+        {/* Additional scattered glows */}
+        <div className="absolute top-16 right-16 w-24 h-24 bg-[#107793]/5 rounded-full blur-xl" />
+        <div className="absolute bottom-32 left-16 w-28 h-28 bg-[#a53b8b]/5 rounded-full blur-xl" />
+        
+        {/* Floating music notes */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(8)].map((_, i) => (
+            <div 
+              key={i}
+              className="absolute animate-float opacity-20"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animation: `float ${8 + Math.random() * 12}s linear infinite`,
+                animationDelay: `${Math.random() * 3}s`,
+              }}
+            >
+              {i % 2 === 0 ? (
+                <Key className="h-4 w-4 text-[#107793]" />
+              ) : (
+                <User className="h-3 w-3 text-[#a53b8b]" />
+              )}
             </div>
-          </div>
-        )}
-
-        {/* Disclaimer */}
-        <div className="text-center mb-8">
-          <p className="text-sm text-white/50 leading-relaxed">
-            This is just a fun game for friends! We're not affiliated with any music services. 
-            It's a free project made for good times and great music.
-          </p>
+          ))}
         </div>
 
-        <div className="bg-black/20 backdrop-blur-3xl border border-white/10 p-8 rounded-3xl">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <div className="relative mb-6">
-              <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center mx-auto backdrop-blur-xl">
-                <Smartphone className="h-8 w-8 text-white/80" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                <Wifi className="h-3 w-3 text-white" />
-              </div>
+        {/* Geometric shapes */}
+        <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 1200 800" fill="none">
+          {/* Music note shapes */}
+          <circle cx="200" cy="200" r="4" fill="#107793" opacity="0.4" />
+          <circle cx="1000" cy="300" r="6" fill="#a53b8b" opacity="0.4" />
+          <circle cx="400" cy="600" r="3" fill="#4a4f5b" opacity="0.4" />
+          
+          {/* Connecting lines */}
+          <path d="M200 200 L400 250 L600 230" stroke="#107793" strokeWidth="1" opacity="0.3" />
+          <path d="M1000 300 L800 400 L700 380" stroke="#a53b8b" strokeWidth="1" opacity="0.3" />
+          
+          {/* Sound waves */}
+          <path d="M300 400 Q350 380, 400 400 Q450 420, 500 400" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+          <path d="M300 420 Q350 400, 400 420 Q450 440, 500 420" stroke="#4a4f5b" strokeWidth="1" opacity="0.2" />
+        </svg>
+      </div>
+
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-6">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-[#0e1f2f]/60 border-2 border-[#107793] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#107793]/20 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#107793]/10 to-transparent"></div>
+              <Key className="h-8 w-8 text-[#107793] animate-pulse" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Join the fun</h1>
-            <p className="text-white/60 text-base leading-relaxed font-medium">
-              {autoJoinCode ? 'Code detected! Just add your name below' : 'Got a code from your friend? Let\'s get you in!'}
-            </p>
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
+              Join the Party
+            </h1>
+            <p className="text-[#d9e8dd] font-medium">Enter the room code and your name to join</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Lobby Code Input */}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="lobbyCode" className="block text-lg font-semibold text-white mb-3 tracking-tight">
-                Game Code
-              </label>
+              <Label htmlFor="lobbyCode" className="text-[#d9e8dd] font-medium">
+                Room Code
+              </Label>
               <Input
-                id="lobbyCode"
                 type="text"
-                placeholder="ABC123"
+                id="lobbyCode"
+                placeholder="APPLE3"
                 value={lobbyCode}
                 onChange={handleLobbyCodeChange}
-                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-xl text-center 
-                         font-mono tracking-wider rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
-                         backdrop-blur-xl shadow-inner transition-all duration-200"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck="false"
-                inputMode="text"
+                className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white rounded-xl h-12 shadow-lg transition-all duration-300 hover:bg-[#1A1A2E]/90"
               />
-              <p className="text-white/40 text-sm mt-2 text-center font-medium">
-                {autoJoinCode ? 'Code filled from QR scan' : 'Ask your friend for the 6-character code'}
-              </p>
             </div>
 
-            {/* Player Name Input */}
             <div>
-              <label htmlFor="playerName" className="block text-lg font-semibold text-white mb-3 tracking-tight">
-                What should we call you?
-              </label>
+              <Label htmlFor="playerName" className="text-[#d9e8dd] font-medium">
+                Your Name
+              </Label>
               <Input
-                id="playerName"
                 type="text"
-                placeholder="Your name here..."
+                id="playerName"
+                placeholder="Enter your name"
                 value={playerName}
-                onChange={handleNameChange}
-                className="bg-white/5 border-0 text-white placeholder:text-white/40 h-16 text-lg 
-                         rounded-2xl focus:bg-white/10 focus:ring-2 focus:ring-white/20 
-                         backdrop-blur-xl shadow-inner transition-all duration-200"
-                maxLength={20}
-                autoCapitalize="words"
-                autoCorrect="off"
-                autoFocus={!!autoJoinCode}
+                onChange={(e) => setPlayerName(e.target.value)}
+                className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white rounded-xl h-12 shadow-lg transition-all duration-300 hover:bg-[#1A1A2E]/90"
               />
             </div>
 
-            {/* Error Message */}
             {error && (
-              <div className="bg-red-500/10 border border-red-400/20 rounded-2xl p-4 backdrop-blur-xl">
-                <p className="text-red-300 text-center font-medium">{error}</p>
-              </div>
+              <div className="text-red-500 text-sm">{error}</div>
             )}
 
-            {/* Join Button */}
             <Button
               type="submit"
-              disabled={!lobbyCode.trim() || !playerName.trim() || isLoading}
-              className="w-full bg-white text-black hover:bg-white/90 font-semibold h-16 text-lg 
-                       rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 
-                       hover:scale-[1.02] active:scale-[0.98] border-0 tracking-tight"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group"
             >
-              {isLoading ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  Connecting...
-                </div>
-              ) : (
-                'Join Game'
-              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
+              Join the Game
             </Button>
           </form>
 
-          {/* Help text */}
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-white/50 text-sm text-center leading-relaxed">
-              Make sure you're connected to the internet and have the right code from your host.
-            </p>
-          </div>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              soundEffects.playButtonClick();
+              onBackToMenu();
+            }}
+            className="w-full text-white hover:bg-[#0e1f2f]/40 rounded-xl transition-all duration-300"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Menu
+          </Button>
         </div>
       </div>
     </div>
