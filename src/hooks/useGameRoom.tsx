@@ -55,14 +55,13 @@ export function useGameRoom() {
     return Math.random().toString(36).substring(2, 15);
   };
 
-  // Generate lobby code with word + digit format (e.g., 'apple3', 'track7')
+  // Generate lobby code with word + digit format (e.g., 'APPLE3', 'TRACK7')
   const generateLobbyCode = () => {
     const words = [
       'APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE',
       'STAGE', 'TEMPO', 'CHORD', 'BANDS', 'REMIX', 'VINYL', 'RADIO', 'SONGS', 'ALBUM', 'DISCO',
       'BLUES', 'SWING', 'FORTE', 'SHARP', 'MINOR', 'MAJOR', 'SCALE', 'NOTES', 'LYRIC', 'VERSE',
-      'CHOIR', 'ORGAN', 'FLUTE', 'HARP', 'CELLO', 'BASS', 'TENOR', 'OPERA', 'JAZZ', 'FOLK',
-      'METAL', 'PUNK', 'ROCK', 'POP', 'SOUL', 'FUNK', 'RAP', 'BEAT', 'DROP', 'WAVE'
+      'CHOIR', 'ORGAN', 'FLUTE', 'CELLO', 'TENOR', 'OPERA'
     ];
     const randomWord = words[Math.floor(Math.random() * words.length)];
     const randomDigit = Math.floor(Math.random() * 10);
@@ -90,6 +89,7 @@ export function useGameRoom() {
         .from('players')
         .select('*')
         .eq('room_id', roomId)
+        .eq('is_host', false) // Only fetch non-host players directly
         .order('joined_at', { ascending: true });
 
       if (error) {
@@ -97,7 +97,7 @@ export function useGameRoom() {
         throw error;
       }
 
-      console.log('👥 Raw players from DB:', data);
+      console.log('👥 Raw non-host players from DB:', data);
       
       // Only bail out if we have no data at all
       if (!data) {
@@ -105,15 +105,14 @@ export function useGameRoom() {
         return;
       }
       
-      // Filter out host players - only include players where is_host is false or null
-      const nonHostPlayers = data.filter(dbPlayer => {
-        const isHostPlayer = dbPlayer.is_host === true;
-        console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
-        return !isHostPlayer;
-      });
-      
-      const convertedPlayers = nonHostPlayers.map(convertPlayer);
+      const convertedPlayers = data.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
+      
+      // Prevent unnecessary updates that could cause UI flickering
+      if (!forceUpdate && JSON.stringify(players.map(p => p.id)) === JSON.stringify(convertedPlayers.map(p => p.id))) {
+        console.log('⚡ Player list unchanged, skipping update');
+        return;
+      }
       
       // Update players list - simplified logic, trust the database
       setPlayers(convertedPlayers);
@@ -122,7 +121,7 @@ export function useGameRoom() {
       // Update current player if we have one (only for non-host players)
       if (playerSessionId.current && !isHost) {
         const current = convertedPlayers.find(p => 
-          nonHostPlayers.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
+          data.find(dbP => dbP.id === p.id && dbP.player_session_id === playerSessionId.current)
         );
         if (current) {
           console.log('🎯 Updated current player:', current);
@@ -133,7 +132,7 @@ export function useGameRoom() {
       console.error('❌ Failed to fetch players:', error);
       // Don't clear players on error to prevent unwanted kicks
     }
-  }, [convertPlayer, isHost]);
+  }, [convertPlayer, isHost, players]);
 
   // Setup subscription configurations when room is available
   useEffect(() => {
@@ -153,7 +152,7 @@ export function useGameRoom() {
           console.log('🔄 SYNC: Room updated with turn/mystery card:', payload.new);
           const roomData = payload.new as DatabaseGameRoom;
           
-          // CRITICAL FIX: Properly cast current_song from Json to Song
+          // CRITICAL FIX: Properly cast current_song from Json to Song and preserve lobby phase
           let currentSong: Song | null = null;
           if (roomData.current_song) {
             // Cast from Json to Song with proper type assertion
@@ -161,20 +160,25 @@ export function useGameRoom() {
           }
           console.log('🎵 SYNC: Mystery card from database:', currentSong?.deezer_title || 'undefined');
           
-          setRoom({
-            id: roomData.id,
-            lobby_code: roomData.lobby_code,
-            host_id: roomData.host_id,
-            host_name: roomData.host_name || '',
-            phase: roomData.phase as 'lobby' | 'playing' | 'finished',
-            gamemode: (roomData.gamemode as GameMode) || 'classic',
-            gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
-            songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [],
-            created_at: roomData.created_at,
-            updated_at: roomData.updated_at,
-            current_turn: roomData.current_turn,
-            current_song: currentSong,
-            current_player_id: roomData.current_player_id || null
+          // CRITICAL: Preserve existing local state where possible to prevent kicks
+          setRoom(prevRoom => {
+            if (!prevRoom) return null;
+            
+            return {
+              ...prevRoom,
+              lobby_code: roomData.lobby_code,
+              host_id: roomData.host_id,
+              host_name: roomData.host_name || prevRoom.host_name,
+              phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+              gamemode: (roomData.gamemode as GameMode) || prevRoom.gamemode,
+              gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || prevRoom.gamemode_settings,
+              songs: Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : prevRoom.songs,
+              created_at: roomData.created_at,
+              updated_at: roomData.updated_at,
+              current_turn: roomData.current_turn ?? prevRoom.current_turn,
+              current_song: currentSong ?? prevRoom.current_song,
+              current_player_id: roomData.current_player_id ?? prevRoom.current_player_id
+            };
           });
         },
         onError: (error) => {
@@ -188,8 +192,10 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          // Simple immediate refresh without race condition delays
-          fetchPlayers(room.id, false);
+          // Debounce player fetches to prevent race conditions
+          setTimeout(() => {
+            fetchPlayers(room.id, false);
+          }, 100);
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
