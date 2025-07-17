@@ -55,9 +55,18 @@ export function useGameRoom() {
     return Math.random().toString(36).substring(2, 15);
   };
 
-  // Generate lobby code
+  // Generate lobby code with word + digit format (e.g., 'apple3', 'track7')
   const generateLobbyCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    const words = [
+      'APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE',
+      'STAGE', 'TEMPO', 'CHORD', 'BANDS', 'REMIX', 'VINYL', 'RADIO', 'SONGS', 'ALBUM', 'DISCO',
+      'BLUES', 'SWING', 'FORTE', 'SHARP', 'MINOR', 'MAJOR', 'SCALE', 'NOTES', 'LYRIC', 'VERSE',
+      'CHOIR', 'ORGAN', 'FLUTE', 'HARP', 'CELLO', 'BASS', 'TENOR', 'OPERA', 'JAZZ', 'FOLK',
+      'METAL', 'PUNK', 'ROCK', 'POP', 'SOUL', 'FUNK', 'RAP', 'BEAT', 'DROP', 'WAVE'
+    ];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomDigit = Math.floor(Math.random() * 10);
+    return `${randomWord}${randomDigit}`;
   };
 
   // Convert database player to frontend player
@@ -90,17 +99,29 @@ export function useGameRoom() {
 
       console.log('👥 Raw players from DB:', data);
       
+      // DEFENSIVE CHECK: Ensure we have valid data before processing
+      if (!data) {
+        console.log('⚠️ No player data received, keeping current players to prevent unwanted removal');
+        return;
+      }
+      
       // Filter out host players - only include players where is_host is false or null
-      const nonHostPlayers = data?.filter(dbPlayer => {
+      const nonHostPlayers = data.filter(dbPlayer => {
         const isHostPlayer = dbPlayer.is_host === true;
         console.log(`🔍 Player ${dbPlayer.name}: is_host=${dbPlayer.is_host}, including=${!isHostPlayer}`);
         return !isHostPlayer;
-      }) || [];
+      });
       
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
       
-      setPlayers(convertedPlayers);
+      // DEFENSIVE CHECK: Only update players if we have meaningful data or if it's an explicit clear
+      if (convertedPlayers.length > 0 || data.length === 0) {
+        setPlayers(convertedPlayers);
+        console.log('✅ Player list updated successfully');
+      } else {
+        console.log('⚠️ Skipping player update - no non-host players but data exists, likely intermediate state');
+      }
 
       // Update current player if we have one (only for non-host players)
       if (playerSessionId.current && !isHost) {
@@ -114,6 +135,7 @@ export function useGameRoom() {
       }
     } catch (error) {
       console.error('❌ Failed to fetch players:', error);
+      // Don't clear players on error to prevent unwanted kicks
     }
   }, [convertPlayer, isHost]);
 
@@ -408,23 +430,30 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
+      console.log('🎮 Updating gamemode to:', gamemode, 'settings:', gamemodeSettings);
+      
+      // CRITICAL FIX: Explicitly maintain the 'lobby' phase when updating gamemode
+      // to prevent any potential race conditions that might change the phase
       const { error } = await supabase
         .from('game_rooms')
         .update({ 
           gamemode: gamemode,
-          gamemode_settings: gamemodeSettings as any
+          gamemode_settings: gamemodeSettings as any,
+          phase: 'lobby' // Explicitly maintain lobby phase
         })
         .eq('id', room.id);
 
       if (error) throw error;
       
-      // Update local state
+      // Update local state with explicit phase maintenance
       setRoom(prev => prev ? {
         ...prev,
         gamemode,
-        gamemode_settings: gamemodeSettings
+        gamemode_settings: gamemodeSettings,
+        phase: 'lobby' as const // Ensure phase stays 'lobby'
       } : null);
       
+      console.log('✅ Gamemode updated successfully, phase maintained as lobby');
       return true;
     } catch (error) {
       console.error('Failed to update room gamemode:', error);
