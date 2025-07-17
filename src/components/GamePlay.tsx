@@ -223,13 +223,13 @@ export function GamePlay({
     audio.addEventListener('ended', () => {
       console.log('🎵 Audio playback ended');
       setIsPlaying(false);
-      setGameIsPlaying(false);
+      gameLogic.setIsPlaying(false);
     });
     
     audio.addEventListener('error', (e) => {
       console.error('🎵 Audio error:', e);
       setIsPlaying(false);
-      setGameIsPlaying(false);
+      gameLogic.setIsPlaying(false);
     });
     
     audio.addEventListener('canplay', () => {
@@ -247,12 +247,12 @@ export function GamePlay({
         await playPromise;
         console.log('🎵 AUDIO SUCCESS: Playing');
         setIsPlaying(true);
-        setGameIsPlaying(true);
+        gameLogic.setIsPlaying(true);
       }
     } catch (error) {
       console.error('🎵 Audio play failed:', error);
       setIsPlaying(false);
-      setGameIsPlaying(false);
+      gameLogic.setIsPlaying(false);
       
       if (error instanceof Error) {
         if (error.name === 'NotAllowedError') {
