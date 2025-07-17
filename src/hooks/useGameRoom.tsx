@@ -25,7 +25,7 @@ interface DatabaseGameRoom {
   host_name: string;
   phase: string;
   gamemode?: string;
-  gamemode_settings?: any;
+  gamemode_settings?: GameModeSettings;
   songs: Song[];
   current_turn?: number;
   current_song?: Song | null;
@@ -82,9 +82,9 @@ export function useGameRoom() {
   }, []);
 
   // Fetch players for a room (ONLY non-host players)
-  const fetchPlayers = useCallback(async (roomId: string) => {
+  const fetchPlayers = useCallback(async (roomId: string, skipDefensiveChecks = false) => {
     try {
-      console.log('🔍 Fetching players for room:', roomId);
+      console.log('🔍 Fetching players for room:', roomId, 'skipDefensiveChecks:', skipDefensiveChecks);
       
       const { data, error } = await supabase
         .from('players')
@@ -115,13 +115,17 @@ export function useGameRoom() {
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
       
-      // DEFENSIVE CHECK: Only update players if we have meaningful data or if it's an explicit clear
-      if (convertedPlayers.length > 0 || data.length === 0) {
-        setPlayers(convertedPlayers);
-        console.log('✅ Player list updated successfully');
-      } else {
-        console.log('⚠️ Skipping player update - no non-host players but data exists, likely intermediate state');
+      // STRENGTHENED DEFENSIVE CHECK: Be more careful about when to update the player list
+      // Only skip updates if we're not explicitly told to skip checks AND we have suspicious data
+      if (!skipDefensiveChecks && convertedPlayers.length === 0 && data.length > 0) {
+        console.log('⚠️ DEFENSIVE: Skipping player update - suspicious state where DB has data but no non-host players');
+        console.log('⚠️ DEFENSIVE: This could be a race condition during gamemode updates');
+        return;
       }
+      
+      // Update players list - this is now safer with improved checks
+      setPlayers(convertedPlayers);
+      console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
 
       // Update current player if we have one (only for non-host players)
       if (playerSessionId.current && !isHost) {
@@ -131,6 +135,8 @@ export function useGameRoom() {
         if (current) {
           console.log('🎯 Updated current player:', current);
           setCurrentPlayer(current);
+        } else if (convertedPlayers.length === 0) {
+          console.log('⚠️ Current player not found in empty list - may have been kicked');
         }
       }
     } catch (error) {
@@ -192,7 +198,10 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          fetchPlayers(room.id);
+          // Add small delay to avoid race conditions during rapid room updates
+          setTimeout(() => {
+            fetchPlayers(room.id);
+          }, 100);
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
@@ -202,8 +211,11 @@ export function useGameRoom() {
 
     setSubscriptionConfigs(configs);
 
-    // Initial fetch
-    fetchPlayers(room.id);
+    // Initial fetch with slight delay to ensure room state is stable
+    setTimeout(() => {
+      console.log('🔄 Initial player fetch for room:', room.id);
+      fetchPlayers(room.id, true); // Skip defensive checks for initial fetch
+    }, 50);
   }, [room?.id, fetchPlayers]);
 
   const createRoom = useCallback(async (hostName: string, gamemode: GameMode = 'classic', gamemodeSettings: GameModeSettings = {}): Promise<string | null> => {
@@ -225,7 +237,7 @@ export function useGameRoom() {
           host_name: hostName,
           phase: 'lobby',
           gamemode: gamemode,
-          gamemode_settings: gamemodeSettings as any
+          gamemode_settings: gamemodeSettings as unknown as Json
         })
         .select()
         .single();
@@ -433,13 +445,14 @@ export function useGameRoom() {
       console.log('🎮 Updating gamemode to:', gamemode, 'settings:', gamemodeSettings);
       
       // CRITICAL FIX: Explicitly maintain the 'lobby' phase when updating gamemode
-      // to prevent any potential race conditions that might change the phase
+      // and use a single atomic update to prevent race conditions
       const { error } = await supabase
         .from('game_rooms')
         .update({ 
           gamemode: gamemode,
-          gamemode_settings: gamemodeSettings as any,
-          phase: 'lobby' // Explicitly maintain lobby phase
+          gamemode_settings: gamemodeSettings as unknown as Json,
+          phase: 'lobby', // Explicitly maintain lobby phase
+          updated_at: new Date().toISOString() // Force update trigger for realtime
         })
         .eq('id', room.id);
 
@@ -454,12 +467,22 @@ export function useGameRoom() {
       } : null);
       
       console.log('✅ Gamemode updated successfully, phase maintained as lobby');
+      
+      // DEFENSIVE: Force refresh players after a brief delay to ensure consistency
+      // This helps recover from any potential race conditions
+      setTimeout(() => {
+        if (room?.id) {
+          console.log('🔄 DEFENSIVE: Refreshing players after gamemode update');
+          fetchPlayers(room.id, true); // Skip defensive checks for this refresh
+        }
+      }, 200);
+      
       return true;
     } catch (error) {
       console.error('Failed to update room gamemode:', error);
       return false;
     }
-  }, [room, isHost]);
+  }, [room, isHost, fetchPlayers]);
 
   const startGame = useCallback(async (availableSongs?: Song[]): Promise<boolean> => {
     if (!room || !isHost) return false;
