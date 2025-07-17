@@ -82,9 +82,9 @@ export function useGameRoom() {
   }, []);
 
   // Fetch players for a room (ONLY non-host players)
-  const fetchPlayers = useCallback(async (roomId: string, skipDefensiveChecks = false) => {
+  const fetchPlayers = useCallback(async (roomId: string, forceUpdate = false) => {
     try {
-      console.log('🔍 Fetching players for room:', roomId, 'skipDefensiveChecks:', skipDefensiveChecks);
+      console.log('🔍 Fetching players for room:', roomId, 'forceUpdate:', forceUpdate);
       
       const { data, error } = await supabase
         .from('players')
@@ -99,9 +99,9 @@ export function useGameRoom() {
 
       console.log('👥 Raw players from DB:', data);
       
-      // DEFENSIVE CHECK: Ensure we have valid data before processing
+      // SIMPLIFIED DEFENSIVE CHECK: Only bail out if we have no data at all
       if (!data) {
-        console.log('⚠️ No player data received, keeping current players to prevent unwanted removal');
+        console.log('⚠️ No player data received, keeping current players');
         return;
       }
       
@@ -115,17 +115,16 @@ export function useGameRoom() {
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
       
-      // IMPROVED DEFENSIVE CHECK: More precise conditions for when to skip updates
-      // Only skip updates if we're not explicitly told to skip checks AND we have suspicious data
-      // AND we currently have players (don't skip if we're starting with 0 players)
-      if (!skipDefensiveChecks && convertedPlayers.length === 0 && data.length > 0 && players.length > 0) {
-        console.log('⚠️ DEFENSIVE: Skipping player update - suspicious state where DB has data but no non-host players');
-        console.log('⚠️ DEFENSIVE: Current players:', players.length, 'DB data length:', data.length);
-        console.log('⚠️ DEFENSIVE: This could be a race condition during gamemode updates');
+      // SIMPLIFIED DEFENSIVE CHECK: Only prevent clearing all players if we're not forcing the update
+      // and this seems like a suspicious sudden drop to zero players
+      const seemsSuspicious = convertedPlayers.length === 0 && players.length > 0 && data.length > 0;
+      if (!forceUpdate && seemsSuspicious) {
+        console.log('⚠️ DEFENSIVE: Skipping suspicious empty player update - use forceUpdate=true to override');
+        console.log('⚠️ DEFENSIVE: Current players:', players.length, 'DB data length:', data.length, 'Non-host players:', convertedPlayers.length);
         return;
       }
       
-      // Update players list - this is now safer with improved checks
+      // Update players list
       setPlayers(convertedPlayers);
       console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
 
@@ -145,7 +144,7 @@ export function useGameRoom() {
       console.error('❌ Failed to fetch players:', error);
       // Don't clear players on error to prevent unwanted kicks
     }
-  }, [convertPlayer, isHost, players.length]); // Add players.length to make defensive checks more accurate
+  }, [convertPlayer, isHost, players.length]);
 
   // Setup subscription configurations when room is available
   useEffect(() => {
@@ -200,11 +199,10 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          // Skip fetching if this is during a gamemode update (room subscription handles this)
-          // Add delay to avoid race conditions during rapid room updates
+          // Add debouncing delay to avoid race conditions with room updates
           setTimeout(() => {
-            fetchPlayers(room.id, false); // Use defensive checks for subscription-triggered updates
-          }, 150); // Slightly longer delay to avoid racing with room updates
+            fetchPlayers(room.id, false); // Use standard checks for subscription updates
+          }, 200); // Slightly longer delay to ensure room updates complete first
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
@@ -217,7 +215,7 @@ export function useGameRoom() {
     // Initial fetch with slight delay to ensure room state is stable
     setTimeout(() => {
       console.log('🔄 Initial player fetch for room:', room.id);
-      fetchPlayers(room.id, true); // Skip defensive checks for initial fetch
+      fetchPlayers(room.id, true); // Force update for initial fetch
     }, 50);
   }, [room?.id, fetchPlayers]);
 
@@ -462,8 +460,7 @@ export function useGameRoom() {
     try {
       console.log('🎮 Updating gamemode to:', gamemode, 'settings:', gamemodeSettings);
       
-      // CRITICAL FIX: Explicitly maintain the 'lobby' phase when updating gamemode
-      // and use a single atomic update to prevent race conditions
+      // Use a single atomic update to prevent race conditions
       const { error } = await supabase
         .from('game_rooms')
         .update({ 
@@ -486,15 +483,14 @@ export function useGameRoom() {
       
       console.log('✅ Gamemode updated successfully, phase maintained as lobby');
       
-      // DEFENSIVE: Force refresh players after a brief delay to ensure consistency
-      // This helps recover from any potential race conditions
-      // Use a longer delay to avoid interfering with room subscription updates
+      // SIMPLIFIED: Just refresh players after gamemode update without excessive delays
+      // Use force update to ensure we get fresh data after the gamemode change
       setTimeout(() => {
         if (room?.id) {
-          console.log('🔄 DEFENSIVE: Refreshing players after gamemode update');
-          fetchPlayers(room.id, true); // Skip defensive checks for this recovery refresh
+          console.log('🔄 Refreshing players after gamemode update');
+          fetchPlayers(room.id, true); // Force update to ensure consistency
         }
-      }, 300); // Longer delay to allow subscriptions to settle
+      }, 100); // Shorter delay, more responsive
       
       return true;
     } catch (error) {
