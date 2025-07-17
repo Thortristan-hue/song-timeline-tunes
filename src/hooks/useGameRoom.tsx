@@ -115,10 +115,12 @@ export function useGameRoom() {
       const convertedPlayers = nonHostPlayers.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
       
-      // STRENGTHENED DEFENSIVE CHECK: Be more careful about when to update the player list
+      // IMPROVED DEFENSIVE CHECK: More precise conditions for when to skip updates
       // Only skip updates if we're not explicitly told to skip checks AND we have suspicious data
-      if (!skipDefensiveChecks && convertedPlayers.length === 0 && data.length > 0) {
+      // AND we currently have players (don't skip if we're starting with 0 players)
+      if (!skipDefensiveChecks && convertedPlayers.length === 0 && data.length > 0 && players.length > 0) {
         console.log('⚠️ DEFENSIVE: Skipping player update - suspicious state where DB has data but no non-host players');
+        console.log('⚠️ DEFENSIVE: Current players:', players.length, 'DB data length:', data.length);
         console.log('⚠️ DEFENSIVE: This could be a race condition during gamemode updates');
         return;
       }
@@ -143,7 +145,7 @@ export function useGameRoom() {
       console.error('❌ Failed to fetch players:', error);
       // Don't clear players on error to prevent unwanted kicks
     }
-  }, [convertPlayer, isHost]);
+  }, [convertPlayer, isHost, players.length]); // Add players.length to make defensive checks more accurate
 
   // Setup subscription configurations when room is available
   useEffect(() => {
@@ -198,10 +200,11 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          // Add small delay to avoid race conditions during rapid room updates
+          // Skip fetching if this is during a gamemode update (room subscription handles this)
+          // Add delay to avoid race conditions during rapid room updates
           setTimeout(() => {
-            fetchPlayers(room.id);
-          }, 100);
+            fetchPlayers(room.id, false); // Use defensive checks for subscription-triggered updates
+          }, 150); // Slightly longer delay to avoid racing with room updates
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
@@ -224,10 +227,25 @@ export function useGameRoom() {
       setError(null);
 
       const sessionId = generateSessionId();
-      const lobbyCode = generateLobbyCode();
       hostSessionId.current = sessionId;
 
       console.log('🏠 Creating room with host session ID:', sessionId, 'gamemode:', gamemode);
+
+      // Try to use database function for lobby code generation with uniqueness checking
+      let lobbyCode: string;
+      try {
+        const { data: dbCodeResult, error: codeError } = await supabase.rpc('generate_lobby_code');
+        if (codeError || !dbCodeResult) {
+          console.log('⚠️ Database lobby code generation failed, using client fallback');
+          lobbyCode = generateLobbyCode();
+        } else {
+          lobbyCode = dbCodeResult;
+          console.log('✅ Using database-generated lobby code:', lobbyCode);
+        }
+      } catch (error) {
+        console.log('⚠️ Database lobby code generation error, using client fallback:', error);
+        lobbyCode = generateLobbyCode();
+      }
 
       const { data, error } = await supabase
         .from('game_rooms')
@@ -470,12 +488,13 @@ export function useGameRoom() {
       
       // DEFENSIVE: Force refresh players after a brief delay to ensure consistency
       // This helps recover from any potential race conditions
+      // Use a longer delay to avoid interfering with room subscription updates
       setTimeout(() => {
         if (room?.id) {
           console.log('🔄 DEFENSIVE: Refreshing players after gamemode update');
-          fetchPlayers(room.id, true); // Skip defensive checks for this refresh
+          fetchPlayers(room.id, true); // Skip defensive checks for this recovery refresh
         }
-      }, 200);
+      }, 300); // Longer delay to allow subscriptions to settle
       
       return true;
     } catch (error) {
