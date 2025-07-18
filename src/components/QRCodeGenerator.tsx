@@ -19,8 +19,12 @@ export function QRCodeGenerator({
   fgColor = "#000000",
   showLabels = true
 }: QRCodeGeneratorProps) {
-  // Create the join URL with the room code as a parameter
-  const joinUrl = `${window.location.origin}?join=${encodeURIComponent(value)}`;
+  // Check if value is already a URL or just a lobby code
+  const isUrl = value.startsWith('http://') || value.startsWith('https://');
+  const joinUrl = isUrl ? value : `${window.location.origin}?join=${encodeURIComponent(value)}`;
+  
+  // Extract lobby code from URL for display
+  const lobbyCode = isUrl ? new URLSearchParams(new URL(value).search).get('join') || value : value;
   
   console.log('🔗 QR Code generated for URL:', joinUrl);
   
@@ -42,7 +46,7 @@ export function QRCodeGenerator({
         <div className="text-sm text-white/60">
           Or visit: <span className="font-mono text-blue-400">{window.location.origin}</span>
           <br />
-          Room Code: <span className="font-mono font-bold text-lg text-white">{value}</span>
+          Room Code: <span className="font-mono font-bold text-lg text-white">{lobbyCode}</span>
         </div>
       )}
     </div>

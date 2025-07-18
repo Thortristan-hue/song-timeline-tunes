@@ -130,21 +130,25 @@ Complete shadcn/ui component collection including:
 ## Game Modes
 
 ### Classic/Timeliner Mode
-- **Turn-based gameplay**: Players take turns placing songs in chronological order
-- **Winning condition**: First player to reach 10 correctly placed cards wins
-- **Mechanics**: Each player has their own timeline, incorrect placements remove the card
+- **Turn-based gameplay**: Players take turns placing songs chronologically on their timelines
+- **Mystery cards**: Each player receives mystery song cards to place in correct chronological order
+- **Winning condition**: First player to correctly place 10 cards wins
+- **Mechanics**: Traditional turn-based gameplay with strategic card placement decisions
 
 ### Fiend Mode
-- **Simultaneous guessing**: All players listen to 30-second previews and guess the release year
-- **Scoring system**: Points based on accuracy (closer guesses = more points)
-- **Rounds**: Host selects number of rounds in lobby (default: 5)
-- **Winning condition**: Player with highest total score after all rounds
+- **Year guessing**: Players listen to 30-second song previews and guess the release year
+- **Timeline slider**: Players use a timeline slider on their phones to select years
+- **Scoring system**: Points based on accuracy of year guesses (closer = more points)
+- **Rounds**: Host selects number of rounds in lobby (3-10 rounds, default: 5)
+- **Winning condition**: Player with highest cumulative score after all rounds
 
 ### Sprint Mode
-- **Real-time racing**: All players compete simultaneously to place cards
-- **Timeout system**: Incorrect placements result in 5-second timeout
-- **Target goal**: Host sets target number of cards (default: 8)
-- **Winning condition**: First player to reach target number of cards
+- **Simultaneous racing**: All player timelines displayed on host's screen
+- **Pre-placed cards**: Players start with random cards already on their timeline
+- **Mystery previews**: Players receive random mystery song previews on phones
+- **Timeout system**: Incorrect placements result in 5-second timeout penalty
+- **Target goal**: Host sets target number of cards (default: 10)
+- **Winning condition**: First player to reach target number of correctly placed cards
 
 ## Game Flow
 
