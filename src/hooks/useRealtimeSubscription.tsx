@@ -126,17 +126,20 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
       channelRef.current = channel;
 
-      // Monitor connection health
+      // Monitor connection health with less aggressive checks
       const healthCheck = setInterval(() => {
         if (channelRef.current) {
           const state = channelRef.current.state;
           if (state === 'closed' || state === 'errored') {
             console.warn('📡 Connection unhealthy, attempting reconnect');
             clearInterval(healthCheck);
-            scheduleReconnect();
+            // Only reconnect if we're not already reconnecting
+            if (!connectionStatus.isReconnecting) {
+              scheduleReconnect();
+            }
           }
         }
-      }, 10000); // Check every 10 seconds
+      }, 30000); // Check every 30 seconds (less aggressive)
 
       // Cleanup health check when subscription changes
       return () => clearInterval(healthCheck);
@@ -149,6 +152,12 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   }, [configs, cleanup, handleConnectionError]);
 
   const scheduleReconnect = useCallback(() => {
+    // Prevent multiple reconnection attempts
+    if (connectionStatus.isReconnecting) {
+      console.log('📡 Already reconnecting, skipping duplicate attempt');
+      return;
+    }
+
     if (retryCountRef.current >= maxRetries) {
       console.error('❌ Max reconnection attempts reached');
       setConnectionStatus(prev => ({
@@ -157,16 +166,19 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
         lastError: 'Max reconnection attempts reached'
       }));
       
-      toast({
-        title: "Connection Failed",
-        description: "Unable to maintain real-time connection. Please refresh the page.",
-        variant: "destructive",
-      });
+      // Only show toast once
+      if (retryCountRef.current === maxRetries) {
+        toast({
+          title: "Connection Failed",
+          description: "Unable to maintain real-time connection. Please refresh the page.",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
     retryCountRef.current++;
-    const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 5)); // Exponential backoff with cap
+    const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 3)); // Shorter exponential backoff
     
     console.log(`📡 Scheduling reconnect attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
     
@@ -179,7 +191,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     reconnectTimeoutRef.current = setTimeout(() => {
       connect();
     }, delay);
-  }, [connect, toast]);
+  }, [connect, toast, connectionStatus.isReconnecting]);
 
   // Monitor network status
   useEffect(() => {

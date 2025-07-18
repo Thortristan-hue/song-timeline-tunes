@@ -192,10 +192,10 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          // Debounce player fetches to prevent race conditions
+          // Longer debounce to prevent rapid reconnection issues
           setTimeout(() => {
             fetchPlayers(room.id, false);
-          }, 100);
+          }, 500);
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
