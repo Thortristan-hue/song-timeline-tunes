@@ -77,7 +77,7 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with better error handling
+  // Enhanced room phase listener with better error handling and currentPlayer validation
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
       console.log('🎮 Room transitioned to playing phase - starting game');
@@ -87,7 +87,8 @@ function Index() {
         hostId: room.host_id,
         currentPlayerId: room.current_player_id,
         isHost,
-        playersCount: players.length 
+        playersCount: players.length,
+        hasCurrentPlayer: !!currentPlayer
       });
       
       // Enhanced validation before transitioning
@@ -95,19 +96,70 @@ function Index() {
         console.error('❌ PHASE TRANSITION ERROR: No current_player_id set but players available');
         console.error('❌ This may cause the game to get stuck. Room data:', room);
       }
+
+      // CRITICAL FIX: For non-host players, ensure currentPlayer is available before transitioning
+      if (!isHost && !currentPlayer && players.length > 0) {
+        console.warn('⚠️ PHASE TRANSITION WARNING: Missing currentPlayer for non-host, delaying transition');
+        
+        // Try to find current player based on room's current_player_id
+        const foundCurrentPlayer = players.find(p => p.id === room.current_player_id);
+        if (foundCurrentPlayer) {
+          console.log('🔄 Found currentPlayer in players list, this should resolve automatically');
+        } else {
+          console.error('❌ CRITICAL: Cannot find currentPlayer in players list');
+          setError('Unable to identify your player session. Please refresh and rejoin the room.');
+          return;
+        }
+      }
       
       setGamePhase('playing');
       
-      // Enhanced audio start with better error handling
-      try {
-        soundEffects.playGameStart();
-      } catch (error) {
-        console.warn('🔊 Game start sound failed, continuing anyway:', error);
-      }
+      // Enhanced audio start with better error handling and non-blocking behavior
+      setTimeout(() => {
+        try {
+          soundEffects.playGameStart();
+        } catch (error) {
+          console.warn('🔊 Game start sound failed, continuing anyway:', error);
+        }
+      }, 100); // Delay to prevent blocking phase transition
     }
-  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, gamePhase, soundEffects, isHost, players.length, currentPlayer]);
 
-  // Check for winner
+  // CRITICAL FIX: Recovery mechanism for missing currentPlayer in playing phase
+  useEffect(() => {
+    if (room?.phase === 'playing' && gamePhase === 'playing' && !isHost && !currentPlayer && players.length > 0) {
+      console.log('🔄 RECOVERY: Attempting to restore missing currentPlayer');
+      
+      // Try to find player by session ID first
+      const myPlayerBySession = players.find(p => 
+        p.id.includes(playerName) || 
+        p.name === playerName
+      );
+      
+      if (myPlayerBySession) {
+        console.log('🔄 RECOVERY: Found player by name match:', myPlayerBySession.name);
+        // This will be handled by the fetchPlayersOptimized function
+        return;
+      }
+      
+      // If we're the current turn player, we can identify ourselves
+      if (room.current_player_id) {
+        const currentTurnPlayer = players.find(p => p.id === room.current_player_id);
+        if (currentTurnPlayer) {
+          console.log('🔄 RECOVERY: Could identify current turn player:', currentTurnPlayer.name);
+          // The user might be this player, but we need more certainty
+        }
+      }
+      
+      // Last resort: show a helpful error after a delay
+      setTimeout(() => {
+        if (!currentPlayer && !isHost && room?.phase === 'playing') {
+          console.error('❌ RECOVERY FAILED: Could not restore currentPlayer after attempts');
+          setError('Your player session was lost. Please leave and rejoin the room.');
+        }
+      }, 3000); // Give 3 seconds for automatic recovery
+    }
+  }, [room?.phase, gamePhase, isHost, currentPlayer, players, room?.current_player_id, playerName]);
   useEffect(() => {
     const winningPlayer = players.find(player => player.score >= 10);
     if (winningPlayer && !winner) {

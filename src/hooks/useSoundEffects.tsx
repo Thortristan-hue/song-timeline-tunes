@@ -120,21 +120,32 @@ export function useSoundEffects() {
   }, [playAudioFile, playPolishedTone]);
 
   const playGameStart = useCallback(async () => {
-    // Enhanced fallback: Never block the game if audio fails
-    try {
-      const played = await playAudioFile('game-start.mp3', 0.5);
-      if (!played) {
-        // Professional fanfare fallback
-        playPolishedTone(392, 0.15, 'triangle', 0.05);
-        setTimeout(() => playPolishedTone(523, 0.15, 'triangle', 0.04), 150);
-        setTimeout(() => playPolishedTone(659, 0.15, 'triangle', 0.04), 300);
-        setTimeout(() => playPolishedTone(784, 0.25, 'triangle', 0.03), 450);
+    // CRITICAL FIX: Completely non-blocking game start sound
+    // This function must NEVER block game startup under any circumstances
+    setTimeout(async () => {
+      try {
+        const played = await playAudioFile('game-start.mp3', 0.5);
+        if (!played) {
+          // Professional fanfare fallback - also non-blocking
+          try {
+            playPolishedTone(392, 0.15, 'triangle', 0.05);
+            setTimeout(() => playPolishedTone(523, 0.15, 'triangle', 0.04), 150);
+            setTimeout(() => playPolishedTone(659, 0.15, 'triangle', 0.04), 300);
+            setTimeout(() => playPolishedTone(784, 0.25, 'triangle', 0.03), 450);
+          } catch (toneError) {
+            // Even tone generation failures are caught and ignored
+            console.warn('🔊 Fallback tone generation failed, fully silent fallback:', toneError);
+          }
+        }
+        console.log('🔊 Game start sound sequence completed');
+      } catch (error) {
+        // Completely silent fallback - absolutely never block the game
+        console.warn('🔊 Game start sound failed completely, continuing silently:', error);
       }
-      console.log('🔊 Game start sound played successfully');
-    } catch (error) {
-      // Completely silent fallback - never block the game
-      console.warn('🔊 Game start sound failed, continuing silently:', error);
-    }
+    }, 0); // Immediate async execution, never blocks
+    
+    // Always return immediately to prevent blocking
+    return Promise.resolve();
   }, [playAudioFile, playPolishedTone]);
 
   const playPlayerJoin = useCallback(async () => {

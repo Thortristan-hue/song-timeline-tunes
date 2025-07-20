@@ -117,7 +117,7 @@ export function useGameRoom() {
   // ENHANCED: Real-time subscription with instant updates
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
-  // ENHANCED: Optimized player fetching with rate limiting
+  // ENHANCED: Optimized player fetching with rate limiting and currentPlayer restoration
   const fetchPlayersOptimized = useCallback(async (roomId: string, forceUpdate = false) => {
     // Rate limiting to prevent spam
     const now = Date.now();
@@ -158,12 +158,32 @@ export function useGameRoom() {
 
       // ENHANCED: Immediate state update for snappy UX
       setPlayers(convertedPlayers);
+
+      // CRITICAL FIX: Restore currentPlayer if missing but we have session data
+      if (!currentPlayer && !isHost && sessionId) {
+        const myPlayer = playersData.find(p => p.player_session_id === sessionId);
+        if (myPlayer) {
+          console.log('🔄 RESTORING currentPlayer from session:', myPlayer.name);
+          const restoredPlayer: Player = {
+            id: myPlayer.id,
+            name: myPlayer.name,
+            color: myPlayer.color,
+            timelineColor: myPlayer.timeline_color,
+            score: myPlayer.score,
+            timeline: convertJsonToSongs(myPlayer.timeline)
+          };
+          setCurrentPlayer(restoredPlayer);
+        } else {
+          console.warn('⚠️ Could not find player with current session ID:', sessionId);
+        }
+      }
+      
       console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
 
     } catch (error) {
       console.error('❌ Failed to fetch players:', error);
     }
-  }, []);
+  }, [currentPlayer, isHost, sessionId]);
 
   // ENHANCED: Debounced player updates with immediate application
   useEffect(() => {
@@ -387,6 +407,8 @@ export function useGameRoom() {
         throw new Error('No players available to start the game');
       }
 
+      console.log('🎮 Starting game with players:', allPlayers.map(p => p.name));
+
       // Set the first player as the current player
       const firstPlayer = allPlayers[0];
       
@@ -405,14 +427,21 @@ export function useGameRoom() {
       
       // ENHANCED: Immediate phase transition
       setRoom(convertDatabaseRoomToGameRoom(data));
+      
+      // CRITICAL: Trigger immediate player data refresh to ensure currentPlayer assignment
+      setTimeout(() => {
+        fetchPlayersOptimized(room.id, true);
+      }, 500);
+      
       console.log('🚀 Game started successfully with first player:', firstPlayer.name);
+      console.log('🔄 Triggering player data refresh to ensure currentPlayer assignment');
     } catch (error) {
       console.error('❌ Start game error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start game');
     } finally {
       setIsLoading(false);
     }
-  }, [room, isHost]);
+  }, [room, isHost, fetchPlayersOptimized]);
 
   // ENHANCED: Instant card placement with optimistic updates
   const placeCard = useCallback(async (song: Song, position: number) => {
