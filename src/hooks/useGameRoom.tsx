@@ -27,12 +27,15 @@ const convertJsonToGameModeSettings = (jsonData: any): GameModeSettings => {
 
 // Helper function to safely convert database room to GameRoom
 const convertDatabaseRoomToGameRoom = (dbRoom: any): GameRoom => {
+  // Ensure phase is properly typed - database only has 'lobby', 'playing', 'finished'
+  const validPhase = dbRoom.phase as 'lobby' | 'playing' | 'finished';
+  
   return {
     id: dbRoom.id,
     lobby_code: dbRoom.lobby_code,
     host_id: dbRoom.host_id,
     host_name: dbRoom.host_name,
-    phase: dbRoom.phase as GamePhase,
+    phase: validPhase,
     gamemode: dbRoom.gamemode as GameMode,
     gamemode_settings: convertJsonToGameModeSettings(dbRoom.gamemode_settings),
     songs: convertJsonToSongs(dbRoom.songs),
@@ -42,6 +45,21 @@ const convertDatabaseRoomToGameRoom = (dbRoom: any): GameRoom => {
     current_song: dbRoom.current_song ? dbRoom.current_song as Song : null,
     current_player_id: dbRoom.current_player_id
   };
+};
+
+// Helper function to safely convert Song to Json
+const convertSongToJson = (song: Song): any => {
+  return song as any;
+};
+
+// Helper function to safely convert Song[] to Json
+const convertSongsToJson = (songs: Song[]): any => {
+  return songs as any;
+};
+
+// Helper function to safely convert GameModeSettings to Json
+const convertGameModeSettingsToJson = (settings: GameModeSettings): any => {
+  return settings as any;
 };
 
 export function useGameRoom() {
@@ -68,6 +86,7 @@ export function useGameRoom() {
     
     return [
       {
+        channelName: `room-${room.id}`,
         table: 'game_rooms',
         filter: `id=eq.${room.id}`,
         onUpdate: (payload: any) => {
@@ -76,6 +95,7 @@ export function useGameRoom() {
         }
       },
       {
+        channelName: `players-${room.id}`,
         table: 'players', 
         filter: `room_id=eq.${room.id}`,
         onInsert: (payload: any) => {
@@ -302,7 +322,7 @@ export function useGameRoom() {
     try {
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ songs: songs as any })
+        .update({ songs: convertSongsToJson(songs) })
         .eq('id', room.id)
         .select()
         .single();
@@ -325,7 +345,7 @@ export function useGameRoom() {
         .from('game_rooms')
         .update({ 
           gamemode,
-          gamemode_settings: settings as any
+          gamemode_settings: convertGameModeSettingsToJson(settings)
         })
         .eq('id', room.id)
         .select()
@@ -391,7 +411,7 @@ export function useGameRoom() {
       const { error } = await supabase
         .from('players')
         .update({
-          timeline: optimisticTimeline as any,
+          timeline: convertSongsToJson(optimisticTimeline),
           score: currentPlayer.score + 1
         })
         .eq('id', currentPlayer.id);
@@ -418,7 +438,7 @@ export function useGameRoom() {
     try {
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song as any })
+        .update({ current_song: convertSongToJson(song) })
         .eq('id', room.id)
         .select()
         .single();
@@ -441,7 +461,7 @@ export function useGameRoom() {
       const updatePromises = Object.entries(playerCards).map(([playerId, song]) =>
         supabase
           .from('players')
-          .update({ timeline: [song] as any })
+          .update({ timeline: convertSongsToJson([song]) })
           .eq('id', playerId)
       );
 
