@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GameMode, GameModeSettings } from '@/types/game';
@@ -46,6 +45,8 @@ export function useGameRoom() {
   
   const hostSessionId = useRef<string | null>(null);
   const playerSessionId = useRef<string | null>(null);
+  const lastFetchTime = useRef<number>(0);
+  const isInitialFetch = useRef<boolean>(true);
 
   // Setup realtime subscription with retry logic
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
@@ -80,8 +81,19 @@ export function useGameRoom() {
     };
   }, []);
 
-  // Fetch players for a room (ONLY non-host players)
+  // Fetch players for a room (ONLY non-host players) with improved debouncing
   const fetchPlayers = useCallback(async (roomId: string, forceUpdate = false) => {
+    const now = Date.now();
+    
+    // Prevent rapid successive fetches unless forced or it's been a while
+    if (!forceUpdate && !isInitialFetch.current && (now - lastFetchTime.current) < 1000) {
+      console.log('⚡ Skipping fetch - too soon since last fetch');
+      return;
+    }
+    
+    lastFetchTime.current = now;
+    isInitialFetch.current = false;
+
     try {
       console.log('🔍 Fetching players for room:', roomId, 'forceUpdate:', forceUpdate);
       
@@ -108,13 +120,17 @@ export function useGameRoom() {
       const convertedPlayers = data.map(convertPlayer);
       console.log('👥 Converted non-host players:', convertedPlayers);
       
-      // Prevent unnecessary updates that could cause UI flickering
-      if (!forceUpdate && JSON.stringify(players.map(p => p.id)) === JSON.stringify(convertedPlayers.map(p => p.id))) {
+      // More sophisticated change detection
+      const currentPlayerIds = players.map(p => p.id).sort();
+      const newPlayerIds = convertedPlayers.map(p => p.id).sort();
+      const hasPlayerListChanged = JSON.stringify(currentPlayerIds) !== JSON.stringify(newPlayerIds);
+      
+      if (!forceUpdate && !hasPlayerListChanged) {
         console.log('⚡ Player list unchanged, skipping update');
         return;
       }
       
-      // Update players list - simplified logic, trust the database
+      // Update players list
       setPlayers(convertedPlayers);
       console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
 
@@ -134,13 +150,15 @@ export function useGameRoom() {
     }
   }, [convertPlayer, isHost, players]);
 
-  // Setup subscription configurations when room is available
+  // Setup subscription configurations when room is available - STABILIZED
   useEffect(() => {
     if (!room?.id) {
+      console.log('🔄 No room ID, clearing subscription configs');
       setSubscriptionConfigs([]);
       return;
     }
 
+    // Only setup subscriptions once per room
     console.log('🔄 Setting up subscription configs for room:', room.id);
 
     const configs: SubscriptionConfig[] = [
@@ -192,10 +210,10 @@ export function useGameRoom() {
         filter: `room_id=eq.${room.id}`,
         onUpdate: (payload) => {
           console.log('🎮 Player change detected:', payload);
-          // Longer debounce to prevent rapid reconnection issues
+          // Much longer debounce to prevent subscription loops
           setTimeout(() => {
             fetchPlayers(room.id, false);
-          }, 500);
+          }, 1500); // Increased from 500ms to 1500ms
         },
         onError: (error) => {
           console.error('❌ Players subscription error:', error);
@@ -205,10 +223,12 @@ export function useGameRoom() {
 
     setSubscriptionConfigs(configs);
 
-    // Initial fetch immediately when room is ready
-    console.log('🔄 Initial player fetch for room:', room.id);
-    fetchPlayers(room.id, true); // Force update for initial fetch
-  }, [room?.id, fetchPlayers]);
+    // Initial fetch only once when room is first established
+    if (isInitialFetch.current) {
+      console.log('🔄 Initial player fetch for room:', room.id);
+      fetchPlayers(room.id, true);
+    }
+  }, [room?.id]); // Remove fetchPlayers from dependencies to prevent loops
 
   const createRoom = useCallback(async (hostName: string, gamemode: GameMode = 'classic', gamemodeSettings: GameModeSettings = {}): Promise<string | null> => {
     try {
@@ -280,6 +300,7 @@ export function useGameRoom() {
 
       setCurrentPlayer(hostPlayer);
       setIsHost(true);
+      isInitialFetch.current = true; // Reset for new room
       return data.lobby_code;
     } catch (error) {
       console.error('❌ Failed to create room:', error);
@@ -373,6 +394,7 @@ export function useGameRoom() {
       
       setCurrentPlayer(convertPlayer(playerData));
       setIsHost(false);
+      isInitialFetch.current = true; // Reset for new room
       
       return true;
     } catch (error) {
@@ -531,6 +553,7 @@ export function useGameRoom() {
     setIsHost(false);
     hostSessionId.current = null;
     playerSessionId.current = null;
+    isInitialFetch.current = true; // Reset for next room
   }, [currentPlayer, isHost]);
 
   const setCurrentSong = useCallback(async (song: Song): Promise<void> => {
