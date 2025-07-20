@@ -101,7 +101,7 @@ export function GamePlay({
     }
   }, [room?.id]);
 
-  // Enhanced host audio control functions
+  // Enhanced host audio control functions - declared early to prevent lexical ordering issues
   const handleHostAudioPlay = useCallback(async () => {
     if (!isHost) {
       console.log('🔊 HOST: Not host, ignoring play command');
