@@ -221,6 +221,40 @@ export function GamePlay({
     broadcastAudioState('pause');
   }, [isHost, gameLogic, broadcastAudioState]);
 
+  // ENHANCED: Universal play/pause handler for players - declared early to prevent lexical ordering issues
+  const handleUniversalPlayPause = useCallback(async () => {
+    if (gameEnded || !room?.current_song) {
+      console.log('🚫 Cannot control audio: game ended or missing data');
+      return;
+    }
+
+    console.log('🔊 PLAYER: Universal audio control triggered');
+
+    const newAction = isPlaying ? 'pause' : 'play';
+    
+    // Broadcast to host immediately
+    if (audioChannelRef.current) {
+      audioChannelRef.current.postMessage({
+        action: newAction,
+        roomId: room.id,
+        timestamp: Date.now()
+      });
+    }
+
+    // Also send via realtime for instant response
+    if (realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'audio-control',
+        payload: { action: newAction, roomId: room.id }
+      });
+    }
+
+    // Update local state optimistically
+    setIsPlaying(!isPlaying);
+    gameLogic.setIsPlaying(!isPlaying);
+  }, [gameEnded, room?.current_song, room?.id, isPlaying, gameLogic]);
+
   // ENHANCED: Real-time audio control setup
   useEffect(() => {
     if (!room?.id) return;
@@ -267,42 +301,6 @@ export function GamePlay({
       }
     };
   }, [room?.id, isHost, handleHostAudioPlay, handleHostAudioPause]);
-
-
-
-  // ENHANCED: Universal play/pause handler for players
-  const handleUniversalPlayPause = async () => {
-    if (gameEnded || !room?.current_song) {
-      console.log('🚫 Cannot control audio: game ended or missing data');
-      return;
-    }
-
-    console.log('🔊 PLAYER: Universal audio control triggered');
-
-    const newAction = isPlaying ? 'pause' : 'play';
-    
-    // Broadcast to host immediately
-    if (audioChannelRef.current) {
-      audioChannelRef.current.postMessage({
-        action: newAction,
-        roomId: room.id,
-        timestamp: Date.now()
-      });
-    }
-
-    // Also send via realtime for instant response
-    if (realtimeChannelRef.current) {
-      realtimeChannelRef.current.send({
-        type: 'broadcast',
-        event: 'audio-control',
-        payload: { action: newAction, roomId: room.id }
-      });
-    }
-
-    // Update local state optimistically
-    setIsPlaying(!isPlaying);
-    gameLogic.setIsPlaying(!isPlaying);
-  };
 
   // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
   useEffect(() => {
