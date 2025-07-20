@@ -62,9 +62,10 @@ export function GamePlay({
   const [playerTimeouts, setPlayerTimeouts] = useState<Record<string, number>>({});
   const [recentPlacements, setRecentPlacements] = useState<Record<string, { correct: boolean; song: Song; timestamp: number }>>({});
 
-  // Audio management - MOBILE OPTIMIZED
+  // Audio management - ENHANCED FOR UNIVERSAL CONTROL
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<BroadcastChannel | null>(null);
+  const realtimeChannelRef = useRef<any>(null);
 
   // Use appropriate game logic based on gamemode
   const gamemode = room?.gamemode || 'classic';
@@ -76,6 +77,171 @@ export function GamePlay({
   const gameLogic = gamemode === 'fiend' ? fiendLogic : 
                    gamemode === 'sprint' ? sprintLogic : 
                    classicLogic;
+
+  // ENHANCED: Real-time audio control setup
+  useEffect(() => {
+    if (!room?.id) return;
+
+    console.log('🔊 Setting up universal audio control for room:', room.id);
+    
+    // Create broadcast channel for cross-tab audio sync
+    const audioChannel = new BroadcastChannel(`audio-control-${room.id}`);
+    audioChannelRef.current = audioChannel;
+
+    // Set up real-time channel for instant audio control
+    const channel = supabase
+      .channel(`audio-control-${room.id}`)
+      .on('broadcast', { event: 'audio-control' }, ({ payload }) => {
+        console.log('🔊 Received audio control broadcast:', payload);
+        if (payload.action === 'play' && isHost) {
+          handleHostAudioPlay();
+        } else if (payload.action === 'pause' && isHost) {
+          handleHostAudioPause();
+        }
+      })
+      .subscribe((status) => {
+        console.log('🔊 Audio control channel status:', status);
+      });
+
+    realtimeChannelRef.current = channel;
+
+    // Listen for broadcast messages
+    audioChannel.onmessage = (event) => {
+      const { action, roomId } = event.data;
+      if (roomId === room.id && isHost) {
+        if (action === 'play') {
+          handleHostAudioPlay();
+        } else if (action === 'pause') {
+          handleHostAudioPause();
+        }
+      }
+    };
+
+    return () => {
+      audioChannel.close();
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, [room?.id, isHost]);
+
+  // Enhanced host audio control functions
+  const handleHostAudioPlay = async () => {
+    if (!isHost || !room?.current_song?.preview_url) return;
+
+    console.log('🔊 HOST: Playing audio from universal control');
+    
+    // Stop any existing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    
+    // Create new audio element
+    const audio = new Audio(room.current_song.preview_url);
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 0.8;
+    audio.preload = 'auto';
+    
+    currentAudioRef.current = audio;
+    
+    // Enhanced event handlers
+    audio.addEventListener('ended', () => {
+      console.log('🔊 HOST: Audio playback ended');
+      setIsPlaying(false);
+      gameLogic.setIsPlaying(false);
+      broadcastAudioState('pause');
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.error('🔊 HOST: Audio error:', e);
+      setIsPlaying(false);
+      gameLogic.setIsPlaying(false);
+      broadcastAudioState('pause');
+    });
+    
+    try {
+      await audio.play();
+      console.log('🔊 HOST: Audio playing successfully');
+      setIsPlaying(true);
+      gameLogic.setIsPlaying(true);
+      broadcastAudioState('play');
+    } catch (error) {
+      console.error('🔊 HOST: Audio play failed:', error);
+      setIsPlaying(false);
+      gameLogic.setIsPlaying(false);
+    }
+  };
+
+  const handleHostAudioPause = () => {
+    if (!isHost) return;
+
+    console.log('🔊 HOST: Pausing audio from universal control');
+    
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+    }
+    setIsPlaying(false);
+    gameLogic.setIsPlaying(false);
+    broadcastAudioState('pause');
+  };
+
+  // Broadcast audio state to all players
+  const broadcastAudioState = (action: 'play' | 'pause') => {
+    if (!room?.id) return;
+
+    // Broadcast via channel
+    if (audioChannelRef.current) {
+      audioChannelRef.current.postMessage({
+        action,
+        roomId: room.id,
+        timestamp: Date.now()
+      });
+    }
+
+    // Also broadcast via realtime
+    if (realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'audio-state',
+        payload: { action, roomId: room.id }
+      });
+    }
+  };
+
+  // ENHANCED: Universal play/pause handler for players
+  const handleUniversalPlayPause = async () => {
+    if (gameEnded || !room?.current_song) {
+      console.log('🚫 Cannot control audio: game ended or missing data');
+      return;
+    }
+
+    console.log('🔊 PLAYER: Universal audio control triggered');
+
+    const newAction = isPlaying ? 'pause' : 'play';
+    
+    // Broadcast to host immediately
+    if (audioChannelRef.current) {
+      audioChannelRef.current.postMessage({
+        action: newAction,
+        roomId: room.id,
+        timestamp: Date.now()
+      });
+    }
+
+    // Also send via realtime for instant response
+    if (realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'audio-control',
+        payload: { action: newAction, roomId: room.id }
+      });
+    }
+
+    // Update local state optimistically
+    setIsPlaying(!isPlaying);
+    gameLogic.setIsPlaying(!isPlaying);
+  };
 
   // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
   useEffect(() => {
@@ -170,100 +336,6 @@ export function GamePlay({
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
   const isMyTurn = currentPlayer?.id === currentTurnPlayerId;
 
-  // ENHANCED: Host can now control audio too
-  const handlePlayPause = async () => {
-    if (gameEnded || !currentMysteryCard) {
-      console.log('🚫 Cannot play: game ended or missing data');
-      return;
-    }
-
-    // Allow both host and current turn player to control audio
-    if (!isHost && currentPlayer && currentPlayer.id !== currentTurnPlayerId) {
-      console.log('🚫 Not your turn and not host - audio control blocked');
-      return;
-    }
-
-    // Pause if already playing
-    if (isPlaying && currentAudioRef.current) {
-      console.log('🎵 Pausing audio');
-      currentAudioRef.current.pause();
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-      return;
-    }
-
-    // Get preview URL
-    const previewUrl = currentMysteryCard.preview_url;
-    
-    if (!previewUrl) {
-      console.log('❌ No preview URL available for playback');
-      return;
-    }
-    
-    console.log('🎵 AUDIO: Playing with enhanced compatibility');
-    
-    // Stop any existing audio
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    
-    // Create new audio element
-    const audio = new Audio(previewUrl);
-    audio.crossOrigin = 'anonymous';
-    audio.volume = 0.8;
-    audio.preload = 'auto';
-    
-    audio.muted = false;
-    audio.autoplay = false;
-    
-    currentAudioRef.current = audio;
-    
-    // Enhanced event handlers
-    audio.addEventListener('ended', () => {
-      console.log('🎵 Audio playback ended');
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-    });
-    
-    audio.addEventListener('error', (e) => {
-      console.error('🎵 Audio error:', e);
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-    });
-    
-    audio.addEventListener('canplay', () => {
-      console.log('🎵 Audio ready for playback');
-    });
-    
-    audio.addEventListener('loadstart', () => {
-      console.log('🎵 Audio loading started');
-    });
-    
-    try {
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        await playPromise;
-        console.log('🎵 AUDIO SUCCESS: Playing');
-        setIsPlaying(true);
-        gameLogic.setIsPlaying(true);
-      }
-    } catch (error) {
-      console.error('🎵 Audio play failed:', error);
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          console.warn('🎵 Audio blocked - user interaction required');
-        } else if (error.name === 'NotSupportedError') {
-          console.warn('🎵 Audio format not supported');
-        }
-      }
-    }
-  };
-
   // ENHANCED: Handle incorrect card placement by removing from timeline
   const handlePlaceCard = async (song: Song, position: number): Promise<{ success: boolean }> => {
     if (gameEnded || !currentPlayer) {
@@ -286,6 +358,7 @@ export function GamePlay({
         currentAudioRef.current.currentTime = 0;
       }
       setIsPlaying(false);
+      broadcastAudioState('pause');
 
       const result = await GameService.placeCardAndAdvanceTurn(
         room.id,
@@ -603,7 +676,7 @@ export function GamePlay({
             currentSong={currentMysteryCard}
             roomCode={room.lobby_code}
             isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
+            onPlayPause={handleUniversalPlayPause}
             onSubmitGuess={handleFiendModeGuess}
             gameEnded={gameEnded}
             roundNumber={currentRound}
@@ -628,7 +701,7 @@ export function GamePlay({
             currentSong={currentMysteryCard}
             roomCode={room.lobby_code}
             isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
+            onPlayPause={handleUniversalPlayPause}
             onPlaceCard={handleSprintModePlace}
             gameEnded={gameEnded}
             targetCards={room.gamemode_settings?.targetCards || 10}
@@ -647,7 +720,7 @@ export function GamePlay({
             players={activePlayers}
             mysteryCardRevealed={mysteryCardRevealed}
             isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
+            onPlayPause={handleHostAudioPlay}
             cardPlacementResult={cardPlacementResult}
             transitioning={false}
             highlightedGapIndex={highlightedGapIndex}
@@ -661,7 +734,7 @@ export function GamePlay({
             roomCode={room.lobby_code}
             isMyTurn={isMyTurn}
             isPlaying={isPlaying}
-            onPlayPause={handlePlayPause}
+            onPlayPause={handleUniversalPlayPause}
             onPlaceCard={handlePlaceCard}
             mysteryCardRevealed={mysteryCardRevealed}
             cardPlacementResult={cardPlacementResult}

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -11,7 +12,7 @@ interface MobilePlayerGameViewProps {
   roomCode: string;
   isMyTurn: boolean;
   isPlaying: boolean;
-  onPlayPause: () => void;
+  onPlayPause: () => void; // This is now the universal control
   onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean }>;
   mysteryCardRevealed: boolean;
   cardPlacementResult: { correct: boolean; song: Song } | null;
@@ -27,7 +28,7 @@ export default function MobilePlayerGameView({
   roomCode,
   isMyTurn,
   isPlaying,
-  onPlayPause,
+  onPlayPause, // Universal control - triggers audio on host
   onPlaceCard,
   mysteryCardRevealed,
   cardPlacementResult,
@@ -39,8 +40,6 @@ export default function MobilePlayerGameView({
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
-  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
 
   // Debug menu state (Easter egg)
   const [debugClickCount, setDebugClickCount] = useState(0);
@@ -50,7 +49,6 @@ export default function MobilePlayerGameView({
 
   // Refs for scrolling and performance optimization
   const timelineScrollRef = useRef<HTMLDivElement>(null);
-  const audioCleanupRef = useRef<() => void>();
 
   // Get sorted timeline songs for placement
   const timelineSongs = useMemo(() => {
@@ -96,68 +94,6 @@ export default function MobilePlayerGameView({
     return getArtistColor(song.deezer_artist);
   };
 
-  // Audio cleanup utility
-  const cleanupAudio = useCallback(() => {
-    if (previewAudio) {
-      previewAudio.pause();
-      previewAudio.currentTime = 0;
-      setPreviewAudio(null);
-      setPlayingPreviewId(null);
-    }
-  }, [previewAudio]);
-
-  // Store cleanup function in ref for useEffect cleanup
-  useEffect(() => {
-    audioCleanupRef.current = cleanupAudio;
-  }, [cleanupAudio]);
-
-  // Handle song preview with error handling
-  const handleSongPreview = useCallback(async (song: Song) => {
-    try {
-      setError(null);
-      
-      if (playingPreviewId === song.id) {
-        cleanupAudio();
-        return;
-      }
-
-      cleanupAudio();
-
-      if (!song.preview_url) {
-        setError('Preview not available for this song');
-        return;
-      }
-
-      const audio = new Audio(song.preview_url);
-      audio.volume = 0.7;
-      
-      audio.onloadstart = () => setError(null);
-      audio.oncanplay = () => {
-        setPreviewAudio(audio);
-        setPlayingPreviewId(song.id);
-        audio.play().catch(err => {
-          console.error('Audio play failed:', err);
-          setError('Failed to play preview');
-          cleanupAudio();
-        });
-      };
-      audio.onended = () => {
-        setPlayingPreviewId(null);
-        setPreviewAudio(null);
-      };
-      audio.onerror = () => {
-        setError('Failed to load preview');
-        cleanupAudio();
-      };
-
-      audio.load();
-    } catch (err) {
-      console.error('Preview error:', err);
-      setError('Failed to play preview');
-      cleanupAudio();
-    }
-  }, [playingPreviewId, cleanupAudio]);
-
   // Handle card placement with error handling
   const handlePlaceCard = async () => {
     if (isSubmitting || !isMyTurn || gameEnded) return;
@@ -190,7 +126,7 @@ export default function MobilePlayerGameView({
     return `Between ${beforeSong.release_year} and ${afterSong.release_year}`;
   };
 
-  // Center the selected position in the timeline view
+  // ENHANCED: Center the selected position in the timeline view with smooth scrolling
   const centerSelectedPosition = useCallback(() => {
     if (!timelineScrollRef.current) return;
     
@@ -199,11 +135,14 @@ export default function MobilePlayerGameView({
     
     // Calculate the position of the selected gap
     const cardWidth = 144; // w-36 = 144px
-    const gapWidth = 40; // gap between cards
-    const selectedGapPosition = selectedPosition * (cardWidth + gapWidth);
+    const gapWidth = 48; // w-12 = 48px (gap indicator width)
+    const spacing = 8; // gap-2 = 8px
     
-    // Center the selected position
-    const scrollPosition = selectedGapPosition - containerWidth / 2;
+    // Each position consists of a gap + card (except the last position which is just a gap)
+    const selectedGapPosition = selectedPosition * (cardWidth + gapWidth + spacing * 2);
+    
+    // Center the selected position in the viewport
+    const scrollPosition = selectedGapPosition - containerWidth / 2 + gapWidth / 2;
     
     container.scrollTo({
       left: Math.max(0, scrollPosition),
@@ -211,7 +150,7 @@ export default function MobilePlayerGameView({
     });
   }, [selectedPosition]);
 
-  // Handle position navigation with centering
+  // Handle position navigation with enhanced centering
   const navigatePosition = (direction: 'prev' | 'next') => {
     let newPosition = selectedPosition;
     
@@ -223,28 +162,29 @@ export default function MobilePlayerGameView({
     
     if (newPosition !== selectedPosition) {
       setSelectedPosition(newPosition);
+      console.log('📱 NAVIGATION: Moving to position', newPosition, 'of', totalPositions);
     }
   };
 
-  // Center view when position changes
+  // ENHANCED: Center view when position changes with immediate effect
   useEffect(() => {
     if (isMyTurn) {
-      centerSelectedPosition();
+      // Small delay to ensure DOM is updated
+      const timeoutId = setTimeout(() => {
+        centerSelectedPosition();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [selectedPosition, isMyTurn, centerSelectedPosition]);
-
-  // Cleanup audio on unmount or turn change
-  useEffect(() => {
-    return () => {
-      audioCleanupRef.current?.();
-    };
-  }, []);
 
   // Reset position when turn changes
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
-      setSelectedPosition(Math.floor(totalPositions / 2));
+      const initialPosition = Math.floor(totalPositions / 2);
+      setSelectedPosition(initialPosition);
       setError(null);
+      console.log('📱 TURN START: Setting initial position to', initialPosition);
     }
   }, [isMyTurn, gameEnded, totalPositions]);
 
@@ -254,6 +194,29 @@ export default function MobilePlayerGameView({
       onHighlightGap(selectedPosition);
     }
   }, [selectedPosition, isMyTurn, onHighlightGap]);
+
+  // ENHANCED: Update viewport information for host display
+  useEffect(() => {
+    if (onViewportChange && timelineScrollRef.current) {
+      const container = timelineScrollRef.current;
+      const scrollLeft = container.scrollLeft;
+      const containerWidth = container.clientWidth;
+      
+      const cardWidth = 144;
+      const gapWidth = 48;
+      const spacing = 8;
+      const itemWidth = cardWidth + gapWidth + spacing * 2;
+      
+      const startIndex = Math.floor(scrollLeft / itemWidth);
+      const endIndex = Math.min(startIndex + Math.ceil(containerWidth / itemWidth), totalPositions - 1);
+      
+      onViewportChange({
+        startIndex,
+        endIndex,
+        totalCards: timelineSongs.length
+      });
+    }
+  }, [selectedPosition, onViewportChange, timelineSongs.length, totalPositions]);
 
   // Show result overlay
   if (cardPlacementResult) {
@@ -342,40 +305,43 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* Vinyl Player Section */}
-        {isMyTurn && !gameEnded && (
-          <div className="flex-shrink-0 py-4">
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className={cn(
-                  "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
-                  isPlaying && "animate-spin"
-                )}>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
-                  </div>
-                  
-                  <div className="absolute inset-1 border border-white/10 rounded-full" />
-                  <div className="absolute inset-2 border border-white/10 rounded-full" />
-                  <div className="absolute inset-3 border border-white/10 rounded-full" />
+        {/* ENHANCED: Universal Vinyl Player Section - Always visible for universal control */}
+        <div className="flex-shrink-0 py-4">
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className={cn(
+                "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                isPlaying && "animate-spin"
+              )}>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
                 </div>
                 
-                <Button
-                  onClick={onPlayPause}
-                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
-                  disabled={!currentSong?.preview_url}
-                >
-                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                  </div>
-                </Button>
+                <div className="absolute inset-1 border border-white/10 rounded-full" />
+                <div className="absolute inset-2 border border-white/10 rounded-full" />
+                <div className="absolute inset-3 border border-white/10 rounded-full" />
               </div>
-            </div>
-            <div className="text-center mt-2">
-              <div className="text-white/80 text-sm font-medium">Mystery Song</div>
+              
+              <Button
+                onClick={onPlayPause} // ENHANCED: Universal control - triggers host audio
+                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                disabled={!currentSong?.preview_url}
+              >
+                <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                </div>
+              </Button>
             </div>
           </div>
-        )}
+          <div className="text-center mt-2">
+            <div className="text-white/80 text-sm font-medium">
+              {isMyTurn ? 'Mystery Song' : 'Universal Control'}
+            </div>
+            <div className="text-white/60 text-xs">
+              {isMyTurn ? 'Place this song in your timeline' : 'Control host audio playback'}
+            </div>
+          </div>
+        </div>
 
         {/* Content area */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -394,6 +360,9 @@ export default function MobilePlayerGameView({
                   <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
                     Wait for your turn
                   </div>
+                  <div className="text-white/50 text-sm">
+                    You can still control the audio above
+                  </div>
                 </div>
               </div>
             </div>
@@ -409,7 +378,7 @@ export default function MobilePlayerGameView({
                 </div>
               </div>
 
-              {/* Timeline display with horizontal scroll and centered selection */}
+              {/* ENHANCED: Timeline display with centered scrolling and better indicators */}
               <div className="flex-1 min-h-0">
                 {timelineSongs.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
@@ -420,32 +389,36 @@ export default function MobilePlayerGameView({
                   </div>
                 ) : (
                   <div className="h-full flex flex-col">
-                    {/* Timeline cards with smooth scrolling */}
+                    {/* Timeline cards with enhanced smooth scrolling and centering */}
                     <div className="flex-1 flex items-center justify-center">
                       <div 
                         ref={timelineScrollRef}
                         className="w-full overflow-x-auto pb-4 scroll-smooth"
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                        style={{ 
+                          scrollbarWidth: 'none', 
+                          msOverflowStyle: 'none',
+                          scrollBehavior: 'smooth'
+                        }}
                       >
-                        <div className="flex items-center gap-2 min-w-max px-4 justify-start">
-                          {/* Position indicator before first card */}
+                        <div className="flex items-center gap-2 min-w-max px-8 justify-start">
+                          {/* ENHANCED: Position indicator before first card with better styling */}
                           <div 
                             className={cn(
-                              "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
                               selectedPosition === 0 
-                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
-                                : "border-white/40 text-white/60 hover:border-white/60"
+                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
+                                : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
                             )}
                             onClick={() => setSelectedPosition(0)}
                           >
-                            {selectedPosition === 0 ? <Check className="w-5 h-5" /> : '+'}
+                            {selectedPosition === 0 ? <Check className="w-6 h-6" /> : '1'}
                           </div>
 
                           {timelineSongs.map((song, index) => {
                             const cardColor = getCardColor(song);
                             return (
                               <React.Fragment key={song.id}>
-                                {/* Song card */}
+                                {/* Song card with enhanced styling */}
                                 <div
                                   className={cn(
                                     "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
@@ -454,7 +427,6 @@ export default function MobilePlayerGameView({
                                     backgroundColor: cardColor.backgroundColor,
                                     backgroundImage: cardColor.backgroundImage
                                   }}
-                                  onClick={() => song.preview_url && handleSongPreview(song)}
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                                   
@@ -477,17 +449,17 @@ export default function MobilePlayerGameView({
                                   </div>
                                 </div>
                                 
-                                {/* Position indicator after card */}
+                                {/* ENHANCED: Position indicator after card with better visual feedback */}
                                 <div 
                                   className={cn(
-                                    "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
                                     selectedPosition === index + 1 
-                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
-                                      : "border-white/40 text-white/60 hover:border-white/60"
+                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
+                                      : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
                                   )}
                                   onClick={() => setSelectedPosition(index + 1)}
                                 >
-                                  {selectedPosition === index + 1 ? <Check className="w-5 h-5" /> : '+'}
+                                  {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : (index + 2).toString()}
                                 </div>
                               </React.Fragment>
                             );
@@ -496,24 +468,24 @@ export default function MobilePlayerGameView({
                       </div>
                     </div>
 
-                    {/* Position navigation */}
-                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                    {/* ENHANCED: Position navigation with better visual feedback */}
+                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
                       <Button
                         onClick={() => navigatePosition('prev')}
                         disabled={selectedPosition === 0}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         <ChevronLeft className="w-5 h-5 text-white" />
                       </Button>
                       
-                      <div className="text-white/80 text-xs text-center">
+                      <div className="text-white/80 text-sm text-center bg-white/10 backdrop-blur-xl rounded-lg px-3 py-1 border border-white/20">
                         Position {selectedPosition + 1} of {totalPositions}
                       </div>
                       
                       <Button
                         onClick={() => navigatePosition('next')}
                         disabled={selectedPosition === totalPositions - 1}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         <ChevronRight className="w-5 h-5 text-white" />
                       </Button>
@@ -528,7 +500,7 @@ export default function MobilePlayerGameView({
         {/* Error display */}
         {error && (
           <div className="flex-shrink-0 mx-4 mb-4">
-            <div className="bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl text-center">
+            <div className="bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl text-center animate-in slide-in-from-bottom-2">
               {error}
             </div>
           </div>
