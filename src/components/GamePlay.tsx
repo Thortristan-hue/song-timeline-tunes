@@ -639,7 +639,7 @@ export function GamePlay({
   if (!gameReady || missingCurrentPlayer || noValidPlayers) {
     let errorMessage = "🚀 Optimized Setup...";
     let subMessage = "Preparing enhanced mobile gameplay with performance optimizations";
-    let showRefreshButton = false;
+    const showRefreshButton = false;
     let showRejoinButton = false;
     let errorLevel = "loading"; // "loading", "warning", "error"
 

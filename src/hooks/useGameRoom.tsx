@@ -71,20 +71,7 @@ export function useGameRoom() {
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setErrorState] = useState<string | null>(null);
-  
-  // CRITICAL FIX: Safe error setter that handles potential state issues
-  const setError = useCallback((errorMessage: string | null) => {
-    console.log('🚨 Setting error state:', errorMessage);
-    setErrorState(errorMessage);
-    if (errorMessage && toast) {
-      toast({
-        title: "Game Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  const [error, setError] = useState<string | null>(null);
   
   // Session and connection management
   const [sessionId] = useState(() => Math.random().toString(36).substring(2));
@@ -629,7 +616,7 @@ export function useGameRoom() {
     currentPlayer,
     isHost,
     isLoading,
-    error: errorState,
+    error,
     connectionStatus,
     
     // Actions
