@@ -9,7 +9,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { GamemodeDemo } from "./components/GamemodeDemo";
-import { TimelineTestDemo } from "./components/TimelineTestDemo";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +20,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/demo" element={<GamemodeDemo />} />
-            <Route path="/timeline-test" element={<TimelineTestDemo />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
