@@ -328,7 +328,7 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && (isHost || currentPlayer) && (
+          {gamePhase === 'playing' && room && (
             <GamePlay
               room={room}
               players={players}

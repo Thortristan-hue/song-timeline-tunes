@@ -636,7 +636,8 @@ export function GamePlay({
   const noValidPlayers = activePlayers.length === 0;
 
   // ENHANCED: Better error handling for various missing data scenarios with recovery options
-  if (!gameReady || missingCurrentPlayer || noValidPlayers) {
+  // For players: show game interface even if currentPlayer is temporarily missing, with fallback UI
+  if (!gameReady || noValidPlayers || (isHost && missingCurrentTurnPlayer)) {
     let errorMessage = "🚀 Optimized Setup...";
     let subMessage = "Preparing enhanced mobile gameplay with performance optimizations";
     const showRefreshButton = false;
