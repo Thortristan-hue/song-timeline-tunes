@@ -557,9 +557,22 @@ export function useGameRoom() {
   }, [currentPlayer, room]);
 
   const setCurrentSong = useCallback(async (song: Song) => {
-    if (!room || !isHost) return;
+    if (!room || !isHost) {
+      console.log('🎵 PATCH: Cannot set current song - missing room or not host', { 
+        hasRoom: !!room, 
+        isHost, 
+        roomId: room?.id 
+      });
+      return;
+    }
 
     try {
+      console.log('🎵 PATCH: Attempting to update current_song', {
+        roomId: room.id,
+        songTitle: song.deezer_title,
+        songArtist: song.deezer_artist
+      });
+
       const { data, error } = await supabase
         .from('game_rooms')
         .update({ current_song: convertSongToJson(song) })
@@ -567,12 +580,54 @@ export function useGameRoom() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('🎵 PATCH ERROR: Failed to update current_song', {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          roomId: room.id
+        });
+        throw error;
+      }
+
+      if (!data) {
+        console.error('🎵 PATCH ERROR: No data returned from update (PGRST116 - 0 rows updated)', {
+          roomId: room.id,
+          queryCondition: `id = ${room.id}`
+        });
+        
+        // Verify the room still exists
+        const { data: existingRoom, error: checkError } = await supabase
+          .from('game_rooms')
+          .select('id, lobby_code')
+          .eq('id', room.id)
+          .single();
+          
+        if (checkError || !existingRoom) {
+          console.error('🎵 PATCH VERIFICATION: Room no longer exists', {
+            roomId: room.id,
+            checkError: checkError?.message
+          });
+          setError('Game room no longer exists. Please create a new game.');
+          return;
+        } else {
+          console.log('🎵 PATCH VERIFICATION: Room exists but update failed', {
+            existingRoom,
+            roomId: room.id
+          });
+        }
+        
+        throw new Error(`Failed to update current song: no rows were updated (room ID: ${room.id})`);
+      }
       
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🎵 Current song updated successfully');
+      console.log('🎵 PATCH SUCCESS: Current song updated successfully', {
+        roomId: room.id,
+        newSong: song.deezer_title
+      });
     } catch (error) {
-      console.error('❌ Set current song error:', error);
+      console.error('🎵 PATCH CATCH: Set current song error:', error);
       setError(error instanceof Error ? error.message : 'Failed to set current song');
     }
   }, [room, isHost]);

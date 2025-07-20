@@ -194,13 +194,14 @@ export function GamePlay({
         gameLogic.setIsPlaying(false);
       });
 
-      // Load and play the audio
+      // CRITICAL FIX: Actually call audio.play() to start playback
       console.log('🔊 HOST: Attempting to load and play audio');
       audio.load(); // Explicitly load the audio
       
       // Wait a bit for loading then try to play
       setTimeout(async () => {
         try {
+          console.log('🔊 HOST: Calling audio.play()...');
           const playPromise = audio.play();
           if (playPromise !== undefined) {
             await playPromise;
@@ -211,6 +212,7 @@ export function GamePlay({
           
           // Try alternative approach - reset and retry once
           try {
+            console.log('🔊 HOST: Retrying audio play...');
             audio.currentTime = 0;
             await audio.play();
             console.log('🔊 HOST: Audio play retry succeeded');
@@ -218,6 +220,7 @@ export function GamePlay({
             console.error('🔊 HOST: Audio play retry also failed:', retryError);
             setIsPlaying(false);
             gameLogic.setIsPlaying(false);
+            broadcastAudioState('pause');
           }
         }
       }, 100);
