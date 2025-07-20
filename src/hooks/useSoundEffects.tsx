@@ -122,7 +122,8 @@ export function useSoundEffects() {
   const playGameStart = useCallback(async () => {
     // CRITICAL FIX: Completely non-blocking game start sound
     // This function must NEVER block game startup under any circumstances
-    setTimeout(async () => {
+    // Use Promise.resolve() to ensure immediate return
+    Promise.resolve().then(async () => {
       try {
         const played = await playAudioFile('game-start.mp3', 0.5);
         if (!played) {
@@ -142,9 +143,12 @@ export function useSoundEffects() {
         // Completely silent fallback - absolutely never block the game
         console.warn('🔊 Game start sound failed completely, continuing silently:', error);
       }
-    }, 0); // Immediate async execution, never blocks
+    }).catch(error => {
+      // Even Promise failures are caught to prevent any potential blocking
+      console.warn('🔊 Game start sound promise failed, continuing silently:', error);
+    });
     
-    // Always return immediately to prevent blocking
+    // Always return immediately resolved promise to prevent blocking
     return Promise.resolve();
   }, [playAudioFile, playPolishedTone]);
 

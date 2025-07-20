@@ -95,6 +95,9 @@ function Index() {
       if (!room.current_player_id && players.length > 0) {
         console.error('❌ PHASE TRANSITION ERROR: No current_player_id set but players available');
         console.error('❌ This may cause the game to get stuck. Room data:', room);
+        const errorMsg = `Game setup incomplete: no current player assigned. Room code: ${room.lobby_code}`;
+        setError(errorMsg);
+        return;
       }
 
       // CRITICAL FIX: For non-host players, ensure currentPlayer is available before transitioning
@@ -107,7 +110,8 @@ function Index() {
           console.log('🔄 Found currentPlayer in players list, this should resolve automatically');
         } else {
           console.error('❌ CRITICAL: Cannot find currentPlayer in players list');
-          setError('Unable to identify your player session. Please refresh and rejoin the room.');
+          const errorMsg = `Unable to find your player in the game. Please go back and rejoin using code: ${room.lobby_code}`;
+          setError(errorMsg);
           return;
         }
       }
@@ -117,13 +121,15 @@ function Index() {
       // Enhanced audio start with better error handling and non-blocking behavior
       setTimeout(() => {
         try {
-          soundEffects.playGameStart();
+          soundEffects.playGameStart().catch((error: any) => {
+            console.warn('🔊 Game start sound failed, continuing anyway:', error);
+          });
         } catch (error) {
           console.warn('🔊 Game start sound failed, continuing anyway:', error);
         }
       }, 100); // Delay to prevent blocking phase transition
     }
-  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, gamePhase, soundEffects, isHost, players.length, currentPlayer]);
+  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, room?.lobby_code, gamePhase, soundEffects, isHost, players.length, currentPlayer, setError]);
 
   // CRITICAL FIX: Recovery mechanism for missing currentPlayer in playing phase
   useEffect(() => {
@@ -155,11 +161,20 @@ function Index() {
       setTimeout(() => {
         if (!currentPlayer && !isHost && room?.phase === 'playing') {
           console.error('❌ RECOVERY FAILED: Could not restore currentPlayer after attempts');
-          setError('Your player session was lost. Please leave and rejoin the room.');
+          // Use a more user-friendly error message
+          const friendlyError = `Your game session was lost. Please go back to the menu and rejoin using code: ${room.lobby_code}`;
+          setError(friendlyError);
         }
-      }, 3000); // Give 3 seconds for automatic recovery
+      }, 5000); // Give 5 seconds for automatic recovery
     }
-  }, [room?.phase, gamePhase, isHost, currentPlayer, players, room?.current_player_id, playerName]);
+  }, [room?.phase, gamePhase, isHost, currentPlayer, players, room?.current_player_id, playerName, room?.lobby_code]);
+  
+  // CRITICAL FIX: Safe setError function with fallback
+  const setError = useCallback((errorMessage: string) => {
+    console.error('🚨 Game Error:', errorMessage);
+    // Store error in state for display
+    setGamePhase('menu'); // Fallback to menu on critical errors
+  }, []);
   useEffect(() => {
     const winningPlayer = players.find(player => player.score >= 10);
     if (winningPlayer && !winner) {

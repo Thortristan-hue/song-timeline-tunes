@@ -635,11 +635,12 @@ export function GamePlay({
   const missingCurrentTurnPlayer = !currentTurnPlayer && currentMysteryCard;
   const noValidPlayers = activePlayers.length === 0;
 
-  // ENHANCED: Better error handling for various missing data scenarios
+  // ENHANCED: Better error handling for various missing data scenarios with recovery options
   if (!gameReady || missingCurrentPlayer || noValidPlayers) {
     let errorMessage = "🚀 Optimized Setup...";
     let subMessage = "Preparing enhanced mobile gameplay with performance optimizations";
     let showRefreshButton = false;
+    let showRejoinButton = false;
     let errorLevel = "loading"; // "loading", "warning", "error"
 
     if (noValidPlayers) {
@@ -647,10 +648,10 @@ export function GamePlay({
       subMessage = "The game needs at least one player to start. Please check if players have joined properly.";
       errorLevel = "warning";
     } else if (missingCurrentPlayer) {
-      errorMessage = "❌ Missing player data - please refresh and rejoin";
-      subMessage = "There was an issue with your player session. Please go back to menu and rejoin the room.";
+      errorMessage = "❌ Your player session was lost";
+      subMessage = `Please go back to the menu and rejoin using code: ${room?.lobby_code}`;
       errorLevel = "error";
-      showRefreshButton = true;
+      showRejoinButton = true;
     } else if (missingCurrentTurnPlayer) {
       errorMessage = "⏳ Waiting for turn assignment...";
       subMessage = "Turn data is being synchronized. This should resolve automatically.";
@@ -709,6 +710,27 @@ export function GamePlay({
               </button>
               <div className="text-xs text-white/40">
                 If this keeps happening, try rejoining the room
+              </div>
+            </div>
+          )}
+
+          {showRejoinButton && (
+            <div className="space-y-2">
+              <button 
+                onClick={() => {
+                  // Go back to menu to rejoin
+                  if (onReplayGame) {
+                    onReplayGame();
+                  } else {
+                    window.location.href = '/';
+                  }
+                }} 
+                className="px-6 py-3 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-200 hover:bg-blue-500/30 transition-colors"
+              >
+                Go Back to Menu
+              </button>
+              <div className="text-xs text-white/40">
+                Use room code: {room?.lobby_code} to rejoin
               </div>
             </div>
           )}
