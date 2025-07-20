@@ -166,7 +166,7 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // ENHANCED: Center view when position changes with immediate effect
+  // ENHANCED: Center view when position changes with immediate effect (only during turn)
   useEffect(() => {
     if (isMyTurn) {
       // Small delay to ensure DOM is updated
@@ -178,7 +178,7 @@ export default function MobilePlayerGameView({
     }
   }, [selectedPosition, isMyTurn, centerSelectedPosition]);
 
-  // Reset position when turn changes
+  // Reset position when turn changes (only when it becomes player's turn)
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
       const initialPosition = Math.floor(totalPositions / 2);
@@ -188,14 +188,14 @@ export default function MobilePlayerGameView({
     }
   }, [isMyTurn, gameEnded, totalPositions]);
 
-  // Sync highlighted gap with host when position changes
+  // Sync highlighted gap with host when position changes (only during turn)
   useEffect(() => {
     if (isMyTurn && onHighlightGap) {
       onHighlightGap(selectedPosition);
     }
   }, [selectedPosition, isMyTurn, onHighlightGap]);
 
-  // ENHANCED: Update viewport information for host display
+  // ENHANCED: Update viewport information for host display (always update for timeline view)
   useEffect(() => {
     if (onViewportChange && timelineScrollRef.current) {
       const container = timelineScrollRef.current;
@@ -346,50 +346,39 @@ export default function MobilePlayerGameView({
         {/* Content area */}
         <div className="flex-1 flex flex-col min-h-0">
           
-          {/* Waiting screen */}
-          {!isMyTurn && !gameEnded && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
-                  <Music className="w-10 h-10 text-white/90 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">
-                    {currentTurnPlayer.name} is playing
-                  </div>
-                  <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
-                    Wait for your turn
-                  </div>
-                  <div className="text-white/50 text-sm">
-                    You can still control the audio above
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Game interface */}
-          {isMyTurn && !gameEnded && (
+          {/* Game interface - always show timeline, interactive elements only during turn */}
+          {!gameEnded && (
             <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
+              {/* Header section - always visible */}
               <div className="text-center mb-4">
-                <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
-                <div className="text-white/80 text-sm">
-                  {getPositionDescription(selectedPosition)}
+                <div className="text-white text-lg font-semibold mb-1">
+                  {isMyTurn ? 'Your Timeline' : `${currentPlayer.name}'s Timeline`}
                 </div>
+                {isMyTurn ? (
+                  <div className="text-white/80 text-sm">
+                    {getPositionDescription(selectedPosition)}
+                  </div>
+                ) : (
+                  <div className="text-white/80 text-sm">
+                    {currentTurnPlayer.name} is playing • You can view your timeline
+                  </div>
+                )}
               </div>
 
-              {/* ENHANCED: Timeline display with centered scrolling and better indicators */}
+              {/* Timeline display - always visible */}
               <div className="flex-1 min-h-0">
                 {timelineSongs.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center text-white/60">
                       <div className="text-lg mb-2">No cards yet</div>
-                      <div className="text-sm">Place your first card!</div>
+                      <div className="text-sm">
+                        {isMyTurn ? 'Place your first card!' : 'Waiting for your first card'}
+                      </div>
                     </div>
                   </div>
                 ) : (
                   <div className="h-full flex flex-col">
-                    {/* Timeline cards with enhanced smooth scrolling and centering */}
+                    {/* Timeline cards - always visible, interactive only during turn */}
                     <div className="flex-1 flex items-center justify-center">
                       <div 
                         ref={timelineScrollRef}
@@ -401,27 +390,30 @@ export default function MobilePlayerGameView({
                         }}
                       >
                         <div className="flex items-center gap-2 min-w-max px-8 justify-start">
-                          {/* ENHANCED: Position indicator before first card with better styling */}
-                          <div 
-                            className={cn(
-                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
-                              selectedPosition === 0 
-                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
-                                : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
-                            )}
-                            onClick={() => setSelectedPosition(0)}
-                          >
-                            {selectedPosition === 0 ? <Check className="w-6 h-6" /> : '1'}
-                          </div>
+                          {/* Position indicator before first card - only interactive during turn */}
+                          {isMyTurn && (
+                            <div 
+                              className={cn(
+                                "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
+                                selectedPosition === 0 
+                                  ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
+                                  : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
+                              )}
+                              onClick={() => setSelectedPosition(0)}
+                            >
+                              {selectedPosition === 0 ? <Check className="w-6 h-6" /> : '1'}
+                            </div>
+                          )}
 
                           {timelineSongs.map((song, index) => {
                             const cardColor = getCardColor(song);
                             return (
                               <React.Fragment key={song.id}>
-                                {/* Song card with enhanced styling */}
+                                {/* Song card - always visible */}
                                 <div
                                   className={cn(
-                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 shadow-lg relative flex-shrink-0",
+                                    isMyTurn ? "hover:scale-105 active:scale-95 cursor-pointer" : "opacity-90"
                                   )}
                                   style={{ 
                                     backgroundColor: cardColor.backgroundColor,
@@ -449,18 +441,20 @@ export default function MobilePlayerGameView({
                                   </div>
                                 </div>
                                 
-                                {/* ENHANCED: Position indicator after card with better visual feedback */}
-                                <div 
-                                  className={cn(
-                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
-                                    selectedPosition === index + 1 
-                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
-                                      : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
-                                  )}
-                                  onClick={() => setSelectedPosition(index + 1)}
-                                >
-                                  {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : (index + 2).toString()}
-                                </div>
+                                {/* Position indicator after card - only interactive during turn */}
+                                {isMyTurn && (
+                                  <div 
+                                    className={cn(
+                                      "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
+                                      selectedPosition === index + 1 
+                                        ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
+                                        : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
+                                    )}
+                                    onClick={() => setSelectedPosition(index + 1)}
+                                  >
+                                    {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : (index + 2).toString()}
+                                  </div>
+                                )}
                               </React.Fragment>
                             );
                           })}
@@ -468,28 +462,44 @@ export default function MobilePlayerGameView({
                       </div>
                     </div>
 
-                    {/* ENHANCED: Position navigation with better visual feedback */}
-                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
-                      <Button
-                        onClick={() => navigatePosition('prev')}
-                        disabled={selectedPosition === 0}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        <ChevronLeft className="w-5 h-5 text-white" />
-                      </Button>
-                      
-                      <div className="text-white/80 text-sm text-center bg-white/10 backdrop-blur-xl rounded-lg px-3 py-1 border border-white/20">
-                        Position {selectedPosition + 1} of {totalPositions}
+                    {/* Position navigation - only during turn */}
+                    {isMyTurn && (
+                      <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                        <Button
+                          onClick={() => navigatePosition('prev')}
+                          disabled={selectedPosition === 0}
+                          className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronLeft className="w-5 h-5 text-white" />
+                        </Button>
+                        
+                        <div className="text-white/80 text-sm text-center bg-white/10 backdrop-blur-xl rounded-lg px-3 py-1 border border-white/20">
+                          Position {selectedPosition + 1} of {totalPositions}
+                        </div>
+                        
+                        <Button
+                          onClick={() => navigatePosition('next')}
+                          disabled={selectedPosition === totalPositions - 1}
+                          className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          <ChevronRight className="w-5 h-5 text-white" />
+                        </Button>
                       </div>
-                      
-                      <Button
-                        onClick={() => navigatePosition('next')}
-                        disabled={selectedPosition === totalPositions - 1}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        <ChevronRight className="w-5 h-5 text-white" />
-                      </Button>
-                    </div>
+                    )}
+
+                    {/* Waiting state indicator when not turn */}
+                    {!isMyTurn && (
+                      <div className="pt-4 border-t border-white/20">
+                        <div className="text-center">
+                          <div className="w-12 h-12 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30 mb-3">
+                            <Music className="w-6 h-6 text-white/90 animate-pulse" />
+                          </div>
+                          <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
+                            {currentTurnPlayer.name} is playing
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -506,7 +516,7 @@ export default function MobilePlayerGameView({
           </div>
         )}
 
-        {/* Action button */}
+        {/* Action button - only during player's turn */}
         {isMyTurn && !gameEnded && (
           <div className="flex-shrink-0 pt-4">
             <Button
