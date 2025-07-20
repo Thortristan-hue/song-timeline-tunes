@@ -19,6 +19,9 @@ function Index() {
   const [winner, setWinner] = useState<Player | null>(null);
   const [autoJoinCode, setAutoJoinCode] = useState<string>('');
 
+  // Local error state for phase transition errors
+  const [phaseTransitionError, setPhaseTransitionError] = useState<string | null>(null);
+
   const {
     room,
     players,
@@ -80,42 +83,68 @@ function Index() {
   // Enhanced room phase listener with better error handling and currentPlayer validation
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game');
-      console.log('🎮 Room data:', { 
+      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase - validating game start');
+      console.log('🎮 TRANSITION DATA:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         currentPlayerId: room.current_player_id,
         isHost,
         playersCount: players.length,
-        hasCurrentPlayer: !!currentPlayer
+        hasCurrentPlayer: !!currentPlayer,
+        playerNames: players.map(p => p.name)
       });
       
-      // Enhanced validation before transitioning
+      // CRITICAL FIX: Enhanced validation before transitioning with comprehensive checks
       if (!room.current_player_id && players.length > 0) {
         console.error('❌ PHASE TRANSITION ERROR: No current_player_id set but players available');
-        console.error('❌ This may cause the game to get stuck. Room data:', room);
+        console.error('❌ Room data:', room);
         const errorMsg = `Game setup incomplete: no current player assigned. Room code: ${room.lobby_code}`;
         console.error('🚨 Game Error:', errorMsg);
+        setPhaseTransitionError(errorMsg);
+        return;
+      }
+
+      // CRITICAL FIX: For all users, ensure there are players before transitioning
+      if (players.length === 0) {
+        console.error('❌ PHASE TRANSITION ERROR: No players found during phase transition');
+        console.error('❌ This indicates a critical state synchronization issue');
+        const errorMsg = `No players found in game. Please refresh and rejoin using code: ${room.lobby_code}`;
+        console.error('🚨 Game Error:', errorMsg);
+        setPhaseTransitionError(errorMsg);
         return;
       }
 
       // CRITICAL FIX: For non-host players, ensure currentPlayer is available before transitioning
-      if (!isHost && !currentPlayer && players.length > 0) {
-        console.warn('⚠️ PHASE TRANSITION WARNING: Missing currentPlayer for non-host, delaying transition');
+      if (!isHost && !currentPlayer) {
+        console.warn('⚠️ PHASE TRANSITION WARNING: Missing currentPlayer for non-host, attempting recovery');
         
         // Try to find current player based on room's current_player_id
         const foundCurrentPlayer = players.find(p => p.id === room.current_player_id);
         if (foundCurrentPlayer) {
-          console.log('🔄 Found currentPlayer in players list, this should resolve automatically');
+          console.log('🔄 RECOVERY: Found currentPlayer in players list:', foundCurrentPlayer.name);
+          // This should resolve automatically via the fetchPlayersOptimized function
         } else {
-          console.error('❌ CRITICAL: Cannot find currentPlayer in players list');
+          console.error('❌ CRITICAL RECOVERY ERROR: Cannot find currentPlayer in players list');
+          console.error('❌ Room current_player_id:', room.current_player_id);
+          console.error('❌ Available players:', players.map(p => ({ id: p.id, name: p.name })));
           const errorMsg = `Unable to find your player in the game. Please go back and rejoin using code: ${room.lobby_code}`;
           console.error('🚨 Game Error:', errorMsg);
+          setPhaseTransitionError(errorMsg);
           return;
         }
       }
+
+      // ENHANCED: Additional safety checks for game state consistency
+      if (isHost && players.length === 0) {
+        console.error('❌ HOST VALIDATION ERROR: Host sees no players but game is starting');
+        const errorMsg = `Host error: No players visible. Please restart the game.`;
+        console.error('🚨 Game Error:', errorMsg);
+        setPhaseTransitionError(errorMsg);
+        return;
+      }
       
+      console.log('✅ PHASE TRANSITION: All validations passed, transitioning to playing phase');
       setGamePhase('playing');
       
       // Enhanced audio start with better error handling and non-blocking behavior
@@ -129,7 +158,7 @@ function Index() {
         }
       }, 100); // Delay to prevent blocking phase transition
     }
-  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, room?.lobby_code, gamePhase, soundEffects, isHost, players.length, currentPlayer]);
+  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, room?.lobby_code, gamePhase, soundEffects, isHost, players.length, players, currentPlayer]);
 
   // CRITICAL FIX: Recovery mechanism for missing currentPlayer in playing phase
   useEffect(() => {
@@ -353,10 +382,10 @@ function Index() {
             />
           )}
 
-          {error && (
+          {(error || phaseTransitionError) && (
             <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm z-50">
               <div className="font-bold mb-1">Oops!</div>
-              <div className="text-sm">{error}</div>
+              <div className="text-sm">{error || phaseTransitionError}</div>
             </div>
           )}
         </div>

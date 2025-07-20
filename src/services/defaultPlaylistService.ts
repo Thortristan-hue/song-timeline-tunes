@@ -301,4 +301,7 @@ class DefaultPlaylistService {
   }
 }
 
-export const defaultPlaylistService = new DefaultPlaylistService();
+// LEXICAL DECLARATION FIX: Export as default to prevent hoisting issues
+const defaultPlaylistServiceInstance = new DefaultPlaylistService();
+export { defaultPlaylistServiceInstance as defaultPlaylistService };
+export default defaultPlaylistServiceInstance;

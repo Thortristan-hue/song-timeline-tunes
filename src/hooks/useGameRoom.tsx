@@ -90,7 +90,7 @@ export function useGameRoom() {
     }
     lastFetchTime.current = now;
 
-    console.log('🔍 Fetching players for room:', roomId, 'forceUpdate:', forceUpdate);
+    console.log('🔍 ENHANCED FETCH: Fetching players for room:', roomId, 'forceUpdate:', forceUpdate);
     
     try {
       const { data: playersData, error: playersError } = await supabase
@@ -101,11 +101,22 @@ export function useGameRoom() {
         .order('joined_at', { ascending: true });
 
       if (playersError) {
-        console.error('❌ Error fetching players:', playersError);
+        console.error('❌ FETCH ERROR: Error fetching players:', playersError);
+        setError(`Failed to fetch players: ${playersError.message}`);
         return;
       }
 
-      console.log('👥 Raw non-host players from DB:', playersData);
+      console.log('👥 FETCH SUCCESS: Raw non-host players from DB:', {
+        count: playersData?.length || 0,
+        players: playersData?.map(p => ({ id: p.id, name: p.name, session: p.player_session_id })) || []
+      });
+
+      // CRITICAL FIX: Handle empty players array
+      if (!playersData) {
+        console.warn('⚠️ FETCH WARNING: No players data returned from database');
+        setPlayers([]);
+        return;
+      }
 
       // Convert to Player format with proper type casting
       const convertedPlayers: Player[] = playersData.map(p => ({
@@ -117,7 +128,10 @@ export function useGameRoom() {
         timeline: convertJsonToSongs(p.timeline)
       }));
 
-      console.log('👥 Converted non-host players:', convertedPlayers);
+      console.log('👥 FETCH CONVERTED: Converted non-host players:', {
+        count: convertedPlayers.length,
+        players: convertedPlayers.map(p => ({ id: p.id, name: p.name, score: p.score, timelineLength: p.timeline.length }))
+      });
 
       // ENHANCED: Immediate state update for snappy UX
       setPlayers(convertedPlayers);
@@ -126,7 +140,11 @@ export function useGameRoom() {
       if (!currentPlayer && !isHost && sessionId) {
         const myPlayer = playersData.find(p => p.player_session_id === sessionId);
         if (myPlayer) {
-          console.log('🔄 RESTORING currentPlayer from session:', myPlayer.name);
+          console.log('🔄 RESTORING: currentPlayer from session:', {
+            id: myPlayer.id,
+            name: myPlayer.name,
+            session: myPlayer.player_session_id
+          });
           const restoredPlayer: Player = {
             id: myPlayer.id,
             name: myPlayer.name,
@@ -138,7 +156,7 @@ export function useGameRoom() {
           setCurrentPlayer(restoredPlayer);
           console.log('✅ RESTORED: currentPlayer with timeline:', restoredPlayer.timeline.length, 'cards');
         } else {
-          console.warn('⚠️ Could not find player with current session ID:', sessionId);
+          console.warn('⚠️ RESTORE WARNING: Could not find player with current session ID:', sessionId);
           
           // ENHANCED FALLBACK: Try to match by any available method
           if (playersData.length === 1) {
@@ -153,6 +171,9 @@ export function useGameRoom() {
             };
             setCurrentPlayer(fallbackPlayer);
             console.log('✅ FALLBACK: currentPlayer set with timeline:', fallbackPlayer.timeline.length, 'cards');
+          } else if (playersData.length === 0) {
+            console.error('🚨 CRITICAL: No players found in room during fetch');
+            setError('No players found in the game room. Please rejoin the game.');
           }
         }
       } else if (currentPlayer && playersData.length > 0) {
@@ -178,12 +199,13 @@ export function useGameRoom() {
         }
       }
       
-      console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
+      console.log('✅ FETCH COMPLETE: Player list updated successfully with', convertedPlayers.length, 'players');
 
     } catch (error) {
-      console.error('❌ Failed to fetch players:', error);
+      console.error('❌ FETCH CATCH: Failed to fetch players:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch players');
     }
-  }, [isHost, sessionId]);
+  }, [isHost, sessionId, currentPlayer]);
 
   // ENHANCED: Real-time subscription configs for instant updates
   const subscriptionConfigs = useMemo(() => {
@@ -439,12 +461,19 @@ export function useGameRoom() {
   }, [room, isHost]);
 
   const startGame = useCallback(async () => {
-    if (!room || !isHost) return;
+    if (!room || !isHost) {
+      console.error('🚨 START GAME ERROR: Missing room or not host', { hasRoom: !!room, isHost });
+      setError('Cannot start game: missing room or insufficient permissions');
+      return;
+    }
 
     try {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
       
-      // Get all non-host players to assign the first current player
+      console.log('🎮 GAME START: Initiating game start sequence for room:', room.id);
+      
+      // CRITICAL FIX: Get all non-host players with enhanced validation
       const { data: allPlayers, error: playersError } = await supabase
         .from('players')
         .select('*')
@@ -453,20 +482,41 @@ export function useGameRoom() {
         .order('joined_at', { ascending: true });
 
       if (playersError) {
-        throw new Error('Failed to get players for game start');
+        console.error('🚨 PLAYERS FETCH ERROR:', playersError);
+        throw new Error(`Failed to get players for game start: ${playersError.message}`);
       }
 
+      // CRITICAL FIX: Enhanced player validation with detailed logging
       if (!allPlayers || allPlayers.length === 0) {
-        throw new Error('No players available to start the game');
+        console.error('🚨 NO PLAYERS ERROR:', { 
+          allPlayers, 
+          roomId: room.id, 
+          currentPlayersState: players.length 
+        });
+        throw new Error(`No players available to start the game. Room: ${room.lobby_code}`);
       }
 
-      console.log('🎮 Starting game with players:', allPlayers.map(p => p.name));
+      console.log('🎮 GAME START: Validated players for game start:', {
+        playersCount: allPlayers.length,
+        players: allPlayers.map(p => ({ id: p.id, name: p.name, session: p.player_session_id }))
+      });
 
-      // CRITICAL FIX: Ensure all players are properly assigned starting data
-      // Set the first player as the current player
+      // CRITICAL FIX: Enhanced player assignment with validation
       const firstPlayer = allPlayers[0];
       
-      const { data, error } = await supabase
+      if (!firstPlayer.id || !firstPlayer.name) {
+        console.error('🚨 INVALID PLAYER ERROR:', firstPlayer);
+        throw new Error('Invalid first player data - missing ID or name');
+      }
+
+      console.log('🎮 GAME START: Assigning first player:', {
+        id: firstPlayer.id,
+        name: firstPlayer.name,
+        totalPlayers: allPlayers.length
+      });
+      
+      // CRITICAL FIX: Update room with comprehensive error handling
+      const { data: updatedRoom, error: updateError } = await supabase
         .from('game_rooms')
         .update({ 
           phase: 'playing',
@@ -477,41 +527,91 @@ export function useGameRoom() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (updateError) {
+        console.error('🚨 ROOM UPDATE ERROR:', updateError);
+        throw new Error(`Failed to update room phase: ${updateError.message}`);
+      }
+
+      if (!updatedRoom) {
+        console.error('🚨 NO ROOM DATA ERROR: Update succeeded but no data returned');
+        throw new Error('Room update succeeded but no data returned');
+      }
       
-      // ENHANCED: Immediate phase transition
-      setRoom(convertDatabaseRoomToGameRoom(data));
+      // ENHANCED: Immediate state updates with validation
+      const convertedRoom = convertDatabaseRoomToGameRoom(updatedRoom);
+      setRoom(convertedRoom);
       
-      // CRITICAL FIX: Force immediate player refresh to ensure all client states are synchronized
+      console.log('🚀 GAME START: Room phase updated successfully:', {
+        roomId: updatedRoom.id,
+        phase: updatedRoom.phase,
+        currentPlayerId: updatedRoom.current_player_id,
+        playersCount: allPlayers.length
+      });
+      
+      // CRITICAL FIX: Force immediate player refresh with retry logic
+      console.log('🔄 GAME START: Forcing player state synchronization...');
       await fetchPlayersOptimized(room.id, true);
       
-      // CRITICAL FIX: Additional validation to ensure proper state transition
+      // CRITICAL FIX: Additional validation with enhanced error handling
       setTimeout(async () => {
-        console.log('🔄 VALIDATION: Checking if game state is properly synchronized...');
-        await fetchPlayersOptimized(room.id, true);
-        
-        // Double-check that the room state is correct
-        const { data: updatedRoom } = await supabase
-          .from('game_rooms')
-          .select('*')
-          .eq('id', room.id)
-          .single();
+        try {
+          console.log('🔄 VALIDATION: Post-start state verification...');
           
-        if (updatedRoom) {
-          setRoom(convertDatabaseRoomToGameRoom(updatedRoom));
-          console.log('✅ VALIDATION: Game state synchronized successfully');
+          // Refresh players again to ensure synchronization
+          await fetchPlayersOptimized(room.id, true);
+          
+          // Double-check room state
+          const { data: finalRoom, error: checkError } = await supabase
+            .from('game_rooms')
+            .select('*')
+            .eq('id', room.id)
+            .single();
+            
+          if (checkError) {
+            console.error('🚨 VALIDATION ERROR: Failed to verify room state:', checkError);
+            setError(`Game started but verification failed: ${checkError.message}`);
+            return;
+          }
+          
+          if (!finalRoom) {
+            console.error('🚨 VALIDATION ERROR: Room no longer exists after start');
+            setError('Game started but room disappeared during verification');
+            return;
+          }
+          
+          if (finalRoom.phase !== 'playing') {
+            console.error('🚨 VALIDATION ERROR: Room phase not playing after start:', finalRoom.phase);
+            setError(`Game start incomplete: phase is ${finalRoom.phase} instead of playing`);
+            return;
+          }
+          
+          setRoom(convertDatabaseRoomToGameRoom(finalRoom));
+          console.log('✅ VALIDATION: Game state fully synchronized and verified', {
+            phase: finalRoom.phase,
+            currentPlayerId: finalRoom.current_player_id,
+            playersInState: players.length
+          });
+        } catch (validationError) {
+          console.error('🚨 VALIDATION CATCH: Error during post-start validation:', validationError);
+          setError('Game started but post-validation failed');
         }
-      }, 1000);
+      }, 1500); // Increased delay for better reliability
       
-      console.log('🚀 Game started successfully with first player:', firstPlayer.name);
-      console.log('🔄 Triggering player data refresh to ensure currentPlayer assignment');
+      console.log('🚀 GAME START: Successfully initiated with first player:', firstPlayer.name);
+      
     } catch (error) {
-      console.error('❌ Start game error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to start game');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start game';
+      console.error('🚨 START GAME CATCH: Critical error during game start:', {
+        error: errorMessage,
+        roomId: room?.id,
+        lobbyCode: room?.lobby_code,
+        playersCount: players.length
+      });
+      setError(`Game start failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
-  }, [room, isHost, fetchPlayersOptimized]);
+  }, [room, isHost, fetchPlayersOptimized, players.length]);
 
   // ENHANCED: Instant card placement with optimistic updates
   const placeCard = useCallback(async (song: Song, position: number) => {

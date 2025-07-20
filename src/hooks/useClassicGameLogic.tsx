@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import { defaultPlaylistService } from '@/services/defaultPlaylistService';
+import defaultPlaylistServiceInstance from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 
@@ -96,7 +96,7 @@ export function useClassicGameLogic(
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
       console.log(`🎯 Classic Mode: Loading ${MAX_SONGS_PER_SESSION} songs`);
-      const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
+      const optimizedSongs = await defaultPlaylistServiceInstance.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
         throw new Error('No songs with valid previews available');
