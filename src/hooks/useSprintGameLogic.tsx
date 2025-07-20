@@ -80,7 +80,7 @@ export function useSprintGameLogic(
         targetCards: roomData.gamemode_settings?.targetCards || 8
       }));
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.gamemode_settings?.targetCards]);
+  }, [roomData]);
 
   // Initialize game with optimized song loading and starting cards
   const initializeGame = useCallback(async () => {

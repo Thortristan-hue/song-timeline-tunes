@@ -65,7 +65,7 @@ export function GamePlay({
   // Audio management - ENHANCED FOR UNIVERSAL CONTROL
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChannelRef = useRef<BroadcastChannel | null>(null);
-  const realtimeChannelRef = useRef<any>(null);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Use appropriate game logic based on gamemode
   const gamemode = room?.gamemode || 'classic';
@@ -230,7 +230,7 @@ export function GamePlay({
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
     }
-  }, [isHost, room?.current_song?.preview_url, gameLogic, broadcastAudioState]);
+  }, [isHost, room?.current_song, gameLogic, broadcastAudioState]);
 
   const handleHostAudioPause = useCallback(() => {
     if (!isHost) return;

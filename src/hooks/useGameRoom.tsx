@@ -5,61 +5,74 @@ import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { useRealtimeSubscription, ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 
+// Type definitions for Supabase realtime payloads
+interface SupabaseRoomPayload {
+  new: Record<string, unknown>;
+  old?: Record<string, unknown>;
+}
+
+interface SupabasePlayerPayload {
+  new: Record<string, unknown>;
+  old?: Record<string, unknown>;
+}
+
 // ENHANCED: Reduced debounce for snappier updates
 const PLAYER_UPDATE_DEBOUNCE = 500; // Reduced from 1500ms
 
 // Helper function to safely convert Json to Song[]
-const convertJsonToSongs = (jsonData: any): Song[] => {
+const convertJsonToSongs = (jsonData: unknown): Song[] => {
   if (!Array.isArray(jsonData)) return [];
-  return jsonData.filter(item => 
+  return jsonData.filter((item): item is Song => 
     item && 
     typeof item === 'object' && 
-    item.id && 
-    item.deezer_title
-  ) as Song[];
+    'id' in item &&
+    'deezer_title' in item &&
+    typeof (item as Song).id === 'string' &&
+    typeof (item as Song).deezer_title === 'string'
+  );
 };
 
 // Helper function to safely convert Json to GameModeSettings
-const convertJsonToGameModeSettings = (jsonData: any): GameModeSettings => {
+const convertJsonToGameModeSettings = (jsonData: unknown): GameModeSettings => {
   if (!jsonData || typeof jsonData !== 'object') return {};
   return jsonData as GameModeSettings;
 };
 
 // Helper function to safely convert database room to GameRoom
-const convertDatabaseRoomToGameRoom = (dbRoom: any): GameRoom => {
+const convertDatabaseRoomToGameRoom = (dbRoom: Record<string, unknown>): GameRoom => {
   // Ensure phase is properly typed - database only has 'lobby', 'playing', 'finished'
   const validPhase = dbRoom.phase as 'lobby' | 'playing' | 'finished';
   
   return {
-    id: dbRoom.id,
-    lobby_code: dbRoom.lobby_code,
-    host_id: dbRoom.host_id,
-    host_name: dbRoom.host_name,
+    id: dbRoom.id as string,
+    lobby_code: dbRoom.lobby_code as string,
+    host_id: dbRoom.host_id as string,
+    host_name: dbRoom.host_name as string,
     phase: validPhase,
     gamemode: dbRoom.gamemode as GameMode,
     gamemode_settings: convertJsonToGameModeSettings(dbRoom.gamemode_settings),
     songs: convertJsonToSongs(dbRoom.songs),
-    created_at: dbRoom.created_at,
-    updated_at: dbRoom.updated_at,
-    current_turn: dbRoom.current_turn,
+    created_at: dbRoom.created_at as string,
+    updated_at: dbRoom.updated_at as string,
+    current_turn: dbRoom.current_turn as number,
     current_song: dbRoom.current_song ? dbRoom.current_song as Song : null,
-    current_player_id: dbRoom.current_player_id
+    current_player_id: dbRoom.current_player_id as string | null
   };
 };
 
 // Helper function to safely convert Song to Json
-const convertSongToJson = (song: Song): any => {
-  return song as any;
+const convertSongToJson = (song: Song): Record<string, unknown> => {
+  return song as Record<string, unknown>;
 };
 
 // Helper function to safely convert Song[] to Json
-const convertSongsToJson = (songs: Song[]): any => {
-  return songs as any;
+const convertSongsToJson = (songs: Song[]): Record<string, unknown>[] => {
+  return songs as Record<string, unknown>[];
 };
 
 // Helper function to safely convert GameModeSettings to Json
-const convertGameModeSettingsToJson = (settings: GameModeSettings): any => {
-  return settings as any;
+const convertGameModeSettingsToJson = (settings: GameModeSettings): Record<string, unknown> => {
+  return settings as Record<string, unknown>;
 };
 
 export function useGameRoom() {
@@ -216,7 +229,7 @@ export function useGameRoom() {
         channelName: `room-${room.id}`,
         table: 'game_rooms',
         filter: `id=eq.${room.id}`,
-        onUpdate: (payload: any) => {
+        onUpdate: (payload: SupabaseRoomPayload) => {
           console.log('🏠 REALTIME: Room updated instantly:', payload.new);
           setRoom(convertDatabaseRoomToGameRoom(payload.new));
         }
@@ -225,22 +238,22 @@ export function useGameRoom() {
         channelName: `players-${room.id}`,
         table: 'players', 
         filter: `room_id=eq.${room.id}`,
-        onInsert: (payload: any) => {
+        onInsert: (payload: SupabasePlayerPayload) => {
           console.log('👤 REALTIME: Player joined instantly:', payload.new);
           fetchPlayersOptimized(room.id, true);
         },
-        onUpdate: (payload: any) => {
+        onUpdate: (payload: SupabasePlayerPayload) => {
           console.log('👤 REALTIME: Player updated instantly:', payload.new);
           
           // CRITICAL FIX: Update currentPlayer if this update is for the current player
           if (currentPlayer && payload.new.id === currentPlayer.id) {
             console.log('🔄 REALTIME: Updating currentPlayer timeline from database:', payload.new);
             const updatedCurrentPlayer: Player = {
-              id: payload.new.id,
-              name: payload.new.name,
-              color: payload.new.color,
-              timelineColor: payload.new.timeline_color,
-              score: payload.new.score,
+              id: payload.new.id as string,
+              name: payload.new.name as string,
+              color: payload.new.color as string,
+              timelineColor: payload.new.timeline_color as string,
+              score: payload.new.score as number,
               timeline: convertJsonToSongs(payload.new.timeline)
             };
             setCurrentPlayer(updatedCurrentPlayer);
@@ -249,7 +262,7 @@ export function useGameRoom() {
           
           fetchPlayersOptimized(room.id, true);
         },
-        onDelete: (payload: any) => {
+        onDelete: (payload: SupabasePlayerPayload) => {
           console.log('👤 REALTIME: Player left instantly:', payload.old);
           fetchPlayersOptimized(room.id, true);
         }
