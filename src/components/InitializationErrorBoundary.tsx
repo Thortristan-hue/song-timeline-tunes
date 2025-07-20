@@ -35,14 +35,23 @@ export class InitializationErrorBoundary extends Component<Props, State> {
     console.error('🚨 INITIALIZATION ERROR BOUNDARY:', error);
     console.error('🚨 ERROR INFO:', errorInfo);
     
-    // Check if this is the specific lexical declaration error
+    // Enhanced debugging for lexical declaration errors
     if (error.message.includes("can't access lexical declaration") || 
-        error.message.includes("before initialization")) {
+        error.message.includes("before initialization") ||
+        error.message.includes("Cannot access") ||
+        error.name === "ReferenceError") {
       console.error('🚨 DETECTED LEXICAL DECLARATION ERROR - Attempting recovery');
+      console.error('🚨 ERROR DETAILS:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack
+      });
       
-      // Log additional debugging information
-      console.error('🚨 ERROR STACK:', error.stack);
-      console.error('🚨 COMPONENT STACK:', errorInfo.componentStack);
+      // Check if this is specifically the 'le' variable issue
+      if (error.message.includes("'le'") || error.message.includes(" le ")) {
+        console.error('🚨 DETECTED "le" VARIABLE ISSUE - This is likely a minification/temporal dead zone problem');
+      }
       
       // Attempt automatic recovery for this specific error
       this.attemptRecovery();
@@ -101,20 +110,28 @@ export class InitializationErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       const isLexicalError = this.state.error?.message.includes("can't access lexical declaration") || 
-                            this.state.error?.message.includes("before initialization");
+                            this.state.error?.message.includes("before initialization") ||
+                            this.state.error?.message.includes("Cannot access") ||
+                            this.state.error?.name === "ReferenceError";
+      
+      const isLeVariableError = this.state.error?.message.includes("'le'") || 
+                               this.state.error?.message.includes(" le ");
       
       return (
         <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-red-900/50 backdrop-blur-xl rounded-2xl border border-red-500/30 p-6 text-center">
             <div className="text-6xl mb-4">🚨</div>
             <h2 className="text-2xl font-bold text-white mb-4">
-              {isLexicalError ? 'Initialization Error' : 'Something Went Wrong'}
+              {isLexicalError ? 'JavaScript Loading Error' : 'Something Went Wrong'}
             </h2>
             
             {isLexicalError ? (
               <div className="space-y-4">
                 <p className="text-red-200 text-sm leading-relaxed">
-                  The game encountered a loading error. This is usually caused by a timing issue during initialization.
+                  {isLeVariableError 
+                    ? 'The game encountered a variable access error. This is likely due to a timing issue during JavaScript initialization.'
+                    : 'The game encountered a loading error. This is usually caused by a timing issue during initialization.'
+                  }
                 </p>
                 
                 {this.state.retryCount < MAX_RETRIES ? (
@@ -132,7 +149,7 @@ export class InitializationErrorBoundary extends Component<Props, State> {
                 ) : (
                   <div className="space-y-3">
                     <p className="text-red-200 text-xs">
-                      Auto-recovery failed. Please try one of the options below:
+                      Auto-recovery failed. This might be a browser compatibility issue or network problem.
                     </p>
                     
                     <div className="flex gap-2">
@@ -149,6 +166,14 @@ export class InitializationErrorBoundary extends Component<Props, State> {
                         Reload Page
                       </button>
                     </div>
+                    
+                    {isLeVariableError && (
+                      <div className="mt-3 p-3 bg-blue-900/30 border border-blue-500/30 rounded-lg">
+                        <p className="text-blue-200 text-xs">
+                          💡 If this keeps happening, try using a different browser or clearing your browser cache.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -181,6 +206,11 @@ export class InitializationErrorBoundary extends Component<Props, State> {
                 <pre className="text-red-200 text-xs mt-2 p-2 bg-red-900/30 rounded overflow-auto max-h-32">
                   {this.state.error.stack}
                 </pre>
+                {this.state.errorInfo?.componentStack && (
+                  <pre className="text-red-200 text-xs mt-2 p-2 bg-red-900/30 rounded overflow-auto max-h-32">
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                )}
               </details>
             )}
           </div>

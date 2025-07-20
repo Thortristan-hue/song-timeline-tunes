@@ -3,7 +3,10 @@
  * Handles dynamic viewport height calculation and iOS safe areas
  */
 
-let isInitialized = false;
+import { safeVariableAccess, ensureInitialization } from './safeVariableAccess';
+
+// Initialize flag with explicit type and value to prevent temporal dead zone issues
+let isInitialized: boolean = false
 
 /**
  * Calculate and set viewport height CSS variables
@@ -46,16 +49,26 @@ function calculateViewportHeight() {
 /**
  * Handle resize events with debouncing
  */
-let resizeTimeout: NodeJS.Timeout | null = null;
-function handleResize() {
+// Initialize timeout with explicit type and null value to prevent temporal dead zone issues
+let resizeTimeout: NodeJS.Timeout | null = null
+
+function handleResize(): void {
   try {
-    if (resizeTimeout) {
-      clearTimeout(resizeTimeout);
-    }
-    
-    resizeTimeout = setTimeout(() => {
-      calculateViewportHeight();
-    }, 100);
+    // Ensure resizeTimeout is properly accessed with safe access
+    safeVariableAccess(
+      () => {
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
+        }
+        
+        resizeTimeout = setTimeout(() => {
+          calculateViewportHeight();
+        }, 100);
+        return true;
+      },
+      false,
+      'viewport handleResize'
+    );
   } catch (error) {
     console.warn('🔧 Viewport resize handler failed:', error);
   }
@@ -79,9 +92,16 @@ function handleOrientationChange() {
  * Initialize viewport height calculation
  * Sets up event listeners and calculates initial values
  */
-export function initializeViewportHeight() {
+export async function initializeViewportHeight(): Promise<void> {
   try {
-    if (isInitialized) {
+    // Ensure initialization timing with safe access
+    const initialized = safeVariableAccess(
+      () => isInitialized,
+      false,
+      'viewport isInitialized check'
+    );
+    
+    if (initialized) {
       console.log('🔧 Viewport height already initialized, skipping');
       return;
     }
@@ -93,6 +113,9 @@ export function initializeViewportHeight() {
     }
     
     console.log('🔧 VIEWPORT: Starting initialization...');
+    
+    // Small delay to ensure all variables are initialized
+    await ensureInitialization(5);
     
     // Calculate initial viewport height
     calculateViewportHeight();
@@ -116,7 +139,16 @@ export function initializeViewportHeight() {
       console.warn('🔧 VIEWPORT: Visual viewport listener failed:', error);
     }
     
-    isInitialized = true;
+    // Safely update initialization flag
+    safeVariableAccess(
+      () => {
+        isInitialized = true;
+        return true;
+      },
+      false,
+      'viewport isInitialized set'
+    );
+    
     console.log('✅ VIEWPORT: Initialization completed successfully');
     
   } catch (error) {
@@ -128,8 +160,14 @@ export function initializeViewportHeight() {
 /**
  * Clean up event listeners
  */
-export function cleanupViewportHeight() {
-  if (!isInitialized) {
+export function cleanupViewportHeight(): void {
+  const initialized = safeVariableAccess(
+    () => isInitialized,
+    false,
+    'viewport cleanup isInitialized check'
+  );
+  
+  if (!initialized) {
     return;
   }
   
@@ -140,12 +178,19 @@ export function cleanupViewportHeight() {
     window.visualViewport?.removeEventListener('resize', handleResize);
   }
   
-  if (resizeTimeout) {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = null;
-  }
+  safeVariableAccess(
+    () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+      }
+      isInitialized = false;
+      return true;
+    },
+    false,
+    'viewport cleanup'
+  );
   
-  isInitialized = false;
   console.log('Viewport height calculation cleaned up');
 }
 
