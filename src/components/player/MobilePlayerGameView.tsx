@@ -52,21 +52,41 @@ export default function MobilePlayerGameView({
 
   // Get sorted timeline songs for placement
   const timelineSongs = useMemo(() => {
+    console.log('📱 TIMELINE DEBUG: Evaluating timeline songs...', {
+      hasCurrentPlayer: !!currentPlayer,
+      currentPlayerName: currentPlayer?.name,
+      hasTimeline: !!currentPlayer?.timeline,
+      timelineArray: currentPlayer?.timeline,
+      timelineLength: currentPlayer?.timeline?.length,
+      timelineType: typeof currentPlayer?.timeline
+    });
+    
     if (!currentPlayer) {
-      console.log('📱 TIMELINE: No currentPlayer available');
+      console.log('📱 TIMELINE ERROR: No currentPlayer available');
       return [];
     }
     
     if (!currentPlayer.timeline) {
-      console.log('📱 TIMELINE: currentPlayer.timeline is null/undefined');
+      console.log('📱 TIMELINE ERROR: currentPlayer.timeline is null/undefined', {
+        currentPlayer,
+        timelineValue: currentPlayer.timeline
+      });
+      return [];
+    }
+
+    if (!Array.isArray(currentPlayer.timeline)) {
+      console.log('📱 TIMELINE ERROR: currentPlayer.timeline is not an array', {
+        timelineType: typeof currentPlayer.timeline,
+        timelineValue: currentPlayer.timeline
+      });
       return [];
     }
     
     const validSongs = currentPlayer.timeline
-      .filter(song => song !== null)
+      .filter(song => song !== null && song !== undefined && song.id)
       .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
       
-    console.log(`📱 TIMELINE: Player ${currentPlayer.name} has ${validSongs.length} timeline cards:`, 
+    console.log(`📱 TIMELINE SUCCESS: Player ${currentPlayer.name} has ${validSongs.length} timeline cards:`, 
       validSongs.map(s => `${s.deezer_title} (${s.release_year})`));
     
     return validSongs;

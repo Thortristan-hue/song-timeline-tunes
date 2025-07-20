@@ -93,10 +93,21 @@ export function HostCurrentPlayerTimeline({
     }
   }, [cardPlacementResult]);
 
+  // Add debugging for host timeline
+  console.log('🖥️ HOST TIMELINE DEBUG:', {
+    playerName: currentTurnPlayer.name,
+    hasTimeline: !!currentTurnPlayer.timeline,
+    timelineLength: currentTurnPlayer.timeline?.length,
+    timelineArray: currentTurnPlayer.timeline,
+    timelineType: typeof currentTurnPlayer.timeline,
+    isTransitioning,
+    visibleCards
+  });
+
   return (
     <div className="flex justify-center items-center w-full z-20">
       <div className="flex gap-2 items-center overflow-x-auto pb-2">
-        {currentTurnPlayer.timeline.length === 0 ? (
+        {!currentTurnPlayer.timeline || currentTurnPlayer.timeline.length === 0 ? (
           <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
             <Music className="h-8 w-8 opacity-50" />
             <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
