@@ -80,59 +80,6 @@ export function useGameRoom() {
   const lastFetchTime = useRef<number>(0);
   const fetchCooldown = 1000; // 1 second cooldown between fetches
 
-  // ENHANCED: Real-time subscription configs for instant updates
-  const subscriptionConfigs = useMemo(() => {
-    if (!room?.id) return [];
-    
-    return [
-      {
-        channelName: `room-${room.id}`,
-        table: 'game_rooms',
-        filter: `id=eq.${room.id}`,
-        onUpdate: (payload: any) => {
-          console.log('🏠 REALTIME: Room updated instantly:', payload.new);
-          setRoom(convertDatabaseRoomToGameRoom(payload.new));
-        }
-      },
-      {
-        channelName: `players-${room.id}`,
-        table: 'players', 
-        filter: `room_id=eq.${room.id}`,
-        onInsert: (payload: any) => {
-          console.log('👤 REALTIME: Player joined instantly:', payload.new);
-          fetchPlayersOptimized(room.id, true);
-        },
-        onUpdate: (payload: any) => {
-          console.log('👤 REALTIME: Player updated instantly:', payload.new);
-          
-          // CRITICAL FIX: Update currentPlayer if this update is for the current player
-          if (currentPlayer && payload.new.id === currentPlayer.id) {
-            console.log('🔄 REALTIME: Updating currentPlayer timeline from database:', payload.new);
-            const updatedCurrentPlayer: Player = {
-              id: payload.new.id,
-              name: payload.new.name,
-              color: payload.new.color,
-              timelineColor: payload.new.timeline_color,
-              score: payload.new.score,
-              timeline: convertJsonToSongs(payload.new.timeline)
-            };
-            setCurrentPlayer(updatedCurrentPlayer);
-            console.log('✅ REALTIME: currentPlayer timeline updated:', updatedCurrentPlayer.timeline.length, 'cards');
-          }
-          
-          fetchPlayersOptimized(room.id, true);
-        },
-        onDelete: (payload: any) => {
-          console.log('👤 REALTIME: Player left instantly:', payload.old);
-          fetchPlayersOptimized(room.id, true);
-        }
-      }
-    ];
-  }, [room?.id, currentPlayer, fetchPlayersOptimized]);
-
-  // ENHANCED: Real-time subscription with instant updates
-  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
-
   // ENHANCED: Optimized player fetching with rate limiting and currentPlayer restoration
   const fetchPlayersOptimized = useCallback(async (roomId: string, forceUpdate = false) => {
     // Rate limiting to prevent spam
@@ -236,7 +183,60 @@ export function useGameRoom() {
     } catch (error) {
       console.error('❌ Failed to fetch players:', error);
     }
-  }, [currentPlayer, isHost, sessionId]);
+  }, [isHost, sessionId]);
+
+  // ENHANCED: Real-time subscription configs for instant updates
+  const subscriptionConfigs = useMemo(() => {
+    if (!room?.id) return [];
+    
+    return [
+      {
+        channelName: `room-${room.id}`,
+        table: 'game_rooms',
+        filter: `id=eq.${room.id}`,
+        onUpdate: (payload: any) => {
+          console.log('🏠 REALTIME: Room updated instantly:', payload.new);
+          setRoom(convertDatabaseRoomToGameRoom(payload.new));
+        }
+      },
+      {
+        channelName: `players-${room.id}`,
+        table: 'players', 
+        filter: `room_id=eq.${room.id}`,
+        onInsert: (payload: any) => {
+          console.log('👤 REALTIME: Player joined instantly:', payload.new);
+          fetchPlayersOptimized(room.id, true);
+        },
+        onUpdate: (payload: any) => {
+          console.log('👤 REALTIME: Player updated instantly:', payload.new);
+          
+          // CRITICAL FIX: Update currentPlayer if this update is for the current player
+          if (currentPlayer && payload.new.id === currentPlayer.id) {
+            console.log('🔄 REALTIME: Updating currentPlayer timeline from database:', payload.new);
+            const updatedCurrentPlayer: Player = {
+              id: payload.new.id,
+              name: payload.new.name,
+              color: payload.new.color,
+              timelineColor: payload.new.timeline_color,
+              score: payload.new.score,
+              timeline: convertJsonToSongs(payload.new.timeline)
+            };
+            setCurrentPlayer(updatedCurrentPlayer);
+            console.log('✅ REALTIME: currentPlayer timeline updated:', updatedCurrentPlayer.timeline.length, 'cards');
+          }
+          
+          fetchPlayersOptimized(room.id, true);
+        },
+        onDelete: (payload: any) => {
+          console.log('👤 REALTIME: Player left instantly:', payload.old);
+          fetchPlayersOptimized(room.id, true);
+        }
+      }
+    ];
+  }, [room?.id, currentPlayer, fetchPlayersOptimized]);
+
+  // ENHANCED: Real-time subscription with instant updates
+  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
   // ENHANCED: Debounced player updates with immediate application
   useEffect(() => {
