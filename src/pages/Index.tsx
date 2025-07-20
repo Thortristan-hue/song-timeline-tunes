@@ -85,14 +85,27 @@ function Index() {
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
+        currentPlayerId: room.current_player_id,
         isHost,
         playersCount: players.length 
       });
       
+      // Enhanced validation before transitioning
+      if (!room.current_player_id && players.length > 0) {
+        console.error('❌ PHASE TRANSITION ERROR: No current_player_id set but players available');
+        console.error('❌ This may cause the game to get stuck. Room data:', room);
+      }
+      
       setGamePhase('playing');
-      soundEffects.playGameStart();
+      
+      // Enhanced audio start with better error handling
+      try {
+        soundEffects.playGameStart();
+      } catch (error) {
+        console.warn('🔊 Game start sound failed, continuing anyway:', error);
+      }
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {
@@ -255,7 +268,7 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
+          {gamePhase === 'playing' && room && (isHost || currentPlayer) && (
             <GamePlay
               room={room}
               players={players}

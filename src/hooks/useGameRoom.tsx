@@ -370,9 +370,33 @@ export function useGameRoom() {
 
     try {
       setIsLoading(true);
+      
+      // Get all non-host players to assign the first current player
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', room.id)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError) {
+        throw new Error('Failed to get players for game start');
+      }
+
+      if (!allPlayers || allPlayers.length === 0) {
+        throw new Error('No players available to start the game');
+      }
+
+      // Set the first player as the current player
+      const firstPlayer = allPlayers[0];
+      
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ phase: 'playing' })
+        .update({ 
+          phase: 'playing',
+          current_player_id: firstPlayer.id,
+          current_turn: 0
+        })
         .eq('id', room.id)
         .select()
         .single();
@@ -381,7 +405,7 @@ export function useGameRoom() {
       
       // ENHANCED: Immediate phase transition
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🚀 Game started successfully');
+      console.log('🚀 Game started successfully with first player:', firstPlayer.name);
     } catch (error) {
       console.error('❌ Start game error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start game');

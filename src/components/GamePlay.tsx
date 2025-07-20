@@ -628,10 +628,36 @@ export function GamePlay({
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
-    currentMysteryCard &&
-    currentTurnPlayer;
+    currentMysteryCard;
 
-  if (!gameReady) {
+  // Add specific checks for missing critical data
+  const missingCurrentPlayer = !currentPlayer && !isHost;
+  const missingCurrentTurnPlayer = !currentTurnPlayer && currentMysteryCard;
+
+  if (!gameReady || missingCurrentPlayer) {
+    const errorMessage = missingCurrentPlayer 
+      ? "❌ Missing player data - please refresh and rejoin the room"
+      : missingCurrentTurnPlayer 
+      ? "⏳ Waiting for turn assignment..."
+      : "🚀 Optimized Setup...";
+    
+    const subMessage = missingCurrentPlayer
+      ? "There was an issue with your player session. Please go back to menu and rejoin."
+      : missingCurrentTurnPlayer
+      ? "Turn data is being synchronized. This should resolve automatically."
+      : "Preparing enhanced mobile gameplay with performance optimizations";
+
+    console.log('🚫 GamePlay not ready:', { 
+      gameReady, 
+      missingCurrentPlayer, 
+      missingCurrentTurnPlayer,
+      currentPlayer: currentPlayer?.name,
+      currentTurnPlayer: currentTurnPlayer?.name,
+      hasPlayers: activePlayers.length > 0,
+      hasCurrentSong: !!currentMysteryCard,
+      phase: room?.phase
+    });
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="absolute inset-0">
@@ -640,10 +666,18 @@ export function GamePlay({
         </div>
         <div className="text-center text-white relative z-10">
           <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20">
-            <div className="text-2xl animate-spin">🎵</div>
+            <div className="text-2xl animate-spin">{missingCurrentPlayer ? '⚠️' : '🎵'}</div>
           </div>
-          <div className="text-xl font-semibold mb-2">🚀 Optimized Setup...</div>
-          <div className="text-white/60 max-w-sm mx-auto text-sm">Preparing enhanced mobile gameplay with performance optimizations</div>
+          <div className="text-xl font-semibold mb-2">{errorMessage}</div>
+          <div className="text-white/60 max-w-sm mx-auto text-sm">{subMessage}</div>
+          {missingCurrentPlayer && (
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 hover:bg-red-500/30 transition-colors"
+            >
+              Refresh Page
+            </button>
+          )}
         </div>
       </div>
     );
