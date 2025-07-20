@@ -78,52 +78,28 @@ export function GamePlay({
                    gamemode === 'sprint' ? sprintLogic : 
                    classicLogic;
 
-  // ENHANCED: Real-time audio control setup
-  useEffect(() => {
+  // Broadcast audio state to all players
+  const broadcastAudioState = useCallback((action: 'play' | 'pause') => {
     if (!room?.id) return;
 
-    console.log('🔊 Setting up universal audio control for room:', room.id);
-    
-    // Create broadcast channel for cross-tab audio sync
-    const audioChannel = new BroadcastChannel(`audio-control-${room.id}`);
-    audioChannelRef.current = audioChannel;
-
-    // Set up real-time channel for instant audio control
-    const channel = supabase
-      .channel(`audio-control-${room.id}`)
-      .on('broadcast', { event: 'audio-control' }, ({ payload }) => {
-        console.log('🔊 Received audio control broadcast:', payload);
-        if (payload.action === 'play' && isHost) {
-          handleHostAudioPlay();
-        } else if (payload.action === 'pause' && isHost) {
-          handleHostAudioPause();
-        }
-      })
-      .subscribe((status) => {
-        console.log('🔊 Audio control channel status:', status);
+    // Broadcast via channel
+    if (audioChannelRef.current) {
+      audioChannelRef.current.postMessage({
+        action,
+        roomId: room.id,
+        timestamp: Date.now()
       });
+    }
 
-    realtimeChannelRef.current = channel;
-
-    // Listen for broadcast messages
-    audioChannel.onmessage = (event) => {
-      const { action, roomId } = event.data;
-      if (roomId === room.id && isHost) {
-        if (action === 'play') {
-          handleHostAudioPlay();
-        } else if (action === 'pause') {
-          handleHostAudioPause();
-        }
-      }
-    };
-
-    return () => {
-      audioChannel.close();
-      if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current);
-      }
-    };
-  }, [room?.id, isHost, handleHostAudioPlay, handleHostAudioPause]);
+    // Also broadcast via realtime
+    if (realtimeChannelRef.current) {
+      realtimeChannelRef.current.send({
+        type: 'broadcast',
+        event: 'audio-state',
+        payload: { action, roomId: room.id }
+      });
+    }
+  }, [room?.id]);
 
   // Enhanced host audio control functions
   const handleHostAudioPlay = useCallback(async () => {
@@ -245,28 +221,54 @@ export function GamePlay({
     broadcastAudioState('pause');
   }, [isHost, gameLogic, broadcastAudioState]);
 
-  // Broadcast audio state to all players
-  const broadcastAudioState = useCallback((action: 'play' | 'pause') => {
+  // ENHANCED: Real-time audio control setup
+  useEffect(() => {
     if (!room?.id) return;
 
-    // Broadcast via channel
-    if (audioChannelRef.current) {
-      audioChannelRef.current.postMessage({
-        action,
-        roomId: room.id,
-        timestamp: Date.now()
-      });
-    }
+    console.log('🔊 Setting up universal audio control for room:', room.id);
+    
+    // Create broadcast channel for cross-tab audio sync
+    const audioChannel = new BroadcastChannel(`audio-control-${room.id}`);
+    audioChannelRef.current = audioChannel;
 
-    // Also broadcast via realtime
-    if (realtimeChannelRef.current) {
-      realtimeChannelRef.current.send({
-        type: 'broadcast',
-        event: 'audio-state',
-        payload: { action, roomId: room.id }
+    // Set up real-time channel for instant audio control
+    const channel = supabase
+      .channel(`audio-control-${room.id}`)
+      .on('broadcast', { event: 'audio-control' }, ({ payload }) => {
+        console.log('🔊 Received audio control broadcast:', payload);
+        if (payload.action === 'play' && isHost) {
+          handleHostAudioPlay();
+        } else if (payload.action === 'pause' && isHost) {
+          handleHostAudioPause();
+        }
+      })
+      .subscribe((status) => {
+        console.log('🔊 Audio control channel status:', status);
       });
-    }
-  }, [room?.id]);
+
+    realtimeChannelRef.current = channel;
+
+    // Listen for broadcast messages
+    audioChannel.onmessage = (event) => {
+      const { action, roomId } = event.data;
+      if (roomId === room.id && isHost) {
+        if (action === 'play') {
+          handleHostAudioPlay();
+        } else if (action === 'pause') {
+          handleHostAudioPause();
+        }
+      }
+    };
+
+    return () => {
+      audioChannel.close();
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+    };
+  }, [room?.id, isHost, handleHostAudioPlay, handleHostAudioPause]);
+
+
 
   // ENHANCED: Universal play/pause handler for players
   const handleUniversalPlayPause = async () => {
