@@ -427,7 +427,7 @@ export function HostLobby({
                           <div className="flex items-center gap-3">
                             <Radio className="h-4 w-4 text-[#a53b8b]" />
                             <div>
-                              <div className="font-semibold">Fiend Mode</div>
+                              <div className="font-semibold">Fiend Mode (BROKEN!! IN DEVELOPMENT)</div>
                               <div className="text-xs text-[#d9e8dd]/70">Guess the year on timeline • Score by accuracy</div>
                             </div>
                           </div>
@@ -436,7 +436,7 @@ export function HostLobby({
                           <div className="flex items-center gap-3">
                             <Timer className="h-4 w-4 text-[#107793]" />
                             <div>
-                              <div className="font-semibold">Sprint Mode</div>
+                              <div className="font-semibold">Sprint Mode (BROKEN!! IN DEVELOPMENT)</div>
                               <div className="text-xs text-[#d9e8dd]/70">Simultaneous play • Race to target</div>
                             </div>
                           </div>
