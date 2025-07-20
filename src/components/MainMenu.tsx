@@ -403,7 +403,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
           </p>
           
           <p className="text-[#4a4f5b] text-xs mt-4">
-            v0.1.1 • <span className="text-[#107793]">Report bugs to: 97uselobp@mozmail.com!</span>
+            v0.1.5 • <span className="text-[#107793]">Report bugs to: 97uselobp@mozmail.com!</span>
           </p>
         </footer>
       </div>
