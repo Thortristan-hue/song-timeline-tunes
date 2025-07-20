@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -49,7 +48,8 @@ export default function MobilePlayerGameView({
   const [passcode, setPasscode] = useState('');
   const [debugMode, setDebugMode] = useState(false);
 
-  // Refs for performance optimization
+  // Refs for scrolling and performance optimization
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const audioCleanupRef = useRef<() => void>();
 
   // Get sorted timeline songs for placement
@@ -190,14 +190,48 @@ export default function MobilePlayerGameView({
     return `Between ${beforeSong.release_year} and ${afterSong.release_year}`;
   };
 
-  // Handle position navigation
+  // Center the selected position in the timeline view
+  const centerSelectedPosition = useCallback(() => {
+    if (!timelineScrollRef.current) return;
+    
+    const container = timelineScrollRef.current;
+    const containerWidth = container.clientWidth;
+    
+    // Calculate the position of the selected gap
+    const cardWidth = 144; // w-36 = 144px
+    const gapWidth = 40; // gap between cards
+    const selectedGapPosition = selectedPosition * (cardWidth + gapWidth);
+    
+    // Center the selected position
+    const scrollPosition = selectedGapPosition - containerWidth / 2;
+    
+    container.scrollTo({
+      left: Math.max(0, scrollPosition),
+      behavior: 'smooth'
+    });
+  }, [selectedPosition]);
+
+  // Handle position navigation with centering
   const navigatePosition = (direction: 'prev' | 'next') => {
+    let newPosition = selectedPosition;
+    
     if (direction === 'prev' && selectedPosition > 0) {
-      setSelectedPosition(selectedPosition - 1);
+      newPosition = selectedPosition - 1;
     } else if (direction === 'next' && selectedPosition < totalPositions - 1) {
-      setSelectedPosition(selectedPosition + 1);
+      newPosition = selectedPosition + 1;
+    }
+    
+    if (newPosition !== selectedPosition) {
+      setSelectedPosition(newPosition);
     }
   };
+
+  // Center view when position changes
+  useEffect(() => {
+    if (isMyTurn) {
+      centerSelectedPosition();
+    }
+  }, [selectedPosition, isMyTurn, centerSelectedPosition]);
 
   // Cleanup audio on unmount or turn change
   useEffect(() => {
@@ -375,7 +409,7 @@ export default function MobilePlayerGameView({
                 </div>
               </div>
 
-              {/* Timeline display */}
+              {/* Timeline display with horizontal scroll and centered selection */}
               <div className="flex-1 min-h-0">
                 {timelineSongs.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
@@ -386,73 +420,79 @@ export default function MobilePlayerGameView({
                   </div>
                 ) : (
                   <div className="h-full flex flex-col">
-                    {/* Timeline cards */}
-                    <div className="flex-1 flex items-center justify-center overflow-x-auto pb-4">
-                      <div className="flex items-center gap-2 min-w-max px-4">
-                        {/* Position indicator before first card */}
-                        <div 
-                          className={cn(
-                            "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
-                            selectedPosition === 0 
-                              ? "bg-green-400 border-green-400 text-white" 
-                              : "border-white/40 text-white/60 hover:border-white/60"
-                          )}
-                          onClick={() => setSelectedPosition(0)}
-                        >
-                          {selectedPosition === 0 ? <Check className="w-4 h-4" /> : '+'}
-                        </div>
+                    {/* Timeline cards with smooth scrolling */}
+                    <div className="flex-1 flex items-center justify-center">
+                      <div 
+                        ref={timelineScrollRef}
+                        className="w-full overflow-x-auto pb-4 scroll-smooth"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
+                        <div className="flex items-center gap-2 min-w-max px-4 justify-start">
+                          {/* Position indicator before first card */}
+                          <div 
+                            className={cn(
+                              "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                              selectedPosition === 0 
+                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                : "border-white/40 text-white/60 hover:border-white/60"
+                            )}
+                            onClick={() => setSelectedPosition(0)}
+                          >
+                            {selectedPosition === 0 ? <Check className="w-5 h-5" /> : '+'}
+                          </div>
 
-                        {timelineSongs.map((song, index) => {
-                          const cardColor = getCardColor(song);
-                          return (
-                            <React.Fragment key={song.id}>
-                              {/* Song card */}
-                              <div
-                                className={cn(
-                                  "w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
-                                )}
-                                style={{ 
-                                  backgroundColor: cardColor.backgroundColor,
-                                  backgroundImage: cardColor.backgroundImage
-                                }}
-                                onClick={() => song.preview_url && handleSongPreview(song)}
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
-                                
-                                <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
-                                  <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
-                                    <div className="break-words">
-                                      {truncateText(song.deezer_artist, 15)}
+                          {timelineSongs.map((song, index) => {
+                            const cardColor = getCardColor(song);
+                            return (
+                              <React.Fragment key={song.id}>
+                                {/* Song card */}
+                                <div
+                                  className={cn(
+                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                  )}
+                                  style={{ 
+                                    backgroundColor: cardColor.backgroundColor,
+                                    backgroundImage: cardColor.backgroundImage
+                                  }}
+                                  onClick={() => song.preview_url && handleSongPreview(song)}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                                  
+                                  <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                                    <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_artist, 15)}
+                                      </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
-                                    {song.release_year}
-                                  </div>
-                                  
-                                  <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
-                                    <div className="break-words">
-                                      {truncateText(song.deezer_title, 15)}
+                                    
+                                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
+                                      {song.release_year}
+                                    </div>
+                                    
+                                    <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_title, 15)}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                              
-                              {/* Position indicator after card */}
-                              <div 
-                                className={cn(
-                                  "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
-                                  selectedPosition === index + 1 
-                                    ? "bg-green-400 border-green-400 text-white" 
-                                    : "border-white/40 text-white/60 hover:border-white/60"
-                                )}
-                                onClick={() => setSelectedPosition(index + 1)}
-                              >
-                                {selectedPosition === index + 1 ? <Check className="w-4 h-4" /> : '+'}
-                              </div>
-                            </React.Fragment>
-                          );
-                        })}
+                                
+                                {/* Position indicator after card */}
+                                <div 
+                                  className={cn(
+                                    "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                                    selectedPosition === index + 1 
+                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                      : "border-white/40 text-white/60 hover:border-white/60"
+                                  )}
+                                  onClick={() => setSelectedPosition(index + 1)}
+                                >
+                                  {selectedPosition === index + 1 ? <Check className="w-5 h-5" /> : '+'}
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 

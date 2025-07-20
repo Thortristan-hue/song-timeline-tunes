@@ -25,6 +25,8 @@ export function HostCurrentPlayerTimeline({
   const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
   const [visibleCards, setVisibleCards] = useState<number[]>([]);
+  const [newlyPlacedCardIndex, setNewlyPlacedCardIndex] = useState<number | null>(null);
+  const [cardsShifting, setCardsShifting] = useState<boolean>(false);
 
   // Handle turn transitions with enhanced animations
   useEffect(() => {
@@ -56,6 +58,24 @@ export function HostCurrentPlayerTimeline({
       setVisibleCards(currentTurnPlayer.timeline.map((_, index) => index));
     }
   }, [isTransitioning, currentTurnPlayer]);
+
+  // Handle new card placement animation
+  useEffect(() => {
+    if (cardPlacementResult && cardPlacementResult.correct) {
+      const newCardIndex = currentTurnPlayer.timeline.length - 1;
+      setNewlyPlacedCardIndex(newCardIndex);
+      setCardsShifting(true);
+      
+      // First animate existing cards making room
+      setTimeout(() => {
+        // Then animate the new card sliding in
+        setTimeout(() => {
+          setCardsShifting(false);
+          setNewlyPlacedCardIndex(null);
+        }, 800);
+      }, 300);
+    }
+  }, [cardPlacementResult, currentTurnPlayer.timeline.length]);
 
   // Trigger feedback animation when placement result changes
   useEffect(() => {
@@ -92,10 +112,14 @@ export function HostCurrentPlayerTimeline({
             
             {currentTurnPlayer.timeline.map((song, index) => (
               <React.Fragment key={`${song.deezer_title}-${index}`}>
-                {/* Song card with enhanced animations - now square and consistent */}
+                {/* Song card with enhanced animations */}
                 <div
                   className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
-                    cardPlacementResult && cardPlacementResult.correct && index === currentTurnPlayer.timeline.length - 1 ? 'animate-epic-card-drop' : ''
+                    newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
+                  } ${
+                    cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
+                  } ${
+                    cardsShifting && index > (newlyPlacedCardIndex || 0) ? 'animate-card-shift-right' : ''
                   } ${
                     !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
                   } ${
@@ -166,8 +190,6 @@ export function HostCurrentPlayerTimeline({
           </div>
         </div>
       )}
-
-      {/* Enhanced CSS animations for turn transitions */}
     </div>
   );
 }

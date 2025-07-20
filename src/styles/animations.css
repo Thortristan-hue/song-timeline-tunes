@@ -1,3 +1,4 @@
+
 /* Consolidated Enhanced Animations & Transitions */
 
 /* Enhanced card placement animations with sophisticated visual effects */
@@ -90,6 +91,49 @@
     transform: translateY(0) scale(1) rotateX(0deg); 
     opacity: 1; 
     filter: brightness(1); 
+  }
+}
+
+/* New smooth card placement animations */
+@keyframes card-slide-in {
+  0% { 
+    transform: translateY(-50px) scale(0.8) rotate(-5deg); 
+    opacity: 0; 
+    filter: blur(2px);
+  }
+  50% { 
+    transform: translateY(-10px) scale(1.05) rotate(2deg); 
+    opacity: 0.8; 
+    filter: blur(1px);
+  }
+  100% { 
+    transform: translateY(0) scale(1) rotate(0deg); 
+    opacity: 1; 
+    filter: blur(0px);
+  }
+}
+
+@keyframes card-shift-left {
+  0% { 
+    transform: translateX(0) scale(1); 
+  }
+  50% { 
+    transform: translateX(-10px) scale(0.95); 
+  }
+  100% { 
+    transform: translateX(-20px) scale(1); 
+  }
+}
+
+@keyframes card-shift-right {
+  0% { 
+    transform: translateX(0) scale(1); 
+  }
+  50% { 
+    transform: translateX(10px) scale(0.95); 
+  }
+  100% { 
+    transform: translateX(20px) scale(1); 
   }
 }
 
@@ -296,6 +340,29 @@
     box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); 
   }
 }
+
+/* ... keep existing code (all other animations) */
+
+/* Enhanced animation classes with improved performance */
+.animate-cards-bunch-up { animation: cards-bunch-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-cards-spread-out { animation: cards-spread-out 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-cassette-to-timeline { animation: cassette-to-timeline 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-timeline-to-cassette { animation: timeline-to-cassette 1.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+.animate-card-fall-correct { animation: card-fall-correct 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-card-fall-incorrect { animation: card-fall-incorrect 2.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+.animate-cards-make-room { animation: cards-make-room 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-thump-land { animation: card-thump-land 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+.animate-host-feedback-correct { animation: host-feedback-correct 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-host-feedback-incorrect { animation: host-feedback-incorrect 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-cards-anticipation { animation: cards-anticipation 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.animate-timeline-highlight { animation: timeline-highlight 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* New smooth card placement animation classes */
+.animate-card-slide-in { animation: card-slide-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.animate-card-shift-left { animation: card-shift-left 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-card-shift-right { animation: card-shift-right 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* ... keep existing code (all other animation classes and utilities) */
 
 /* Card animations */
 @keyframes card-throw {
@@ -515,19 +582,6 @@
   }
 }
 
-/* Enhanced animation classes with improved performance */
-.animate-cards-bunch-up { animation: cards-bunch-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-cards-spread-out { animation: cards-spread-out 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-cassette-to-timeline { animation: cassette-to-timeline 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
-.animate-timeline-to-cassette { animation: timeline-to-cassette 1.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
-.animate-card-fall-correct { animation: card-fall-correct 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
-.animate-card-fall-incorrect { animation: card-fall-incorrect 2.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
-.animate-cards-make-room { animation: cards-make-room 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-card-thump-land { animation: card-thump-land 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
-.animate-host-feedback-correct { animation: host-feedback-correct 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-host-feedback-incorrect { animation: host-feedback-incorrect 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-cards-anticipation { animation: cards-anticipation 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-.animate-timeline-highlight { animation: timeline-highlight 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-throw { animation: card-throw 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-placement { animation: card-placement 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-card-success { animation: card-success 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
