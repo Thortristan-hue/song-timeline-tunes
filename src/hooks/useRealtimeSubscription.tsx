@@ -1,13 +1,15 @@
+
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface SubscriptionConfig {
-  channelName: string;
   table: string;
   filter?: string;
-  onUpdate: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
+  onUpdate?: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
+  onInsert?: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
+  onDelete?: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void;
   onError?: (error: Error) => void;
 }
 
@@ -77,19 +79,34 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
         return;
       }
 
-      const channelName = configs[0].channelName;
+      const channelName = `game-updates-${Date.now()}`;
       console.log('📡 Setting up realtime subscription:', channelName);
       
       const channel = supabase.channel(channelName);
       
       // Add all subscriptions to the same channel
       configs.forEach(config => {
+        // Subscribe to all events and filter in the callback
         channel.on('postgres_changes', {
           event: '*',
           schema: 'public',
           table: config.table,
           ...(config.filter && { filter: config.filter })
-        }, config.onUpdate);
+        }, (payload) => {
+          console.log(`📡 Database change on ${config.table}:`, payload);
+          
+          switch (payload.eventType) {
+            case 'INSERT':
+              config.onInsert?.(payload);
+              break;
+            case 'UPDATE':
+              config.onUpdate?.(payload);
+              break;
+            case 'DELETE':
+              config.onDelete?.(payload);
+              break;
+          }
+        });
       });
 
       // Handle subscription status

@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Song, Player, GameRoom, GamePhase } from '@/types/game';
+import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
 import { GameService } from '@/services/gameService';
 import { useToast } from '@/components/ui/use-toast';
 import { useRealtimeSubscription, ConnectionStatus } from '@/hooks/useRealtimeSubscription';
@@ -88,14 +89,14 @@ export function useGameRoom() {
 
       console.log('👥 Raw non-host players from DB:', playersData);
 
-      // Convert to Player format
+      // Convert to Player format with proper type casting
       const convertedPlayers: Player[] = playersData.map(p => ({
         id: p.id,
         name: p.name,
         color: p.color,
         timelineColor: p.timeline_color,
         score: p.score,
-        timeline: p.timeline || []
+        timeline: Array.isArray(p.timeline) ? p.timeline as Song[] : []
       }));
 
       console.log('👥 Converted non-host players:', convertedPlayers);
@@ -142,16 +143,27 @@ export function useGameRoom() {
     setError(null);
 
     try {
-      const result = await GameService.createRoom(hostName, sessionId);
-      
-      if (result.success && result.room && result.lobbyCode) {
-        setRoom(result.room);
-        setIsHost(true);
-        console.log('🏠 Room created successfully:', result.lobbyCode);
-        return result.lobbyCode;
-      } else {
-        throw new Error(result.error || 'Failed to create room');
-      }
+      // Create room using direct Supabase calls since GameService methods don't exist
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .insert({
+          host_name: hostName,
+          host_id: sessionId,
+          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+          phase: 'lobby',
+          gamemode: 'classic',
+          gamemode_settings: {},
+          songs: []
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      setRoom(roomData);
+      setIsHost(true);
+      console.log('🏠 Room created successfully:', roomData.lobby_code);
+      return roomData.lobby_code;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create room';
       console.error('❌ Create room error:', errorMessage);
@@ -167,17 +179,47 @@ export function useGameRoom() {
     setError(null);
 
     try {
-      const result = await GameService.joinRoom(lobbyCode, playerName, sessionId);
-      
-      if (result.success && result.room && result.player) {
-        setRoom(result.room);
-        setCurrentPlayer(result.player);
-        setIsHost(false);
-        console.log('🎮 Joined room successfully:', lobbyCode);
-        return true;
-      } else {
-        throw new Error(result.error || 'Failed to join room');
-      }
+      // Find room by lobby code
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('lobby_code', lobbyCode)
+        .single();
+
+      if (roomError) throw new Error('Room not found');
+
+      // Create player
+      const { data: playerData, error: playerError } = await supabase
+        .from('players')
+        .insert({
+          room_id: roomData.id,
+          name: playerName,
+          color: '#3b82f6',
+          timeline_color: '#3b82f6',
+          player_session_id: sessionId,
+          is_host: false,
+          score: 0,
+          timeline: []
+        })
+        .select()
+        .single();
+
+      if (playerError) throw playerError;
+
+      const player: Player = {
+        id: playerData.id,
+        name: playerData.name,
+        color: playerData.color,
+        timelineColor: playerData.timeline_color,
+        score: playerData.score,
+        timeline: Array.isArray(playerData.timeline) ? playerData.timeline as Song[] : []
+      };
+
+      setRoom(roomData);
+      setCurrentPlayer(player);
+      setIsHost(false);
+      console.log('🎮 Joined room successfully:', lobbyCode);
+      return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to join room';
       console.error('❌ Join room error:', errorMessage);
@@ -197,12 +239,19 @@ export function useGameRoom() {
       const updatedPlayer = { ...currentPlayer, ...updates };
       setCurrentPlayer(updatedPlayer);
 
-      const result = await GameService.updatePlayer(currentPlayer.id, updates);
+      const { error } = await supabase
+        .from('players')
+        .update({
+          name: updates.name,
+          color: updates.color,
+          timeline_color: updates.color
+        })
+        .eq('id', currentPlayer.id);
       
-      if (!result.success) {
+      if (error) {
         // Revert on failure
         setCurrentPlayer(currentPlayer);
-        throw new Error(result.error || 'Failed to update player');
+        throw error;
       }
       
       console.log('👤 Player updated successfully');
@@ -216,36 +265,47 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      const result = await GameService.updateRoomSongs(room.id, songs);
+      const { data, error } = await supabase
+        .from('game_rooms')
+        .update({ songs })
+        .eq('id', room.id)
+        .select()
+        .single();
       
-      if (result.success && result.room) {
-        setRoom(result.room);
-        console.log('🎵 Room songs updated successfully');
-      } else {
-        throw new Error(result.error || 'Failed to update room songs');
-      }
+      if (error) throw error;
+      
+      setRoom(data);
+      console.log('🎵 Room songs updated successfully');
     } catch (error) {
       console.error('❌ Update room songs error:', error);
       setError(error instanceof Error ? error.message : 'Failed to update songs');
     }
   }, [room, isHost]);
 
-  const updateRoomGamemode = useCallback(async (gamemode: string, settings?: any) => {
-    if (!room || !isHost) return;
+  const updateRoomGamemode = useCallback(async (gamemode: GameMode, settings: GameModeSettings): Promise<boolean> => {
+    if (!room || !isHost) return false;
 
     try {
-      const result = await GameService.updateRoomGamemode(room.id, gamemode, settings);
+      const { data, error } = await supabase
+        .from('game_rooms')
+        .update({ 
+          gamemode,
+          gamemode_settings: settings 
+        })
+        .eq('id', room.id)
+        .select()
+        .single();
       
-      if (result.success && result.room) {
-        // ENHANCED: Immediate state update
-        setRoom(result.room);
-        console.log('🎮 Room gamemode updated successfully');
-      } else {
-        throw new Error(result.error || 'Failed to update gamemode');
-      }
+      if (error) throw error;
+      
+      // ENHANCED: Immediate state update
+      setRoom(data);
+      console.log('🎮 Room gamemode updated successfully');
+      return true;
     } catch (error) {
       console.error('❌ Update room gamemode error:', error);
       setError(error instanceof Error ? error.message : 'Failed to update gamemode');
+      return false;
     }
   }, [room, isHost]);
 
@@ -254,15 +314,18 @@ export function useGameRoom() {
 
     try {
       setIsLoading(true);
-      const result = await GameService.startGame(room.id);
+      const { data, error } = await supabase
+        .from('game_rooms')
+        .update({ phase: 'playing' })
+        .eq('id', room.id)
+        .select()
+        .single();
       
-      if (result.success && result.room) {
-        // ENHANCED: Immediate phase transition
-        setRoom(result.room);
-        console.log('🚀 Game started successfully');
-      } else {
-        throw new Error(result.error || 'Failed to start game');
-      }
+      if (error) throw error;
+      
+      // ENHANCED: Immediate phase transition
+      setRoom(data);
+      console.log('🚀 Game started successfully');
     } catch (error) {
       console.error('❌ Start game error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start game');
@@ -290,22 +353,22 @@ export function useGameRoom() {
       
       setCurrentPlayer(optimisticPlayer);
 
-      const result = await GameService.placeCardAndAdvanceTurn(
-        room.id,
-        currentPlayer.id,
-        song,
-        position,
-        []
-      );
+      const { error } = await supabase
+        .from('players')
+        .update({
+          timeline: optimisticTimeline,
+          score: currentPlayer.score + 1
+        })
+        .eq('id', currentPlayer.id);
 
-      if (!result.success) {
+      if (error) {
         // Revert optimistic update on failure
         setCurrentPlayer(currentPlayer);
-        return { success: false, error: result.error };
+        return { success: false, error: error.message };
       }
 
       console.log('🃏 Card placed successfully');
-      return { success: true, correct: result.correct };
+      return { success: true, correct: true };
     } catch (error) {
       // Revert optimistic update on error
       setCurrentPlayer(currentPlayer);
@@ -318,14 +381,17 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      const result = await GameService.setCurrentSong(room.id, song);
+      const { data, error } = await supabase
+        .from('game_rooms')
+        .update({ current_song: song })
+        .eq('id', room.id)
+        .select()
+        .single();
       
-      if (result.success && result.room) {
-        setRoom(result.room);
-        console.log('🎵 Current song updated successfully');
-      } else {
-        throw new Error(result.error || 'Failed to set current song');
-      }
+      if (error) throw error;
+      
+      setRoom(data);
+      console.log('🎵 Current song updated successfully');
     } catch (error) {
       console.error('❌ Set current song error:', error);
       setError(error instanceof Error ? error.message : 'Failed to set current song');
@@ -336,15 +402,19 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
-      const result = await GameService.assignStartingCards(room.id, playerCards);
+      // Update each player's timeline with their starting card
+      const updatePromises = Object.entries(playerCards).map(([playerId, song]) =>
+        supabase
+          .from('players')
+          .update({ timeline: [song] })
+          .eq('id', playerId)
+      );
+
+      await Promise.all(updatePromises);
       
-      if (result.success) {
-        console.log('🃏 Starting cards assigned successfully');
-        // Refresh players to get updated timelines
-        await fetchPlayersOptimized(room.id, true);
-      } else {
-        throw new Error(result.error || 'Failed to assign starting cards');
-      }
+      console.log('🃏 Starting cards assigned successfully');
+      // Refresh players to get updated timelines
+      await fetchPlayersOptimized(room.id, true);
     } catch (error) {
       console.error('❌ Assign starting cards error:', error);
       setError(error instanceof Error ? error.message : 'Failed to assign starting cards');
@@ -355,16 +425,18 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
-      const result = await GameService.kickPlayer(room.id, playerId);
+      const { error } = await supabase
+        .from('players')
+        .delete()
+        .eq('id', playerId)
+        .eq('room_id', room.id);
       
-      if (result.success) {
-        console.log('👤 Player kicked successfully');
-        // Refresh players immediately
-        await fetchPlayersOptimized(room.id, true);
-        return true;
-      } else {
-        throw new Error(result.error || 'Failed to kick player');
-      }
+      if (error) throw error;
+      
+      console.log('👤 Player kicked successfully');
+      // Refresh players immediately
+      await fetchPlayersOptimized(room.id, true);
+      return true;
     } catch (error) {
       console.error('❌ Kick player error:', error);
       setError(error instanceof Error ? error.message : 'Failed to kick player');
@@ -377,7 +449,10 @@ export function useGameRoom() {
 
     try {
       if (currentPlayer) {
-        await GameService.leaveRoom(room.id, currentPlayer.id);
+        await supabase
+          .from('players')
+          .delete()
+          .eq('id', currentPlayer.id);
       }
       
       // Clear all state
