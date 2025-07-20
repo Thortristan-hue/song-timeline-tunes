@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useClassicGameLogic } from '@/hooks/useClassicGameLogic';
 import { useFiendGameLogic } from '@/hooks/useFiendGameLogic';
 import { useSprintGameLogic } from '@/hooks/useSprintGameLogic';
@@ -123,57 +123,113 @@ export function GamePlay({
         supabase.removeChannel(realtimeChannelRef.current);
       }
     };
-  }, [room?.id, isHost]);
+  }, [room?.id, isHost, handleHostAudioPlay, handleHostAudioPause]);
 
   // Enhanced host audio control functions
-  const handleHostAudioPlay = async () => {
-    if (!isHost || !room?.current_song?.preview_url) return;
+  const handleHostAudioPlay = useCallback(async () => {
+    if (!isHost) {
+      console.log('🔊 HOST: Not host, ignoring play command');
+      return;
+    }
 
-    console.log('🔊 HOST: Playing audio from universal control');
+    if (!room?.current_song?.preview_url) {
+      console.error('🔊 HOST: No preview URL available for current song:', room?.current_song);
+      return;
+    }
+
+    console.log('🔊 HOST: Playing audio from universal control, URL:', room.current_song.preview_url);
     
     // Stop any existing audio
     if (currentAudioRef.current) {
+      console.log('🔊 HOST: Stopping existing audio');
       currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
       currentAudioRef.current = null;
     }
     
-    // Create new audio element
-    const audio = new Audio(room.current_song.preview_url);
-    audio.crossOrigin = 'anonymous';
-    audio.volume = 0.8;
-    audio.preload = 'auto';
-    
-    currentAudioRef.current = audio;
-    
-    // Enhanced event handlers
-    audio.addEventListener('ended', () => {
-      console.log('🔊 HOST: Audio playback ended');
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-      broadcastAudioState('pause');
-    });
-    
-    audio.addEventListener('error', (e) => {
-      console.error('🔊 HOST: Audio error:', e);
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-      broadcastAudioState('pause');
-    });
-    
     try {
-      await audio.play();
-      console.log('🔊 HOST: Audio playing successfully');
-      setIsPlaying(true);
-      gameLogic.setIsPlaying(true);
-      broadcastAudioState('play');
+      // Create new audio element with enhanced error handling
+      const audio = new Audio();
+      audio.crossOrigin = 'anonymous';
+      audio.volume = 0.8;
+      audio.preload = 'auto';
+      audio.src = room.current_song.preview_url;
+      
+      currentAudioRef.current = audio;
+      
+      // Enhanced event handlers with more detailed logging
+      audio.addEventListener('loadstart', () => {
+        console.log('🔊 HOST: Audio loading started');
+      });
+      
+      audio.addEventListener('canplay', () => {
+        console.log('🔊 HOST: Audio can start playing');
+      });
+      
+      audio.addEventListener('playing', () => {
+        console.log('🔊 HOST: Audio is now playing');
+        setIsPlaying(true);
+        gameLogic.setIsPlaying(true);
+        broadcastAudioState('play');
+      });
+      
+      audio.addEventListener('ended', () => {
+        console.log('🔊 HOST: Audio playback ended');
+        setIsPlaying(false);
+        gameLogic.setIsPlaying(false);
+        broadcastAudioState('pause');
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('🔊 HOST: Audio error event:', e);
+        console.error('🔊 HOST: Audio error details:', audio.error);
+        setIsPlaying(false);
+        gameLogic.setIsPlaying(false);
+        broadcastAudioState('pause');
+      });
+      
+      audio.addEventListener('pause', () => {
+        console.log('🔊 HOST: Audio paused');
+        setIsPlaying(false);
+        gameLogic.setIsPlaying(false);
+      });
+
+      // Load and play the audio
+      console.log('🔊 HOST: Attempting to load and play audio');
+      audio.load(); // Explicitly load the audio
+      
+      // Wait a bit for loading then try to play
+      setTimeout(async () => {
+        try {
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            console.log('🔊 HOST: Audio play promise resolved successfully');
+          }
+        } catch (playError) {
+          console.error('🔊 HOST: Audio play promise rejected:', playError);
+          
+          // Try alternative approach - reset and retry once
+          try {
+            audio.currentTime = 0;
+            await audio.play();
+            console.log('🔊 HOST: Audio play retry succeeded');
+          } catch (retryError) {
+            console.error('🔊 HOST: Audio play retry also failed:', retryError);
+            setIsPlaying(false);
+            gameLogic.setIsPlaying(false);
+          }
+        }
+      }, 100);
+      
     } catch (error) {
-      console.error('🔊 HOST: Audio play failed:', error);
+      console.error('🔊 HOST: Audio setup failed:', error);
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
     }
-  };
+  }, [isHost, room?.current_song?.preview_url, gameLogic, broadcastAudioState]);
 
-  const handleHostAudioPause = () => {
+  const handleHostAudioPause = useCallback(() => {
     if (!isHost) return;
 
     console.log('🔊 HOST: Pausing audio from universal control');
@@ -184,10 +240,10 @@ export function GamePlay({
     setIsPlaying(false);
     gameLogic.setIsPlaying(false);
     broadcastAudioState('pause');
-  };
+  }, [isHost, gameLogic, broadcastAudioState]);
 
   // Broadcast audio state to all players
-  const broadcastAudioState = (action: 'play' | 'pause') => {
+  const broadcastAudioState = useCallback((action: 'play' | 'pause') => {
     if (!room?.id) return;
 
     // Broadcast via channel
@@ -207,7 +263,7 @@ export function GamePlay({
         payload: { action, roomId: room.id }
       });
     }
-  };
+  }, [room?.id]);
 
   // ENHANCED: Universal play/pause handler for players
   const handleUniversalPlayPause = async () => {
@@ -292,7 +348,7 @@ export function GamePlay({
     if (room?.phase === 'playing' && !gameLogic.gameState.playlistInitialized) {
       gameLogic.initializeGame();
     }
-  }, [room?.phase, gameLogic.gameState.playlistInitialized, gameLogic.initializeGame]);
+  }, [room?.phase, gameLogic.gameState.playlistInitialized, gameLogic, gameInitialized, isHost, room?.id]);
 
   // Track turn changes for mystery card updates
   useEffect(() => {

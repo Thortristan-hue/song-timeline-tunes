@@ -174,23 +174,48 @@ export class GameService {
     const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
     let songIndex = 0;
 
-    // Assign starting card to each player
+    // ENHANCED: Assign starting card to each player with proper error handling and verification
     for (const player of allPlayers) {
       const startingCard = shuffledSongs[songIndex % shuffledSongs.length];
       songIndex++;
 
       console.log(`🃏 STARTING CARD: Assigned to ${player.name}:`, startingCard.deezer_title);
       
-      const { error } = await supabase
+      const { data: updatedPlayer, error } = await supabase
         .from('players')
         .update({
           timeline: [startingCard] as unknown as Json,
-          score: 1 // Start with 1 point for the starting card
+          score: 1, // Start with 1 point for the starting card
+          updated_at: new Date().toISOString() // Force timestamp update for real-time sync
         })
-        .eq('id', player.id);
+        .eq('id', player.id)
+        .select()
+        .single();
 
       if (error) {
-        console.error(`Failed to assign starting card to ${player.name}:`, error);
+        console.error(`❌ Failed to assign starting card to ${player.name}:`, error);
+        throw new Error(`Failed to assign starting card to ${player.name}: ${error.message}`);
+      }
+
+      console.log(`✅ STARTING CARD: Successfully assigned to ${player.name}, timeline length:`, (updatedPlayer.timeline as unknown as Song[]).length);
+    }
+
+    // CRITICAL FIX: Verify all players received their starting cards
+    const { data: verifyPlayers, error: verifyError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('is_host', false);
+
+    if (verifyError) {
+      console.warn('⚠️ Could not verify starting card assignment:', verifyError);
+    } else {
+      const playersWithCards = verifyPlayers.filter(p => Array.isArray(p.timeline) && p.timeline.length > 0);
+      console.log(`✅ VERIFICATION: ${playersWithCards.length}/${verifyPlayers.length} players have starting cards`);
+      
+      if (playersWithCards.length !== verifyPlayers.length) {
+        console.error('❌ CRITICAL: Not all players received starting cards!');
+        throw new Error('Failed to assign starting cards to all players');
       }
     }
 
@@ -277,20 +302,23 @@ export class GameService {
       const newScore = playerData.score + (isCorrect ? 1 : 0);
 
       // Update player timeline and score
-      const { error: updateError } = await supabase
+      const { data: updatedPlayerData, error: updateError } = await supabase
         .from('players')
         .update({
           timeline: finalTimeline as unknown as Json,
           score: newScore,
-          last_active: new Date().toISOString()
+          last_active: new Date().toISOString(),
+          updated_at: new Date().toISOString() // Force timestamp update for real-time sync
         })
-        .eq('id', playerId);
+        .eq('id', playerId)
+        .select()
+        .single();
 
       if (updateError) {
         throw updateError;
       }
 
-      console.log('✅ CARD PLACEMENT: Player timeline updated');
+      console.log('✅ CARD PLACEMENT: Player timeline updated, new length:', finalTimeline.length, 'score:', newScore);
 
       // Check for game end condition (10 cards) - only if placement was correct
       if (isCorrect && finalTimeline.length >= 10) {
