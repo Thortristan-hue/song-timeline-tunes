@@ -6,7 +6,7 @@ import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
 
 interface MobilePlayerGameViewProps {
-  currentPlayer: Player;
+  currentPlayer: Player | null;
   currentTurnPlayer: Player;
   currentSong: Song;
   roomCode: string;
@@ -52,10 +52,11 @@ export default function MobilePlayerGameView({
 
   // Get sorted timeline songs for placement
   const timelineSongs = useMemo(() => {
+    if (!currentPlayer) return [];
     return currentPlayer.timeline
       .filter(song => song !== null)
       .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
-  }, [currentPlayer.timeline]);
+  }, [currentPlayer]);
 
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;
@@ -96,7 +97,7 @@ export default function MobilePlayerGameView({
 
   // Handle card placement with error handling
   const handlePlaceCard = async () => {
-    if (isSubmitting || !isMyTurn || gameEnded) return;
+    if (isSubmitting || !isMyTurn || gameEnded || !currentPlayer) return;
 
     try {
       setIsSubmitting(true);
@@ -133,8 +134,8 @@ export default function MobilePlayerGameView({
     const container = timelineScrollRef.current;
     const containerWidth = container.clientWidth;
     
-    // Calculate the position of the selected gap
-    const cardWidth = 144; // w-36 = 144px
+    // Calculate the position of the selected gap with responsive card sizing
+    const cardWidth = window.innerWidth < 640 ? 128 : 144; // w-32 (128px) on mobile, w-36 (144px) on larger screens
     const gapWidth = 48; // w-12 = 48px (gap indicator width)
     const spacing = 8; // gap-2 = 8px
     
@@ -285,6 +286,61 @@ export default function MobilePlayerGameView({
     );
   }
 
+  // Show loading state when currentPlayer is not yet available
+  if (!currentPlayer) {
+    return (
+      <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+        <div className="h-full flex flex-col items-center justify-center px-4 pt-safe-top pb-safe-bottom">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+              <div className="text-3xl animate-spin">🎵</div>
+            </div>
+            <div className="text-2xl font-semibold text-white mb-2">Connecting to game...</div>
+            <div className="text-white/60 max-w-md mx-auto">
+              Setting up your player profile and timeline
+            </div>
+            
+            {/* Universal audio control is still available */}
+            <div className="pt-6">
+              <div className="text-white/80 text-sm mb-3">You can still control audio:</div>
+              <div className="flex justify-center">
+                <div className="relative">
+                  <div className={cn(
+                    "w-16 h-16 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                    isPlaying && "animate-spin"
+                  )}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-4 h-4 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
+                    </div>
+                    
+                    <div className="absolute inset-1 border border-white/10 rounded-full" />
+                    <div className="absolute inset-2 border border-white/10 rounded-full" />
+                    <div className="absolute inset-3 border border-white/10 rounded-full" />
+                  </div>
+                  
+                  <button
+                    onClick={onPlayPause}
+                    className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                    disabled={!currentSong?.preview_url}
+                  >
+                    <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                      {isPlaying ? '⏸️' : '▶️'}
+                    </div>
+                  </button>
+                </div>
+              </div>
+              <div className="text-white/60 text-xs mt-2">Universal audio control</div>
+            </div>
+            
+            <div className="text-white/50 text-sm mt-6">
+              Room: {roomCode}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
       {/* Safe area container */}
@@ -389,7 +445,7 @@ export default function MobilePlayerGameView({
                           scrollBehavior: 'smooth'
                         }}
                       >
-                        <div className="flex items-center gap-2 min-w-max px-8 justify-start">
+                        <div className="flex items-center gap-1 sm:gap-2 min-w-max px-4 sm:px-8 justify-start">
                           {/* Position indicator before first card - only interactive during turn */}
                           {isMyTurn && (
                             <div 
@@ -409,10 +465,10 @@ export default function MobilePlayerGameView({
                             const cardColor = getCardColor(song);
                             return (
                               <React.Fragment key={song.id}>
-                                {/* Song card - always visible */}
+                                {/* Song card - always visible with responsive sizing */}
                                 <div
                                   className={cn(
-                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 shadow-lg relative flex-shrink-0",
+                                    "w-32 h-32 sm:w-36 sm:h-36 rounded-2xl border border-white/20 transition-all duration-200 shadow-lg relative flex-shrink-0",
                                     isMyTurn ? "hover:scale-105 active:scale-95 cursor-pointer" : "opacity-90"
                                   )}
                                   style={{ 
@@ -422,20 +478,20 @@ export default function MobilePlayerGameView({
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                                   
-                                  <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                                  <div className="p-2 sm:p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
                                     <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
                                       <div className="break-words">
-                                        {truncateText(song.deezer_artist, 15)}
+                                        {truncateText(song.deezer_artist, 12)}
                                       </div>
                                     </div>
                                     
-                                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
+                                    <div className="text-xl sm:text-2xl font-black text-white flex-1 flex items-center justify-center">
                                       {song.release_year}
                                     </div>
                                     
                                     <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
                                       <div className="break-words">
-                                        {truncateText(song.deezer_title, 15)}
+                                        {truncateText(song.deezer_title, 12)}
                                       </div>
                                     </div>
                                   </div>
