@@ -2,12 +2,47 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
-import { GameService } from '@/services/gameService';
 import { useToast } from '@/components/ui/use-toast';
 import { useRealtimeSubscription, ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 
 // ENHANCED: Reduced debounce for snappier updates
 const PLAYER_UPDATE_DEBOUNCE = 500; // Reduced from 1500ms
+
+// Helper function to safely convert Json to Song[]
+const convertJsonToSongs = (jsonData: any): Song[] => {
+  if (!Array.isArray(jsonData)) return [];
+  return jsonData.filter(item => 
+    item && 
+    typeof item === 'object' && 
+    item.id && 
+    item.deezer_title
+  ) as Song[];
+};
+
+// Helper function to safely convert Json to GameModeSettings
+const convertJsonToGameModeSettings = (jsonData: any): GameModeSettings => {
+  if (!jsonData || typeof jsonData !== 'object') return {};
+  return jsonData as GameModeSettings;
+};
+
+// Helper function to safely convert database room to GameRoom
+const convertDatabaseRoomToGameRoom = (dbRoom: any): GameRoom => {
+  return {
+    id: dbRoom.id,
+    lobby_code: dbRoom.lobby_code,
+    host_id: dbRoom.host_id,
+    host_name: dbRoom.host_name,
+    phase: dbRoom.phase as GamePhase,
+    gamemode: dbRoom.gamemode as GameMode,
+    gamemode_settings: convertJsonToGameModeSettings(dbRoom.gamemode_settings),
+    songs: convertJsonToSongs(dbRoom.songs),
+    created_at: dbRoom.created_at,
+    updated_at: dbRoom.updated_at,
+    current_turn: dbRoom.current_turn,
+    current_song: dbRoom.current_song ? dbRoom.current_song as Song : null,
+    current_player_id: dbRoom.current_player_id
+  };
+};
 
 export function useGameRoom() {
   const { toast } = useToast();
@@ -37,7 +72,7 @@ export function useGameRoom() {
         filter: `id=eq.${room.id}`,
         onUpdate: (payload: any) => {
           console.log('🏠 REALTIME: Room updated instantly:', payload.new);
-          setRoom(payload.new);
+          setRoom(convertDatabaseRoomToGameRoom(payload.new));
         }
       },
       {
@@ -96,7 +131,7 @@ export function useGameRoom() {
         color: p.color,
         timelineColor: p.timeline_color,
         score: p.score,
-        timeline: Array.isArray(p.timeline) ? p.timeline as Song[] : []
+        timeline: convertJsonToSongs(p.timeline)
       }));
 
       console.log('👥 Converted non-host players:', convertedPlayers);
@@ -143,7 +178,7 @@ export function useGameRoom() {
     setError(null);
 
     try {
-      // Create room using direct Supabase calls since GameService methods don't exist
+      // Create room using direct Supabase calls
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
@@ -160,7 +195,7 @@ export function useGameRoom() {
 
       if (roomError) throw roomError;
 
-      setRoom(roomData);
+      setRoom(convertDatabaseRoomToGameRoom(roomData));
       setIsHost(true);
       console.log('🏠 Room created successfully:', roomData.lobby_code);
       return roomData.lobby_code;
@@ -212,10 +247,10 @@ export function useGameRoom() {
         color: playerData.color,
         timelineColor: playerData.timeline_color,
         score: playerData.score,
-        timeline: Array.isArray(playerData.timeline) ? playerData.timeline as Song[] : []
+        timeline: convertJsonToSongs(playerData.timeline)
       };
 
-      setRoom(roomData);
+      setRoom(convertDatabaseRoomToGameRoom(roomData));
       setCurrentPlayer(player);
       setIsHost(false);
       console.log('🎮 Joined room successfully:', lobbyCode);
@@ -267,14 +302,14 @@ export function useGameRoom() {
     try {
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ songs })
+        .update({ songs: songs as any })
         .eq('id', room.id)
         .select()
         .single();
       
       if (error) throw error;
       
-      setRoom(data);
+      setRoom(convertDatabaseRoomToGameRoom(data));
       console.log('🎵 Room songs updated successfully');
     } catch (error) {
       console.error('❌ Update room songs error:', error);
@@ -290,7 +325,7 @@ export function useGameRoom() {
         .from('game_rooms')
         .update({ 
           gamemode,
-          gamemode_settings: settings 
+          gamemode_settings: settings as any
         })
         .eq('id', room.id)
         .select()
@@ -299,7 +334,7 @@ export function useGameRoom() {
       if (error) throw error;
       
       // ENHANCED: Immediate state update
-      setRoom(data);
+      setRoom(convertDatabaseRoomToGameRoom(data));
       console.log('🎮 Room gamemode updated successfully');
       return true;
     } catch (error) {
@@ -324,7 +359,7 @@ export function useGameRoom() {
       if (error) throw error;
       
       // ENHANCED: Immediate phase transition
-      setRoom(data);
+      setRoom(convertDatabaseRoomToGameRoom(data));
       console.log('🚀 Game started successfully');
     } catch (error) {
       console.error('❌ Start game error:', error);
@@ -356,7 +391,7 @@ export function useGameRoom() {
       const { error } = await supabase
         .from('players')
         .update({
-          timeline: optimisticTimeline,
+          timeline: optimisticTimeline as any,
           score: currentPlayer.score + 1
         })
         .eq('id', currentPlayer.id);
@@ -383,14 +418,14 @@ export function useGameRoom() {
     try {
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song })
+        .update({ current_song: song as any })
         .eq('id', room.id)
         .select()
         .single();
       
       if (error) throw error;
       
-      setRoom(data);
+      setRoom(convertDatabaseRoomToGameRoom(data));
       console.log('🎵 Current song updated successfully');
     } catch (error) {
       console.error('❌ Set current song error:', error);
@@ -406,7 +441,7 @@ export function useGameRoom() {
       const updatePromises = Object.entries(playerCards).map(([playerId, song]) =>
         supabase
           .from('players')
-          .update({ timeline: [song] })
+          .update({ timeline: [song] as any })
           .eq('id', playerId)
       );
 
