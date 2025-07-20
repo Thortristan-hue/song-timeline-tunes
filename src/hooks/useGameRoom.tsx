@@ -117,7 +117,7 @@ export function useGameRoom() {
   // ENHANCED: Real-time subscription with instant updates
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
-  // ENHANCED: Optimized player fetching with rate limiting
+  // ENHANCED: Optimized player fetching with rate limiting and currentPlayer restoration
   const fetchPlayersOptimized = useCallback(async (roomId: string, forceUpdate = false) => {
     // Rate limiting to prevent spam
     const now = Date.now();
@@ -158,12 +158,46 @@ export function useGameRoom() {
 
       // ENHANCED: Immediate state update for snappy UX
       setPlayers(convertedPlayers);
+
+      // CRITICAL FIX: Restore currentPlayer if missing but we have session data
+      if (!currentPlayer && !isHost && sessionId) {
+        const myPlayer = playersData.find(p => p.player_session_id === sessionId);
+        if (myPlayer) {
+          console.log('🔄 RESTORING currentPlayer from session:', myPlayer.name);
+          const restoredPlayer: Player = {
+            id: myPlayer.id,
+            name: myPlayer.name,
+            color: myPlayer.color,
+            timelineColor: myPlayer.timeline_color,
+            score: myPlayer.score,
+            timeline: convertJsonToSongs(myPlayer.timeline)
+          };
+          setCurrentPlayer(restoredPlayer);
+        } else {
+          console.warn('⚠️ Could not find player with current session ID:', sessionId);
+          
+          // ENHANCED FALLBACK: Try to match by any available method
+          if (playersData.length === 1) {
+            console.log('🔄 FALLBACK: Only one player in room, assuming it is us');
+            const fallbackPlayer: Player = {
+              id: playersData[0].id,
+              name: playersData[0].name,
+              color: playersData[0].color,
+              timelineColor: playersData[0].timeline_color,
+              score: playersData[0].score,
+              timeline: convertJsonToSongs(playersData[0].timeline)
+            };
+            setCurrentPlayer(fallbackPlayer);
+          }
+        }
+      }
+      
       console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
 
     } catch (error) {
       console.error('❌ Failed to fetch players:', error);
     }
-  }, []);
+  }, [currentPlayer, isHost, sessionId]);
 
   // ENHANCED: Debounced player updates with immediate application
   useEffect(() => {
@@ -370,9 +404,36 @@ export function useGameRoom() {
 
     try {
       setIsLoading(true);
+      
+      // Get all non-host players to assign the first current player
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', room.id)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError) {
+        throw new Error('Failed to get players for game start');
+      }
+
+      if (!allPlayers || allPlayers.length === 0) {
+        throw new Error('No players available to start the game');
+      }
+
+      console.log('🎮 Starting game with players:', allPlayers.map(p => p.name));
+
+      // CRITICAL FIX: Ensure all players are properly assigned starting data
+      // Set the first player as the current player
+      const firstPlayer = allPlayers[0];
+      
       const { data, error } = await supabase
         .from('game_rooms')
-        .update({ phase: 'playing' })
+        .update({ 
+          phase: 'playing',
+          current_player_id: firstPlayer.id,
+          current_turn: 0
+        })
         .eq('id', room.id)
         .select()
         .single();
@@ -381,14 +442,37 @@ export function useGameRoom() {
       
       // ENHANCED: Immediate phase transition
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🚀 Game started successfully');
+      
+      // CRITICAL FIX: Force immediate player refresh to ensure all client states are synchronized
+      await fetchPlayersOptimized(room.id, true);
+      
+      // CRITICAL FIX: Additional validation to ensure proper state transition
+      setTimeout(async () => {
+        console.log('🔄 VALIDATION: Checking if game state is properly synchronized...');
+        await fetchPlayersOptimized(room.id, true);
+        
+        // Double-check that the room state is correct
+        const { data: updatedRoom } = await supabase
+          .from('game_rooms')
+          .select('*')
+          .eq('id', room.id)
+          .single();
+          
+        if (updatedRoom) {
+          setRoom(convertDatabaseRoomToGameRoom(updatedRoom));
+          console.log('✅ VALIDATION: Game state synchronized successfully');
+        }
+      }, 1000);
+      
+      console.log('🚀 Game started successfully with first player:', firstPlayer.name);
+      console.log('🔄 Triggering player data refresh to ensure currentPlayer assignment');
     } catch (error) {
       console.error('❌ Start game error:', error);
       setError(error instanceof Error ? error.message : 'Failed to start game');
     } finally {
       setIsLoading(false);
     }
-  }, [room, isHost]);
+  }, [room, isHost, fetchPlayersOptimized]);
 
   // ENHANCED: Instant card placement with optimistic updates
   const placeCard = useCallback(async (song: Song, position: number) => {

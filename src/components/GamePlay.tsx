@@ -624,26 +624,122 @@ export function GamePlay({
     );
   }
 
-  // Check if game is ready
+  // Check if game is ready with enhanced validation
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
-    currentMysteryCard &&
-    currentTurnPlayer;
+    currentMysteryCard;
 
-  if (!gameReady) {
+  // Add specific checks for missing critical data with better error messages
+  const missingCurrentPlayer = !currentPlayer && !isHost;
+  const missingCurrentTurnPlayer = !currentTurnPlayer && currentMysteryCard;
+  const noValidPlayers = activePlayers.length === 0;
+
+  // ENHANCED: Better error handling for various missing data scenarios with recovery options
+  if (!gameReady || missingCurrentPlayer || noValidPlayers) {
+    let errorMessage = "🚀 Optimized Setup...";
+    let subMessage = "Preparing enhanced mobile gameplay with performance optimizations";
+    const showRefreshButton = false;
+    let showRejoinButton = false;
+    let errorLevel = "loading"; // "loading", "warning", "error"
+
+    if (noValidPlayers) {
+      errorMessage = "⚠️ No players found in the game";
+      subMessage = "The game needs at least one player to start. Please check if players have joined properly.";
+      errorLevel = "warning";
+    } else if (missingCurrentPlayer) {
+      errorMessage = "❌ Your player session was lost";
+      subMessage = `Please go back to the menu and rejoin using code: ${room?.lobby_code}`;
+      errorLevel = "error";
+      showRejoinButton = true;
+    } else if (missingCurrentTurnPlayer) {
+      errorMessage = "⏳ Waiting for turn assignment...";
+      subMessage = "Turn data is being synchronized. This should resolve automatically.";
+      errorLevel = "warning";
+    } else if (!currentMysteryCard) {
+      errorMessage = "🎵 Loading game music...";
+      subMessage = "Setting up the mystery card and audio for gameplay.";
+      errorLevel = "loading";
+    }
+    
+    console.log('🚫 GamePlay not ready:', { 
+      gameReady, 
+      missingCurrentPlayer, 
+      missingCurrentTurnPlayer,
+      noValidPlayers,
+      currentPlayer: currentPlayer?.name,
+      currentTurnPlayer: currentTurnPlayer?.name,
+      hasPlayers: activePlayers.length > 0,
+      hasCurrentSong: !!currentMysteryCard,
+      phase: room?.phase,
+      errorLevel
+    });
+
+    const bgColor = errorLevel === "error" ? "from-red-900 via-red-800 to-black" :
+                    errorLevel === "warning" ? "from-yellow-900 via-yellow-800 to-black" :
+                    "from-gray-900 via-gray-800 to-black";
+    
+    const iconColor = errorLevel === "error" ? "text-red-400" :
+                      errorLevel === "warning" ? "text-yellow-400" :
+                      "text-white";
+
+    const icon = errorLevel === "error" ? "⚠️" :
+                 errorLevel === "warning" ? "⏳" :
+                 "🎵";
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
+      <div className={`min-h-screen bg-gradient-to-br ${bgColor} relative overflow-hidden flex items-center justify-center p-4`}>
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
         </div>
-        <div className="text-center text-white relative z-10">
-          <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20">
-            <div className="text-2xl animate-spin">🎵</div>
+        <div className="text-center text-white relative z-10 max-w-md mx-auto">
+          <div className={`w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20 ${iconColor}`}>
+            <div className={`text-2xl ${errorLevel === "loading" ? "animate-spin" : ""}`}>{icon}</div>
           </div>
-          <div className="text-xl font-semibold mb-2">🚀 Optimized Setup...</div>
-          <div className="text-white/60 max-w-sm mx-auto text-sm">Preparing enhanced mobile gameplay with performance optimizations</div>
+          <div className="text-xl font-semibold mb-2">{errorMessage}</div>
+          <div className="text-white/60 max-w-sm mx-auto text-sm mb-4">{subMessage}</div>
+          
+          {showRefreshButton && (
+            <div className="space-y-2">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 hover:bg-red-500/30 transition-colors"
+              >
+                Refresh Page
+              </button>
+              <div className="text-xs text-white/40">
+                If this keeps happening, try rejoining the room
+              </div>
+            </div>
+          )}
+
+          {showRejoinButton && (
+            <div className="space-y-2">
+              <button 
+                onClick={() => {
+                  // Go back to menu to rejoin
+                  if (onReplayGame) {
+                    onReplayGame();
+                  } else {
+                    window.location.href = '/';
+                  }
+                }} 
+                className="px-6 py-3 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-200 hover:bg-blue-500/30 transition-colors"
+              >
+                Go Back to Menu
+              </button>
+              <div className="text-xs text-white/40">
+                Use room code: {room?.lobby_code} to rejoin
+              </div>
+            </div>
+          )}
+
+          {errorLevel === "warning" && (
+            <div className="text-xs text-white/40 mt-2">
+              This should resolve automatically in a few seconds
+            </div>
+          )}
         </div>
       </div>
     );
