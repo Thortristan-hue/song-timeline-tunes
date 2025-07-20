@@ -71,7 +71,7 @@ export function useFiendGameLogic(
         totalRounds: roomData.gamemode_settings?.rounds || 5
       }));
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.gamemode_settings?.rounds]);
+  }, [roomData]);
 
   // Initialize game with optimized song loading
   const initializeGame = useCallback(async () => {

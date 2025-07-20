@@ -158,7 +158,7 @@ function Index() {
         }
       }, 100); // Delay to prevent blocking phase transition
     }
-  }, [room?.phase, room?.host_id, room?.id, room?.current_player_id, room?.lobby_code, gamePhase, soundEffects, isHost, players.length, players, currentPlayer]);
+  }, [room, gamePhase, soundEffects, isHost, players, currentPlayer]);
 
   // CRITICAL FIX: Recovery mechanism for missing currentPlayer in playing phase
   useEffect(() => {
