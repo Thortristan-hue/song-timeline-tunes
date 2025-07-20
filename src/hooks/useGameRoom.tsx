@@ -199,12 +199,13 @@ export function useGameRoom() {
 
     try {
       // Create room using direct Supabase calls
+      // Note: lobby_code is intentionally omitted to allow the database DEFAULT 
+      // generate_lobby_code() function to create the proper 5-letter + digit format
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           host_name: hostName,
           host_id: sessionId,
-          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
           phase: 'lobby',
           gamemode: 'classic',
           gamemode_settings: {},
