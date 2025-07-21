@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
@@ -308,25 +309,35 @@ export function useGameRoom() {
       // Create room using direct Supabase calls
       // Note: lobby_code is intentionally omitted to allow the database DEFAULT 
       // generate_lobby_code() function to create the proper 5-letter + digit format
+      // Using type assertion to work around TypeScript types that don't include host_name
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
-          host_name: hostName,
           host_id: sessionId,
           phase: 'lobby',
           gamemode: 'classic',
           gamemode_settings: convertGameModeSettingsToJson({}),
           songs: convertSongsToJson([])
-        })
+        } as any) // Type assertion to bypass missing host_name in types
         .select()
         .single();
 
       if (roomError) throw roomError;
 
-      setRoom(convertDatabaseRoomToGameRoom(roomData));
+      // Update the room with host_name in a separate call to avoid type issues
+      const { data: updatedRoomData, error: updateError } = await supabase
+        .from('game_rooms')
+        .update({ host_name: hostName } as any)
+        .eq('id', roomData.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      setRoom(convertDatabaseRoomToGameRoom(updatedRoomData));
       setIsHost(true);
-      console.log('🏠 Room created successfully:', roomData.lobby_code);
-      return roomData.lobby_code;
+      console.log('🏠 Room created successfully:', updatedRoomData.lobby_code);
+      return updatedRoomData.lobby_code;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create room';
       console.error('❌ Create room error:', errorMessage);
