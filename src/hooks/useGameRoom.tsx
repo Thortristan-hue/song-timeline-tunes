@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
@@ -61,18 +60,18 @@ const convertDatabaseRoomToGameRoom = (dbRoom: Record<string, unknown>): GameRoo
 };
 
 // Helper function to safely convert Song to Json
-const convertSongToJson = (song: Song): unknown => {
-  return song as unknown;
+const convertSongToJson = (song: Song) => {
+  return song as any; // Use 'any' for Supabase Json compatibility
 };
 
 // Helper function to safely convert Song[] to Json
-const convertSongsToJson = (songs: Song[]): unknown => {
-  return songs as unknown;
+const convertSongsToJson = (songs: Song[]) => {
+  return songs as any; // Use 'any' for Supabase Json compatibility
 };
 
 // Helper function to safely convert GameModeSettings to Json
-const convertGameModeSettingsToJson = (settings: GameModeSettings): unknown => {
-  return settings as unknown;
+const convertGameModeSettingsToJson = (settings: GameModeSettings) => {
+  return settings as any; // Use 'any' for Supabase Json compatibility
 };
 
 export function useGameRoom() {
