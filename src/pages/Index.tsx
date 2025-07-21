@@ -74,129 +74,46 @@ function Index() {
         window.history.replaceState({}, document.title, newUrl);
       } else {
         console.error('❌ Invalid lobby code format:', cleanCode);
-        // Show error toast for invalid format
-        // Note: toast would need to be available here, but keeping it simple for now
       }
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with better error handling and currentPlayer validation
+  // SIMPLIFIED: Room phase listener with minimal validation
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase - validating game start');
+      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase');
       console.log('🎮 TRANSITION DATA:', { 
         phase: room.phase, 
         id: room.id, 
-        hostId: room.host_id,
-        currentPlayerId: room.current_player_id,
-        isHost,
         playersCount: players.length,
-        hasCurrentPlayer: !!currentPlayer,
-        playerNames: players.map(p => p.name)
+        hasCurrentPlayer: !!currentPlayer
       });
       
-      // CRITICAL FIX: Enhanced validation before transitioning with comprehensive checks
-      if (!room.current_player_id && players.length > 0) {
-        console.error('❌ PHASE TRANSITION ERROR: No current_player_id set but players available');
-        console.error('❌ Room data:', room);
-        const errorMsg = `Game setup incomplete: no current player assigned. Room code: ${room.lobby_code}`;
-        console.error('🚨 Game Error:', errorMsg);
-        setPhaseTransitionError(errorMsg);
-        return;
-      }
-
-      // CRITICAL FIX: For all users, ensure there are players before transitioning
+      // SIMPLIFIED: Just check if we have basic requirements
       if (players.length === 0) {
-        console.error('❌ PHASE TRANSITION ERROR: No players found during phase transition');
-        console.error('❌ This indicates a critical state synchronization issue');
-        const errorMsg = `No players found in game. Please refresh and rejoin using code: ${room.lobby_code}`;
-        console.error('🚨 Game Error:', errorMsg);
-        setPhaseTransitionError(errorMsg);
-        return;
+        console.error('❌ No players found, but continuing anyway...');
+        // Don't block the transition, let the game try to load
       }
 
-      // CRITICAL FIX: For non-host players, ensure currentPlayer is available before transitioning
-      if (!isHost && !currentPlayer) {
-        console.warn('⚠️ PHASE TRANSITION WARNING: Missing currentPlayer for non-host, attempting recovery');
-        
-        // Try to find current player based on room's current_player_id
-        const foundCurrentPlayer = players.find(p => p.id === room.current_player_id);
-        if (foundCurrentPlayer) {
-          console.log('🔄 RECOVERY: Found currentPlayer in players list:', foundCurrentPlayer.name);
-          // This should resolve automatically via the fetchPlayersOptimized function
-        } else {
-          console.error('❌ CRITICAL RECOVERY ERROR: Cannot find currentPlayer in players list');
-          console.error('❌ Room current_player_id:', room.current_player_id);
-          console.error('❌ Available players:', players.map(p => ({ id: p.id, name: p.name })));
-          const errorMsg = `Unable to find your player in the game. Please go back and rejoin using code: ${room.lobby_code}`;
-          console.error('🚨 Game Error:', errorMsg);
-          setPhaseTransitionError(errorMsg);
-          return;
-        }
-      }
-
-      // ENHANCED: Additional safety checks for game state consistency
-      if (isHost && players.length === 0) {
-        console.error('❌ HOST VALIDATION ERROR: Host sees no players but game is starting');
-        const errorMsg = `Host error: No players visible. Please restart the game.`;
-        console.error('🚨 Game Error:', errorMsg);
-        setPhaseTransitionError(errorMsg);
-        return;
-      }
+      // Clear any previous errors
+      setPhaseTransitionError(null);
       
-      console.log('✅ PHASE TRANSITION: All validations passed, transitioning to playing phase');
+      console.log('✅ PHASE TRANSITION: Transitioning to playing phase');
       setGamePhase('playing');
       
-      // Enhanced audio start with better error handling and non-blocking behavior
+      // Play sound effect
       setTimeout(() => {
         try {
           soundEffects.playGameStart().catch((error: Error) => {
-            console.warn('🔊 Game start sound failed, continuing anyway:', error);
+            console.warn('🔊 Game start sound failed:', error);
           });
         } catch (error) {
-          console.warn('🔊 Game start sound failed, continuing anyway:', error);
+          console.warn('🔊 Game start sound failed:', error);
         }
-      }, 100); // Delay to prevent blocking phase transition
+      }, 100);
     }
-  }, [room, gamePhase, soundEffects, isHost, players, currentPlayer]);
+  }, [room?.phase, gamePhase, soundEffects, players.length, currentPlayer]);
 
-  // CRITICAL FIX: Recovery mechanism for missing currentPlayer in playing phase
-  useEffect(() => {
-    if (room?.phase === 'playing' && gamePhase === 'playing' && !isHost && !currentPlayer && players.length > 0) {
-      console.log('🔄 RECOVERY: Attempting to restore missing currentPlayer');
-      
-      // Try to find player by session ID first
-      const myPlayerBySession = players.find(p => 
-        p.id.includes(playerName) || 
-        p.name === playerName
-      );
-      
-      if (myPlayerBySession) {
-        console.log('🔄 RECOVERY: Found player by name match:', myPlayerBySession.name);
-        // This will be handled by the fetchPlayersOptimized function
-        return;
-      }
-      
-      // If we're the current turn player, we can identify ourselves
-      if (room.current_player_id) {
-        const currentTurnPlayer = players.find(p => p.id === room.current_player_id);
-        if (currentTurnPlayer) {
-          console.log('🔄 RECOVERY: Could identify current turn player:', currentTurnPlayer.name);
-          // The user might be this player, but we need more certainty
-        }
-      }
-      
-      // Last resort: show a helpful error after a delay
-      setTimeout(() => {
-        if (!currentPlayer && !isHost && room?.phase === 'playing') {
-          console.error('❌ RECOVERY FAILED: Could not restore currentPlayer after attempts');
-          // Use a more user-friendly error message
-          const friendlyError = `Your game session was lost. Please go back to the menu and rejoin using code: ${room.lobby_code}`;
-          console.error('🚨 Game Error:', friendlyError);
-        }
-      }, 5000); // Give 5 seconds for automatic recovery
-    }
-  }, [room?.phase, gamePhase, isHost, currentPlayer, players, room?.current_player_id, playerName, room?.lobby_code, error]);
   useEffect(() => {
     const winningPlayer = players.find(player => player.score >= 10);
     if (winningPlayer && !winner) {
@@ -241,11 +158,15 @@ function Index() {
   const handleStartGame = async () => {
     try {
       console.log('🎮 Host starting game...');
+      
+      // Clear any previous errors before starting
+      setPhaseTransitionError(null);
+      
       await startGame();
-      // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
     } catch (error) {
       console.error('Failed to start game:', error);
+      setPhaseTransitionError(`Failed to start game: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -255,7 +176,8 @@ function Index() {
     setCustomSongs([]);
     setPlayerName('');
     setWinner(null);
-    setAutoJoinCode(''); // Clear auto-join code
+    setAutoJoinCode('');
+    setPhaseTransitionError(null); // Clear errors when going back to menu
     soundEffects.playButtonClick();
   };
 
@@ -273,6 +195,7 @@ function Index() {
     // Reset game state but keep same players
     setGamePhase('hostLobby');
     setWinner(null);
+    setPhaseTransitionError(null);
     soundEffects.playButtonClick();
   };
 
@@ -288,6 +211,7 @@ function Index() {
   const handlePlayAgain = () => {
     setGamePhase('hostLobby');
     setWinner(null);
+    setPhaseTransitionError(null);
     soundEffects.playButtonClick();
   };
 
@@ -386,6 +310,15 @@ function Index() {
             <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm z-50">
               <div className="font-bold mb-1">Oops!</div>
               <div className="text-sm">{error || phaseTransitionError}</div>
+              <button 
+                onClick={() => {
+                  setPhaseTransitionError(null);
+                  // Also try to clear the main error if possible
+                }} 
+                className="mt-2 text-xs underline"
+              >
+                Dismiss
+              </button>
             </div>
           )}
         </div>

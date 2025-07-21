@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
@@ -473,20 +472,20 @@ export function useGameRoom() {
     }
   }, [room, isHost]);
 
+  // SIMPLIFIED: Game start with better error handling
   const startGame = useCallback(async () => {
     if (!room || !isHost) {
       console.error('🚨 START GAME ERROR: Missing room or not host', { hasRoom: !!room, isHost });
-      setError('Cannot start game: missing room or insufficient permissions');
-      return;
+      throw new Error('Cannot start game: missing room or insufficient permissions');
     }
 
     try {
       setIsLoading(true);
-      setError(null); // Clear any previous errors
+      setError(null);
       
       console.log('🎮 GAME START: Initiating game start sequence for room:', room.id);
       
-      // CRITICAL FIX: Get all non-host players with enhanced validation
+      // SIMPLIFIED: Get players and start immediately
       const { data: allPlayers, error: playersError } = await supabase
         .from('players')
         .select('*')
@@ -496,45 +495,24 @@ export function useGameRoom() {
 
       if (playersError) {
         console.error('🚨 PLAYERS FETCH ERROR:', playersError);
-        throw new Error(`Failed to get players for game start: ${playersError.message}`);
+        throw new Error(`Failed to get players: ${playersError.message}`);
       }
 
-      // CRITICAL FIX: Enhanced player validation with detailed logging
       if (!allPlayers || allPlayers.length === 0) {
-        console.error('🚨 NO PLAYERS ERROR:', { 
-          allPlayers, 
-          roomId: room.id, 
-          currentPlayersState: players.length 
-        });
-        throw new Error(`No players available to start the game. Room: ${room.lobby_code}`);
+        console.error('🚨 NO PLAYERS ERROR: No players to start game with');
+        throw new Error('No players available to start the game');
       }
 
-      console.log('🎮 GAME START: Validated players for game start:', {
-        playersCount: allPlayers.length,
-        players: allPlayers.map(p => ({ id: p.id, name: p.name, session: p.player_session_id }))
-      });
+      console.log('🎮 GAME START: Found players:', allPlayers.length);
 
-      // CRITICAL FIX: Enhanced player assignment with validation
-      const firstPlayer = allPlayers[0];
-      
-      if (!firstPlayer.id || !firstPlayer.name) {
-        console.error('🚨 INVALID PLAYER ERROR:', firstPlayer);
-        throw new Error('Invalid first player data - missing ID or name');
-      }
-
-      console.log('🎮 GAME START: Assigning first player:', {
-        id: firstPlayer.id,
-        name: firstPlayer.name,
-        totalPlayers: allPlayers.length
-      });
-      
-      // CRITICAL FIX: Update room with comprehensive error handling
+      // SIMPLIFIED: Just update room phase and let the game handle the rest
       const { data: updatedRoom, error: updateError } = await supabase
         .from('game_rooms')
         .update({ 
           phase: 'playing',
-          current_player_id: firstPlayer.id,
-          current_turn: 0
+          current_player_id: allPlayers[0].id,
+          current_turn: 0,
+          updated_at: new Date().toISOString()
         })
         .eq('id', room.id)
         .select()
@@ -542,89 +520,31 @@ export function useGameRoom() {
       
       if (updateError) {
         console.error('🚨 ROOM UPDATE ERROR:', updateError);
-        throw new Error(`Failed to update room phase: ${updateError.message}`);
+        throw new Error(`Failed to start game: ${updateError.message}`);
       }
 
       if (!updatedRoom) {
-        console.error('🚨 NO ROOM DATA ERROR: Update succeeded but no data returned');
-        throw new Error('Room update succeeded but no data returned');
+        throw new Error('Failed to update room - no data returned');
       }
       
-      // ENHANCED: Immediate state updates with validation
+      // Update local state immediately
       const convertedRoom = convertDatabaseRoomToGameRoom(updatedRoom);
       setRoom(convertedRoom);
       
-      console.log('🚀 GAME START: Room phase updated successfully:', {
-        roomId: updatedRoom.id,
-        phase: updatedRoom.phase,
-        currentPlayerId: updatedRoom.current_player_id,
-        playersCount: allPlayers.length
-      });
+      console.log('🚀 GAME START: Successfully started game');
       
-      // CRITICAL FIX: Force immediate player refresh with retry logic
-      console.log('🔄 GAME START: Forcing player state synchronization...');
+      // Force player refresh
       await fetchPlayersOptimized(room.id, true);
-      
-      // CRITICAL FIX: Additional validation with enhanced error handling
-      setTimeout(async () => {
-        try {
-          console.log('🔄 VALIDATION: Post-start state verification...');
-          
-          // Refresh players again to ensure synchronization
-          await fetchPlayersOptimized(room.id, true);
-          
-          // Double-check room state
-          const { data: finalRoom, error: checkError } = await supabase
-            .from('game_rooms')
-            .select('*')
-            .eq('id', room.id)
-            .single();
-            
-          if (checkError) {
-            console.error('🚨 VALIDATION ERROR: Failed to verify room state:', checkError);
-            setError(`Game started but verification failed: ${checkError.message}`);
-            return;
-          }
-          
-          if (!finalRoom) {
-            console.error('🚨 VALIDATION ERROR: Room no longer exists after start');
-            setError('Game started but room disappeared during verification');
-            return;
-          }
-          
-          if (finalRoom.phase !== 'playing') {
-            console.error('🚨 VALIDATION ERROR: Room phase not playing after start:', finalRoom.phase);
-            setError(`Game start incomplete: phase is ${finalRoom.phase} instead of playing`);
-            return;
-          }
-          
-          setRoom(convertDatabaseRoomToGameRoom(finalRoom));
-          console.log('✅ VALIDATION: Game state fully synchronized and verified', {
-            phase: finalRoom.phase,
-            currentPlayerId: finalRoom.current_player_id,
-            playersInState: players.length
-          });
-        } catch (validationError) {
-          console.error('🚨 VALIDATION CATCH: Error during post-start validation:', validationError);
-          setError('Game started but post-validation failed');
-        }
-      }, 1500); // Increased delay for better reliability
-      
-      console.log('🚀 GAME START: Successfully initiated with first player:', firstPlayer.name);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to start game';
-      console.error('🚨 START GAME CATCH: Critical error during game start:', {
-        error: errorMessage,
-        roomId: room?.id,
-        lobbyCode: room?.lobby_code,
-        playersCount: players.length
-      });
-      setError(`Game start failed: ${errorMessage}`);
+      console.error('🚨 START GAME ERROR:', errorMessage);
+      setError(errorMessage);
+      throw error; // Re-throw so the UI can handle it
     } finally {
       setIsLoading(false);
     }
-  }, [room, isHost, fetchPlayersOptimized, players.length]);
+  }, [room, isHost, fetchPlayersOptimized]);
 
   // ENHANCED: Instant card placement with optimistic updates
   const placeCard = useCallback(async (song: Song, position: number) => {
