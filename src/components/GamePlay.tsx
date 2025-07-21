@@ -108,8 +108,14 @@ export function GamePlay({
       return;
     }
 
-    if (!room?.current_song?.preview_url) {
-      console.error('🔊 HOST: No preview URL available for current song:', room?.current_song);
+    // CRITICAL FIX: Check if current song exists and has preview_url
+    if (!room?.current_song) {
+      console.error('🔊 HOST: No current song available');
+      return;
+    }
+
+    if (!room.current_song.preview_url) {
+      console.error('🔊 HOST: No preview URL available for current song:', room.current_song);
       return;
     }
 
@@ -388,8 +394,8 @@ export function GamePlay({
     }
   }, [players, room?.host_id, gameEnded, soundEffects, room?.id, isHost]);
 
-  // Get current game state
-  const currentMysteryCard = room?.current_song;
+  // Get current game state with CRITICAL NULL CHECKS
+  const currentMysteryCard = room?.current_song || null;
   const currentTurnPlayerId = room?.current_player_id;
   const activePlayers = players.filter(p => !p.id.includes(room?.host_id));
   const currentTurnPlayer = activePlayers.find(p => p.id === currentTurnPlayerId) || activePlayers[room?.current_turn || 0];
@@ -687,16 +693,17 @@ export function GamePlay({
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
-    currentMysteryCard;
+    currentMysteryCard !== null &&
+    currentMysteryCard !== undefined;
 
   // Add specific checks for missing critical data with better error messages
   const missingCurrentPlayer = !currentPlayer && !isHost;
   const missingCurrentTurnPlayer = !currentTurnPlayer && currentMysteryCard;
   const noValidPlayers = activePlayers.length === 0;
+  const missingMysteryCard = !currentMysteryCard;
 
   // ENHANCED: Better error handling for various missing data scenarios with recovery options
-  // For players: show game interface even if currentPlayer is temporarily missing, with fallback UI
-  if (!gameReady || noValidPlayers || (isHost && missingCurrentTurnPlayer)) {
+  if (!gameReady || noValidPlayers || (isHost && missingCurrentTurnPlayer) || missingMysteryCard) {
     let errorMessage = "🚀 Optimized Setup...";
     let subMessage = "Preparing enhanced mobile gameplay with performance optimizations";
     const showRefreshButton = false;
@@ -716,7 +723,7 @@ export function GamePlay({
       errorMessage = "⏳ Waiting for turn assignment...";
       subMessage = "Turn data is being synchronized. This should resolve automatically.";
       errorLevel = "warning";
-    } else if (!currentMysteryCard) {
+    } else if (missingMysteryCard) {
       errorMessage = "🎵 Loading game music...";
       subMessage = "Setting up the mystery card and audio for gameplay.";
       errorLevel = "loading";
@@ -727,6 +734,7 @@ export function GamePlay({
       missingCurrentPlayer, 
       missingCurrentTurnPlayer,
       noValidPlayers,
+      missingMysteryCard,
       currentPlayer: currentPlayer?.name,
       currentTurnPlayer: currentTurnPlayer?.name,
       hasPlayers: activePlayers.length > 0,
@@ -819,7 +827,7 @@ export function GamePlay({
         isHost ? (
           <FiendModeHostView
             players={activePlayers}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             roundNumber={currentRound}
             totalRounds={room.gamemode_settings?.rounds || 5}
             roomCode={room.lobby_code}
@@ -829,7 +837,7 @@ export function GamePlay({
         ) : (
           <FiendModePlayerView
             currentPlayer={currentPlayer}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             roomCode={room.lobby_code}
             isPlaying={isPlaying}
             onPlayPause={handleUniversalPlayPause}
@@ -844,7 +852,7 @@ export function GamePlay({
         isHost ? (
           <SprintModeHostView
             players={activePlayers}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             targetCards={room.gamemode_settings?.targetCards || 10}
             roomCode={room.lobby_code}
             timeLeft={30}
@@ -854,7 +862,7 @@ export function GamePlay({
         ) : (
           <SprintModePlayerView
             currentPlayer={currentPlayer}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             roomCode={room.lobby_code}
             isPlaying={isPlaying}
             onPlayPause={handleUniversalPlayPause}
@@ -871,7 +879,7 @@ export function GamePlay({
         isHost ? (
           <HostGameView
             currentTurnPlayer={currentTurnPlayer}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             roomCode={room.lobby_code}
             players={activePlayers}
             mysteryCardRevealed={mysteryCardRevealed}
@@ -886,7 +894,7 @@ export function GamePlay({
           <MobilePlayerGameView
             currentPlayer={currentPlayer}
             currentTurnPlayer={currentTurnPlayer}
-            currentSong={currentMysteryCard}
+            currentSong={currentMysteryCard!}
             roomCode={room.lobby_code}
             isMyTurn={isMyTurn}
             isPlaying={isPlaying}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,19 @@ export function SprintModeHostView({
   playerTimeouts = {},
   recentPlacements = {}
 }: SprintModeHostViewProps) {
+  // CRITICAL FIX: Add safety check for currentSong
+  if (!currentSong || !currentSong.deezer_title || !currentSong.deezer_artist || !currentSong.release_year) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-4xl mb-4">⚡</div>
+          <div className="text-2xl font-bold mb-3">Loading Sprint Challenge...</div>
+          <div className="text-lg">Preparing the next mystery card for racing</div>
+        </div>
+      </div>
+    );
+  }
+
   const sortedPlayers = [...players].sort((a, b) => b.timeline.length - a.timeline.length);
   const leader = sortedPlayers[0];
 

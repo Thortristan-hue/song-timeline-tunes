@@ -24,6 +24,19 @@ export function FiendModeHostView({
   timeLeft = 30,
   playerGuesses = {}
 }: FiendModeHostViewProps) {
+  // CRITICAL FIX: Add safety check for currentSong
+  if (!currentSong || !currentSong.deezer_title || !currentSong.deezer_artist || !currentSong.release_year) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-4xl mb-4">🎵</div>
+          <div className="text-2xl font-bold mb-3">Loading Mystery Track...</div>
+          <div className="text-lg">Setting up the next song for Fiend Mode</div>
+        </div>
+      </div>
+    );
+  }
+
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const allPlayersSubmitted = players.every(p => playerGuesses[p.id]);
 
