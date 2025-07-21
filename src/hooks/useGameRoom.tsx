@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
@@ -60,18 +61,18 @@ const convertDatabaseRoomToGameRoom = (dbRoom: Record<string, unknown>): GameRoo
 };
 
 // Helper function to safely convert Song to Json
-const convertSongToJson = (song: Song): Record<string, unknown> => {
-  return song as Record<string, unknown>;
+const convertSongToJson = (song: Song): unknown => {
+  return song as unknown;
 };
 
 // Helper function to safely convert Song[] to Json
-const convertSongsToJson = (songs: Song[]): Record<string, unknown>[] => {
-  return songs as Record<string, unknown>[];
+const convertSongsToJson = (songs: Song[]): unknown => {
+  return songs as unknown;
 };
 
 // Helper function to safely convert GameModeSettings to Json
-const convertGameModeSettingsToJson = (settings: GameModeSettings): Record<string, unknown> => {
-  return settings as Record<string, unknown>;
+const convertGameModeSettingsToJson = (settings: GameModeSettings): unknown => {
+  return settings as unknown;
 };
 
 export function useGameRoom() {
@@ -315,8 +316,8 @@ export function useGameRoom() {
           host_id: sessionId,
           phase: 'lobby',
           gamemode: 'classic',
-          gamemode_settings: {},
-          songs: []
+          gamemode_settings: convertGameModeSettingsToJson({}),
+          songs: convertSongsToJson([])
         })
         .select()
         .single();
@@ -362,7 +363,7 @@ export function useGameRoom() {
           player_session_id: sessionId,
           is_host: false,
           score: 0,
-          timeline: []
+          timeline: convertSongsToJson([])
         })
         .select()
         .single();
