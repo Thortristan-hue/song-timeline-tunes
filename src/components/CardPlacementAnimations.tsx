@@ -178,9 +178,9 @@ export function CardPlacementAnimations({
             </div>
             
             <div className="text-xs italic text-center w-full leading-tight text-white/95 drop-shadow-sm">
-              {currentSong.deezer_title.length > 16 
+              {currentSong?.deezer_title && currentSong.deezer_title.length > 16 
                 ? currentSong.deezer_title.substring(0, 16) + '...' 
-                : currentSong.deezer_title}
+                : currentSong?.deezer_title || 'Loading...'}
             </div>
 
             {/* Card glow effect */}
