@@ -135,7 +135,7 @@ export const CassettePlayerDisplay = ({
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-white text-xs font-medium truncate">
-                              {song.deezer_title}
+                              {song?.deezer_title || 'Loading...'}
                             </p>
                             <p className="text-slate-400 text-xxs truncate">
                               {song.deezer_artist} · {song.release_year}

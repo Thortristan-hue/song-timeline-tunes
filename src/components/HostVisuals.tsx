@@ -316,7 +316,7 @@ function HostTimelineCard({ song, isActive, placementResult }: {
       
       {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
       <div className="text-xs italic w-full text-center text-white opacity-90">
-        {truncateText(song.deezer_title, 20)}
+        {truncateText(song?.deezer_title || 'Loading...', 20)}
       </div>
       
       <style>{`
@@ -788,7 +788,7 @@ export function HostGameView({
             </div>
             <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-10 border border-white/20 max-w-2xl animate-epic-card-rise shadow-3xl">
               <div className="text-4xl font-bold text-white mb-4">
-                {cardPlacementResult.song.deezer_title}
+                {cardPlacementResult.song?.deezer_title || 'Loading...'}
               </div>
               <div className="text-3xl text-white/80 mb-8 font-medium">
                 by {cardPlacementResult.song.deezer_artist}

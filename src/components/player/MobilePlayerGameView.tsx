@@ -285,7 +285,7 @@ export default function MobilePlayerGameView({
           
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-white/30 shadow-xl animate-in slide-in-from-bottom-2 duration-400 delay-150">
             <div className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
-              {cardPlacementResult.song.deezer_title}
+              {cardPlacementResult.song?.deezer_title || 'Loading...'}
             </div>
             <div className="text-base text-gray-700 mb-3 font-medium">
               by {cardPlacementResult.song.deezer_artist}
@@ -642,7 +642,7 @@ export default function MobilePlayerGameView({
           {debugMode && currentSong && (
             <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
               <div className="font-semibold mb-1">Song Debug Info:</div>
-              <div>Title: {currentSong.deezer_title}</div>
+              <div>Title: {currentSong?.deezer_title || 'Loading...'}</div>
               <div>Artist: {currentSong.deezer_artist}</div>
               <div>Release Year: {currentSong.release_year}</div>
             </div>

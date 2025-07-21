@@ -304,7 +304,7 @@ export function SprintModePlayerView({
                   className="min-w-[60px] text-center p-2 bg-[#4CC9F0]/20 border border-[#4CC9F0]/50 rounded-lg"
                 >
                   <div className="text-[#4CC9F0] font-bold text-xs">{song.release_year}</div>
-                  <div className="text-white text-xs truncate">{song.deezer_title.substring(0, 8)}</div>
+                  <div className="text-white text-xs truncate">{song?.deezer_title?.substring(0, 8) || 'Loading...'}</div>
                 </div>
               ))
             )}
