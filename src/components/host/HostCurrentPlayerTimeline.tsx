@@ -122,7 +122,7 @@ export function HostCurrentPlayerTimeline({
             />
             
             {currentTurnPlayer.timeline.map((song, index) => (
-              <React.Fragment key={`${song.deezer_title}-${index}`}>
+              <React.Fragment key={`${song?.deezer_title || 'unknown'}-${index}`}>
                 {/* Song card with enhanced animations */}
                 <div
                   className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
@@ -139,8 +139,8 @@ export function HostCurrentPlayerTimeline({
                     mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
                   }`}
                   style={{
-                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
-                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
+                    backgroundColor: getArtistColor(song?.deezer_artist || 'Unknown').backgroundColor,
+                    backgroundImage: getArtistColor(song?.deezer_artist || 'Unknown').backgroundImage,
                     animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
                                    timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
                                    '0s',
@@ -160,7 +160,7 @@ export function HostCurrentPlayerTimeline({
                     {/* Artist name - medium, white, wrapped, max 20 letters per line */}
                     <div className="text-sm font-medium text-white leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_artist, 20)}
+                        {truncateText(song?.deezer_artist || 'Loading...', 20)}
                       </div>
                     </div>
                     
@@ -172,7 +172,7 @@ export function HostCurrentPlayerTimeline({
                     {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
                     <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_title, 20)}
+                        {truncateText(song?.deezer_title || 'Loading...', 20)}
                       </div>
                     </div>
                   </div>
