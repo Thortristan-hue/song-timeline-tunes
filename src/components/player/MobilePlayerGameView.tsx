@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
+import { audioManager } from '@/services/AudioManager';
+import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -40,6 +42,21 @@ export default function MobilePlayerGameView({
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+
+  // Audio manager integration
+  useEffect(() => {
+    const handlePlayStateChange = (playing: boolean) => {
+      setAudioIsPlaying(playing);
+    };
+
+    audioManager.addPlayStateListener(handlePlayStateChange);
+    setAudioIsPlaying(audioManager.getIsPlaying());
+
+    return () => {
+      audioManager.removePlayStateListener(handlePlayStateChange);
+    };
+  }, []);
 
   // Debug menu state (Easter egg)
   const [debugClickCount, setDebugClickCount] = useState(0);
@@ -195,9 +212,9 @@ export default function MobilePlayerGameView({
     }
   }, [selectedPosition, isMyTurn, onHighlightGap]);
 
-  // ENHANCED: Update viewport information for host display
+  // ENHANCED: Update viewport information for host display (throttled to reduce console noise)
   useEffect(() => {
-    if (onViewportChange && timelineScrollRef.current) {
+    if (onViewportChange && timelineScrollRef.current && isMyTurn) {
       const container = timelineScrollRef.current;
       const scrollLeft = container.scrollLeft;
       const containerWidth = container.clientWidth;
@@ -210,13 +227,14 @@ export default function MobilePlayerGameView({
       const startIndex = Math.floor(scrollLeft / itemWidth);
       const endIndex = Math.min(startIndex + Math.ceil(containerWidth / itemWidth), totalPositions - 1);
       
+      // Only report significant viewport changes to avoid console noise
       onViewportChange({
         startIndex,
         endIndex,
         totalCards: timelineSongs.length
       });
     }
-  }, [selectedPosition, onViewportChange, timelineSongs.length, totalPositions]);
+  }, [selectedPosition, onViewportChange, timelineSongs.length, totalPositions, isMyTurn]);
 
   // Show result overlay
   if (cardPlacementResult) {
@@ -286,9 +304,9 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
-      {/* Safe area container */}
-      <div className="h-full flex flex-col px-4 pt-safe-top pb-safe-bottom">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 overflow-hidden">
+      {/* Fullscreen container with viewport meta support */}
+      <div className="h-full w-full flex flex-col px-2 pt-2 pb-2" style={{ height: '100dvh' }}>
         
         {/* Header */}
         <div className="flex-shrink-0 py-4">
@@ -305,32 +323,16 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* ENHANCED: Universal Vinyl Player Section - Always visible for universal control */}
-        <div className="flex-shrink-0 py-4">
+        {/* ENHANCED: Universal Mystery Song Player - Always visible for universal control */}
+        <div className="flex-shrink-0 py-2">
           <div className="flex justify-center">
-            <div className="relative">
-              <div className={cn(
-                "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
-                isPlaying && "animate-spin"
-              )}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
-                </div>
-                
-                <div className="absolute inset-1 border border-white/10 rounded-full" />
-                <div className="absolute inset-2 border border-white/10 rounded-full" />
-                <div className="absolute inset-3 border border-white/10 rounded-full" />
-              </div>
-              
-              <Button
-                onClick={onPlayPause} // ENHANCED: Universal control - triggers host audio
-                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
-                disabled={!currentSong?.preview_url}
-              >
-                <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-                </div>
-              </Button>
+            <div className="scale-75">
+              <RecordMysteryCard 
+                song={currentSong}
+                isRevealed={mysteryCardRevealed}
+                isPlaying={audioIsPlaying}
+                onPlayPause={() => audioManager.togglePlayPause(currentSong)}
+              />
             </div>
           </div>
           <div className="text-center mt-2">

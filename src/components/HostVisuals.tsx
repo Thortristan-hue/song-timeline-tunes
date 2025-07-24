@@ -6,6 +6,7 @@ import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { Button } from '@/components/ui/button';
 import { getArtistColor, truncateText } from '@/lib/utils';
+import { audioManager } from '@/services/AudioManager';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
@@ -738,6 +739,21 @@ export function HostGameView({
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   const [showHostFeedback, setShowHostFeedback] = useState(false);
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+
+  // Audio manager integration
+  useEffect(() => {
+    const handlePlayStateChange = (playing: boolean) => {
+      setAudioIsPlaying(playing);
+    };
+
+    audioManager.addPlayStateListener(handlePlayStateChange);
+    setAudioIsPlaying(audioManager.getIsPlaying());
+
+    return () => {
+      audioManager.removePlayStateListener(handlePlayStateChange);
+    };
+  }, []);
 
   // Create safe defaults for all other props  
   const safeRoomCode = roomCode || 'LOADING';
@@ -865,14 +881,30 @@ export function HostGameView({
       <HostGameBackground />
       <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
       
-      {/* Safely render record player section with fallback */}
-      <RecordPlayerSection 
-        currentSong={safeCurrentSong}
-        mysteryCardRevealed={safeMysteryCardRevealed}
-        isPlaying={safeIsPlaying}
-        onPlayPause={safeOnPlayPause}
-        cardPlacementResult={cardPlacementResult}
-      />
+      {/* Enhanced record player section with mystery card */}
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="relative">
+          <div className="text-center space-y-8 max-w-sm">
+            <RecordMysteryCard 
+              song={safeCurrentSong}
+              isRevealed={safeMysteryCardRevealed}
+              isPlaying={audioIsPlaying}
+              onPlayPause={() => audioManager.togglePlayPause(safeCurrentSong)}
+            />
+            
+            <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+              {safeCurrentSong?.preview_url ? 'Mystery Song' : 'Loading Mystery Song...'}
+            </div>
+            
+            {/* Show loading indicator or audio unavailable message */}
+            {!safeCurrentSong?.preview_url && (
+              <div className="text-white/60 text-sm italic bg-white/5 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/10">
+                {safeCurrentSong ? 'Audio preview not available' : 'Preparing song...'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       
       {/* Host Feedback Overlay */}
       <HostFeedbackOverlay 
