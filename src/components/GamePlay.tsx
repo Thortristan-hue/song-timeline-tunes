@@ -7,11 +7,11 @@ import { useToast } from '@/components/ui/use-toast';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
-// Import game mode components
-import { HostVisuals } from '@/components/HostVisuals';
-import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
+// Import game mode components with correct syntax
+import HostVisuals from '@/components/HostVisuals';
+import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
-import { MobileGameOverScreen } from '@/components/player/MobileGameOverScreen';
+import MobileGameOverScreen from '@/components/player/MobileGameOverScreen';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -162,15 +162,19 @@ export function GamePlay({
         <HostGameOverScreen
           winner={winner}
           players={players}
-          onReplayGame={onReplayGame}
+          onPlayAgain={onReplayGame}
+          onRestartWithSamePlayers={onReplayGame}
+          onBackToMenu={() => window.location.reload()}
+          roomCode={room.lobby_code}
         />
       );
     } else {
       return (
         <MobileGameOverScreen
-          winner={winner}
-          currentPlayer={currentPlayer}
-          isWinner={currentPlayer?.id === winner.id}
+          winningPlayer={winner}
+          allPlayers={players}
+          onPlayAgain={onReplayGame}
+          roomCode={room.lobby_code}
         />
       );
     }
