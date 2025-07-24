@@ -1,9 +1,10 @@
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useRealtimeSubscription, ConnectionStatus } from '@/hooks/useRealtimeSubscription';
+import { GameService } from '@/services/gameService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 
 // ENHANCED: Reduced debounce for snappier updates
 const PLAYER_UPDATE_DEBOUNCE = 500; // Reduced from 1500ms
@@ -374,25 +375,42 @@ export function useGameRoom() {
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('game_rooms')
-        .update({ phase: 'playing' })
-        .eq('id', room.id)
-        .select()
-        .single();
+      console.log('🎮 HOST: Starting game initialization...');
+
+      // Step 1: Load songs for the game
+      console.log('🎵 INIT: Loading songs for game...');
+      const gamePlaylistSongs = await defaultPlaylistService.loadOptimizedGameSongs(20);
       
-      if (error) throw error;
+      if (gamePlaylistSongs.length < 8) {
+        throw new Error(`Not enough songs available (${gamePlaylistSongs.length}/8 minimum)`);
+      }
+
+      console.log(`🎵 INIT: Loaded ${gamePlaylistSongs.length} songs successfully`);
+
+      // Step 2: Initialize game with starting cards and mystery card
+      console.log('🚀 INIT: Initializing game with starting cards...');
+      const initialMysteryCard = await GameService.initializeGameWithStartingCards(room.id, gamePlaylistSongs);
       
-      // ENHANCED: Immediate phase transition
-      setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('SUCCESS: Game started successfully');
+      console.log('✅ INIT: Game initialized successfully with mystery card:', initialMysteryCard.deezer_title);
+      
+      // Refresh players to get updated timelines
+      await fetchPlayersOptimized(room.id, true);
+      
+      console.log('🎮 HOST: Game initialization completed successfully');
     } catch (error) {
-      console.error('ERROR: Start game failed:', error);
-      setError(error instanceof Error ? error.message : 'Failed to start game');
+      console.error('❌ HOST: Game initialization failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start game';
+      setError(errorMessage);
+      
+      toast({
+        title: "Game Start Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [room, isHost]);
+  }, [room, isHost, toast, fetchPlayersOptimized]);
 
   // ENHANCED: Instant card placement with optimistic updates
   const placeCard = useCallback(async (song: Song, position: number) => {
