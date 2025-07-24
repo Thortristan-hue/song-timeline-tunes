@@ -8,7 +8,7 @@ import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 // Import game mode components with correct syntax
-import HostVisuals from '@/components/HostVisuals';
+import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
 import MobileGameOverScreen from '@/components/player/MobileGameOverScreen';
@@ -194,14 +194,23 @@ export function GamePlay({
       />
     );
   } else {
+    // Get current turn player
+    const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
+    const isMyTurn = currentPlayer?.id === room.current_player_id;
+
     return (
       <MobilePlayerGameView
-        room={room}
-        currentPlayer={currentPlayer}
-        players={players}
+        currentPlayer={currentPlayer!}
+        currentTurnPlayer={currentTurnPlayer}
+        currentSong={room.current_song!}
+        roomCode={room.lobby_code}
+        isMyTurn={isMyTurn}
+        isPlaying={false} // This should be managed by audio service
+        onPlayPause={() => {}} // This should trigger host audio control
         onPlaceCard={handlePlaceCard}
-        connectionStatus={connectionStatus}
-        onReconnect={onReconnect}
+        mysteryCardRevealed={false}
+        cardPlacementResult={null}
+        gameEnded={false}
       />
     );
   }
