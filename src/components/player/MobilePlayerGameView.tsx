@@ -61,10 +61,19 @@ export default function MobilePlayerGameView({
 
   // Get sorted timeline songs for placement
   const timelineSongs = useMemo(() => {
-    return currentPlayer.timeline
-      .filter(song => song !== null)
+    if (!currentPlayer?.timeline || !Array.isArray(currentPlayer.timeline)) {
+      console.log('📱 TIMELINE: No valid timeline data found');
+      return [];
+    }
+
+    const validSongs = currentPlayer.timeline
+      .filter(song => song !== null && song !== undefined && song.id && song.deezer_title)
       .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
-  }, [currentPlayer.timeline]);
+
+    console.log(`📱 TIMELINE: Displaying ${validSongs.length} songs on mobile timeline for ${currentPlayer.name}`);
+    
+    return validSongs;
+  }, [currentPlayer?.timeline, currentPlayer?.name]);
 
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;

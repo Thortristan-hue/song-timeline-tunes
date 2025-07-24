@@ -1,16 +1,20 @@
 import { DeezerAudioService } from './DeezerAudioService';
 import { Song } from '@/types/game';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Centralized audio management service for game audio playback
+ * Universal Audio Controller for cross-device audio synchronization
  * Handles playing mystery songs and coordinating between host and mobile devices
+ * Provides universal control where mobile devices can control host audio playback
  */
 class AudioManager {
   private static instance: AudioManager;
   private currentAudio: HTMLAudioElement | null = null;
   private currentSong: Song | null = null;
   private isPlaying: boolean = false;
-  private playStateListeners: Array<(isPlaying: boolean) => void> = [];
+  private playStateListeners: Array<(isPlaying: boolean, song?: Song) => void> = [];
+  private roomId: string | null = null;
+  private isHost: boolean = false;
 
   private constructor() {}
 
@@ -22,16 +26,94 @@ class AudioManager {
   }
 
   /**
+   * Initialize the audio manager for a specific room and role
+   */
+  initialize(roomId: string, isHost: boolean) {
+    this.roomId = roomId;
+    this.isHost = isHost;
+    
+    // Subscribe to audio control events from other devices if this is the host
+    if (isHost && roomId) {
+      this.subscribeToAudioControl();
+    }
+    
+    console.log(`🎵 UNIVERSAL CONTROLLER: Initialized as ${isHost ? 'HOST' : 'MOBILE'} for room ${roomId}`);
+  }
+
+  /**
+   * Subscribe to real-time audio control events (host only)
+   */
+  private subscribeToAudioControl() {
+    if (!this.roomId) return;
+
+    supabase
+      .channel(`audio-control-${this.roomId}`)
+      .on('broadcast', { event: 'audio_control' }, (payload) => {
+        console.log('🎵 HOST: Received universal audio control command:', payload);
+        this.handleUniversalAudioControl(payload.payload);
+      })
+      .subscribe();
+  }
+
+  /**
+   * Handle universal audio control commands from mobile devices
+   */
+  private async handleUniversalAudioControl(command: { action: 'play' | 'pause' | 'toggle', song?: Song }) {
+    if (!this.isHost) return; // Only host should handle these commands
+
+    try {
+      switch (command.action) {
+        case 'play':
+          if (command.song) {
+            await this.playSong(command.song);
+          } else if (this.currentSong) {
+            await this.resume();
+          }
+          break;
+        case 'pause':
+          this.pause();
+          break;
+        case 'toggle':
+          await this.togglePlayPause(command.song);
+          break;
+      }
+    } catch (error) {
+      console.error('❌ UNIVERSAL CONTROLLER: Failed to handle audio control:', error);
+    }
+  }
+
+  /**
+   * Send universal audio control command (mobile only)
+   */
+  async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song) {
+    if (!this.roomId || this.isHost) return; // Only mobile devices should send commands
+
+    console.log('📱 MOBILE: Sending universal audio control command:', { action, song: song?.deezer_title });
+
+    try {
+      await supabase
+        .channel(`audio-control-${this.roomId}`)
+        .send({
+          type: 'broadcast',
+          event: 'audio_control',
+          payload: { action, song }
+        });
+    } catch (error) {
+      console.error('❌ MOBILE: Failed to send audio control command:', error);
+    }
+  }
+
+  /**
    * Subscribe to play state changes
    */
-  addPlayStateListener(listener: (isPlaying: boolean) => void) {
+  addPlayStateListener(listener: (isPlaying: boolean, song?: Song) => void) {
     this.playStateListeners.push(listener);
   }
 
   /**
    * Remove play state listener
    */
-  removePlayStateListener(listener: (isPlaying: boolean) => void) {
+  removePlayStateListener(listener: (isPlaying: boolean, song?: Song) => void) {
     this.playStateListeners = this.playStateListeners.filter(l => l !== listener);
   }
 
@@ -39,7 +121,7 @@ class AudioManager {
    * Notify all listeners of play state change
    */
   private notifyPlayStateChange() {
-    this.playStateListeners.forEach(listener => listener(this.isPlaying));
+    this.playStateListeners.forEach(listener => listener(this.isPlaying, this.currentSong || undefined));
   }
 
   /**
@@ -139,10 +221,16 @@ class AudioManager {
   }
 
   /**
-   * Toggle play/pause
+   * Toggle play/pause with universal control support
    */
   async togglePlayPause(song?: Song): Promise<void> {
-    // If no song provided, use current song
+    // If not host, send command to host instead of playing locally
+    if (!this.isHost && this.roomId) {
+      await this.sendUniversalAudioControl('toggle', song);
+      return;
+    }
+
+    // Host-only logic for actual audio playback
     const targetSong = song || this.currentSong;
     
     if (!targetSong) {
