@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import defaultPlaylistServiceInstance from '@/services/defaultPlaylistService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 
@@ -80,7 +80,7 @@ export function useSprintGameLogic(
         targetCards: roomData.gamemode_settings?.targetCards || 8
       }));
     }
-  }, [roomData]);
+  }, [roomData?.current_song, roomData?.phase, roomData?.gamemode_settings?.targetCards]);
 
   // Initialize game with optimized song loading and starting cards
   const initializeGame = useCallback(async () => {
@@ -94,7 +94,7 @@ export function useSprintGameLogic(
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
       console.log(`🎯 Sprint Mode: Loading ${MAX_SONGS_PER_SESSION} songs`);
-      const optimizedSongs = await defaultPlaylistServiceInstance.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
+      const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
         throw new Error('No songs with valid previews available');

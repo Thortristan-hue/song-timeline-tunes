@@ -49,8 +49,8 @@ export function RecordMysteryCard({
         {isRevealed && song && (
           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center animate-fade-in-up">
             <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap hover:scale-105 transition-all duration-300 border border-[#107793]/30">
-              <div className="font-bold animate-shimmer">{song?.deezer_title || 'Loading...'}</div>
-              <div className="text-white/80">{song?.deezer_artist || 'Loading...'}</div>
+              <div className="font-bold animate-shimmer">{song.deezer_title}</div>
+              <div className="text-white/80">{song.deezer_artist}</div>
               <div className="text-yellow-400 font-bold animate-bounce">{song.release_year}</div>
             </div>
           </div>

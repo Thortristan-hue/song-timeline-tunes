@@ -173,10 +173,10 @@ export function PlayerResultDisplay({ cardPlacementResult }: PlayerResultDisplay
           {cardPlacementResult.correct ? 'PERFECT!' : 'CLOSE!'}
         </div>
         
-          <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md">
-           <div className="text-xl font-bold text-white mb-2">
-             {cardPlacementResult.song?.deezer_title || 'Loading...'}
-           </div>
+        <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 border border-slate-600/30 max-w-md">
+          <div className="text-xl font-bold text-white mb-2">
+            {cardPlacementResult.song.deezer_title}
+          </div>
           <div className="text-lg text-slate-300 mb-3">
             by {cardPlacementResult.song.deezer_artist}
           </div>

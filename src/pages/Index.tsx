@@ -19,9 +19,6 @@ function Index() {
   const [winner, setWinner] = useState<Player | null>(null);
   const [autoJoinCode, setAutoJoinCode] = useState<string>('');
 
-  // Local error state for phase transition errors
-  const [phaseTransitionError, setPhaseTransitionError] = useState<string | null>(null);
-
   const {
     room,
     players,
@@ -74,46 +71,30 @@ function Index() {
         window.history.replaceState({}, document.title, newUrl);
       } else {
         console.error('❌ Invalid lobby code format:', cleanCode);
+        // Show error toast for invalid format
+        // Note: toast would need to be available here, but keeping it simple for now
       }
     }
   }, [gamePhase]);
 
-  // SIMPLIFIED: Room phase listener with minimal validation
+  // Enhanced room phase listener with better error handling
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase');
-      console.log('🎮 TRANSITION DATA:', { 
+      console.log('🎮 Room transitioned to playing phase - starting game');
+      console.log('🎮 Room data:', { 
         phase: room.phase, 
         id: room.id, 
-        playersCount: players.length,
-        hasCurrentPlayer: !!currentPlayer
+        hostId: room.host_id,
+        isHost,
+        playersCount: players.length 
       });
       
-      // SIMPLIFIED: Just check if we have basic requirements
-      if (players.length === 0) {
-        console.error('❌ No players found, but continuing anyway...');
-        // Don't block the transition, let the game try to load
-      }
-
-      // Clear any previous errors
-      setPhaseTransitionError(null);
-      
-      console.log('✅ PHASE TRANSITION: Transitioning to playing phase');
       setGamePhase('playing');
-      
-      // Play sound effect
-      setTimeout(() => {
-        try {
-          soundEffects.playGameStart().catch((error: Error) => {
-            console.warn('🔊 Game start sound failed:', error);
-          });
-        } catch (error) {
-          console.warn('🔊 Game start sound failed:', error);
-        }
-      }, 100);
+      soundEffects.playGameStart();
     }
-  }, [room?.phase, gamePhase, soundEffects, players.length, currentPlayer]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
 
+  // Check for winner
   useEffect(() => {
     const winningPlayer = players.find(player => player.score >= 10);
     if (winningPlayer && !winner) {
@@ -158,15 +139,11 @@ function Index() {
   const handleStartGame = async () => {
     try {
       console.log('🎮 Host starting game...');
-      
-      // Clear any previous errors before starting
-      setPhaseTransitionError(null);
-      
       await startGame();
+      // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
     } catch (error) {
       console.error('Failed to start game:', error);
-      setPhaseTransitionError(`Failed to start game: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -176,8 +153,7 @@ function Index() {
     setCustomSongs([]);
     setPlayerName('');
     setWinner(null);
-    setAutoJoinCode('');
-    setPhaseTransitionError(null); // Clear errors when going back to menu
+    setAutoJoinCode(''); // Clear auto-join code
     soundEffects.playButtonClick();
   };
 
@@ -195,7 +171,6 @@ function Index() {
     // Reset game state but keep same players
     setGamePhase('hostLobby');
     setWinner(null);
-    setPhaseTransitionError(null);
     soundEffects.playButtonClick();
   };
 
@@ -211,7 +186,6 @@ function Index() {
   const handlePlayAgain = () => {
     setGamePhase('hostLobby');
     setWinner(null);
-    setPhaseTransitionError(null);
     soundEffects.playButtonClick();
   };
 
@@ -281,7 +255,7 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && (
+          {gamePhase === 'playing' && room && currentPlayer && (
             <GamePlay
               room={room}
               players={players}
@@ -306,19 +280,10 @@ function Index() {
             />
           )}
 
-          {(error || phaseTransitionError) && (
+          {error && (
             <div className="fixed bottom-4 right-4 bg-red-500/90 text-white p-4 rounded-lg shadow-lg max-w-sm z-50">
               <div className="font-bold mb-1">Oops!</div>
-              <div className="text-sm">{error || phaseTransitionError}</div>
-              <button 
-                onClick={() => {
-                  setPhaseTransitionError(null);
-                  // Also try to clear the main error if possible
-                }} 
-                className="mt-2 text-xs underline"
-              >
-                Dismiss
-              </button>
+              <div className="text-sm">{error}</div>
             </div>
           )}
         </div>

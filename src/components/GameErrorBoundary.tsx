@@ -27,30 +27,6 @@ export class GameErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('🚨 Game Error Boundary caught error:', error, errorInfo);
-    
-    // ENHANCED: Specific handling for lexical declaration errors
-    if (error.message.includes('lexical declaration') || 
-        error.message.includes('before initialization') ||
-        error.message.includes('Cannot access') ||
-        error.message.includes('Identifier') && error.message.includes('already been declared')) {
-      console.error('🚨 LEXICAL DECLARATION ERROR DETECTED:', {
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack
-      });
-    }
-    
-    // ENHANCED: Specific handling for game start errors
-    if (error.message.includes('playersCount') || 
-        error.message.includes('No players') ||
-        error.message.includes('game start')) {
-      console.error('🚨 GAME START ERROR DETECTED:', {
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack
-      });
-    }
-    
     this.setState({ error, errorInfo });
   }
 
@@ -67,18 +43,8 @@ export class GameErrorBoundary extends Component<Props, State> {
             <h2 className="text-2xl font-bold text-white mb-2">Game Error</h2>
             <p className="text-red-200 mb-4">
               Something went wrong with the game. This error has been logged.
-              {this.state.error?.message.includes('lexical declaration') && (
-                <span className="block mt-2 text-red-300">
-                  This appears to be a code initialization error. Please refresh the page.
-                </span>
-              )}
-              {this.state.error?.message.includes('No players') && (
-                <span className="block mt-2 text-red-300">
-                  Player data couldn't be loaded. Please rejoin the game.
-                </span>
-              )}
             </p>
-            <div className="text-sm text-red-300 mb-6 p-3 bg-red-900/30 rounded-lg font-mono text-left max-h-32 overflow-y-auto">
+            <div className="text-sm text-red-300 mb-6 p-3 bg-red-900/30 rounded-lg font-mono text-left">
               {this.state.error?.message || 'Unknown error'}
             </div>
             <Button 

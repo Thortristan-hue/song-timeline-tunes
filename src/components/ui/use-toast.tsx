@@ -1,6 +1,5 @@
 
 import * as React from "react"
-import { safeVariableAccess } from "@/lib/safeVariableAccess"
 
 import type {
   ToastActionElement,
@@ -24,19 +23,11 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-// Initialize counter with explicit type and value to prevent temporal dead zone issues
-let count: number = 0
+let count = 0
 
-function genId(): string {
-  // Use safe access to prevent temporal dead zone issues
-  return safeVariableAccess(
-    () => {
-      count = (count + 1) % Number.MAX_SAFE_INTEGER
-      return count.toString()
-    },
-    Math.random().toString(36).substr(2, 9), // Fallback to random ID
-    'toast genId counter (ui)'
-  )
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
 }
 
 type ActionType = typeof actionTypes

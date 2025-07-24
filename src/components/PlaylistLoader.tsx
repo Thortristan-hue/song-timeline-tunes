@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Music, Loader2, AlertCircle, CheckCircle, Radio, RefreshCw } from 'lucide-react';
 import { Song } from '@/types/game';
-import defaultPlaylistServiceInstance from '@/services/defaultPlaylistService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { soundEffects } from '@/lib/SoundEffects';
@@ -78,7 +78,7 @@ export function PlaylistLoader({
       return { isValid: false, count: 0, error: 'Invalid playlist data received' };
     }
 
-    const validSongs = defaultPlaylistServiceInstance.filterValidSongs(songs);
+    const validSongs = defaultPlaylistService.filterValidSongs(songs);
     
     if (validSongs.length === 0) {
       return { isValid: false, count: 0, error: 'No valid songs found in playlist' };
@@ -105,7 +105,7 @@ export function PlaylistLoader({
       await soundEffects.playSound('button-click');
 
       console.log(`🚀 PERFORMANCE FIX: Loading ONLY ${MAX_SONGS_FOR_GAME} songs to prevent proxy server spam`);
-      const allSongs = await defaultPlaylistServiceInstance.loadDefaultPlaylist();
+      const allSongs = await defaultPlaylistService.loadDefaultPlaylist();
       
       updateState({ progress: 50, status: '⚡ Selecting optimized song set (No API spam)...' });
 
@@ -122,7 +122,9 @@ export function PlaylistLoader({
         throw new Error(validation.error || 'Optimized song validation failed');
       }
 
-      const validOptimizedSongs = defaultPlaylistServiceInstance.filterValidSongs(optimizedSongs);
+      const validOptimizedSongs = defaultPlaylistService.filterValidSongs(optimizedSongs);
+      
+      // Set songs immediately for optimized game start
       setCustomSongs(validOptimizedSongs);
       
       updateState({ 
@@ -213,7 +215,7 @@ export function PlaylistLoader({
       // Attempt 2: Fallback to default if external fails
       if (songs.length === 0) {
         updateState({ progress: 70, status: 'Loading default playlist as fallback...' });
-        songs = await defaultPlaylistServiceInstance.loadDefaultPlaylist();
+        songs = await defaultPlaylistService.loadDefaultPlaylist();
       }
 
       // PERFORMANCE FIX: Apply same optimization strategy
@@ -228,7 +230,8 @@ export function PlaylistLoader({
         throw new Error(validation.error || 'Playlist validation failed');
       }
 
-      const validOptimizedSongs = defaultPlaylistServiceInstance.filterValidSongs(optimizedSongs);
+      const validOptimizedSongs = defaultPlaylistService.filterValidSongs(optimizedSongs);
+      setCustomSongs(validOptimizedSongs);
       
       updateState({ 
         progress: 100,

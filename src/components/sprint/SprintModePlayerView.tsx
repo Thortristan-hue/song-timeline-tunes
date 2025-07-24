@@ -170,8 +170,8 @@ export function SprintModePlayerView({
           {/* Song Info */}
           <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 rounded-2xl p-4 mb-4">
             <div className="text-center mb-3">
-              <div className="text-lg font-bold text-white">{currentSong?.deezer_title || 'Loading...'}</div>
-              <div className="text-[#107793] font-semibold">{currentSong?.deezer_artist || 'Loading...'}</div>
+              <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
+              <div className="text-[#107793] font-semibold">{currentSong.deezer_artist}</div>
             </div>
 
             {/* Play/Pause Button */}
@@ -304,7 +304,7 @@ export function SprintModePlayerView({
                   className="min-w-[60px] text-center p-2 bg-[#4CC9F0]/20 border border-[#4CC9F0]/50 rounded-lg"
                 >
                   <div className="text-[#4CC9F0] font-bold text-xs">{song.release_year}</div>
-                  <div className="text-white text-xs truncate">{song?.deezer_title?.substring(0, 8) || 'Loading...'}</div>
+                  <div className="text-white text-xs truncate">{song.deezer_title.substring(0, 8)}</div>
                 </div>
               ))
             )}

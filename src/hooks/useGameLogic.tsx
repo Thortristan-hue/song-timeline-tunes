@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import defaultPlaylistServiceInstance from '@/services/defaultPlaylistService';
+import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface GameLogicState {
@@ -94,7 +94,7 @@ export function useGameLogic(
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
       console.log(`🚀 PERFORMANCE FIX: Loading ${MAX_SONGS_PER_SESSION} songs WITH previews to prevent API spam`);
-      const optimizedSongs = await defaultPlaylistServiceInstance.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
+      const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
         throw new Error('No songs with valid previews available');

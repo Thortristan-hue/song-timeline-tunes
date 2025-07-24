@@ -59,78 +59,63 @@ class DefaultPlaylistService {
 
   /**
    * Loads a limited set of songs with previews for immediate game start
-   * ENHANCED: Truly random selection with retry fallback system
+   * ENHANCED: Keeps trying additional songs until we get enough with previews
    * @param minSongs Minimum number of songs needed with previews
    * @returns Promise<Song[]> Array of songs with valid previews
    */
   async loadOptimizedGameSongs(minSongs: number = 20): Promise<Song[]> {
-    console.log(`🚀 RANDOM RETRY SYSTEM: Fetching ${minSongs} random songs with fallback system`);
+    console.log(`🚀 ENHANCED LOAD: Fetching previews until we get ${minSongs} songs with working previews`);
 
     // Get all valid songs first
     if (this.songs.length === 0) {
       await this.loadDefaultPlaylist();
     }
 
+    // Shuffle all songs to get random selection
+    const shuffledSongs = [...this.songs].sort(() => Math.random() - 0.5);
+
     const songsWithPreviews: Song[] = [];
-    const attemptedSongIds = new Set<string>(); // Track attempted songs to avoid duplicates
-    let totalAttempts = 0;
+    let songsProcessed = 0;
     let successCount = 0;
     let failCount = 0;
-    const maxAttempts = Math.min(100, this.songs.length * 2); // Safety limit
 
-    console.log(`🎯 RANDOM APPROACH: Will randomly select songs until we get ${minSongs} with working previews`);
+    console.log(`🎯 RESILIENT APPROACH: Will keep trying songs until we get ${minSongs} with working previews`);
 
-    // Keep trying random songs until we have enough with previews
-    while (songsWithPreviews.length < minSongs && totalAttempts < maxAttempts) {
-      // Stop if we've tried all available songs
-      if (attemptedSongIds.size >= this.songs.length) {
-        console.log(`⚠️ EXHAUSTED: Tried all ${this.songs.length} available songs`);
+    // Keep processing songs until we have enough with previews
+    for (const song of shuffledSongs) {
+      // Stop if we have enough songs with previews
+      if (songsWithPreviews.length >= minSongs) {
         break;
       }
 
-      // Pick a truly random song that we haven't tried yet
-      let randomSong: Song;
-      let attempts = 0;
-      do {
-        randomSong = this.songs[Math.floor(Math.random() * this.songs.length)];
-        attempts++;
-        // Safety: if we can't find an untried song after 50 attempts, break
-        if (attempts > 50) {
-          console.log(`⚠️ Random selection stuck, breaking out`);
-          break;
-        }
-      } while (attemptedSongIds.has(randomSong.id) && attempts <= 50);
-
-      // Skip if we couldn't find a new song
-      if (attemptedSongIds.has(randomSong.id)) {
+      // Stop if we've processed too many songs (safety limit - increased to 80)
+      if (songsProcessed >= Math.min(80, this.songs.length)) {
+        console.log(`⚠️ SAFETY LIMIT: Processed ${songsProcessed} songs, stopping to prevent excessive API calls`);
         break;
       }
-
-      // Mark this song as attempted
-      attemptedSongIds.add(randomSong.id);
-      totalAttempts++;
 
       try {
-        console.log(`🎵 Random attempt ${totalAttempts}: ${randomSong.deezer_title} by ${randomSong.deezer_artist}`);
+        songsProcessed++;
+        console.log(`🎵 Trying song ${songsProcessed}: ${song.deezer_title} by ${song.deezer_artist}`);
 
-        const songWithPreview = await this.fetchPreviewUrl(randomSong);
+        const songWithPreview = await this.fetchPreviewUrl(song);
         if (songWithPreview.preview_url) {
           songsWithPreviews.push(songWithPreview);
           successCount++;
-          console.log(`✅ SUCCESS ${successCount}/${minSongs}: ${randomSong.deezer_title} by ${randomSong.deezer_artist}`);
+          console.log(`✅ Preview ${successCount}/${minSongs}: ${song.deezer_title} by ${song.deezer_artist}`);
         } else {
           failCount++;
-          console.log(`❌ No preview (${failCount} failed): ${randomSong.deezer_title} by ${randomSong.deezer_artist} - trying new random song`);
+          console.log(`❌ No preview (${failCount} failed): ${song.deezer_title} by ${song.deezer_artist}`);
         }
       } catch (error) {
         failCount++;
-        console.log(`❌ Preview fetch failed (${failCount} failed): ${randomSong.deezer_title} - trying new random song - ${error}`);
+        console.log(`❌ Preview fetch failed (${failCount} failed): ${song.deezer_title} - ${error}`);
       }
     }
 
-    console.log(`🎯 RANDOM RETRY RESULT: ${songsWithPreviews.length} songs with previews after ${totalAttempts} random attempts`);
-    console.log(`📊 SUCCESS RATE: ${successCount}/${totalAttempts} random attempts succeeded (${totalAttempts > 0 ? (successCount/totalAttempts*100).toFixed(1) : 0}%)`);
-    console.log(`📊 EFFICIENCY: Tried ${attemptedSongIds.size} unique songs out of ${this.songs.length} total available`);
+    console.log(`🎯 RESILIENT RESULT: ${songsWithPreviews.length} songs with previews after processing ${songsProcessed} songs`);
+    console.log(`📊 SUCCESS RATE: ${successCount}/${songsProcessed} songs had working previews (${(successCount/songsProcessed*100).toFixed(1)}%)`);
+    console.log(`📊 API EFFICIENCY: Processed ${songsProcessed} songs instead of all ${this.songs.length} (${((this.songs.length - songsProcessed) / this.songs.length * 100).toFixed(1)}% reduction)`);
 
     return songsWithPreviews;
   }
@@ -316,7 +301,4 @@ class DefaultPlaylistService {
   }
 }
 
-// LEXICAL DECLARATION FIX: Export as default to prevent hoisting issues
-const defaultPlaylistServiceInstance = new DefaultPlaylistService();
-export { defaultPlaylistServiceInstance as defaultPlaylistService };
-export default defaultPlaylistServiceInstance;
+export const defaultPlaylistService = new DefaultPlaylistService();

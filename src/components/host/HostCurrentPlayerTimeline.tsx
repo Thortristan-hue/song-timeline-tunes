@@ -93,21 +93,10 @@ export function HostCurrentPlayerTimeline({
     }
   }, [cardPlacementResult]);
 
-  // Add debugging for host timeline
-  console.log('🖥️ HOST TIMELINE DEBUG:', {
-    playerName: currentTurnPlayer.name,
-    hasTimeline: !!currentTurnPlayer.timeline,
-    timelineLength: currentTurnPlayer.timeline?.length,
-    timelineArray: currentTurnPlayer.timeline,
-    timelineType: typeof currentTurnPlayer.timeline,
-    isTransitioning,
-    visibleCards
-  });
-
   return (
     <div className="flex justify-center items-center w-full z-20">
       <div className="flex gap-2 items-center overflow-x-auto pb-2">
-        {!currentTurnPlayer.timeline || currentTurnPlayer.timeline.length === 0 ? (
+        {currentTurnPlayer.timeline.length === 0 ? (
           <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
             <Music className="h-8 w-8 opacity-50" />
             <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
@@ -122,7 +111,7 @@ export function HostCurrentPlayerTimeline({
             />
             
             {currentTurnPlayer.timeline.map((song, index) => (
-              <React.Fragment key={`${song?.deezer_title || 'unknown'}-${index}`}>
+              <React.Fragment key={`${song.deezer_title}-${index}`}>
                 {/* Song card with enhanced animations */}
                 <div
                   className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
@@ -139,8 +128,8 @@ export function HostCurrentPlayerTimeline({
                     mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
                   }`}
                   style={{
-                    backgroundColor: getArtistColor(song?.deezer_artist || 'Unknown').backgroundColor,
-                    backgroundImage: getArtistColor(song?.deezer_artist || 'Unknown').backgroundImage,
+                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
+                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
                     animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
                                    timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
                                    '0s',
@@ -160,7 +149,7 @@ export function HostCurrentPlayerTimeline({
                     {/* Artist name - medium, white, wrapped, max 20 letters per line */}
                     <div className="text-sm font-medium text-white leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song?.deezer_artist || 'Loading...', 20)}
+                        {truncateText(song.deezer_artist, 20)}
                       </div>
                     </div>
                     
@@ -172,7 +161,7 @@ export function HostCurrentPlayerTimeline({
                     {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
                     <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song?.deezer_title || 'Loading...', 20)}
+                        {truncateText(song.deezer_title, 20)}
                       </div>
                     </div>
                   </div>

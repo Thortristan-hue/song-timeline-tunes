@@ -1,5 +1,4 @@
 import * as React from "react"
-import { safeVariableAccess, createSafeGetter } from "@/lib/safeVariableAccess"
 
 import type {
   ToastActionElement,
@@ -23,10 +22,9 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-// Initialize counter with explicit value to prevent temporal dead zone issues
-let count: number = 0
+let count = 0
 
-function genId(): string {
+function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()
 }
@@ -128,37 +126,15 @@ export const reducer = (state: State, action: Action): State => {
   }
 }
 
-// Initialize arrays and state with explicit values to prevent temporal dead zone issues
 const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
-function dispatch(action: Action): void {
-  // Ensure memoryState is always defined before use with safe access
-  memoryState = safeVariableAccess(
-    () => {
-      if (!memoryState) {
-        memoryState = { toasts: [] }
-      }
-      return reducer(memoryState, action)
-    },
-    { toasts: [] }, // Fallback state
-    'toast dispatch memoryState'
-  )
-  
-  safeVariableAccess(
-    () => {
-      listeners.forEach((listener) => {
-        // Safety check to prevent calling undefined listeners
-        if (typeof listener === 'function') {
-          listener(memoryState)
-        }
-      })
-      return true
-    },
-    false,
-    'toast dispatch listeners'
-  )
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
 }
 
 type Toast = Omit<ToasterToast, "id">

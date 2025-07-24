@@ -18,32 +18,24 @@ export function useSoundEffects() {
           audio.volume = volume;
           audio.crossOrigin = 'anonymous';
           
-          // Enhanced loading with shorter timeout to prevent blocking
-          const loadPromise = new Promise((resolve, reject) => {
+          // Wait for the audio to be loadable
+          await new Promise((resolve, reject) => {
             audio.addEventListener('canplaythrough', resolve, { once: true });
             audio.addEventListener('error', reject, { once: true });
             audio.load();
-            
-            // Timeout after 2 seconds to prevent blocking
-            setTimeout(() => reject(new Error('Audio load timeout')), 2000);
           });
           
-          await loadPromise;
           await audio.play();
-          console.log('🔊 Audio file played successfully:', filename);
           return true;
         } catch (pathError) {
-          // Silently try next path or give up
-          console.warn('🔊 Audio path failed:', path, pathError);
+          // Silently try next path
           continue;
         }
       }
       
-      console.warn('🔊 All audio paths failed for:', filename);
       return false;
     } catch (error) {
       // Audio file not available, fallback will be used
-      console.warn('🔊 Audio playback failed, using fallback:', filename, error);
       return false;
     }
   }, []);
@@ -120,36 +112,14 @@ export function useSoundEffects() {
   }, [playAudioFile, playPolishedTone]);
 
   const playGameStart = useCallback(async () => {
-    // CRITICAL FIX: Completely non-blocking game start sound
-    // This function must NEVER block game startup under any circumstances
-    // Use Promise.resolve() to ensure immediate return
-    Promise.resolve().then(async () => {
-      try {
-        const played = await playAudioFile('game-start.mp3', 0.5);
-        if (!played) {
-          // Professional fanfare fallback - also non-blocking
-          try {
-            playPolishedTone(392, 0.15, 'triangle', 0.05);
-            setTimeout(() => playPolishedTone(523, 0.15, 'triangle', 0.04), 150);
-            setTimeout(() => playPolishedTone(659, 0.15, 'triangle', 0.04), 300);
-            setTimeout(() => playPolishedTone(784, 0.25, 'triangle', 0.03), 450);
-          } catch (toneError) {
-            // Even tone generation failures are caught and ignored
-            console.warn('🔊 Fallback tone generation failed, fully silent fallback:', toneError);
-          }
-        }
-        console.log('🔊 Game start sound sequence completed');
-      } catch (error) {
-        // Completely silent fallback - absolutely never block the game
-        console.warn('🔊 Game start sound failed completely, continuing silently:', error);
-      }
-    }).catch(error => {
-      // Even Promise failures are caught to prevent any potential blocking
-      console.warn('🔊 Game start sound promise failed, continuing silently:', error);
-    });
-    
-    // Always return immediately resolved promise to prevent blocking
-    return Promise.resolve();
+    const played = await playAudioFile('game-start.mp3', 0.5);
+    if (!played) {
+      // Professional fanfare
+      playPolishedTone(392, 0.15, 'triangle', 0.05);
+      setTimeout(() => playPolishedTone(523, 0.15, 'triangle', 0.04), 150);
+      setTimeout(() => playPolishedTone(659, 0.15, 'triangle', 0.04), 300);
+      setTimeout(() => playPolishedTone(784, 0.25, 'triangle', 0.03), 450);
+    }
   }, [playAudioFile, playPolishedTone]);
 
   const playPlayerJoin = useCallback(async () => {
