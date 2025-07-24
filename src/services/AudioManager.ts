@@ -143,8 +143,8 @@ class AudioManager {
   /**
    * Send universal audio control command (mobile only) with enhanced error handling
    */
-  async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song) {
-    if (!this.roomId || this.isHost) return; // Only mobile devices should send commands
+  async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
+    if (!this.roomId || this.isHost) return false; // Only mobile devices should send commands
 
     console.log('📱 MOBILE: Sending universal audio control command:', { action, song: song?.deezer_title });
 
@@ -155,14 +155,19 @@ class AudioManager {
       try {
         const channel = supabase.channel(`audio-control-${this.roomId}`);
         
-        await channel.send({
+        const result = await channel.send({
           type: 'broadcast',
           event: 'audio_control',
           payload: { action, song, timestamp: Date.now() }
         });
 
-        console.log(`📱 MOBILE: Successfully sent audio control command on attempt ${attempt + 1}`);
-        return;
+        // Check if the send was successful
+        if (result === 'ok') {
+          console.log(`📱 MOBILE: Successfully sent audio control command on attempt ${attempt + 1}`);
+          return true;
+        } else {
+          throw new Error(`Send failed with result: ${result}`);
+        }
 
       } catch (error) {
         attempt++;
@@ -175,10 +180,12 @@ class AudioManager {
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
           console.error('❌ MOBILE: Failed to send audio control command after all retries');
-          throw error;
+          // Don't throw error, return false to allow graceful handling
+          return false;
         }
       }
     }
+    return false;
   }
 
   /**
@@ -299,13 +306,19 @@ class AudioManager {
   }
 
   /**
-   * Toggle play/pause with universal control support
+   * Toggle play/pause with universal control support and enhanced error handling
    */
-  async togglePlayPause(song?: Song): Promise<void> {
+  async togglePlayPause(song?: Song): Promise<boolean> {
     // If not host, send command to host instead of playing locally
     if (!this.isHost && this.roomId) {
-      await this.sendUniversalAudioControl('toggle', song);
-      return;
+      const success = await this.sendUniversalAudioControl('toggle', song);
+      if (!success) {
+        console.warn('📱 MOBILE: Universal control command failed, falling back to local feedback');
+        // Still update local state for immediate UI feedback
+        this.isPlaying = !this.isPlaying;
+        this.notifyPlayStateChange();
+      }
+      return success;
     }
 
     // Host-only logic for actual audio playback
@@ -313,20 +326,26 @@ class AudioManager {
     
     if (!targetSong) {
       console.warn('No song to play');
-      return;
+      return false;
     }
 
-    // If different song, start playing new song
-    if (!this.currentSong || this.currentSong.id !== targetSong.id) {
-      await this.playSong(targetSong);
-      return;
-    }
+    try {
+      // If different song, start playing new song
+      if (!this.currentSong || this.currentSong.id !== targetSong.id) {
+        await this.playSong(targetSong);
+        return true;
+      }
 
-    // Toggle current song
-    if (this.isPlaying) {
-      this.pause();
-    } else {
-      await this.resume();
+      // Toggle current song
+      if (this.isPlaying) {
+        this.pause();
+      } else {
+        await this.resume();
+      }
+      return true;
+    } catch (error) {
+      console.error('❌ HOST: Failed to toggle play/pause:', error);
+      return false;
     }
   }
 }

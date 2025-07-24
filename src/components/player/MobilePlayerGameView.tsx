@@ -45,18 +45,26 @@ export default function MobilePlayerGameView({
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Universal audio control - enhanced with validation and error handling
-  const universalPlayPause = useCallback(() => {
+  const universalPlayPause = useCallback(async () => {
     if (!isValidCurrentSong) {
       console.warn('📱 UNIVERSAL CONTROL: Cannot control audio - invalid song data');
+      setError('Cannot control audio - song data unavailable');
       return;
     }
 
     console.log('📱 UNIVERSAL CONTROL: Triggering play/pause on host for:', currentSong.deezer_title);
     
     try {
-      onPlayPause(); // This triggers the host device audio via AudioManager
+      const result = await onPlayPause(); // This triggers the host device audio via AudioManager
+      if (result === false) {
+        console.warn('📱 UNIVERSAL CONTROL: Command failed, showing user feedback');
+        setError('Universal remote temporarily unavailable. Please try again.');
+        setTimeout(() => setError(null), 3000); // Clear error after 3 seconds
+      }
     } catch (error) {
       console.error('📱 UNIVERSAL CONTROL: Error triggering play/pause:', error);
+      setError('Failed to control host audio. Check your connection.');
+      setTimeout(() => setError(null), 3000); // Clear error after 3 seconds
     }
   }, [onPlayPause, currentSong, isValidCurrentSong]);
 
@@ -69,7 +77,7 @@ export default function MobilePlayerGameView({
   // Refs for scrolling and performance optimization
   const timelineScrollRef = useRef<HTMLDivElement>(null);
 
-  // Get sorted timeline songs for placement with enhanced validation
+  // Get sorted timeline songs for placement with relaxed validation
   const timelineSongs = useMemo(() => {
     if (!currentPlayer?.timeline) {
       console.log('📱 TIMELINE: No currentPlayer or timeline data found');
@@ -83,33 +91,40 @@ export default function MobilePlayerGameView({
 
     const validSongs = currentPlayer.timeline
       .filter(song => {
-        // Enhanced validation for song data
+        // Relaxed validation for song data - only require essential fields
         if (!song || typeof song !== 'object') {
           console.debug('📱 TIMELINE: Filtering out invalid song object:', song);
           return false;
         }
         
-        if (!song.id || !song.deezer_title || !song.release_year) {
-          console.debug('📱 TIMELINE: Filtering out song with missing required fields:', {
+        // Only require id and title - other fields can be missing
+        if (!song.id || !song.deezer_title) {
+          console.debug('📱 TIMELINE: Filtering out song with missing essential fields:', {
             id: song.id,
-            title: song.deezer_title,
-            year: song.release_year
+            title: song.deezer_title
           });
           return false;
         }
 
-        // Validate release_year is a valid number
-        const year = parseInt(song.release_year);
-        if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
-          console.debug('📱 TIMELINE: Filtering out song with invalid year:', song.release_year);
-          return false;
+        // Validate release_year if present, otherwise use fallback
+        if (song.release_year) {
+          const year = parseInt(song.release_year);
+          if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
+            console.debug('📱 TIMELINE: Invalid year, but keeping song with fallback:', song.release_year);
+            // Don't filter out, just use current year as fallback
+            song.release_year = new Date().getFullYear().toString();
+          }
+        } else {
+          // Assign fallback year if missing
+          song.release_year = new Date().getFullYear().toString();
+          console.debug('📱 TIMELINE: Missing year, using fallback for:', song.deezer_title);
         }
 
         return true;
       })
       .sort((a, b) => {
-        const yearA = parseInt(a.release_year);
-        const yearB = parseInt(b.release_year);
+        const yearA = parseInt(a.release_year || '2024');
+        const yearB = parseInt(b.release_year || '2024');
         return yearA - yearB;
       });
 
@@ -632,7 +647,7 @@ export default function MobilePlayerGameView({
                                   }
                                 </div>
                                 <div className="text-white/80 text-xs">
-                                  {songAtPosition.release_year || '????'}
+                                  {songAtPosition.release_year || new Date().getFullYear()}
                                 </div>
                               </div>
                             </div>
