@@ -78,22 +78,35 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with better error handling
+  // Enhanced room phase listener with comprehensive error handling and logging
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game');
-      console.log('🎮 Room data:', { 
+      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase - starting game');
+      console.log('🎮 PHASE TRANSITION: Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         isHost,
-        playersCount: players.length 
+        playersCount: players.length,
+        currentPlayerName: currentPlayer?.name,
+        lobbyCode: room.lobby_code
       });
       
+      // Additional safety checks before transition
+      if (!room.id) {
+        console.error('❌ PHASE TRANSITION: Cannot transition to playing - missing room ID');
+        return;
+      }
+      
+      if (isHost && players.length === 0) {
+        console.warn('⚠️  PHASE TRANSITION: Host transitioning with no players - this might cause issues');
+      }
+      
+      console.log('✅ PHASE TRANSITION: All checks passed, transitioning to playing phase');
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, currentPlayer?.name, room?.lobby_code]);
 
   // Check for winner
   useEffect(() => {
@@ -249,19 +262,89 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
-            <GamePlay
-              room={room}
-              players={players}
-              currentPlayer={currentPlayer}
-              isHost={isHost}
-              onPlaceCard={handlePlaceCard}
-              onSetCurrentSong={setCurrentSong}
-              customSongs={customSongs}
-              connectionStatus={connectionStatus}
-              onReconnect={forceReconnect}
-              onReplayGame={handlePlayAgain}
-            />
+          {gamePhase === 'playing' && (
+            /* DEFENSIVE RENDERING: Comprehensive safety checks with enhanced fallbacks */
+            (() => {
+              console.log('🎮 GamePlay Rendering Check:', {
+                hasRoom: !!room,
+                hasCurrentPlayer: !!currentPlayer,
+                roomPhase: room?.phase,
+                gamePhase,
+                isHost,
+                playersCount: players.length,
+                timestamp: new Date().toISOString()
+              });
+
+              // Always show meaningful UI - never a white screen
+              if (!room) {
+                console.warn('⚠️  GamePlay: Missing room data, showing connection fallback');
+                return (
+                  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden flex items-center justify-center p-4">
+                    <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+                      <div className="text-4xl mb-4">🔗</div>
+                      <div className="text-2xl font-bold mb-3">Connection Issue</div>
+                      <div className="text-lg mb-4">Unable to connect to game room</div>
+                      <div className="text-sm text-white/60 mb-6">Please check your connection and try again</div>
+                      <button
+                        onClick={handleBackToMenu}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                      >
+                        Back to Menu
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (!currentPlayer && !isHost) {
+                console.warn('⚠️  GamePlay: Missing player data for non-host, showing player loading fallback');
+                return (
+                  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden flex items-center justify-center p-4">
+                    <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+                      <div className="text-4xl mb-4">👤</div>
+                      <div className="text-2xl font-bold mb-3">Getting Player Data...</div>
+                      <div className="text-lg mb-4">Setting up your game profile</div>
+                      <div className="text-sm text-white/60 mb-6">This usually takes just a moment</div>
+                      
+                      {/* Debug info for development */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <div className="bg-black/50 p-3 rounded-lg text-xs text-left mb-4">
+                          <div className="font-bold mb-2">Debug Info:</div>
+                          <div>Room: {room ? '✓' : '✗'}</div>
+                          <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
+                          <div>Current Player: {currentPlayer ? '✓' : '✗'}</div>
+                          <div>Players Count: {players.length}</div>
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={handleBackToMenu}
+                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                      >
+                        Back to Menu
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Now render the actual GamePlay component with all required data
+              console.log('✅ All required data available, rendering GamePlay component');
+              return (
+                <GamePlay
+                  room={room}
+                  players={players}
+                  currentPlayer={currentPlayer}
+                  isHost={isHost}
+                  onPlaceCard={handlePlaceCard}
+                  onSetCurrentSong={setCurrentSong}
+                  customSongs={customSongs}
+                  connectionStatus={connectionStatus}
+                  onReconnect={forceReconnect}
+                  onReplayGame={handlePlayAgain}
+                />
+              );
+            })()
           )}
 
           {gamePhase === 'finished' && winner && (
