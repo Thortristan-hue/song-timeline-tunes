@@ -142,8 +142,9 @@ function Index() {
       await startGame();
       // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
+      console.log('🎮 Game start request completed successfully');
     } catch (error) {
-      console.error('Failed to start game:', error);
+      console.error('❌ Failed to start game:', error);
     }
   };
 

@@ -152,10 +152,17 @@ export class GameService {
 
   // CRITICAL FIX: Initialize game with starting cards for all players
   static async initializeGameWithStartingCards(roomId: string, availableSongs: Song[]): Promise<Song> {
-    if (!availableSongs || availableSongs.length < 10) {
-      throw new Error('Not enough songs available to start game');
+    console.log('🚀 GAME INIT: Starting game initialization process...');
+    
+    if (!roomId) {
+      throw new Error('Room ID is required to initialize game');
+    }
+    
+    if (!availableSongs || availableSongs.length < 8) {
+      throw new Error(`Not enough songs available to start game. Got ${availableSongs?.length || 0} songs, need at least 8.`);
     }
 
+    console.log('🎯 INIT: Getting all non-host players...');
     // Get all non-host players
     const { data: allPlayers, error: playersError } = await supabase
       .from('players')
@@ -164,22 +171,28 @@ export class GameService {
       .eq('is_host', false)
       .order('joined_at', { ascending: true });
 
-    if (playersError || !allPlayers || allPlayers.length === 0) {
-      throw new Error('No players available to start game');
+    if (playersError) {
+      console.error('❌ INIT: Error fetching players:', playersError);
+      throw new Error(`Failed to fetch players: ${playersError.message}`);
     }
 
-    console.log('🎯 STARTING CARD ASSIGNMENT: Assigning to all players');
+    if (!allPlayers || allPlayers.length === 0) {
+      throw new Error('No players found in room. Players must join before starting game.');
+    }
+
+    console.log(`🎯 INIT: Found ${allPlayers.length} players for game initialization`);
 
     // Shuffle songs to ensure random selection
     const shuffledSongs = [...availableSongs].sort(() => Math.random() - 0.5);
     let songIndex = 0;
 
+    console.log('🃏 INIT: Assigning starting cards to all players...');
     // Assign starting card to each player
     for (const player of allPlayers) {
       const startingCard = shuffledSongs[songIndex % shuffledSongs.length];
       songIndex++;
 
-      console.log(`🃏 STARTING CARD: Assigned to ${player.name}:`, startingCard.deezer_title);
+      console.log(`🃏 STARTING CARD: Assigning to ${player.name}: ${startingCard.deezer_title} (${startingCard.release_year})`);
       
       const { error } = await supabase
         .from('players')
@@ -190,7 +203,8 @@ export class GameService {
         .eq('id', player.id);
 
       if (error) {
-        console.error(`Failed to assign starting card to ${player.name}:`, error);
+        console.error(`❌ INIT: Failed to assign starting card to ${player.name}:`, error);
+        throw new Error(`Failed to assign starting card to player ${player.name}: ${error.message}`);
       }
     }
 
@@ -206,11 +220,14 @@ export class GameService {
     }
 
     const initialMysteryCard = availableForMystery[Math.floor(Math.random() * availableForMystery.length)];
-    console.log('🎯 INIT: Setting initial mystery card:', initialMysteryCard.deezer_title);
+    console.log(`🎯 INIT: Setting initial mystery card: ${initialMysteryCard.deezer_title} (${initialMysteryCard.release_year})`);
 
     // Set random first player
     const randomPlayerIndex = Math.floor(Math.random() * allPlayers.length);
     const firstPlayerId = allPlayers[randomPlayerIndex].id;
+    const firstPlayerName = allPlayers[randomPlayerIndex].name;
+
+    console.log(`🎯 INIT: Setting first turn to player: ${firstPlayerName} (index ${randomPlayerIndex})`);
 
     // Initialize game state
     const { error } = await supabase
@@ -225,10 +242,11 @@ export class GameService {
       .eq('id', roomId);
 
     if (error) {
-      throw error;
+      console.error('❌ INIT: Failed to update game room:', error);
+      throw new Error(`Failed to initialize game state: ${error.message}`);
     }
 
-    console.log('✅ INIT: Game initialized with starting cards and mystery card');
+    console.log('✅ INIT: Game successfully initialized with starting cards and mystery card!');
     return initialMysteryCard;
   }
 

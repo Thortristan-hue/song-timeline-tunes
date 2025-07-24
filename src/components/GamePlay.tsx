@@ -250,35 +250,56 @@ export function GamePlay({
                            !gameLogic.gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
-      console.log('INIT: Host initializing with enhanced 20-song loading...');
+      console.log('🚀 INIT: Host initializing game with enhanced loading...');
       
       setInitializationError(null);
       setGameInitialized(true);
       
       const initializeGameOptimal = async () => {
         try {
+          console.log('🎵 LOAD: Starting to load songs with working previews...');
+          const startTime = Date.now();
+          
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Game initialization timed out. Please check your internet connection and try again.')), 30000)
+          );
+          
           // ENHANCED: Try to get 20 songs with previews for better success rate
-          console.log('LOAD: Loading 20 songs with previews for enhanced success rate...');
-          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(20);
+          const songsPromise = defaultPlaylistService.loadOptimizedGameSongs(20);
+          const optimizedSongs = await Promise.race([songsPromise, timeoutPromise]) as Song[];
+          
+          const loadTime = Date.now() - startTime;
+          console.log(`⏱️ LOAD: Song loading took ${loadTime}ms`);
           
           if (optimizedSongs.length === 0) {
-            throw new Error('No songs with valid previews found after trying multiple songs');
+            throw new Error('No songs with valid audio previews found. Please check your internet connection and try again.');
           }
 
           // ENHANCED: Accept fewer songs if we couldn't get the full 20, but need at least 8
           if (optimizedSongs.length < 8) {
-            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs for game start.`);
+            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs to start the game. Please check your internet connection.`);
           }
 
-          console.log(`SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
+          console.log(`✅ SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
 
-          // Initialize game with whatever songs we successfully got
-          await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
+          console.log('🎯 INIT: Initializing game state with starting cards...');
+          const initStartTime = Date.now();
           
-          console.log('INIT: Game ready with enhanced song set');
+          // Initialize game with timeout protection
+          const initTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Game state initialization timed out. Please try again.')), 15000)
+          );
+          
+          const initPromise = GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
+          await Promise.race([initPromise, initTimeoutPromise]);
+          
+          const initTime = Date.now() - initStartTime;
+          console.log(`⏱️ INIT: Game initialization took ${initTime}ms`);
+          console.log('🎉 INIT: Game ready with enhanced song set!');
         } catch (error) {
-          console.error('ERROR: Game initialization failed:', error);
-          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize resilient game');
+          console.error('❌ ERROR: Game initialization failed:', error);
+          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game. Please try again.');
           setGameInitialized(false);
         }
       };
@@ -624,14 +645,43 @@ export function GamePlay({
     );
   }
 
-  // Check if game is ready
+  // Enhanced game readiness check with better debugging
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
     currentMysteryCard &&
     currentTurnPlayer;
 
+  // Enhanced debug logging
+  console.log('🎮 GamePlay Readiness Check:', {
+    roomPhase: room?.phase,
+    playersCount: activePlayers.length,
+    hasMysteryCard: !!currentMysteryCard,
+    hasTurnPlayer: !!currentTurnPlayer,
+    gameInitialized,
+    initializationError,
+    gameReady
+  });
+
   if (!gameReady) {
+    // Show different loading states based on what's missing
+    let loadingMessage = "Setting up game...";
+    let loadingDetail = "Preparing your music experience";
+    
+    if (room?.phase !== 'playing') {
+      loadingMessage = "Waiting for host...";
+      loadingDetail = "Host is starting the game";
+    } else if (activePlayers.length === 0) {
+      loadingMessage = "Waiting for players...";
+      loadingDetail = "Getting player information";
+    } else if (!currentMysteryCard) {
+      loadingMessage = "Loading music...";
+      loadingDetail = "Finding songs with working audio previews";
+    } else if (!currentTurnPlayer) {
+      loadingMessage = "Setting up turns...";
+      loadingDetail = "Determining who goes first";
+    }
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="absolute inset-0">
@@ -639,11 +689,27 @@ export function GamePlay({
           <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
         </div>
         <div className="text-center text-white relative z-10">
-          <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 mx-auto border border-white/20">
-            <div className="text-2xl animate-spin">🎵</div>
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+            <div className="text-3xl animate-spin">🎵</div>
           </div>
-          <div className="text-xl font-semibold mb-2">🚀 Optimized Setup...</div>
-          <div className="text-white/60 max-w-sm mx-auto text-sm">Preparing enhanced mobile gameplay with performance optimizations</div>
+          <div className="text-2xl font-semibold mb-2">{loadingMessage}</div>
+          <div className="text-white/60 max-w-md mx-auto">{loadingDetail}</div>
+          
+          {/* Show initialization progress for host */}
+          {isHost && !gameInitialized && (
+            <div className="mt-4 text-sm text-white/40">
+              <div className="animate-pulse">🎯 Initializing game logic...</div>
+            </div>
+          )}
+          
+          {/* Show error if initialization failed */}
+          {initializationError && (
+            <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-sm">
+              <div className="font-semibold mb-1">Setup Error</div>
+              <div>{initializationError}</div>
+              <div className="mt-2 text-xs text-red-300">Please try refreshing the page</div>
+            </div>
+          )}
         </div>
       </div>
     );
