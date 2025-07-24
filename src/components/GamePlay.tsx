@@ -9,6 +9,7 @@ import { FiendModePlayerView } from '@/components/fiend/FiendModePlayerView';
 import { FiendModeHostView } from '@/components/fiend/FiendModeHostView';
 import { SprintModePlayerView } from '@/components/sprint/SprintModePlayerView';
 import { SprintModeHostView } from '@/components/sprint/SprintModeHostView';
+import { HostViewErrorBoundary } from '@/components/HostViewErrorBoundary';
 import { Song, Player } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -244,7 +245,7 @@ export function GamePlay({
     gameLogic.setIsPlaying(!isPlaying);
   };
 
-  // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
+  // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs and timeout
   useEffect(() => {
     const shouldInitialize = room?.phase === 'playing' && 
                            !gameInitialized &&
@@ -261,25 +262,25 @@ export function GamePlay({
           console.log('🎵 LOAD: Starting to load songs with working previews...');
           const startTime = Date.now();
           
-          // Add timeout to prevent hanging
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Game initialization timed out. Please check your internet connection and try again.')), 30000)
+          // ENHANCED: Add global timeout to prevent infinite hanging
+          const globalTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Game initialization timed out after 45 seconds. This may be due to network issues or server problems. Please refresh and try again.')), 45000)
           );
           
           // ENHANCED: Try to get 20 songs with previews for better success rate
           const songsPromise = defaultPlaylistService.loadOptimizedGameSongs(20);
-          const optimizedSongs = await Promise.race([songsPromise, timeoutPromise]) as Song[];
+          const optimizedSongs = await Promise.race([songsPromise, globalTimeoutPromise]) as Song[];
           
           const loadTime = Date.now() - startTime;
           console.log(`⏱️ LOAD: Song loading took ${loadTime}ms`);
           
           if (optimizedSongs.length === 0) {
-            throw new Error('No songs with valid audio previews found. Please check your internet connection and try again.');
+            throw new Error('No songs with valid audio previews found. This could be due to network issues or problems with the music service. Please check your internet connection and try again.');
           }
 
           // ENHANCED: Accept fewer songs if we couldn't get the full 20, but need at least 8
           if (optimizedSongs.length < 8) {
-            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs to start the game. Please check your internet connection.`);
+            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs to start the game. This may be due to network connectivity issues. Please check your internet connection.`);
           }
 
           console.log(`✅ SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
@@ -289,7 +290,7 @@ export function GamePlay({
           
           // Initialize game with timeout protection
           const initTimeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Game state initialization timed out. Please try again.')), 15000)
+            setTimeout(() => reject(new Error('Game state initialization timed out after 20 seconds. Please try again.')), 20000)
           );
           
           const initPromise = GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
@@ -300,12 +301,27 @@ export function GamePlay({
           console.log('🎉 INIT: Game ready with enhanced song set!');
         } catch (error) {
           console.error('❌ ERROR: Game initialization failed:', error);
-          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize game. Please try again.');
+          const errorMessage = error instanceof Error ? error.message : 'Failed to initialize game. Please try again.';
+          
+          // Add helpful context based on error type
+          let contextualMessage = errorMessage;
+          if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+            contextualMessage = `${errorMessage}\n\n💡 Tip: This usually happens due to slow internet or server issues. Try refreshing the page and starting again.`;
+          } else if (errorMessage.includes('No songs') || errorMessage.includes('audio previews')) {
+            contextualMessage = `${errorMessage}\n\n💡 Tip: Check your internet connection and ensure music services are accessible.`;
+          }
+          
+          setInitializationError(contextualMessage);
           setGameInitialized(false);
         }
       };
 
-      initializeGameOptimal();
+      // Add a small delay to prevent multiple rapid initializations
+      const initTimer = setTimeout(() => {
+        initializeGameOptimal();
+      }, 500);
+
+      return () => clearTimeout(initTimer);
     }
   }, [room?.phase, gameInitialized, gameLogic.gameState.playlistInitialized, isHost, room?.id]);
 
@@ -598,15 +614,41 @@ export function GamePlay({
     }
   };
 
-  // Show initialization error
+  // Show initialization error with retry option
   if (initializationError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center p-4">
         <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
           <div className="text-4xl mb-4">🚨</div>
-          <div className="text-2xl font-bold mb-3">Cannot Start Optimized Game</div>
+          <div className="text-2xl font-bold mb-3">Cannot Start Game</div>
           <div className="text-lg mb-4">{initializationError}</div>
-          <div className="text-sm text-white/60">Please check your playlist optimization and try again.</div>
+          <div className="text-sm text-white/60 mb-6">Please check your internet connection and try again.</div>
+          
+          {/* Retry button for host */}
+          {isHost && (
+            <button
+              onClick={() => {
+                console.log('🔄 Retrying game initialization...');
+                setInitializationError(null);
+                setGameInitialized(false);
+                // The useEffect will trigger reinitialization
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+            >
+              Try Again
+            </button>
+          )}
+          
+          {/* Debug information for development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
+              <div className="font-bold mb-2">Debug Info:</div>
+              <div>Room ID: {room?.id}</div>
+              <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
+              <div>Game Mode: {room?.gamemode}</div>
+              <div>Players: {players.length}</div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -646,7 +688,7 @@ export function GamePlay({
     );
   }
 
-  // Enhanced game readiness check with better debugging
+  // Enhanced game readiness check with better debugging and fallbacks
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
@@ -656,39 +698,64 @@ export function GamePlay({
   // Enhanced debug logging
   console.log('🎮 GamePlay Readiness Check:', {
     roomPhase: room?.phase,
+    roomId: room?.id,
     playersCount: activePlayers.length,
     hasMysteryCard: !!currentMysteryCard,
     hasTurnPlayer: !!currentTurnPlayer,
     gameInitialized,
     initializationError,
-    gameReady
+    gameReady,
+    isHost,
+    gameLogicInitialized: gameLogic.gameState.playlistInitialized,
+    currentTurnPlayerId: room?.current_player_id,
+    activePlayers: activePlayers.map(p => ({ id: p.id, name: p.name }))
   });
 
+  // DEFENSIVE RENDERING: Always show meaningful UI, never a white screen
   if (!gameReady) {
     // Show different loading states based on what's missing
     let loadingMessage = "Setting up game...";
     let loadingDetail = "Preparing your music experience";
     
-    if (room?.phase !== 'playing') {
+    if (!room) {
+      loadingMessage = "Connection issue";
+      loadingDetail = "Unable to connect to game room";
+    } else if (room?.phase !== 'playing') {
       loadingMessage = "Waiting for host...";
       loadingDetail = "Host is starting the game";
     } else if (activePlayers.length === 0) {
       loadingMessage = "Waiting for players...";
       loadingDetail = "Getting player information";
     } else if (!currentMysteryCard) {
-      loadingMessage = "Loading music...";
-      loadingDetail = "Finding songs with working audio previews";
+      loadingMessage = isHost ? "Loading music..." : "Host is loading music...";
+      loadingDetail = isHost ? "Finding songs with working audio previews" : "Please wait while the host sets up the game";
     } else if (!currentTurnPlayer) {
       loadingMessage = "Setting up turns...";
       loadingDetail = "Determining who goes first";
     }
 
     return (
-      <LoadingScreen
-        title={loadingMessage}
-        subtitle={loadingDetail}
-        variant="game"
-      />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
+        <LoadingScreen
+          title={loadingMessage}
+          subtitle={loadingDetail}
+          variant="game"
+        />
+        
+        {/* Debug information overlay for development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed bottom-4 right-4 bg-black/80 text-white p-3 rounded-lg text-xs max-w-sm z-50">
+            <div className="font-bold mb-2">Debug Info:</div>
+            <div>Room: {room?.id ? '✓' : '✗'}</div>
+            <div>Phase: {room?.phase || 'unknown'}</div>
+            <div>Players: {activePlayers.length}</div>
+            <div>Mystery Card: {currentMysteryCard ? '✓' : '✗'}</div>
+            <div>Turn Player: {currentTurnPlayer ? '✓' : '✗'}</div>
+            <div>Game Init: {gameInitialized ? '✓' : '✗'}</div>
+            <div>Logic Init: {gameLogic.gameState.playlistInitialized ? '✓' : '✗'}</div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -704,15 +771,17 @@ export function GamePlay({
       {/* Render different views based on gamemode */}
       {room.gamemode === 'fiend' ? (
         isHost ? (
-          <FiendModeHostView
-            players={activePlayers}
-            currentSong={currentMysteryCard}
-            roundNumber={currentRound}
-            totalRounds={room.gamemode_settings?.rounds || 5}
-            roomCode={room.lobby_code}
-            timeLeft={30}
-            playerGuesses={playerGuesses}
-          />
+          <HostViewErrorBoundary>
+            <FiendModeHostView
+              players={activePlayers}
+              currentSong={currentMysteryCard}
+              roundNumber={currentRound}
+              totalRounds={room.gamemode_settings?.rounds || 5}
+              roomCode={room.lobby_code}
+              timeLeft={30}
+              playerGuesses={playerGuesses}
+            />
+          </HostViewErrorBoundary>
         ) : (
           <FiendModePlayerView
             currentPlayer={currentPlayer}
@@ -729,15 +798,17 @@ export function GamePlay({
         )
       ) : room.gamemode === 'sprint' ? (
         isHost ? (
-          <SprintModeHostView
-            players={activePlayers}
-            currentSong={currentMysteryCard}
-            targetCards={room.gamemode_settings?.targetCards || 10}
-            roomCode={room.lobby_code}
-            timeLeft={30}
-            playerTimeouts={playerTimeouts}
-            recentPlacements={recentPlacements}
-          />
+          <HostViewErrorBoundary>
+            <SprintModeHostView
+              players={activePlayers}
+              currentSong={currentMysteryCard}
+              targetCards={room.gamemode_settings?.targetCards || 10}
+              roomCode={room.lobby_code}
+              timeLeft={30}
+              playerTimeouts={playerTimeouts}
+              recentPlacements={recentPlacements}
+            />
+          </HostViewErrorBoundary>
         ) : (
           <SprintModePlayerView
             currentPlayer={currentPlayer}
@@ -754,21 +825,23 @@ export function GamePlay({
           />
         )
       ) : (
-        // Classic gamemode (existing behavior)
+        // Classic gamemode (existing behavior) - ALWAYS WRAP HOST VIEW
         isHost ? (
-          <HostGameView
-            currentTurnPlayer={currentTurnPlayer}
-            currentSong={currentMysteryCard}
-            roomCode={room.lobby_code}
-            players={activePlayers}
-            mysteryCardRevealed={mysteryCardRevealed}
-            isPlaying={isPlaying}
-            onPlayPause={handleHostAudioPlay}
-            cardPlacementResult={cardPlacementResult}
-            transitioning={false}
-            highlightedGapIndex={highlightedGapIndex}
-            mobileViewport={mobileViewport}
-          />
+          <HostViewErrorBoundary>
+            <HostGameView
+              currentTurnPlayer={currentTurnPlayer}
+              currentSong={currentMysteryCard}
+              roomCode={room.lobby_code}
+              players={activePlayers}
+              mysteryCardRevealed={mysteryCardRevealed}
+              isPlaying={isPlaying}
+              onPlayPause={handleHostAudioPlay}
+              cardPlacementResult={cardPlacementResult}
+              transitioning={false}
+              highlightedGapIndex={highlightedGapIndex}
+              mobileViewport={mobileViewport}
+            />
+          </HostViewErrorBoundary>
         ) : (
           <MobilePlayerGameView
             currentPlayer={currentPlayer}
