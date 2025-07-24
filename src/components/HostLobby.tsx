@@ -48,19 +48,19 @@ export function HostLobby({
 
   // Debug logging for player updates
   useEffect(() => {
-    console.log('🧍 HostLobby: Players updated:', players);
-    console.log('🧍 HostLobby: Player count:', players.length);
+    console.log('LOBBY: Players updated:', players);
+    console.log('LOBBY: Player count:', players.length);
   }, [players]);
 
   const handleCreateRoom = useCallback(async () => {
-    console.log('🏠 Creating room...');
+    console.log('LOBBY: Creating room...');
     const success = await createRoom();
     if (success) {
       setRoomCreated(true);
       soundEffects.playGameStart();
-      console.log('✅ Room created successfully');
+      console.log('SUCCESS: Room created successfully');
     } else {
-      console.error('❌ Failed to create room');
+      console.error('ERROR: Failed to create room');
     }
   }, [createRoom, soundEffects]);
 
@@ -225,7 +225,7 @@ export function HostLobby({
   }
 
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
-  console.log('🔗 Generated QR code URL:', gameUrl);
+  console.log('QR: Generated code URL:', gameUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
@@ -551,7 +551,7 @@ export function HostLobby({
               {/* Start Game Button - Moved to top */}
               <Button
                 onClick={() => {
-                  console.log('🎮 Starting game with players:', players);
+                  console.log('GAME: Starting game with players:', players);
                   soundEffects.playGameStart();
                   onStartGame();
                 }}

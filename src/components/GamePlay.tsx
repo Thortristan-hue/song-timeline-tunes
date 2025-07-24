@@ -82,7 +82,7 @@ export function GamePlay({
   useEffect(() => {
     if (!room?.id) return;
 
-    console.log('🔊 Setting up universal audio control for room:', room.id);
+    console.log('AUDIO: Setting up universal audio control for room:', room.id);
     
     // Create broadcast channel for cross-tab audio sync
     const audioChannel = new BroadcastChannel(`audio-control-${room.id}`);
@@ -92,7 +92,7 @@ export function GamePlay({
     const channel = supabase
       .channel(`audio-control-${room.id}`)
       .on('broadcast', { event: 'audio-control' }, ({ payload }) => {
-        console.log('🔊 Received audio control broadcast:', payload);
+        console.log('AUDIO: Received audio control broadcast:', payload);
         if (payload.action === 'play' && isHost) {
           handleHostAudioPlay();
         } else if (payload.action === 'pause' && isHost) {
@@ -100,7 +100,7 @@ export function GamePlay({
         }
       })
       .subscribe((status) => {
-        console.log('🔊 Audio control channel status:', status);
+        console.log('AUDIO: Control channel status:', status);
       });
 
     realtimeChannelRef.current = channel;
@@ -129,7 +129,7 @@ export function GamePlay({
   const handleHostAudioPlay = async () => {
     if (!isHost || !room?.current_song?.preview_url) return;
 
-    console.log('🔊 HOST: Playing audio from universal control');
+    console.log('AUDIO: Host playing audio from universal control');
     
     // Stop any existing audio
     if (currentAudioRef.current) {
@@ -147,14 +147,14 @@ export function GamePlay({
     
     // Enhanced event handlers
     audio.addEventListener('ended', () => {
-      console.log('🔊 HOST: Audio playback ended');
+      console.log('AUDIO: Host audio playback ended');
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
       broadcastAudioState('pause');
     });
     
     audio.addEventListener('error', (e) => {
-      console.error('🔊 HOST: Audio error:', e);
+      console.error('AUDIO: Host audio error:', e);
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
       broadcastAudioState('pause');
@@ -162,12 +162,12 @@ export function GamePlay({
     
     try {
       await audio.play();
-      console.log('🔊 HOST: Audio playing successfully');
+      console.log('AUDIO: Host audio playing successfully');
       setIsPlaying(true);
       gameLogic.setIsPlaying(true);
       broadcastAudioState('play');
     } catch (error) {
-      console.error('🔊 HOST: Audio play failed:', error);
+      console.error('AUDIO: Host audio play failed:', error);
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
     }
@@ -176,7 +176,7 @@ export function GamePlay({
   const handleHostAudioPause = () => {
     if (!isHost) return;
 
-    console.log('🔊 HOST: Pausing audio from universal control');
+    console.log('AUDIO: Host pausing audio from universal control');
     
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -212,11 +212,11 @@ export function GamePlay({
   // ENHANCED: Universal play/pause handler for players
   const handleUniversalPlayPause = async () => {
     if (gameEnded || !room?.current_song) {
-      console.log('🚫 Cannot control audio: game ended or missing data');
+      console.log('AUDIO: Cannot control audio - game ended or missing data');
       return;
     }
 
-    console.log('🔊 PLAYER: Universal audio control triggered');
+    console.log('AUDIO: Player universal audio control triggered');
 
     const newAction = isPlaying ? 'pause' : 'play';
     
@@ -250,7 +250,7 @@ export function GamePlay({
                            !gameLogic.gameState.playlistInitialized;
 
     if (shouldInitialize && isHost) {
-      console.log('🚀 ENHANCED INIT: Host initializing with 20 song resilient loading...');
+      console.log('INIT: Host initializing with enhanced 20-song loading...');
       
       setInitializationError(null);
       setGameInitialized(true);
@@ -258,7 +258,7 @@ export function GamePlay({
       const initializeGameOptimal = async () => {
         try {
           // ENHANCED: Try to get 20 songs with previews for better success rate
-          console.log('⚡ RESILIENT LOAD: Loading 20 songs with previews (enhanced success rate)...');
+          console.log('LOAD: Loading 20 songs with previews for enhanced success rate...');
           const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(20);
           
           if (optimizedSongs.length === 0) {
@@ -270,14 +270,14 @@ export function GamePlay({
             throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs for game start.`);
           }
 
-          console.log(`🚀 RESILIENT SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
+          console.log(`SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
 
           // Initialize game with whatever songs we successfully got
           await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
           
-          console.log('⚡ RESILIENT INIT COMPLETE: Game ready with enhanced song set');
+          console.log('INIT: Game ready with enhanced song set');
         } catch (error) {
-          console.error('❌ RESILIENT INIT FAILED:', error);
+          console.error('ERROR: Game initialization failed:', error);
           setInitializationError(error instanceof Error ? error.message : 'Failed to initialize resilient game');
           setGameInitialized(false);
         }
@@ -299,7 +299,7 @@ export function GamePlay({
     const currentTurn = room?.current_turn || 0;
     
     if (room?.id && currentTurn !== lastTurnIndex && lastTurnIndex !== -1) {
-      console.log('🔄 TURN CHANGE: Mystery card should update automatically');
+      console.log('TURN: Mystery card should update automatically');
     }
     
     setLastTurnIndex(currentTurn);
@@ -311,7 +311,7 @@ export function GamePlay({
     const winningPlayer = activePlayers.find(player => player.timeline.length >= 10);
     
     if (winningPlayer && !gameEnded) {
-      console.log('🎯 GAME END: Player reached 10 cards:', winningPlayer.name);
+      console.log('GAME END: Player reached 10 cards:', winningPlayer.name);
       setGameEnded(true);
       setWinningPlayer(winningPlayer);
       
@@ -343,12 +343,12 @@ export function GamePlay({
     }
 
     if (currentPlayer.id !== currentTurnPlayerId) {
-      console.error('❌ Not your turn for placement!');
+      console.error('TURN: Not your turn for placement');
       return { success: false };
     }
 
     try {
-      console.log('📱 CARD PLACEMENT: Processing');
+      console.log('CARD: Processing placement');
       setMysteryCardRevealed(true);
       soundEffects.playCardPlace();
 
@@ -368,7 +368,7 @@ export function GamePlay({
         gameLogic.gameState.availableSongs
       );
       
-      console.log('📱 PLACEMENT RESULT:', result);
+      console.log('CARD: Placement result:', result);
       
       if (result.success) {
         const isCorrect = result.correct ?? false;
@@ -388,7 +388,7 @@ export function GamePlay({
           soundEffects.playCardError();
           
           // ENHANCED: Remove incorrect card from timeline
-          console.log('❌ INCORRECT PLACEMENT: Card will be removed from timeline');
+          console.log('CARD: Incorrect placement - card will be removed from timeline');
           
           if ('vibrate' in navigator) {
             navigator.vibrate([50, 50, 50, 50, 50]);
@@ -411,7 +411,7 @@ export function GamePlay({
 
       return { success: false };
     } catch (error) {
-      console.error('❌ Card placement failed:', error);
+      console.error('ERROR: Card placement failed:', error);
       setCardPlacementResult(null);
       setMysteryCardRevealed(false);
       return { success: false };

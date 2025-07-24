@@ -36,7 +36,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
   const cleanup = useCallback(() => {
     if (channelRef.current) {
-      console.log('🔄 Cleaning up realtime subscription');
+      console.log('REALTIME: Cleaning up subscription');
       channelRef.current.unsubscribe();
       channelRef.current = null;
     }
@@ -48,7 +48,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   }, []);
 
   const handleConnectionError = useCallback((error: Error, context: string) => {
-    console.warn(`📡 Subscription error in ${context}:`, error);
+    console.warn(`REALTIME: Subscription error in ${context}:`, error);
     
     setConnectionStatus(prev => ({
       ...prev,
@@ -75,12 +75,12 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       cleanup();
       
       if (configs.length === 0) {
-        console.warn('📡 No subscription configs provided');
+        console.warn('REALTIME: No subscription configs provided');
         return;
       }
 
       const channelName = `game-updates-${Date.now()}`;
-      console.log('📡 Setting up realtime subscription:', channelName);
+      console.log('REALTIME: Setting up subscription:', channelName);
       
       const channel = supabase.channel(channelName);
       
@@ -93,7 +93,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
           table: config.table,
           ...(config.filter && { filter: config.filter })
         }, (payload) => {
-          console.log(`📡 Database change on ${config.table}:`, payload);
+          console.log(`REALTIME: Database change on ${config.table}:`, payload);
           
           switch (payload.eventType) {
             case 'INSERT':
@@ -111,11 +111,11 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
       // Handle subscription status
       const subscription = channel.subscribe((status, err) => {
-        console.log('📡 Subscription status:', status, err);
+        console.log('REALTIME: Subscription status:', status, err);
         
         switch (status) {
           case 'SUBSCRIBED':
-            console.log('✅ Successfully subscribed to realtime updates');
+            console.log('SUCCESS: Successfully subscribed to realtime updates');
             setConnectionStatus({
               isConnected: true,
               isReconnecting: false,
@@ -125,17 +125,17 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
             break;
             
           case 'TIMED_OUT':
-            console.warn('⏰ Subscription timed out');
+            console.warn('TIMEOUT: Subscription timed out');
             handleConnectionError(new Error('Connection timed out'), 'timeout');
             break;
             
           case 'CLOSED':
-            console.warn('🔌 Subscription closed');
+            console.warn('CLOSED: Subscription closed');
             setConnectionStatus(prev => ({ ...prev, isConnected: false }));
             break;
             
           case 'CHANNEL_ERROR':
-            console.error('❌ Channel error:', err);
+            console.error('ERROR: Channel error:', err);
             handleConnectionError(err || new Error('Channel error'), 'channel_error');
             break;
         }
@@ -148,7 +148,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
         if (channelRef.current) {
           const state = channelRef.current.state;
           if (state === 'closed' || state === 'errored') {
-            console.warn('📡 Connection unhealthy, attempting reconnect');
+            console.warn('HEALTH: Connection unhealthy, attempting reconnect');
             clearInterval(healthCheck);
             // Only reconnect if we're not already reconnecting
             if (!connectionStatus.isReconnecting) {
@@ -162,7 +162,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       return () => clearInterval(healthCheck);
       
     } catch (error) {
-      console.error('❌ Failed to setup subscription:', error);
+      console.error('ERROR: Failed to setup subscription:', error);
       handleConnectionError(error, 'setup');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,12 +171,12 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   const scheduleReconnect = useCallback(() => {
     // Prevent multiple reconnection attempts
     if (connectionStatus.isReconnecting) {
-      console.log('📡 Already reconnecting, skipping duplicate attempt');
+      console.log('RECONNECT: Already reconnecting, skipping duplicate attempt');
       return;
     }
 
     if (retryCountRef.current >= maxRetries) {
-      console.error('❌ Max reconnection attempts reached');
+      console.error('LIMIT: Max reconnection attempts reached');
       setConnectionStatus(prev => ({
         ...prev,
         isReconnecting: false,
@@ -197,7 +197,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     retryCountRef.current++;
     const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 3)); // Shorter exponential backoff
     
-    console.log(`📡 Scheduling reconnect attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
+    console.log(`RECONNECT: Scheduling attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
     
     setConnectionStatus(prev => ({
       ...prev,
@@ -213,7 +213,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   // Monitor network status
   useEffect(() => {
     const handleOnline = () => {
-      console.log('🌐 Network came back online, reconnecting...');
+      console.log('NETWORK: Came back online, reconnecting...');
       if (!connectionStatus.isConnected) {
         retryCountRef.current = 0; // Reset retry count on network recovery
         connect();
@@ -221,7 +221,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     };
 
     const handleOffline = () => {
-      console.log('🌐 Network went offline');
+      console.log('NETWORK: Went offline');
       setConnectionStatus(prev => ({
         ...prev,
         isConnected: false,
@@ -251,7 +251,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !connectionStatus.isConnected) {
-        console.log('📱 Page became visible, checking connection...');
+        console.log('VISIBILITY: Page became visible, checking connection...');
         retryCountRef.current = 0;
         connect();
       }
@@ -262,7 +262,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   }, [connect, connectionStatus.isConnected]);
 
   const forceReconnect = useCallback(() => {
-    console.log('🔄 Force reconnecting...');
+    console.log('FORCE: Reconnecting manually...');
     retryCountRef.current = 0;
     connect();
   }, [connect]);

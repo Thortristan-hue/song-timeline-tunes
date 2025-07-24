@@ -90,7 +90,7 @@ export function useGameRoom() {
         table: 'game_rooms',
         filter: `id=eq.${room.id}`,
         onUpdate: (payload: any) => {
-          console.log('🏠 REALTIME: Room updated instantly:', payload.new);
+          console.log('REALTIME: Room updated instantly:', payload.new);
           setRoom(convertDatabaseRoomToGameRoom(payload.new));
         }
       },
@@ -99,15 +99,15 @@ export function useGameRoom() {
         table: 'players', 
         filter: `room_id=eq.${room.id}`,
         onInsert: (payload: any) => {
-          console.log('👤 REALTIME: Player joined instantly:', payload.new);
+          console.log('REALTIME: Player joined instantly:', payload.new);
           fetchPlayersOptimized(room.id, true);
         },
         onUpdate: (payload: any) => {
-          console.log('👤 REALTIME: Player updated instantly:', payload.new);
+          console.log('REALTIME: Player updated instantly:', payload.new);
           fetchPlayersOptimized(room.id, true);
         },
         onDelete: (payload: any) => {
-          console.log('👤 REALTIME: Player left instantly:', payload.old);
+          console.log('REALTIME: Player left instantly:', payload.old);
           fetchPlayersOptimized(room.id, true);
         }
       }
@@ -122,12 +122,12 @@ export function useGameRoom() {
     // Rate limiting to prevent spam
     const now = Date.now();
     if (!forceUpdate && now - lastFetchTime.current < fetchCooldown) {
-      console.log('🚫 Fetch rate limited, skipping...');
+      console.log('FETCH: Rate limited, skipping...');
       return;
     }
     lastFetchTime.current = now;
 
-    console.log('🔍 Fetching players for room:', roomId, 'forceUpdate:', forceUpdate);
+    console.log('FETCH: Getting players for room:', roomId, 'forceUpdate:', forceUpdate);
     
     try {
       const { data: playersData, error: playersError } = await supabase
@@ -138,11 +138,11 @@ export function useGameRoom() {
         .order('joined_at', { ascending: true });
 
       if (playersError) {
-        console.error('❌ Error fetching players:', playersError);
+        console.error('ERROR: Failed to fetch players:', playersError);
         return;
       }
 
-      console.log('👥 Raw non-host players from DB:', playersData);
+      console.log('FETCH: Raw non-host players from database:', playersData);
 
       // Convert to Player format with proper type casting
       const convertedPlayers: Player[] = playersData.map(p => ({
@@ -154,14 +154,14 @@ export function useGameRoom() {
         timeline: convertJsonToSongs(p.timeline)
       }));
 
-      console.log('👥 Converted non-host players:', convertedPlayers);
+      console.log('FETCH: Converted non-host players:', convertedPlayers);
 
-      // ENHANCED: Immediate state update for snappy UX
+      // Immediate state update for responsive UX
       setPlayers(convertedPlayers);
-      console.log('✅ Player list updated successfully with', convertedPlayers.length, 'players');
+      console.log('SUCCESS: Player list updated with', convertedPlayers.length, 'players');
 
     } catch (error) {
-      console.error('❌ Failed to fetch players:', error);
+      console.error('ERROR: Failed to fetch players:', error);
     }
   }, []);
 
@@ -198,13 +198,18 @@ export function useGameRoom() {
     setError(null);
 
     try {
-      // Create room using direct Supabase calls
+      // Generate proper lobby code format (WORD + NUMBER) using database function
+      const { data: codeData, error: codeError } = await supabase.rpc('generate_lobby_code');
+      
+      if (codeError) throw codeError;
+      
+      // Create room with generated lobby code
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           host_name: hostName,
           host_id: sessionId,
-          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+          lobby_code: codeData,
           phase: 'lobby',
           gamemode: 'classic',
           gamemode_settings: {},
@@ -217,11 +222,11 @@ export function useGameRoom() {
 
       setRoom(convertDatabaseRoomToGameRoom(roomData));
       setIsHost(true);
-      console.log('🏠 Room created successfully:', roomData.lobby_code);
+      console.log('SUCCESS: Room created with lobby code:', roomData.lobby_code);
       return roomData.lobby_code;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create room';
-      console.error('❌ Create room error:', errorMessage);
+      console.error('ERROR: Create room failed:', errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -273,11 +278,11 @@ export function useGameRoom() {
       setRoom(convertDatabaseRoomToGameRoom(roomData));
       setCurrentPlayer(player);
       setIsHost(false);
-      console.log('🎮 Joined room successfully:', lobbyCode);
+      console.log('SUCCESS: Joined room successfully:', lobbyCode);
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to join room';
-      console.error('❌ Join room error:', errorMessage);
+      console.error('ERROR: Join room failed:', errorMessage);
       setError(errorMessage);
       return false;
     } finally {
@@ -309,9 +314,9 @@ export function useGameRoom() {
         throw error;
       }
       
-      console.log('👤 Player updated successfully');
+      console.log('SUCCESS: Player updated successfully');
     } catch (error) {
-      console.error('❌ Update player error:', error);
+      console.error('ERROR: Update player failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to update player');
     }
   }, [currentPlayer, room]);
@@ -330,9 +335,9 @@ export function useGameRoom() {
       if (error) throw error;
       
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🎵 Room songs updated successfully');
+      console.log('SUCCESS: Room songs updated successfully');
     } catch (error) {
-      console.error('❌ Update room songs error:', error);
+      console.error('ERROR: Update room songs failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to update songs');
     }
   }, [room, isHost]);
@@ -355,10 +360,10 @@ export function useGameRoom() {
       
       // ENHANCED: Immediate state update
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🎮 Room gamemode updated successfully');
+      console.log('SUCCESS: Room gamemode updated successfully');
       return true;
     } catch (error) {
-      console.error('❌ Update room gamemode error:', error);
+      console.error('ERROR: Update room gamemode failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to update gamemode');
       return false;
     }
@@ -380,9 +385,9 @@ export function useGameRoom() {
       
       // ENHANCED: Immediate phase transition
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🚀 Game started successfully');
+      console.log('SUCCESS: Game started successfully');
     } catch (error) {
-      console.error('❌ Start game error:', error);
+      console.error('ERROR: Start game failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to start game');
     } finally {
       setIsLoading(false);
@@ -422,12 +427,12 @@ export function useGameRoom() {
         return { success: false, error: error.message };
       }
 
-      console.log('🃏 Card placed successfully');
+      console.log('SUCCESS: Card placed successfully');
       return { success: true, correct: true };
     } catch (error) {
       // Revert optimistic update on error
       setCurrentPlayer(currentPlayer);
-      console.error('❌ Place card error:', error);
+      console.error('ERROR: Place card failed:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to place card' };
     }
   }, [currentPlayer, room]);
@@ -446,9 +451,9 @@ export function useGameRoom() {
       if (error) throw error;
       
       setRoom(convertDatabaseRoomToGameRoom(data));
-      console.log('🎵 Current song updated successfully');
+      console.log('SUCCESS: Current song updated successfully');
     } catch (error) {
-      console.error('❌ Set current song error:', error);
+      console.error('ERROR: Set current song failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to set current song');
     }
   }, [room, isHost]);
@@ -467,11 +472,11 @@ export function useGameRoom() {
 
       await Promise.all(updatePromises);
       
-      console.log('🃏 Starting cards assigned successfully');
+      console.log('SUCCESS: Starting cards assigned successfully');
       // Refresh players to get updated timelines
       await fetchPlayersOptimized(room.id, true);
     } catch (error) {
-      console.error('❌ Assign starting cards error:', error);
+      console.error('ERROR: Assign starting cards failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to assign starting cards');
     }
   }, [room, isHost, fetchPlayersOptimized]);
@@ -488,12 +493,12 @@ export function useGameRoom() {
       
       if (error) throw error;
       
-      console.log('👤 Player kicked successfully');
+      console.log('SUCCESS: Player kicked successfully');
       // Refresh players immediately
       await fetchPlayersOptimized(room.id, true);
       return true;
     } catch (error) {
-      console.error('❌ Kick player error:', error);
+      console.error('ERROR: Kick player failed:', error);
       setError(error instanceof Error ? error.message : 'Failed to kick player');
       return false;
     }
@@ -518,9 +523,9 @@ export function useGameRoom() {
       setError(null);
       isInitialFetch.current = true;
       
-      console.log('👋 Left room successfully');
+      console.log('SUCCESS: Left room successfully');
     } catch (error) {
-      console.error('❌ Leave room error:', error);
+      console.error('ERROR: Leave room failed:', error);
     }
   }, [room, currentPlayer]);
 
