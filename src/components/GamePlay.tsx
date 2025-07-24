@@ -614,39 +614,76 @@ export function GamePlay({
     }
   };
 
-  // Show initialization error with retry option
+  // Show initialization error with comprehensive recovery options
   if (initializationError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-black relative overflow-hidden flex items-center justify-center p-4">
-        <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+        <div className="text-center text-white relative z-10 max-w-lg mx-auto p-6">
           <div className="text-4xl mb-4">🚨</div>
-          <div className="text-2xl font-bold mb-3">Cannot Start Game</div>
-          <div className="text-lg mb-4">{initializationError}</div>
-          <div className="text-sm text-white/60 mb-6">Please check your internet connection and try again.</div>
+          <div className="text-2xl font-bold mb-3">Game Setup Failed</div>
+          <div className="text-lg mb-4 leading-relaxed">{initializationError}</div>
+          <div className="text-sm text-white/60 mb-6">This usually happens due to network issues or problems loading music data.</div>
           
-          {/* Retry button for host */}
-          {isHost && (
-            <button
-              onClick={() => {
-                console.log('🔄 Retrying game initialization...');
-                setInitializationError(null);
-                setGameInitialized(false);
-                // The useEffect will trigger reinitialization
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
-            >
-              Try Again
-            </button>
-          )}
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3 mb-6">
+            {/* Retry button for host */}
+            {isHost && (
+              <button
+                onClick={() => {
+                  console.log('🔄 Retrying game initialization...');
+                  setInitializationError(null);
+                  setGameInitialized(false);
+                  // The useEffect will trigger reinitialization
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+              >
+                🔄 Try Again
+              </button>
+            )}
+            
+            {/* Go back to lobby button */}
+            {isHost && onReplayGame && (
+              <button
+                onClick={() => {
+                  console.log('🏠 Going back to lobby...');
+                  onReplayGame();
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+              >
+                🏠 Back to Lobby
+              </button>
+            )}
+          </div>
+          
+          {/* Help tips */}
+          <div className="text-xs text-white/50 mb-4 space-y-2">
+            <div className="font-semibold">💡 Tips to fix this:</div>
+            <ul className="list-disc list-inside space-y-1 text-left max-w-md mx-auto">
+              <li>Check your internet connection</li>
+              <li>Refresh the page and try again</li>
+              <li>Ensure music services are accessible</li>
+              <li>Try again in a few minutes</li>
+            </ul>
+          </div>
           
           {/* Debug information for development */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
-              <div className="font-bold mb-2">Debug Info:</div>
-              <div>Room ID: {room?.id}</div>
+              <div className="font-bold mb-2 text-red-400">Debug Info:</div>
+              <div>Room ID: {room?.id || 'Unknown'}</div>
               <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
-              <div>Game Mode: {room?.gamemode}</div>
+              <div>Game Mode: {room?.gamemode || 'Unknown'}</div>
               <div>Players: {players.length}</div>
+              <div>Game Initialized: {gameInitialized ? 'Yes' : 'No'}</div>
+              <div>Playlist Initialized: {gameLogic.gameState.playlistInitialized ? 'Yes' : 'No'}</div>
+            </div>
+          )}
+          
+          {/* For non-host players */}
+          {!isHost && (
+            <div className="text-white/70 text-sm mt-4 p-3 bg-blue-900/30 rounded-lg border border-blue-400/30">
+              <div className="font-semibold mb-2">👥 Player Notice</div>
+              <div>The host is experiencing setup issues. Please wait while they resolve the problem, or ask them to restart the game.</div>
             </div>
           )}
         </div>
@@ -753,6 +790,18 @@ export function GamePlay({
             <div>Turn Player: {currentTurnPlayer ? '✓' : '✗'}</div>
             <div>Game Init: {gameInitialized ? '✓' : '✗'}</div>
             <div>Logic Init: {gameLogic.gameState.playlistInitialized ? '✓' : '✗'}</div>
+            <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
+          </div>
+        )}
+        
+        {/* Enhanced host-specific debugging */}
+        {isHost && process.env.NODE_ENV === 'development' && (
+          <div className="fixed bottom-4 left-4 bg-red-900/80 text-white p-3 rounded-lg text-xs max-w-sm z-50">
+            <div className="font-bold mb-2 text-red-400">Host Debug:</div>
+            <div>Init Error: {initializationError ? 'Yes' : 'No'}</div>
+            <div>Playlist Init: {gameLogic.gameState.playlistInitialized ? 'Yes' : 'No'}</div>
+            <div>Current Song: {currentMysteryCard?.deezer_title || 'None'}</div>
+            <div>Turn Player: {currentTurnPlayer?.name || 'None'}</div>
           </div>
         )}
       </div>
@@ -825,22 +874,46 @@ export function GamePlay({
           />
         )
       ) : (
-        // Classic gamemode (existing behavior) - ALWAYS WRAP HOST VIEW
+        // Classic gamemode (existing behavior) - ALWAYS WRAP HOST VIEW WITH COMPREHENSIVE SAFETY
         isHost ? (
           <HostViewErrorBoundary>
-            <HostGameView
-              currentTurnPlayer={currentTurnPlayer}
-              currentSong={currentMysteryCard}
-              roomCode={room.lobby_code}
-              players={activePlayers}
-              mysteryCardRevealed={mysteryCardRevealed}
-              isPlaying={isPlaying}
-              onPlayPause={handleHostAudioPlay}
-              cardPlacementResult={cardPlacementResult}
-              transitioning={false}
-              highlightedGapIndex={highlightedGapIndex}
-              mobileViewport={mobileViewport}
-            />
+            {/* DEFENSIVE RENDERING: Ensure all required props are available before rendering */}
+            {currentTurnPlayer && currentMysteryCard && activePlayers.length > 0 ? (
+              <HostGameView
+                currentTurnPlayer={currentTurnPlayer}
+                currentSong={currentMysteryCard}
+                roomCode={room.lobby_code}
+                players={activePlayers}
+                mysteryCardRevealed={mysteryCardRevealed}
+                isPlaying={isPlaying}
+                onPlayPause={handleHostAudioPlay}
+                cardPlacementResult={cardPlacementResult}
+                transitioning={false}
+                highlightedGapIndex={highlightedGapIndex}
+                mobileViewport={mobileViewport}
+              />
+            ) : (
+              /* Fallback UI for missing props */
+              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
+                <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+                  <div className="text-4xl mb-4">🎮</div>
+                  <div className="text-2xl font-bold mb-3">Loading Host Display...</div>
+                  <div className="text-lg mb-4">Setting up the game interface</div>
+                  <div className="text-sm text-white/60 mb-6">Please wait a moment</div>
+                  
+                  {/* Debug what's missing */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="bg-black/50 p-3 rounded-lg text-xs text-left">
+                      <div className="font-bold mb-2">Missing Data:</div>
+                      <div>Turn Player: {currentTurnPlayer ? '✓' : '✗ Missing'}</div>
+                      <div>Mystery Card: {currentMysteryCard ? '✓' : '✗ Missing'}</div>
+                      <div>Players: {activePlayers.length > 0 ? `✓ (${activePlayers.length})` : '✗ No players'}</div>
+                      <div>Room Code: {room.lobby_code || 'Missing'}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </HostViewErrorBoundary>
         ) : (
           <MobilePlayerGameView

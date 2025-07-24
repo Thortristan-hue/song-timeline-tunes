@@ -738,27 +738,19 @@ export function HostGameView({
     console.warn('⚠️  HostGameView: onPlayPause not provided');
   });
 
-  // Error boundary check
-  if (!safeCurrentTurnPlayer || !safePlayers || !safeCurrentSong) {
-    console.error('❌ HostGameView: Critical props missing, rendering fallback UI');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-          <div className="text-4xl mb-4">🎵</div>
-          <div className="text-2xl font-bold mb-3">Setting Up Game...</div>
-          <div className="text-lg mb-4">The host display is loading. Please wait a moment.</div>
-          <div className="text-sm text-white/60">If this persists, please refresh the page.</div>
-        </div>
-      </div>
-    );
-  }
-
+  // DEFENSIVE RENDERING: Initialize React hooks first, then handle fallback cases
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   const [showHostFeedback, setShowHostFeedback] = useState(false);
-  
+
+  // All useEffect hooks must be called before any early returns
   useEffect(() => {
+    // Only run effect if we have valid props
+    if (!safeCurrentTurnPlayer || !safePlayers || !safeCurrentSong) {
+      return;
+    }
+
     if (cardPlacementResult) {
       setShowResultModal(true);
       setShowHostFeedback(true);
@@ -803,7 +795,32 @@ export function HostGameView({
     } else {
       setDisplayedPlayer(safeCurrentTurnPlayer);
     }
-  }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult]);
+  }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult, safePlayers, safeCurrentSong]);
+
+  // Error boundary check AFTER hooks are initialized
+  if (!safeCurrentTurnPlayer || !safePlayers || !safeCurrentSong) {
+    console.error('❌ HostGameView: Critical props missing, rendering fallback UI');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
+        <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+          <div className="text-4xl mb-4">🎵</div>
+          <div className="text-2xl font-bold mb-3">Setting Up Game...</div>
+          <div className="text-lg mb-4">The host display is loading. Please wait a moment.</div>
+          <div className="text-sm text-white/60">If this persists, please refresh the page.</div>
+          
+          {/* Debug information for development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
+              <div className="font-bold mb-2">Debug Info:</div>
+              <div>Current Turn Player: {safeCurrentTurnPlayer ? '✓' : '✗'}</div>
+              <div>Players: {safePlayers ? safePlayers.length : 0}</div>
+              <div>Current Song: {safeCurrentSong ? '✓' : '✗'}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">

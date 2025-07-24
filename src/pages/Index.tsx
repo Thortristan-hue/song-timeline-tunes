@@ -78,22 +78,35 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with better error handling
+  // Enhanced room phase listener with comprehensive error handling and logging
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game');
-      console.log('🎮 Room data:', { 
+      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase - starting game');
+      console.log('🎮 PHASE TRANSITION: Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         isHost,
-        playersCount: players.length 
+        playersCount: players.length,
+        currentPlayerName: currentPlayer?.name,
+        lobbyCode: room.lobby_code
       });
       
+      // Additional safety checks before transition
+      if (!room.id) {
+        console.error('❌ PHASE TRANSITION: Cannot transition to playing - missing room ID');
+        return;
+      }
+      
+      if (isHost && players.length === 0) {
+        console.warn('⚠️  PHASE TRANSITION: Host transitioning with no players - this might cause issues');
+      }
+      
+      console.log('✅ PHASE TRANSITION: All checks passed, transitioning to playing phase');
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, currentPlayer?.name, room?.lobby_code]);
 
   // Check for winner
   useEffect(() => {
@@ -249,19 +262,55 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
-            <GamePlay
-              room={room}
-              players={players}
-              currentPlayer={currentPlayer}
-              isHost={isHost}
-              onPlaceCard={handlePlaceCard}
-              onSetCurrentSong={setCurrentSong}
-              customSongs={customSongs}
-              connectionStatus={connectionStatus}
-              onReconnect={forceReconnect}
-              onReplayGame={handlePlayAgain}
-            />
+          {gamePhase === 'playing' && (
+            /* DEFENSIVE RENDERING: Ensure all required data is available before rendering GamePlay */
+            room && currentPlayer ? (
+              <GamePlay
+                room={room}
+                players={players}
+                currentPlayer={currentPlayer}
+                isHost={isHost}
+                onPlaceCard={handlePlaceCard}
+                onSetCurrentSong={setCurrentSong}
+                customSongs={customSongs}
+                connectionStatus={connectionStatus}
+                onReconnect={forceReconnect}
+                onReplayGame={handlePlayAgain}
+              />
+            ) : (
+              /* Fallback UI for missing required data */
+              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden flex items-center justify-center p-4">
+                <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+                  <div className="text-4xl mb-4">⏳</div>
+                  <div className="text-2xl font-bold mb-3">Loading Game...</div>
+                  <div className="text-lg mb-4">
+                    {!room ? 'Connecting to room...' : 'Setting up player data...'}
+                  </div>
+                  <div className="text-sm text-white/60 mb-6">Please wait a moment</div>
+                  
+                  {/* Debug info for development */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="bg-black/50 p-3 rounded-lg text-xs text-left">
+                      <div className="font-bold mb-2">Debug Info:</div>
+                      <div>Room: {room ? '✓' : '✗ Missing'}</div>
+                      <div>Current Player: {currentPlayer ? '✓' : '✗ Missing'}</div>
+                      <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
+                      <div>Players Count: {players.length}</div>
+                      <div>Game Phase: {gamePhase}</div>
+                      <div>Room Phase: {room?.phase || 'Unknown'}</div>
+                    </div>
+                  )}
+                  
+                  {/* Back to menu option if stuck */}
+                  <button
+                    onClick={handleBackToMenu}
+                    className="mt-4 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                  >
+                    Back to Menu
+                  </button>
+                </div>
+              </div>
+            )
           )}
 
           {gamePhase === 'finished' && winner && (
