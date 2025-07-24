@@ -41,65 +41,143 @@ class AudioManager {
   }
 
   /**
-   * Subscribe to real-time audio control events (host only)
+   * Subscribe to real-time audio control events (host only) with enhanced error handling
    */
   private subscribeToAudioControl() {
     if (!this.roomId) return;
 
-    supabase
-      .channel(`audio-control-${this.roomId}`)
-      .on('broadcast', { event: 'audio_control' }, (payload) => {
-        console.log('🎵 HOST: Received universal audio control command:', payload);
-        this.handleUniversalAudioControl(payload.payload);
-      })
-      .subscribe();
+    console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId}`);
+
+    try {
+      const channel = supabase.channel(`audio-control-${this.roomId}`);
+      
+      channel
+        .on('broadcast', { event: 'audio_control' }, (payload) => {
+          console.log('🎵 HOST: Received universal audio control command:', payload);
+          if (payload && payload.payload) {
+            this.handleUniversalAudioControl(payload.payload);
+          } else {
+            console.warn('🎵 HOST: Received invalid audio control payload:', payload);
+          }
+        })
+        .subscribe((status) => {
+          console.log(`🎵 HOST: Audio control subscription status: ${status}`);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ HOST: Audio control subscription established');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ HOST: Audio control subscription error');
+          }
+        });
+
+    } catch (error) {
+      console.error('❌ HOST: Failed to set up audio control subscription:', error);
+    }
   }
 
   /**
-   * Handle universal audio control commands from mobile devices
+   * Handle universal audio control commands from mobile devices with enhanced validation
    */
-  private async handleUniversalAudioControl(command: { action: 'play' | 'pause' | 'toggle', song?: Song }) {
+  private async handleUniversalAudioControl(command: { action: 'play' | 'pause' | 'toggle', song?: Song, timestamp?: number }) {
     if (!this.isHost) return; // Only host should handle these commands
+
+    // Validate command structure
+    if (!command || !command.action) {
+      console.error('❌ HOST: Invalid audio control command received:', command);
+      return;
+    }
+
+    // Ignore outdated commands (older than 10 seconds)
+    if (command.timestamp && Date.now() - command.timestamp > 10000) {
+      console.warn('🎵 HOST: Ignoring outdated audio control command');
+      return;
+    }
+
+    console.log('🎵 HOST: Processing universal audio control command:', {
+      action: command.action,
+      song: command.song?.deezer_title,
+      timestamp: command.timestamp
+    });
 
     try {
       switch (command.action) {
         case 'play':
-          if (command.song) {
+          if (command.song && this.isValidSong(command.song)) {
             await this.playSong(command.song);
           } else if (this.currentSong) {
             await this.resume();
+          } else {
+            console.warn('🎵 HOST: No valid song to play');
           }
           break;
         case 'pause':
           this.pause();
           break;
         case 'toggle':
-          await this.togglePlayPause(command.song);
+          if (command.song && this.isValidSong(command.song)) {
+            await this.togglePlayPause(command.song);
+          } else {
+            console.warn('🎵 HOST: No valid song provided for toggle');
+          }
           break;
+        default:
+          console.error('❌ HOST: Unknown audio control action:', command.action);
       }
     } catch (error) {
       console.error('❌ UNIVERSAL CONTROLLER: Failed to handle audio control:', error);
+      // Notify listeners of the error
+      this.notifyPlayStateChange();
     }
   }
 
   /**
-   * Send universal audio control command (mobile only)
+   * Validate song object has required fields
+   */
+  private isValidSong(song: Song): boolean {
+    return !!(song && 
+             song.id && 
+             song.deezer_title && 
+             song.deezer_artist && 
+             song.release_year);
+  }
+
+  /**
+   * Send universal audio control command (mobile only) with enhanced error handling
    */
   async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song) {
     if (!this.roomId || this.isHost) return; // Only mobile devices should send commands
 
     console.log('📱 MOBILE: Sending universal audio control command:', { action, song: song?.deezer_title });
 
-    try {
-      await supabase
-        .channel(`audio-control-${this.roomId}`)
-        .send({
+    const maxRetries = 3;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      try {
+        const channel = supabase.channel(`audio-control-${this.roomId}`);
+        
+        await channel.send({
           type: 'broadcast',
           event: 'audio_control',
-          payload: { action, song }
+          payload: { action, song, timestamp: Date.now() }
         });
-    } catch (error) {
-      console.error('❌ MOBILE: Failed to send audio control command:', error);
+
+        console.log(`📱 MOBILE: Successfully sent audio control command on attempt ${attempt + 1}`);
+        return;
+
+      } catch (error) {
+        attempt++;
+        console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt}/${maxRetries}):`, error);
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: wait 500ms, then 1s, then 2s
+          const delay = 500 * Math.pow(2, attempt - 1);
+          console.log(`📱 MOBILE: Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error('❌ MOBILE: Failed to send audio control command after all retries');
+          throw error;
+        }
+      }
     }
   }
 

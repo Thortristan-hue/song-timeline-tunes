@@ -44,11 +44,21 @@ export default function MobilePlayerGameView({
   const [error, setError] = useState<string | null>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
-  // Universal audio control - no local audio state needed
-  const universalPlayPause = () => {
-    console.log('📱 UNIVERSAL CONTROL: Triggering play/pause on host');
-    onPlayPause(); // This triggers the host device audio
-  };
+  // Universal audio control - enhanced with validation and error handling
+  const universalPlayPause = useCallback(() => {
+    if (!isValidCurrentSong) {
+      console.warn('📱 UNIVERSAL CONTROL: Cannot control audio - invalid song data');
+      return;
+    }
+
+    console.log('📱 UNIVERSAL CONTROL: Triggering play/pause on host for:', currentSong.deezer_title);
+    
+    try {
+      onPlayPause(); // This triggers the host device audio via AudioManager
+    } catch (error) {
+      console.error('📱 UNIVERSAL CONTROL: Error triggering play/pause:', error);
+    }
+  }, [onPlayPause, currentSong, isValidCurrentSong]);
 
   // Debug menu state (Easter egg)
   const [debugClickCount, setDebugClickCount] = useState(0);
@@ -59,18 +69,57 @@ export default function MobilePlayerGameView({
   // Refs for scrolling and performance optimization
   const timelineScrollRef = useRef<HTMLDivElement>(null);
 
-  // Get sorted timeline songs for placement
+  // Get sorted timeline songs for placement with enhanced validation
   const timelineSongs = useMemo(() => {
-    if (!currentPlayer?.timeline || !Array.isArray(currentPlayer.timeline)) {
-      console.log('📱 TIMELINE: No valid timeline data found');
+    if (!currentPlayer?.timeline) {
+      console.log('📱 TIMELINE: No currentPlayer or timeline data found');
+      return [];
+    }
+
+    if (!Array.isArray(currentPlayer.timeline)) {
+      console.warn('📱 TIMELINE: Timeline data is not an array:', typeof currentPlayer.timeline);
       return [];
     }
 
     const validSongs = currentPlayer.timeline
-      .filter(song => song !== null && song !== undefined && song.id && song.deezer_title)
-      .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+      .filter(song => {
+        // Enhanced validation for song data
+        if (!song || typeof song !== 'object') {
+          console.debug('📱 TIMELINE: Filtering out invalid song object:', song);
+          return false;
+        }
+        
+        if (!song.id || !song.deezer_title || !song.release_year) {
+          console.debug('📱 TIMELINE: Filtering out song with missing required fields:', {
+            id: song.id,
+            title: song.deezer_title,
+            year: song.release_year
+          });
+          return false;
+        }
 
-    console.log(`📱 TIMELINE: Displaying ${validSongs.length} songs on mobile timeline for ${currentPlayer.name}`);
+        // Validate release_year is a valid number
+        const year = parseInt(song.release_year);
+        if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
+          console.debug('📱 TIMELINE: Filtering out song with invalid year:', song.release_year);
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const yearA = parseInt(a.release_year);
+        const yearB = parseInt(b.release_year);
+        return yearA - yearB;
+      });
+
+    console.log(`📱 TIMELINE: Displaying ${validSongs.length} songs on mobile timeline for ${currentPlayer.name || 'unknown player'}`);
+    
+    // Log if we filtered out any invalid songs
+    const originalCount = currentPlayer.timeline.length;
+    if (validSongs.length < originalCount) {
+      console.warn(`📱 TIMELINE: Filtered out ${originalCount - validSongs.length} invalid songs from timeline`);
+    }
     
     return validSongs;
   }, [currentPlayer?.timeline, currentPlayer?.name]);
@@ -112,26 +161,80 @@ export default function MobilePlayerGameView({
     return getArtistColor(song.deezer_artist);
   };
 
-  // Handle card placement with error handling
-  const handlePlaceCard = async () => {
+  // Enhanced data validation
+  const isValidCurrentSong = useMemo(() => {
+    if (!currentSong || typeof currentSong !== 'object') {
+      console.warn('📱 VALIDATION: Invalid currentSong object:', currentSong);
+      return false;
+    }
+    
+    if (!currentSong.id || !currentSong.deezer_title || !currentSong.release_year) {
+      console.warn('📱 VALIDATION: CurrentSong missing required fields:', {
+        id: currentSong.id,
+        title: currentSong.deezer_title,
+        year: currentSong.release_year
+      });
+      return false;
+    }
+    
+    return true;
+  }, [currentSong]);
+
+  const isValidPlayerData = useMemo(() => {
+    if (!currentPlayer || !currentPlayer.id || !currentPlayer.name) {
+      console.warn('📱 VALIDATION: Invalid currentPlayer data:', currentPlayer);
+      return false;
+    }
+    return true;
+  }, [currentPlayer]);
+
+  // Handle card placement with enhanced error handling and validation
+  const handlePlaceCard = useCallback(async () => {
     if (isSubmitting || !isMyTurn || gameEnded) return;
+
+    // Enhanced validation before placement
+    if (!isValidCurrentSong) {
+      setError('Invalid song data. Please refresh the page.');
+      return;
+    }
+
+    if (!isValidPlayerData) {
+      setError('Invalid player data. Please refresh the page.');
+      return;
+    }
+
+    if (selectedPosition < 0 || selectedPosition > totalPositions - 1) {
+      setError('Invalid position selected. Please try again.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       setError(null);
 
+      console.log('📱 PLACE CARD: Attempting placement:', {
+        song: currentSong.deezer_title,
+        position: selectedPosition,
+        totalPositions
+      });
+
       const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
-        setError('Failed to place card. Please try again.');
+        const errorMsg = result.error || 'Failed to place card. Please try again.';
+        setError(errorMsg);
+        console.error('📱 PLACE CARD: Failed:', errorMsg);
+      } else {
+        console.log('📱 PLACE CARD: Success!');
       }
     } catch (err) {
-      console.error('Card placement error:', err);
-      setError('Failed to place card. Please try again.');
+      console.error('📱 PLACE CARD: Error during placement:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to place card. Please try again.';
+      setError(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [isSubmitting, isMyTurn, gameEnded, isValidCurrentSong, isValidPlayerData, selectedPosition, totalPositions, currentSong, onPlaceCard]);
 
   // Get position description
   const getPositionDescription = (position: number) => {
@@ -204,7 +307,7 @@ export default function MobilePlayerGameView({
   };
 
   // Handle position navigation with enhanced centering
-  const navigatePosition = (direction: 'prev' | 'next') => {
+  const navigatePosition = useCallback((direction: 'prev' | 'next') => {
     let newPosition = selectedPosition;
     
     if (direction === 'prev' && selectedPosition > 0) {
@@ -217,7 +320,7 @@ export default function MobilePlayerGameView({
       setSelectedPosition(newPosition);
       console.log('📱 NAVIGATION: Moving to position', newPosition, 'of', totalPositions);
     }
-  };
+  }, [selectedPosition, totalPositions]);
 
   // ENHANCED: Center view when position changes with immediate effect
   useEffect(() => {
@@ -265,7 +368,7 @@ export default function MobilePlayerGameView({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMyTurn, gameEnded, selectedPosition, totalPositions, isSubmitting, currentSong]);
+  }, [isMyTurn, gameEnded, selectedPosition, totalPositions, isSubmitting, currentSong, navigatePosition, handlePlaceCard]);
 
   // Reset position when turn changes
   useEffect(() => {
@@ -307,6 +410,42 @@ export default function MobilePlayerGameView({
       });
     }
   }, [selectedPosition, onViewportChange, timelineSongs.length, totalPositions, isMyTurn]);
+
+  // Early validation and error states
+  if (!isValidPlayerData) {
+    return (
+      <div className="fixed inset-0 z-50 bg-gradient-to-br from-red-950 via-red-900 to-red-800 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm w-full">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Player Data Error</h2>
+          <p className="text-white/80 mb-4">
+            There was an issue loading your player data. Please refresh the page.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200 border border-white/20"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isValidCurrentSong) {
+    return (
+      <div className="fixed inset-0 z-50 bg-gradient-to-br from-orange-950 via-orange-900 to-orange-800 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm w-full">
+          <div className="text-4xl mb-4">🎵</div>
+          <h2 className="text-2xl font-bold text-white mb-2">Loading Song...</h2>
+          <p className="text-white/80 mb-4">
+            Waiting for the host to load the next song.
+          </p>
+          <div className="w-8 h-8 mx-auto border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
 
   // Show result overlay
   if (cardPlacementResult) {
@@ -477,21 +616,33 @@ export default function MobilePlayerGameView({
                             </div>
                           )}
                           
-                          {/* Song card (if not last position) */}
+                          {/* Song card (if not last position) with enhanced error handling */}
                           {!isLastPosition && songAtPosition && (
                             <div 
                               className={cn(
                                 "flex-shrink-0 w-24 h-20 rounded-lg border border-white/20 overflow-hidden transition-all duration-300",
-                                getCardColor(songAtPosition)
+                                songAtPosition.deezer_artist ? getCardColor(songAtPosition) : "bg-gray-600"
                               )}
                             >
                               <div className="w-full h-full p-2 flex flex-col justify-between">
                                 <div className="text-white text-xs font-semibold leading-tight">
-                                  {truncateText(songAtPosition.deezer_title, 15)}
+                                  {songAtPosition.deezer_title ? 
+                                    truncateText(songAtPosition.deezer_title, 15) : 
+                                    'Unknown Song'
+                                  }
                                 </div>
                                 <div className="text-white/80 text-xs">
-                                  {songAtPosition.release_year}
+                                  {songAtPosition.release_year || '????'}
                                 </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* Handle invalid song data gracefully */}
+                          {!isLastPosition && !songAtPosition && (
+                            <div className="flex-shrink-0 w-24 h-20 rounded-lg border border-red-400/50 bg-red-900/30 overflow-hidden">
+                              <div className="w-full h-full p-2 flex flex-col justify-center items-center">
+                                <div className="text-red-300 text-xs">⚠️</div>
+                                <div className="text-red-300 text-xs">Error</div>
                               </div>
                             </div>
                           )}
