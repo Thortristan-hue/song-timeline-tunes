@@ -877,43 +877,164 @@ export function GamePlay({
         // Classic gamemode (existing behavior) - ALWAYS WRAP HOST VIEW WITH COMPREHENSIVE SAFETY
         isHost ? (
           <HostViewErrorBoundary>
-            {/* DEFENSIVE RENDERING: Ensure all required props are available before rendering */}
-            {currentTurnPlayer && currentMysteryCard && activePlayers.length > 0 ? (
-              <HostGameView
-                currentTurnPlayer={currentTurnPlayer}
-                currentSong={currentMysteryCard}
-                roomCode={room.lobby_code}
-                players={activePlayers}
-                mysteryCardRevealed={mysteryCardRevealed}
-                isPlaying={isPlaying}
-                onPlayPause={handleHostAudioPlay}
-                cardPlacementResult={cardPlacementResult}
-                transitioning={false}
-                highlightedGapIndex={highlightedGapIndex}
-                mobileViewport={mobileViewport}
-              />
-            ) : (
-              /* Fallback UI for missing props */
-              <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
-                <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-                  <div className="text-4xl mb-4">🎮</div>
-                  <div className="text-2xl font-bold mb-3">Loading Host Display...</div>
-                  <div className="text-lg mb-4">Setting up the game interface</div>
-                  <div className="text-sm text-white/60 mb-6">Please wait a moment</div>
-                  
-                  {/* Debug what's missing */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <div className="bg-black/50 p-3 rounded-lg text-xs text-left">
-                      <div className="font-bold mb-2">Missing Data:</div>
-                      <div>Turn Player: {currentTurnPlayer ? '✓' : '✗ Missing'}</div>
-                      <div>Mystery Card: {currentMysteryCard ? '✓' : '✗ Missing'}</div>
-                      <div>Players: {activePlayers.length > 0 ? `✓ (${activePlayers.length})` : '✗ No players'}</div>
-                      <div>Room Code: {room.lobby_code || 'Missing'}</div>
+            {/* ENHANCED DEFENSIVE RENDERING: Comprehensive data validation with better logging */}
+            {(() => {
+              console.log('🎮 Host Classic Mode Render Check:', {
+                hasCurrentTurnPlayer: !!currentTurnPlayer,
+                hasCurrentMysteryCard: !!currentMysteryCard,
+                hasActivePlayers: activePlayers.length > 0,
+                currentTurnPlayerName: currentTurnPlayer?.name,
+                mysteryCardTitle: currentMysteryCard?.deezer_title,
+                activePlayersCount: activePlayers.length,
+                roomCode: room.lobby_code,
+                gamePhase: room?.phase,
+                timestamp: new Date().toISOString()
+              });
+
+              if (currentTurnPlayer && currentMysteryCard && activePlayers.length > 0) {
+                console.log('✅ All required data available, rendering HostGameView');
+                return (
+                  <HostGameView
+                    currentTurnPlayer={currentTurnPlayer}
+                    currentSong={currentMysteryCard}
+                    roomCode={room.lobby_code}
+                    players={activePlayers}
+                    mysteryCardRevealed={mysteryCardRevealed}
+                    isPlaying={isPlaying}
+                    onPlayPause={handleHostAudioPlay}
+                    cardPlacementResult={cardPlacementResult}
+                    transitioning={false}
+                    highlightedGapIndex={highlightedGapIndex}
+                    mobileViewport={mobileViewport}
+                  />
+                );
+              } else {
+                console.warn('⚠️  Missing required data for HostGameView, rendering enhanced fallback');
+                const missingData = [];
+                if (!currentTurnPlayer) missingData.push('Current Turn Player');
+                if (!currentMysteryCard) missingData.push('Mystery Card');
+                if (activePlayers.length === 0) missingData.push('Active Players');
+                
+                return (
+                  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
+                    {/* Always render background and header for consistency */}
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div
+                        className="fixed inset-0 w-full h-full"
+                        style={{
+                          backgroundImage: "url('/timeliner_bg.jpg')",
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
+                          zIndex: 1,
+                          filter: 'contrast(1.2) brightness(0.8)'
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-800/60 to-black/70" style={{ zIndex: 2, mixBlendMode: 'overlay' }} />
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
+                    
+                    {/* Host Header with safe defaults */}
+                    <div className="absolute top-4 left-4 right-4 z-40">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 relative overflow-hidden">
+                            <img src="/Vinyl_rythm.png" alt="Rythmy Logo" className="w-full h-full object-contain drop-shadow-lg" />
+                          </div>
+                          <div>
+                            <div className="text-white font-black text-2xl tracking-tight drop-shadow-lg">Rythmy</div>
+                            <div className="text-white/80 text-sm font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-5 text-white">👥</div>
+                              <div className="text-white font-black text-xl">{activePlayers.length}</div>
+                            </div>
+                          </div>
+                          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
+                            <div className="text-white font-mono text-xl font-black tracking-wider">{room.lobby_code || 'LOADING'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Loading Content */}
+                    <div className="absolute inset-0 flex items-center justify-center z-30">
+                      <div className="text-center text-white relative z-10 max-w-lg mx-auto p-8">
+                        <div className="text-8xl mb-8 animate-pulse">🎵</div>
+                        <div className="text-4xl font-bold mb-6">Preparing Host Display...</div>
+                        <div className="text-xl mb-8 text-white/80">Setting up the game interface</div>
+                        
+                        {/* Enhanced Loading Status */}
+                        <div className="space-y-4 mb-8">
+                          <div className="text-lg font-semibold text-white/90 mb-4">Loading Status:</div>
+                          {[
+                            { name: 'Current Turn Player', available: !!currentTurnPlayer, detail: currentTurnPlayer?.name },
+                            { name: 'Mystery Song', available: !!currentMysteryCard, detail: currentMysteryCard?.deezer_title },
+                            { name: 'Active Players', available: activePlayers.length > 0, detail: `${activePlayers.length} players` }
+                          ].map((item, index) => (
+                            <div key={index} className={`flex items-center justify-between p-3 rounded-lg backdrop-blur-xl border ${
+                              item.available 
+                                ? 'bg-green-500/20 border-green-400/40 text-green-300' 
+                                : 'bg-yellow-500/20 border-yellow-400/40 text-yellow-300'
+                            }`}>
+                              <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${item.available ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'}`}></div>
+                                <span className="font-medium">{item.name}</span>
+                              </div>
+                              <div className="text-sm opacity-80">
+                                {item.available ? (item.detail || 'Ready') : 'Loading...'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="text-sm text-white/60 mb-6">
+                          Host display will appear automatically when all data is ready
+                        </div>
+                        
+                        {/* Helpful information */}
+                        <div className="bg-blue-500/20 border border-blue-400/40 rounded-lg p-4 text-blue-300">
+                          <div className="font-semibold mb-2">💡 What's happening?</div>
+                          <div className="text-sm text-left space-y-1">
+                            <div>• The game is loading player and song data</div>
+                            <div>• This usually takes a few seconds</div>
+                            <div>• All players will see the game start simultaneously</div>
+                          </div>
+                        </div>
+                        
+                        {/* Debug information for development */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <div className="mt-6 bg-black/70 p-4 rounded-lg text-xs text-left border border-gray-600">
+                            <div className="font-bold mb-3 text-red-400">Host Debug Info:</div>
+                            <div className="space-y-1 text-gray-300">
+                              <div>Missing Data: {missingData.join(', ')}</div>
+                              <div>Room Phase: {room?.phase || 'Unknown'}</div>
+                              <div>Players Count: {players.length}</div>
+                              <div>Active Players: {activePlayers.length}</div>
+                              <div>Current Turn Player ID: {room?.current_player_id || 'None'}</div>
+                              <div>Mystery Card ID: {currentMysteryCard?.id || 'None'}</div>
+                              <div>Game Init: {gameInitialized ? 'Yes' : 'No'}</div>
+                              <div>Logic Init: {gameLogic.gameState.playlistInitialized ? 'Yes' : 'No'}</div>
+                              <div>Timestamp: {new Date().toLocaleTimeString()}</div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Emergency back button for stuck states */}
+                        <button
+                          onClick={handleBackToMenu}
+                          className="mt-6 bg-gray-600/80 hover:bg-gray-600 text-white px-6 py-3 rounded-lg text-sm transition-all duration-200 backdrop-blur-xl border border-gray-500/50"
+                        >
+                          Back to Menu
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            })()}
           </HostViewErrorBoundary>
         ) : (
           <MobilePlayerGameView

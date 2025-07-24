@@ -42,6 +42,7 @@ export class HostViewErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
+    console.log('🔄 HostViewErrorBoundary: Attempting retry...');
     // Reset the error state
     this.setState({
       hasError: false,
@@ -52,7 +53,22 @@ export class HostViewErrorBoundary extends Component<Props, State> {
   }
 
   handleReload = () => {
+    console.log('🔄 HostViewErrorBoundary: Reloading page...');
     window.location.reload();
+  }
+
+  handleBackToMenu = () => {
+    console.log('🏠 HostViewErrorBoundary: Going back to menu...');
+    // Clear any stored game state
+    try {
+      localStorage.removeItem('gameState');
+      sessionStorage.clear();
+    } catch (error) {
+      console.warn('Could not clear storage:', error);
+    }
+    
+    // Navigate to home
+    window.location.href = '/';
   }
 
   render() {
@@ -136,6 +152,13 @@ export class HostViewErrorBoundary extends Component<Props, State> {
               >
                 Reload Page
               </button>
+              
+              <button
+                onClick={this.handleBackToMenu}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+              >
+                Back to Menu
+              </button>
             </div>
 
             {/* Helpful Instructions */}
@@ -145,8 +168,17 @@ export class HostViewErrorBoundary extends Component<Props, State> {
                 <li>Check your internet connection</li>
                 <li>Try refreshing the page</li>
                 <li>Ensure all players are still connected</li>
-                <li>Contact support if the problem persists</li>
+                <li>Start a new game if the problem persists</li>
               </ul>
+            </div>
+
+            {/* Host-specific guidance */}
+            <div className="mt-6 bg-yellow-500/20 border border-yellow-400/40 rounded-lg p-4 text-yellow-300">
+              <div className="font-semibold mb-2">🎮 Host Notice</div>
+              <div className="text-sm">
+                As the host, your display crashed but the game may still be running for players. 
+                Try "Try Again" first, then "Reload Page" if needed.
+              </div>
             </div>
           </div>
         </div>

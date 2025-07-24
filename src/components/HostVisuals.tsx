@@ -689,6 +689,64 @@ export function HostGameView({
   highlightedGapIndex?: number | null;
   mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
 }) {
+  // CRITICAL FIX: Validate required props BEFORE any React hooks to prevent white screen
+  console.log('🎮 HostGameView render - Props validation:', {
+    hasCurrentTurnPlayer: !!currentTurnPlayer,
+    hasCurrentSong: !!currentSong,
+    hasPlayers: !!(players && players.length > 0),
+    roomCode: roomCode || 'missing',
+    playerName: currentTurnPlayer?.name || 'unknown'
+  });
+
+  // Early return for critical missing data - BEFORE any hooks
+  if (!currentTurnPlayer || !currentSong || !players || players.length === 0) {
+    console.warn('⚠️  HostGameView: Critical props missing, rendering fallback immediately');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
+        <HostGameBackground />
+        <HostHeader roomCode={roomCode || 'LOADING'} playersCount={players?.length || 0} />
+        
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+            <div className="text-6xl mb-6 animate-pulse">🎵</div>
+            <div className="text-3xl font-bold mb-4">Setting Up Host Display...</div>
+            <div className="text-xl mb-6">Preparing the game interface</div>
+            
+            {/* Show what's loading */}
+            <div className="space-y-3 text-lg">
+              <div className={`flex items-center justify-center gap-3 ${currentTurnPlayer ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentTurnPlayer ? 'Player Ready' : 'Loading Player...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${currentSong ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentSong ? 'Song Ready' : 'Loading Song...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${(players && players.length > 0) ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{(players && players.length > 0) ? `${players.length} Players Ready` : 'Loading Players...'}</span>
+              </div>
+            </div>
+            
+            <div className="text-sm text-white/60 mt-8">Host display will appear when all data is ready</div>
+            
+            {/* Debug information for development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
+                <div className="font-bold mb-2 text-yellow-400">Host Debug Info:</div>
+                <div>Current Turn Player: {currentTurnPlayer ? `✓ ${currentTurnPlayer.name}` : '✗ Missing'}</div>
+                <div>Current Song: {currentSong ? `✓ ${currentSong.deezer_title}` : '✗ Missing'}</div>
+                <div>Players: {players ? `✓ ${players.length} players` : '✗ Missing'}</div>
+                <div>Room Code: {roomCode || 'Missing'}</div>
+                <div>Timestamp: {new Date().toLocaleTimeString()}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // DEFENSIVE RENDERING: Enhanced safety checks and fallbacks with better error handling
   const safeCurrentTurnPlayer = useMemo(() => {
     if (!currentTurnPlayer) {
@@ -738,19 +796,14 @@ export function HostGameView({
     console.warn('⚠️  HostGameView: onPlayPause not provided');
   });
 
-  // DEFENSIVE RENDERING: Initialize React hooks first, then handle fallback cases
+  // Now we can safely initialize React hooks since we know we have valid props
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   const [showHostFeedback, setShowHostFeedback] = useState(false);
 
-  // All useEffect hooks must be called before any early returns
+  // Safe useEffect hook - all dependencies are guaranteed to exist
   useEffect(() => {
-    // Only run effect if we have valid props
-    if (!safeCurrentTurnPlayer || !safePlayers || !safeCurrentSong) {
-      return;
-    }
-
     if (cardPlacementResult) {
       setShowResultModal(true);
       setShowHostFeedback(true);
@@ -795,32 +848,7 @@ export function HostGameView({
     } else {
       setDisplayedPlayer(safeCurrentTurnPlayer);
     }
-  }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult, safePlayers, safeCurrentSong]);
-
-  // Error boundary check AFTER hooks are initialized
-  if (!safeCurrentTurnPlayer || !safePlayers || !safeCurrentSong) {
-    console.error('❌ HostGameView: Critical props missing, rendering fallback UI');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
-        <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-          <div className="text-4xl mb-4">🎵</div>
-          <div className="text-2xl font-bold mb-3">Setting Up Game...</div>
-          <div className="text-lg mb-4">The host display is loading. Please wait a moment.</div>
-          <div className="text-sm text-white/60">If this persists, please refresh the page.</div>
-          
-          {/* Debug information for development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
-              <div className="font-bold mb-2">Debug Info:</div>
-              <div>Current Turn Player: {safeCurrentTurnPlayer ? '✓' : '✗'}</div>
-              <div>Players: {safePlayers ? safePlayers.length : 0}</div>
-              <div>Current Song: {safeCurrentSong ? '✓' : '✗'}</div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
