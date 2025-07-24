@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
 import { audioManager } from '@/services/AudioManager';
@@ -345,65 +345,53 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* Content area */}
+        {/* Content area with timeline always visible */}
         <div className="flex-1 flex flex-col min-h-0">
           
-          {/* Waiting screen */}
-          {!isMyTurn && !gameEnded && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center space-y-6">
-                <div className="w-20 h-20 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
-                  <Music className="w-10 h-10 text-white/90 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-white">
-                    {currentTurnPlayer.name} is playing
-                  </div>
-                  <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
-                    Wait for your turn
-                  </div>
-                  <div className="text-white/50 text-sm">
-                    You can still control the audio above
-                  </div>
-                </div>
+          {/* Enhanced timeline display */}
+          <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
+            <div className="text-center mb-4">
+              <div className="text-white text-lg font-semibold mb-1">
+                {isMyTurn ? 'Your Timeline' : `${currentPlayer.name}'s Timeline`}
               </div>
-            </div>
-          )}
-
-          {/* Game interface */}
-          {isMyTurn && !gameEnded && (
-            <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
-              <div className="text-center mb-4">
-                <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
+              {isMyTurn && (
                 <div className="text-white/80 text-sm">
                   {getPositionDescription(selectedPosition)}
                 </div>
-              </div>
+              )}
+              {!isMyTurn && (
+                <div className="text-white/70 text-sm bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20 mx-auto inline-block">
+                  {currentTurnPlayer.name} is playing
+                </div>
+              )}
+            </div>
 
-              {/* ENHANCED: Timeline display with centered scrolling and better indicators */}
-              <div className="flex-1 min-h-0">
-                {timelineSongs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center text-white/60">
-                      <div className="text-lg mb-2">No cards yet</div>
-                      <div className="text-sm">Place your first card!</div>
+            {/* Timeline cards - now always visible */}
+            <div className="flex-1 min-h-0">
+              {timelineSongs.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-white/60">
+                    <div className="text-lg mb-2">No songs yet</div>
+                    <div className="text-sm">
+                      {isMyTurn ? 'Place your first song!' : 'Waiting for songs...'}
                     </div>
                   </div>
-                ) : (
-                  <div className="h-full flex flex-col">
-                    {/* Timeline cards with enhanced smooth scrolling and centering */}
-                    <div className="flex-1 flex items-center justify-center">
-                      <div 
-                        ref={timelineScrollRef}
-                        className="w-full overflow-x-auto pb-4 scroll-smooth"
-                        style={{ 
-                          scrollbarWidth: 'none', 
-                          msOverflowStyle: 'none',
-                          scrollBehavior: 'smooth'
-                        }}
-                      >
-                        <div className="flex items-center gap-2 min-w-max px-8 justify-start">
-                          {/* ENHANCED: Position indicator before first card with better styling */}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div 
+                      ref={timelineScrollRef}
+                      className="w-full overflow-x-auto pb-4 scroll-smooth"
+                      style={{ 
+                        scrollbarWidth: 'none', 
+                        msOverflowStyle: 'none',
+                        scrollBehavior: 'smooth'
+                      }}
+                    >
+                      <div className="flex items-center gap-2 min-w-max px-8 justify-start">
+                        {/* Position indicator before first card (only when my turn) */}
+                        {isMyTurn && (
                           <div 
                             className={cn(
                               "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
@@ -415,121 +403,157 @@ export default function MobilePlayerGameView({
                           >
                             {selectedPosition === 0 ? <Check className="w-6 h-6" /> : '1'}
                           </div>
+                        )}
 
-                          {timelineSongs.map((song, index) => {
-                            const cardColor = getCardColor(song);
-                            return (
-                              <React.Fragment key={song.id}>
-                                {/* Song card with enhanced styling */}
-                                <div
-                                  className={cn(
-                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
-                                  )}
-                                  style={{ 
-                                    backgroundColor: cardColor.backgroundColor,
-                                    backgroundImage: cardColor.backgroundImage
-                                  }}
-                                >
-                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                        {timelineSongs.map((song, index) => {
+                          const cardColor = getCardColor(song);
+                          return (
+                            <React.Fragment key={song.id}>
+                              {/* Enhanced song card */}
+                              <div
+                                className={cn(
+                                  "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                )}
+                                style={{ 
+                                  backgroundColor: cardColor.backgroundColor,
+                                  backgroundImage: cardColor.backgroundImage
+                                }}
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                                
+                                <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                                  <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                                    <div className="break-words">
+                                      {truncateText(song.deezer_artist, 20)}
+                                    </div>
+                                  </div>
                                   
-                                  <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
-                                    <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
-                                      <div className="break-words">
-                                        {truncateText(song.deezer_artist, 15)}
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
-                                      {song.release_year}
-                                    </div>
-                                    
-                                    <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
-                                      <div className="break-words">
-                                        {truncateText(song.deezer_title, 15)}
-                                      </div>
+                                  <div className="text-3xl font-black text-white">
+                                    {song.release_year}
+                                  </div>
+                                  
+                                  <div className="text-xs italic text-center leading-tight max-w-full text-white/90 overflow-hidden">
+                                    <div className="break-words">
+                                      {truncateText(song.deezer_title, 18)}
                                     </div>
                                   </div>
                                 </div>
-                                
-                                {/* ENHANCED: Position indicator after card with better visual feedback */}
+                              </div>
+
+                              {/* Position indicator after each card (only when my turn) */}
+                              {isMyTurn && (
                                 <div 
                                   className={cn(
                                     "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
-                                    selectedPosition === index + 1 
+                                    selectedPosition === index + 1
                                       ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
                                       : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
                                   )}
                                   onClick={() => setSelectedPosition(index + 1)}
                                 >
-                                  {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : (index + 2).toString()}
+                                  {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : index + 2}
                                 </div>
-                              </React.Fragment>
-                            );
-                          })}
-                        </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
-                    </div>
-
-                    {/* ENHANCED: Position navigation with better visual feedback */}
-                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
-                      <Button
-                        onClick={() => navigatePosition('prev')}
-                        disabled={selectedPosition === 0}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        <ChevronLeft className="w-5 h-5 text-white" />
-                      </Button>
-                      
-                      <div className="text-white/80 text-sm text-center bg-white/10 backdrop-blur-xl rounded-lg px-3 py-1 border border-white/20">
-                        Position {selectedPosition + 1} of {totalPositions}
-                      </div>
-                      
-                      <Button
-                        onClick={() => navigatePosition('next')}
-                        disabled={selectedPosition === totalPositions - 1}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        <ChevronRight className="w-5 h-5 text-white" />
-                      </Button>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Error display */}
-        {error && (
-          <div className="flex-shrink-0 mx-4 mb-4">
-            <div className="bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl text-center animate-in slide-in-from-bottom-2">
-              {error}
+        {/* Turn-specific controls */}
+        {!isMyTurn && !gameEnded && (
+          <div className="flex-shrink-0 pt-4">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
+                <Music className="w-8 h-8 text-white/90 animate-pulse" />
+              </div>
+              <div className="text-white/60 text-sm">
+                Control the mystery song while you wait
+              </div>
             </div>
           </div>
         )}
 
-        {/* Action button */}
+        {/* Turn-specific controls only when it's my turn */}
         {isMyTurn && !gameEnded && (
           <div className="flex-shrink-0 pt-4">
-            <Button
-              onClick={handlePlaceCard}
-              disabled={isSubmitting}
-              className={cn(
-                "w-full h-14 text-white font-black text-lg rounded-2xl border-0 shadow-2xl transition-all duration-300",
-                isSubmitting ? 
-                "bg-gray-600 cursor-not-allowed" :
-                "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:scale-105 active:scale-95"
-              )}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>PLACING...</span>
+            <div className="px-4 py-3 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/15 shadow-lg">
+              <div className="flex items-center justify-between gap-4">
+                {/* Previous button */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => navigatePosition('prev')}
+                  disabled={selectedPosition === 0}
+                  className={cn(
+                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-200",
+                    selectedPosition === 0 
+                      ? "opacity-50 cursor-not-allowed" 
+                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95"
+                  )}
+                >
+                  <ChevronLeft className="w-5 h-5 mr-2" />
+                  Previous
+                </Button>
+
+                {/* Place card button */}
+                <Button
+                  onClick={handlePlaceCard}
+                  disabled={isSubmitting || !currentSong}
+                  className={cn(
+                    "flex-1 h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold transition-all duration-300 border-0 shadow-lg",
+                    !isSubmitting && currentSong 
+                      ? "hover:scale-105 active:scale-95 animate-pulse shadow-green-500/30" 
+                      : "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Placing...
+                    </div>
+                  ) : (
+                    <>
+                      <Check className="w-5 h-5 mr-2" />
+                      Place Here
+                    </>
+                  )}
+                </Button>
+
+                {/* Next button */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => navigatePosition('next')}
+                  disabled={selectedPosition >= totalPositions - 1}
+                  className={cn(
+                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-200",
+                    selectedPosition >= totalPositions - 1 
+                      ? "opacity-50 cursor-not-allowed" 
+                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95"
+                  )}
+                >
+                  Next
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+
+              {/* Error display with better styling */}
+              {error && (
+                <div className="mt-3 p-3 bg-red-500/20 backdrop-blur-xl border border-red-400/30 rounded-xl">
+                  <div className="flex items-center gap-2 text-red-200 text-sm font-medium">
+                    <X className="w-4 h-4 flex-shrink-0" />
+                    {error}
+                  </div>
                 </div>
-              ) : (
-                'PLACE CARD'
               )}
-            </Button>
+            </div>
           </div>
         )}
 

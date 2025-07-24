@@ -268,16 +268,6 @@ function RecordPlayerSection({
               </Button>
             </div>
           </div>
-          <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
-            {hasValidPreview ? 'Mystery Song Playing' : 'Loading Mystery Song...'}
-          </div>
-          
-          {/* Show loading indicator or audio unavailable message */}
-          {!hasValidPreview && (
-            <div className="text-white/60 text-sm italic bg-white/5 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/10">
-              {currentSong ? 'Audio preview not available' : 'Preparing song...'}
-            </div>
-          )}
         </div>
       </div>
     </div>
