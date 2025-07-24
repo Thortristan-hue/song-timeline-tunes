@@ -18,6 +18,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useRealtimeSubscription';
 import { GameRoom } from '@/types/game';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -683,35 +684,11 @@ export function GamePlay({
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center p-4">
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/3 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        </div>
-        <div className="text-center text-white relative z-10">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
-            <div className="text-3xl animate-spin">🎵</div>
-          </div>
-          <div className="text-2xl font-semibold mb-2">{loadingMessage}</div>
-          <div className="text-white/60 max-w-md mx-auto">{loadingDetail}</div>
-          
-          {/* Show initialization progress for host */}
-          {isHost && !gameInitialized && (
-            <div className="mt-4 text-sm text-white/40">
-              <div className="animate-pulse">🎯 Initializing game logic...</div>
-            </div>
-          )}
-          
-          {/* Show error if initialization failed */}
-          {initializationError && (
-            <div className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-200 text-sm">
-              <div className="font-semibold mb-1">Setup Error</div>
-              <div>{initializationError}</div>
-              <div className="mt-2 text-xs text-red-300">Please try refreshing the page</div>
-            </div>
-          )}
-        </div>
-      </div>
+      <LoadingScreen
+        title={loadingMessage}
+        subtitle={loadingDetail}
+        variant="game"
+      />
     );
   }
 

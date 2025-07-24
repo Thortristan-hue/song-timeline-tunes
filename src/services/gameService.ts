@@ -229,13 +229,14 @@ export class GameService {
 
     console.log(`🎯 INIT: Setting first turn to player: ${firstPlayerName} (index ${randomPlayerIndex})`);
 
-    // Initialize game state
+    // Initialize game state - CRITICAL: Include songs array in room update
     const { error } = await supabase
       .from('game_rooms')
       .update({
         current_turn: randomPlayerIndex,
         current_player_id: firstPlayerId,
         current_song: initialMysteryCard as unknown as Json,
+        songs: availableSongs as unknown as Json, // CRITICAL: Update room with available songs
         phase: 'playing',
         updated_at: new Date().toISOString()
       })
