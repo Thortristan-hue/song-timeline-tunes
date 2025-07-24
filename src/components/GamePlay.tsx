@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -8,7 +7,7 @@ import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 // Import game mode components with correct syntax
-import { HostVisuals } from '@/components/HostVisuals';
+import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
 import MobileGameOverScreen from '@/components/player/MobileGameOverScreen';
@@ -183,14 +182,18 @@ export function GamePlay({
   // Main game view
   if (isHost) {
     return (
-      <HostVisuals
-        room={room}
-        players={players}
+      <HostGameView
+        currentTurnPlayer={players.find(p => p.id === room.current_player_id) || players[0]}
         currentSong={room.current_song}
-        availableSongs={room.songs || []}
-        onSetCurrentSong={onSetCurrentSong}
-        connectionStatus={connectionStatus}
-        onReconnect={onReconnect}
+        roomCode={room.lobby_code}
+        players={players}
+        mysteryCardRevealed={false}
+        isPlaying={false}
+        onPlayPause={() => {}}
+        cardPlacementResult={null}
+        transitioning={false}
+        highlightedGapIndex={null}
+        mobileViewport={null}
       />
     );
   } else {
