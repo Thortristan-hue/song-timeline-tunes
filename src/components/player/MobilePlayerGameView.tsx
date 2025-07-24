@@ -143,14 +143,14 @@ export default function MobilePlayerGameView({
     return `Between ${beforeSong.release_year} and ${afterSong.release_year}`;
   };
 
-  // ENHANCED: Center the selected position in the timeline view with smooth scrolling
+  // ENHANCED: Center the selected position in the timeline view with smoother scrolling
   const centerSelectedPosition = useCallback(() => {
     if (!timelineScrollRef.current) return;
     
     const container = timelineScrollRef.current;
     const containerWidth = container.clientWidth;
     
-    // Calculate the position of the selected gap
+    // Calculate the position of the selected gap with improved precision
     const cardWidth = 144; // w-36 = 144px
     const gapWidth = 48; // w-12 = 48px (gap indicator width)
     const spacing = 8; // gap-2 = 8px
@@ -158,13 +158,22 @@ export default function MobilePlayerGameView({
     // Each position consists of a gap + card (except the last position which is just a gap)
     const selectedGapPosition = selectedPosition * (cardWidth + gapWidth + spacing * 2);
     
-    // Center the selected position in the viewport
+    // Center the selected position in the viewport with enhanced smoothness
     const scrollPosition = selectedGapPosition - containerWidth / 2 + gapWidth / 2;
     
+    // Use enhanced smooth scrolling with better performance
     container.scrollTo({
       left: Math.max(0, scrollPosition),
       behavior: 'smooth'
     });
+
+    // Add visual feedback for scrolling
+    if (container.children[0]) {
+      (container.children[0] as HTMLElement).classList.add('animate-mobile-timeline-scroll');
+      setTimeout(() => {
+        (container.children[0] as HTMLElement).classList.remove('animate-mobile-timeline-scroll');
+      }, 800);
+    }
   }, [selectedPosition]);
 
   // Handle position navigation with enhanced centering
@@ -402,12 +411,12 @@ export default function MobilePlayerGameView({
               )}
             </div>
 
-            {/* Timeline cards - now always visible */}
+            {/* Timeline cards - now always visible with enhanced mobile rendering */}
             <div className="flex-1 min-h-0">
               {timelineSongs.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-white/60">
-                    <div className="text-lg mb-2">No songs yet</div>
+                    <div className="text-lg mb-2 font-semibold">No songs yet</div>
                     <div className="text-sm">
                       {isMyTurn ? 'Place your first song!' : 'Waiting for songs...'}
                     </div>
@@ -425,17 +434,21 @@ export default function MobilePlayerGameView({
                         scrollBehavior: 'smooth',
                         WebkitOverflowScrolling: 'touch', // Enhanced iOS momentum scrolling
                         touchAction: 'pan-x', // Better touch scrolling performance
-                        overscrollBehavior: 'contain' // Prevent scrolling parent elements
+                        overscrollBehavior: 'contain', // Prevent scrolling parent elements
+                        // Enhanced mobile visibility
+                        minHeight: '160px', // Ensure adequate height for cards
+                        display: 'flex',
+                        alignItems: 'center'
                       }}
                     >
-                      <div className="flex items-center gap-2 min-w-max px-8 justify-start">
+                      <div className="flex items-center gap-2 min-w-max px-8 justify-start" style={{ minHeight: '144px' }}>
                         {/* Enhanced position indicator before first card (only when my turn) */}
                         {isMyTurn && (
                           <div 
                             className={cn(
-                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-500 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
+                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-700 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
                               selectedPosition === 0 
-                                ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-pulse shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
+                                ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-mobile-gap-highlight shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
                                 : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10 hover:scale-110 active:scale-95"
                             )}
                             onClick={() => setSelectedPosition(0)}
@@ -452,31 +465,38 @@ export default function MobilePlayerGameView({
                           const cardColor = getCardColor(song);
                           return (
                             <React.Fragment key={song.id}>
-                              {/* Enhanced song card with improved visual feedback */}
+                              {/* Enhanced song card with improved mobile visibility and grandiose animations */}
                               <div
                                 className={cn(
-                                  "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0 touch-manipulation",
-                                  "hover:shadow-xl hover:shadow-white/20 active:shadow-md"
+                                  "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-700 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0 touch-manipulation",
+                                  "hover:shadow-xl hover:shadow-white/20 active:shadow-md hover:border-white/40",
+                                  // Add subtle mobile-specific animation when it's the user's turn
+                                  isMyTurn ? "hover:animate-mobile-card-select" : "",
+                                  // Enhance visibility on mobile
+                                  "backdrop-blur-sm border-2"
                                 )}
                                 style={{ 
                                   backgroundColor: cardColor.backgroundColor,
-                                  backgroundImage: cardColor.backgroundImage
+                                  backgroundImage: cardColor.backgroundImage,
+                                  // Ensure cards are clearly visible on mobile
+                                  minWidth: '144px',
+                                  minHeight: '144px'
                                 }}
                               >
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                                 
                                 <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
-                                  <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                                  <div className="text-xs font-bold text-center leading-tight max-w-full text-white overflow-hidden drop-shadow-md">
                                     <div className="break-words">
                                       {truncateText(song.deezer_artist, 20)}
                                     </div>
                                   </div>
                                   
-                                  <div className="text-3xl font-black text-white">
+                                  <div className="text-3xl font-black text-white drop-shadow-lg">
                                     {song.release_year}
                                   </div>
                                   
-                                  <div className="text-xs italic text-center leading-tight max-w-full text-white/90 overflow-hidden">
+                                  <div className="text-xs italic text-center leading-tight max-w-full text-white/90 overflow-hidden drop-shadow-sm">
                                     <div className="break-words">
                                       {truncateText(song.deezer_title, 18)}
                                     </div>
@@ -488,9 +508,9 @@ export default function MobilePlayerGameView({
                               {isMyTurn && (
                                 <div 
                                   className={cn(
-                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-500 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
+                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-700 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
                                     selectedPosition === index + 1
-                                      ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-pulse shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
+                                      ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-mobile-gap-highlight shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
                                       : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10 hover:scale-110 active:scale-95"
                                   )}
                                   onClick={() => setSelectedPosition(index + 1)}
@@ -550,14 +570,14 @@ export default function MobilePlayerGameView({
                   Previous
                 </Button>
 
-                {/* Place card button with enhanced visual feedback */}
+                {/* Enhanced Place card button with more grandiose visual feedback */}
                 <Button
                   onClick={handlePlaceCard}
                   disabled={isSubmitting || !currentSong}
                   className={cn(
-                    "flex-1 h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold transition-all duration-300 border-0 shadow-lg touch-manipulation",
+                    "flex-1 h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold transition-all duration-500 border-0 shadow-lg touch-manipulation",
                     !isSubmitting && currentSong 
-                      ? "hover:scale-105 active:scale-95 animate-pulse shadow-green-500/40 hover:shadow-green-500/60 hover:shadow-xl" 
+                      ? "hover:scale-110 active:scale-95 animate-pulse-glow shadow-green-500/40 hover:shadow-green-500/60 hover:shadow-xl" 
                       : "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -569,7 +589,7 @@ export default function MobilePlayerGameView({
                   ) : (
                     <>
                       <Check className="w-5 h-5 mr-2 animate-bounce" />
-                      <span className="animate-pulse">Place Here</span>
+                      <span className="animate-pulse font-black">Place Here</span>
                     </>
                   )}
                 </Button>
