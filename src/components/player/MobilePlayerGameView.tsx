@@ -195,6 +195,42 @@ export default function MobilePlayerGameView({
     }
   }, [selectedPosition, isMyTurn, centerSelectedPosition]);
 
+  // Enhanced keyboard navigation support
+  useEffect(() => {
+    if (!isMyTurn || gameEnded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent default behavior to avoid page scrolling
+      if (['ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(event.key)) {
+        event.preventDefault();
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          navigatePosition('prev');
+          break;
+        case 'ArrowRight':
+          navigatePosition('next');
+          break;
+        case 'Enter':
+        case ' ': // Spacebar
+          if (!isSubmitting && currentSong) {
+            handlePlaceCard();
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Add event listener to document for global keyboard support
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMyTurn, gameEnded, selectedPosition, totalPositions, isSubmitting, currentSong]);
+
   // Reset position when turn changes
   useEffect(() => {
     if (isMyTurn && !gameEnded) {
@@ -386,22 +422,29 @@ export default function MobilePlayerGameView({
                       style={{ 
                         scrollbarWidth: 'none', 
                         msOverflowStyle: 'none',
-                        scrollBehavior: 'smooth'
+                        scrollBehavior: 'smooth',
+                        WebkitOverflowScrolling: 'touch', // Enhanced iOS momentum scrolling
+                        touchAction: 'pan-x', // Better touch scrolling performance
+                        overscrollBehavior: 'contain' // Prevent scrolling parent elements
                       }}
                     >
                       <div className="flex items-center gap-2 min-w-max px-8 justify-start">
-                        {/* Position indicator before first card (only when my turn) */}
+                        {/* Enhanced position indicator before first card (only when my turn) */}
                         {isMyTurn && (
                           <div 
                             className={cn(
-                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
+                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-500 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
                               selectedPosition === 0 
-                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
-                                : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
+                                ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-pulse shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
+                                : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10 hover:scale-110 active:scale-95"
                             )}
                             onClick={() => setSelectedPosition(0)}
                           >
-                            {selectedPosition === 0 ? <Check className="w-6 h-6" /> : '1'}
+                            {selectedPosition === 0 ? (
+                              <Check className="w-6 h-6 animate-bounce" />
+                            ) : (
+                              <span className="animate-pulse">1</span>
+                            )}
                           </div>
                         )}
 
@@ -409,10 +452,11 @@ export default function MobilePlayerGameView({
                           const cardColor = getCardColor(song);
                           return (
                             <React.Fragment key={song.id}>
-                              {/* Enhanced song card */}
+                              {/* Enhanced song card with improved visual feedback */}
                               <div
                                 className={cn(
-                                  "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                  "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0 touch-manipulation",
+                                  "hover:shadow-xl hover:shadow-white/20 active:shadow-md"
                                 )}
                                 style={{ 
                                   backgroundColor: cardColor.backgroundColor,
@@ -440,18 +484,22 @@ export default function MobilePlayerGameView({
                                 </div>
                               </div>
 
-                              {/* Position indicator after each card (only when my turn) */}
+                              {/* Enhanced position indicator after each card (only when my turn) */}
                               {isMyTurn && (
                                 <div 
                                   className={cn(
-                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 font-bold",
+                                    "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-500 cursor-pointer flex-shrink-0 font-bold touch-manipulation",
                                     selectedPosition === index + 1
-                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse shadow-lg shadow-green-400/50" 
-                                      : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10"
+                                      ? "bg-gradient-to-br from-green-400 to-green-500 border-green-300 text-white scale-125 animate-pulse shadow-lg shadow-green-400/60 hover:shadow-green-400/80" 
+                                      : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10 hover:scale-110 active:scale-95"
                                   )}
                                   onClick={() => setSelectedPosition(index + 1)}
                                 >
-                                  {selectedPosition === index + 1 ? <Check className="w-6 h-6" /> : index + 2}
+                                  {selectedPosition === index + 1 ? (
+                                    <Check className="w-6 h-6 animate-bounce" />
+                                  ) : (
+                                    <span className="animate-pulse">{index + 2}</span>
+                                  )}
                                 </div>
                               )}
                             </React.Fragment>
@@ -485,62 +533,62 @@ export default function MobilePlayerGameView({
           <div className="flex-shrink-0 pt-4">
             <div className="px-4 py-3 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/15 shadow-lg">
               <div className="flex items-center justify-between gap-4">
-                {/* Previous button */}
+                {/* Previous button with enhanced touch feedback */}
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => navigatePosition('prev')}
                   disabled={selectedPosition === 0}
                   className={cn(
-                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-200",
+                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-300 touch-manipulation",
                     selectedPosition === 0 
                       ? "opacity-50 cursor-not-allowed" 
-                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95"
+                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-white/20"
                   )}
                 >
-                  <ChevronLeft className="w-5 h-5 mr-2" />
+                  <ChevronLeft className="w-5 h-5 mr-2 animate-pulse" />
                   Previous
                 </Button>
 
-                {/* Place card button */}
+                {/* Place card button with enhanced visual feedback */}
                 <Button
                   onClick={handlePlaceCard}
                   disabled={isSubmitting || !currentSong}
                   className={cn(
-                    "flex-1 h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold transition-all duration-300 border-0 shadow-lg",
+                    "flex-1 h-14 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold transition-all duration-300 border-0 shadow-lg touch-manipulation",
                     !isSubmitting && currentSong 
-                      ? "hover:scale-105 active:scale-95 animate-pulse shadow-green-500/30" 
+                      ? "hover:scale-105 active:scale-95 animate-pulse shadow-green-500/40 hover:shadow-green-500/60 hover:shadow-xl" 
                       : "opacity-50 cursor-not-allowed"
                   )}
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Placing...
+                      <span className="animate-pulse">Placing...</span>
                     </div>
                   ) : (
                     <>
-                      <Check className="w-5 h-5 mr-2" />
-                      Place Here
+                      <Check className="w-5 h-5 mr-2 animate-bounce" />
+                      <span className="animate-pulse">Place Here</span>
                     </>
                   )}
                 </Button>
 
-                {/* Next button */}
+                {/* Next button with enhanced touch feedback */}
                 <Button
                   variant="outline"
                   size="lg"
                   onClick={() => navigatePosition('next')}
                   disabled={selectedPosition >= totalPositions - 1}
                   className={cn(
-                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-200",
+                    "flex-1 h-14 bg-white/10 border-white/30 text-white font-semibold transition-all duration-300 touch-manipulation",
                     selectedPosition >= totalPositions - 1 
                       ? "opacity-50 cursor-not-allowed" 
-                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95"
+                      : "hover:bg-white/20 hover:border-white/50 hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-white/20"
                   )}
                 >
-                  Next
-                  <ChevronRight className="w-5 h-5 ml-2" />
+                  <span className="animate-pulse">Next</span>
+                  <ChevronRight className="w-5 h-5 ml-2 animate-pulse" />
                 </Button>
               </div>
 
