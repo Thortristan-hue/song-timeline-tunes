@@ -753,22 +753,28 @@ export function GamePlay({
     // Show different loading states based on what's missing
     let loadingMessage = "Setting up game...";
     let loadingDetail = "Preparing your music experience";
+    let loadingIcon = "🎮";
     
     if (!room) {
       loadingMessage = "Connection issue";
       loadingDetail = "Unable to connect to game room";
+      loadingIcon = "🔗";
     } else if (room?.phase !== 'playing') {
       loadingMessage = "Waiting for host...";
       loadingDetail = "Host is starting the game";
+      loadingIcon = "⏳";
     } else if (activePlayers.length === 0) {
       loadingMessage = "Waiting for players...";
       loadingDetail = "Getting player information";
+      loadingIcon = "👥";
     } else if (!currentMysteryCard) {
       loadingMessage = isHost ? "Loading music..." : "Host is loading music...";
       loadingDetail = isHost ? "Finding songs with working audio previews" : "Please wait while the host sets up the game";
+      loadingIcon = "🎵";
     } else if (!currentTurnPlayer) {
       loadingMessage = "Setting up turns...";
       loadingDetail = "Determining who goes first";
+      loadingIcon = "🎯";
     }
 
     return (
@@ -778,6 +784,53 @@ export function GamePlay({
           subtitle={loadingDetail}
           variant="game"
         />
+        
+        {/* Enhanced status indicators */}
+        <div className="fixed top-4 left-4 right-4 z-50">
+          <div className="flex justify-between items-center">
+            <div className="bg-black/50 backdrop-blur-xl rounded-full px-4 py-2 border border-white/20">
+              <div className="flex items-center gap-2 text-white text-sm">
+                <div className="text-lg">{loadingIcon}</div>
+                <span className="font-medium">{loadingMessage}</span>
+              </div>
+            </div>
+            
+            {/* Show room code if available */}
+            {room?.lobby_code && (
+              <div className="bg-black/50 backdrop-blur-xl rounded-full px-4 py-2 border border-white/20">
+                <div className="text-white font-mono text-sm font-bold">
+                  {room.lobby_code}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Enhanced progress indicators */}
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-4 border border-white/10">
+            <div className="text-white/80 text-sm font-medium mb-3">Game Setup Progress:</div>
+            <div className="space-y-2">
+              {[
+                { name: 'Room Connection', ready: !!room, icon: '🔗' },
+                { name: 'Game Phase', ready: room?.phase === 'playing', icon: '🎮' },
+                { name: 'Players', ready: activePlayers.length > 0, icon: '👥', detail: `${activePlayers.length} player(s)` },
+                { name: 'Mystery Song', ready: !!currentMysteryCard, icon: '🎵', detail: currentMysteryCard?.deezer_title },
+                { name: 'Turn System', ready: !!currentTurnPlayer, icon: '🎯', detail: currentTurnPlayer?.name }
+              ].map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${item.ready ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'}`}></div>
+                    <span className="text-white/70 text-xs">{item.icon} {item.name}</span>
+                  </div>
+                  <div className="text-white/50 text-xs">
+                    {item.ready ? (item.detail || '✓') : 'Loading...'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
         
         {/* Debug information overlay for development */}
         {process.env.NODE_ENV === 'development' && (
@@ -794,14 +847,59 @@ export function GamePlay({
           </div>
         )}
         
-        {/* Enhanced host-specific debugging */}
-        {isHost && process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-4 left-4 bg-red-900/80 text-white p-3 rounded-lg text-xs max-w-sm z-50">
-            <div className="font-bold mb-2 text-red-400">Host Debug:</div>
-            <div>Init Error: {initializationError ? 'Yes' : 'No'}</div>
-            <div>Playlist Init: {gameLogic.gameState.playlistInitialized ? 'Yes' : 'No'}</div>
-            <div>Current Song: {currentMysteryCard?.deezer_title || 'None'}</div>
-            <div>Turn Player: {currentTurnPlayer?.name || 'None'}</div>
+        {/* Enhanced host-specific debugging and controls */}
+        {isHost && (
+          <div className="fixed top-1/2 left-4 transform -translate-y-1/2 z-50">
+            <div className="bg-red-900/20 backdrop-blur-xl border border-red-400/30 rounded-xl p-4 max-w-xs">
+              <div className="text-red-400 font-bold mb-3 text-sm">🎯 Host Controls</div>
+              
+              {initializationError && (
+                <div className="mb-3">
+                  <div className="text-red-300 text-xs mb-2">Setup Error:</div>
+                  <div className="text-red-200 text-xs bg-red-900/30 p-2 rounded">
+                    {initializationError.split('\n')[0]}
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2 text-xs">
+                <div className="text-red-300">
+                  Init Error: {initializationError ? 'Yes' : 'No'}
+                </div>
+                <div className="text-red-300">
+                  Playlist Init: {gameLogic.gameState.playlistInitialized ? 'Yes' : 'No'}
+                </div>
+                <div className="text-red-300">
+                  Current Song: {currentMysteryCard?.deezer_title || 'None'}
+                </div>
+                <div className="text-red-300">
+                  Turn Player: {currentTurnPlayer?.name || 'None'}
+                </div>
+              </div>
+              
+              {/* Emergency controls for host */}
+              <div className="mt-4 space-y-2">
+                <button
+                  onClick={handleBackToMenu}
+                  className="w-full bg-red-600/80 hover:bg-red-600 text-white px-3 py-2 rounded text-xs transition-colors duration-200"
+                >
+                  Emergency: Back to Menu
+                </button>
+                
+                {initializationError && (
+                  <button
+                    onClick={() => {
+                      console.log('🔄 Host triggered manual retry');
+                      setInitializationError(null);
+                      setGameInitialized(false);
+                    }}
+                    className="w-full bg-yellow-600/80 hover:bg-yellow-600 text-white px-3 py-2 rounded text-xs transition-colors duration-200"
+                  >
+                    🔄 Retry Setup
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -689,64 +689,9 @@ export function HostGameView({
   highlightedGapIndex?: number | null;
   mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
 }) {
-  // CRITICAL FIX: Validate required props BEFORE any React hooks to prevent white screen
-  console.log('🎮 HostGameView render - Props validation:', {
-    hasCurrentTurnPlayer: !!currentTurnPlayer,
-    hasCurrentSong: !!currentSong,
-    hasPlayers: !!(players && players.length > 0),
-    roomCode: roomCode || 'missing',
-    playerName: currentTurnPlayer?.name || 'unknown'
-  });
-
-  // Early return for critical missing data - BEFORE any hooks
-  if (!currentTurnPlayer || !currentSong || !players || players.length === 0) {
-    console.warn('⚠️  HostGameView: Critical props missing, rendering fallback immediately');
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
-        <HostGameBackground />
-        <HostHeader roomCode={roomCode || 'LOADING'} playersCount={players?.length || 0} />
-        
-        <div className="absolute inset-0 flex items-center justify-center z-30">
-          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-            <div className="text-6xl mb-6 animate-pulse">🎵</div>
-            <div className="text-3xl font-bold mb-4">Setting Up Host Display...</div>
-            <div className="text-xl mb-6">Preparing the game interface</div>
-            
-            {/* Show what's loading */}
-            <div className="space-y-3 text-lg">
-              <div className={`flex items-center justify-center gap-3 ${currentTurnPlayer ? 'text-green-400' : 'text-yellow-400'}`}>
-                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
-                <span>{currentTurnPlayer ? 'Player Ready' : 'Loading Player...'}</span>
-              </div>
-              <div className={`flex items-center justify-center gap-3 ${currentSong ? 'text-green-400' : 'text-yellow-400'}`}>
-                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
-                <span>{currentSong ? 'Song Ready' : 'Loading Song...'}</span>
-              </div>
-              <div className={`flex items-center justify-center gap-3 ${(players && players.length > 0) ? 'text-green-400' : 'text-yellow-400'}`}>
-                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
-                <span>{(players && players.length > 0) ? `${players.length} Players Ready` : 'Loading Players...'}</span>
-              </div>
-            </div>
-            
-            <div className="text-sm text-white/60 mt-8">Host display will appear when all data is ready</div>
-            
-            {/* Debug information for development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
-                <div className="font-bold mb-2 text-yellow-400">Host Debug Info:</div>
-                <div>Current Turn Player: {currentTurnPlayer ? `✓ ${currentTurnPlayer.name}` : '✗ Missing'}</div>
-                <div>Current Song: {currentSong ? `✓ ${currentSong.deezer_title}` : '✗ Missing'}</div>
-                <div>Players: {players ? `✓ ${players.length} players` : '✗ Missing'}</div>
-                <div>Room Code: {roomCode || 'Missing'}</div>
-                <div>Timestamp: {new Date().toLocaleTimeString()}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // CRITICAL FIX: Always call React hooks FIRST, regardless of props validity
+  // This prevents React Hooks rule violations that cause white screens
+  
   // DEFENSIVE RENDERING: Enhanced safety checks and fallbacks with better error handling
   const safeCurrentTurnPlayer = useMemo(() => {
     if (!currentTurnPlayer) {
@@ -788,6 +733,13 @@ export function HostGameView({
     return currentSong;
   }, [currentSong]);
 
+  // Always initialize React hooks with safe defaults
+  const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
+  const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [showHostFeedback, setShowHostFeedback] = useState(false);
+
+  // Create safe defaults for all other props  
   const safeRoomCode = roomCode || 'LOADING';
   const safeMysteryCardRevealed = mysteryCardRevealed ?? false;
   const safeIsPlaying = isPlaying ?? false;
@@ -796,13 +748,20 @@ export function HostGameView({
     console.warn('⚠️  HostGameView: onPlayPause not provided');
   });
 
-  // Now we can safely initialize React hooks since we know we have valid props
-  const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
-  const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [showHostFeedback, setShowHostFeedback] = useState(false);
+  // Validation logging AFTER hooks are initialized
+  console.log('🎮 HostGameView render - Props validation:', {
+    hasCurrentTurnPlayer: !!currentTurnPlayer,
+    hasCurrentSong: !!currentSong,
+    hasPlayers: !!(players && players.length > 0),
+    roomCode: roomCode || 'missing',
+    playerName: currentTurnPlayer?.name || 'unknown',
+    hooksInitialized: true
+  });
 
-  // Safe useEffect hook - all dependencies are guaranteed to exist
+  // Check if we need to show loading fallback AFTER hooks are initialized
+  const shouldShowLoadingFallback = !currentTurnPlayer || !currentSong || !players || players.length === 0;
+
+  // Safe useEffect hook - all dependencies are now safely initialized
   useEffect(() => {
     if (cardPlacementResult) {
       setShowResultModal(true);
@@ -849,6 +808,56 @@ export function HostGameView({
       setDisplayedPlayer(safeCurrentTurnPlayer);
     }
   }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult]);
+
+  // DEFENSIVE RENDERING: Show loading fallback if critical data is missing
+  // This happens AFTER all hooks are called to prevent React Hooks rule violations
+  if (shouldShowLoadingFallback) {
+    console.warn('⚠️  HostGameView: Critical props missing, rendering enhanced fallback');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
+        <HostGameBackground />
+        <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
+        
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+            <div className="text-6xl mb-6 animate-pulse">🎵</div>
+            <div className="text-3xl font-bold mb-4">Setting Up Host Display...</div>
+            <div className="text-xl mb-6">Preparing the game interface</div>
+            
+            {/* Show what's loading */}
+            <div className="space-y-3 text-lg">
+              <div className={`flex items-center justify-center gap-3 ${currentTurnPlayer ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentTurnPlayer ? 'Player Ready' : 'Loading Player...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${currentSong ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentSong ? 'Song Ready' : 'Loading Song...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${(players && players.length > 0) ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{(players && players.length > 0) ? `${players.length} Players Ready` : 'Loading Players...'}</span>
+              </div>
+            </div>
+            
+            <div className="text-sm text-white/60 mt-8">Host display will appear when all data is ready</div>
+            
+            {/* Debug information for development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
+                <div className="font-bold mb-2 text-yellow-400">Host Debug Info:</div>
+                <div>Current Turn Player: {currentTurnPlayer ? `✓ ${currentTurnPlayer.name}` : '✗ Missing'}</div>
+                <div>Current Song: {currentSong ? `✓ ${currentSong.deezer_title}` : '✗ Missing'}</div>
+                <div>Players: {players ? `✓ ${players.length} players` : '✗ Missing'}</div>
+                <div>Room Code: {safeRoomCode}</div>
+                <div>Timestamp: {new Date().toLocaleTimeString()}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden">
