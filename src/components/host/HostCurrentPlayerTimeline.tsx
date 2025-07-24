@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Music, Star, Calendar } from 'lucide-react';
 import { Player, Song } from '@/types/game';

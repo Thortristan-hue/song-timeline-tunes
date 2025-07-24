@@ -296,6 +296,30 @@ function Index() {
                 );
               }
 
+              // ENHANCED: Show loading screen for host during game initialization
+              if (isHost && (!room.songs || room.songs.length === 0)) {
+                console.log('🎮 HOST: Game initialization in progress - showing loading screen');
+                return (
+                  <LoadingScreen 
+                    title="Initializing Game..."
+                    subtitle="Loading songs and preparing the game. This may take a moment."
+                    variant="game"
+                  />
+                );
+              }
+
+              // ENHANCED: Show loading screen for players during game initialization
+              if (!isHost && (!room.current_song)) {
+                console.log('🎮 PLAYER: Waiting for host to initialize game - showing loading screen');
+                return (
+                  <LoadingScreen 
+                    title="Host Setting Up Game..."
+                    subtitle="Please wait while the host loads songs and prepares the game."
+                    variant="initialization"
+                  />
+                );
+              }
+
               if (!currentPlayer && !isHost) {
                 console.warn('⚠️  GamePlay: Missing player data for non-host, showing player loading fallback');
                 return (
