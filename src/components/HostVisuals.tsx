@@ -6,6 +6,7 @@ import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { Button } from '@/components/ui/button';
 import { getArtistColor, truncateText } from '@/lib/utils';
+import { audioManager } from '@/services/AudioManager';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
@@ -221,6 +222,20 @@ function RecordPlayerSection({
   onPlayPause: () => void;
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }) {
+  // DEFENSIVE RENDERING: Handle missing song data gracefully
+  const displaySong = currentSong || {
+    id: 'loading',
+    deezer_title: 'Loading...',
+    deezer_artist: 'Preparing Music',
+    deezer_album: '',
+    release_year: '2024',
+    genre: '',
+    cardColor: '#6B7280',
+    preview_url: undefined
+  };
+
+  const hasValidPreview = currentSong?.preview_url;
+
   return (
     <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
@@ -234,8 +249,11 @@ function RecordPlayerSection({
               
               <Button
                 onClick={onPlayPause}
-                className="relative w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group p-0"
-                disabled={!currentSong?.preview_url}
+                className={`relative w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group p-0 ${
+                  !hasValidPreview ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={!hasValidPreview}
+                title={!hasValidPreview ? 'Audio preview not available' : 'Play/Pause Mystery Song'}
               >
                 <img 
                   src="/Vinyl2_rythm.png" 
@@ -249,9 +267,6 @@ function RecordPlayerSection({
                 </div>
               </Button>
             </div>
-          </div>
-          <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
-            Mystery Song Playing
           </div>
         </div>
       </div>
@@ -665,27 +680,94 @@ export function HostGameView({
   highlightedGapIndex?: number | null;
   mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
 }) {
-  // Safety checks and fallbacks with better error handling
-  const safeCurrentTurnPlayer = useMemo(() => currentTurnPlayer || {
-    id: 'unknown',
-    name: 'Unknown Player',
-    timeline: [],
-    color: '#ffffff',
-    timelineColor: '#ffffff',
-    score: 0
+  // CRITICAL FIX: Always call React hooks FIRST, regardless of props validity
+  // This prevents React Hooks rule violations that cause white screens
+  
+  // DEFENSIVE RENDERING: Enhanced safety checks and fallbacks with better error handling
+  const safeCurrentTurnPlayer = useMemo(() => {
+    if (!currentTurnPlayer) {
+      console.warn('⚠️  HostGameView: Missing currentTurnPlayer, using fallback');
+      return {
+        id: 'unknown',
+        name: 'Loading Player...',
+        timeline: [],
+        color: '#ffffff',
+        timelineColor: '#ffffff',
+        score: 0
+      };
+    }
+    return currentTurnPlayer;
   }, [currentTurnPlayer]);
-  const safePlayers = players || [];
-  const safeRoomCode = roomCode || 'XXXX';
-  const safeMysteryCardRevealed = mysteryCardRevealed ?? false;
-  const safeIsPlaying = isPlaying ?? false;
-  const safeTransitioning = transitioning ?? false;
-  const safeOnPlayPause = onPlayPause || (() => console.log('Play/Pause not implemented'));
 
+  const safePlayers = useMemo(() => {
+    if (!players || players.length === 0) {
+      console.warn('⚠️  HostGameView: Missing players, using fallback');
+      return [safeCurrentTurnPlayer];
+    }
+    return players;
+  }, [players, safeCurrentTurnPlayer]);
+
+  const safeCurrentSong = useMemo(() => {
+    if (!currentSong) {
+      console.warn('⚠️  HostGameView: Missing currentSong, using fallback');
+      return {
+        id: 'loading',
+        deezer_title: 'Loading Song...',
+        deezer_artist: 'Unknown Artist',
+        deezer_album: 'Unknown Album',
+        release_year: '2024',
+        genre: 'Unknown',
+        cardColor: '#6B7280',
+        preview_url: undefined
+      };
+    }
+    return currentSong;
+  }, [currentSong]);
+
+  // Always initialize React hooks with safe defaults
   const [displayedPlayer, setDisplayedPlayer] = useState(safeCurrentTurnPlayer);
   const [animationStage, setAnimationStage] = useState<'idle' | 'exiting' | 'entering'>('idle');
   const [showResultModal, setShowResultModal] = useState(false);
   const [showHostFeedback, setShowHostFeedback] = useState(false);
-  
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+
+  // Audio manager integration
+  useEffect(() => {
+    const handlePlayStateChange = (playing: boolean) => {
+      setAudioIsPlaying(playing);
+    };
+
+    audioManager.addPlayStateListener(handlePlayStateChange);
+    setAudioIsPlaying(audioManager.getIsPlaying());
+
+    return () => {
+      audioManager.removePlayStateListener(handlePlayStateChange);
+    };
+  }, []);
+
+  // Create safe defaults for all other props  
+  const safeRoomCode = roomCode || 'LOADING';
+  const safeMysteryCardRevealed = mysteryCardRevealed ?? false;
+  const safeIsPlaying = isPlaying ?? false;
+  const safeTransitioning = transitioning ?? false;
+  const safeOnPlayPause = onPlayPause || (() => {
+    console.warn('⚠️  HostGameView: onPlayPause not provided');
+  });
+
+  // Validation logging AFTER hooks are initialized
+  console.log('🎮 HostGameView render - Props validation:', {
+    hasCurrentTurnPlayer: !!currentTurnPlayer,
+    hasCurrentSong: !!currentSong,
+    hasPlayers: !!(players && players.length > 0),
+    roomCode: roomCode || 'missing',
+    playerName: currentTurnPlayer?.name || 'unknown',
+    hooksInitialized: true
+  });
+
+  // Check if we need to show loading fallback AFTER hooks are initialized
+  const shouldShowLoadingFallback = !currentTurnPlayer || !currentSong || !players || players.length === 0;
+
+  // Safe useEffect hook - all dependencies are now safely initialized
   useEffect(() => {
     if (cardPlacementResult) {
       setShowResultModal(true);
@@ -733,17 +815,86 @@ export function HostGameView({
     }
   }, [safeCurrentTurnPlayer, safeTransitioning, cardPlacementResult]);
 
+  // DEFENSIVE RENDERING: Show loading fallback if critical data is missing
+  // This happens AFTER all hooks are called to prevent React Hooks rule violations
+  if (shouldShowLoadingFallback) {
+    console.warn('⚠️  HostGameView: Critical props missing, rendering enhanced fallback');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden">
+        <HostGameBackground />
+        <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
+        
+        <div className="absolute inset-0 flex items-center justify-center z-30">
+          <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
+            <div className="text-6xl mb-6 animate-pulse">🎵</div>
+            <div className="text-3xl font-bold mb-4">Setting Up Host Display...</div>
+            <div className="text-xl mb-6">Preparing the game interface</div>
+            
+            {/* Show what's loading */}
+            <div className="space-y-3 text-lg">
+              <div className={`flex items-center justify-center gap-3 ${currentTurnPlayer ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentTurnPlayer ? 'Player Ready' : 'Loading Player...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${currentSong ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{currentSong ? 'Song Ready' : 'Loading Song...'}</span>
+              </div>
+              <div className={`flex items-center justify-center gap-3 ${(players && players.length > 0) ? 'text-green-400' : 'text-yellow-400'}`}>
+                <div className="w-3 h-3 rounded-full bg-current animate-pulse"></div>
+                <span>{(players && players.length > 0) ? `${players.length} Players Ready` : 'Loading Players...'}</span>
+              </div>
+            </div>
+            
+            <div className="text-sm text-white/60 mt-8">Host display will appear when all data is ready</div>
+            
+            {/* Debug information for development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-6 bg-black/50 p-3 rounded-lg text-xs text-left">
+                <div className="font-bold mb-2 text-yellow-400">Host Debug Info:</div>
+                <div>Current Turn Player: {currentTurnPlayer ? `✓ ${currentTurnPlayer.name}` : '✗ Missing'}</div>
+                <div>Current Song: {currentSong ? `✓ ${currentSong.deezer_title}` : '✗ Missing'}</div>
+                <div>Players: {players ? `✓ ${players.length} players` : '✗ Missing'}</div>
+                <div>Room Code: {safeRoomCode}</div>
+                <div>Timestamp: {new Date().toLocaleTimeString()}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* DEFENSIVE RENDERING: Always render background and basic structure */}
       <HostGameBackground />
       <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
-      <RecordPlayerSection 
-        currentSong={currentSong}
-        mysteryCardRevealed={safeMysteryCardRevealed}
-        isPlaying={safeIsPlaying}
-        onPlayPause={safeOnPlayPause}
-        cardPlacementResult={cardPlacementResult}
-      />
+      
+      {/* Enhanced record player section with mystery card */}
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="relative">
+          <div className="text-center space-y-8 max-w-sm">
+            <RecordMysteryCard 
+              song={safeCurrentSong}
+              isRevealed={safeMysteryCardRevealed}
+              isPlaying={audioIsPlaying}
+              onPlayPause={() => audioManager.togglePlayPause(safeCurrentSong)}
+            />
+            
+            <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
+              {safeCurrentSong?.preview_url ? 'Mystery Song' : 'Loading Mystery Song...'}
+            </div>
+            
+            {/* Show loading indicator or audio unavailable message */}
+            {!safeCurrentSong?.preview_url && (
+              <div className="text-white/60 text-sm italic bg-white/5 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/10">
+                {safeCurrentSong ? 'Audio preview not available' : 'Preparing song...'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       
       {/* Host Feedback Overlay */}
       <HostFeedbackOverlay 
@@ -751,19 +902,27 @@ export function HostGameView({
         type={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
       />
       
+      {/* Safe timeline rendering with error boundary */}
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
         <div className="flex justify-center">
-          <HostCurrentPlayerTimeline
-            currentTurnPlayer={displayedPlayer}
-            previousTurnPlayer={previousPlayer}
-            cardPlacementResult={cardPlacementResult}
-            highlightedGapIndex={highlightedGapIndex}
-            mobileViewport={mobileViewport}
-            isTransitioning={animationStage === 'exiting' || animationStage === 'entering'}
-          />
+          {safeCurrentTurnPlayer ? (
+            <HostCurrentPlayerTimeline
+              currentTurnPlayer={displayedPlayer}
+              previousTurnPlayer={previousPlayer}
+              cardPlacementResult={cardPlacementResult}
+              highlightedGapIndex={highlightedGapIndex}
+              mobileViewport={mobileViewport}
+              isTransitioning={animationStage === 'exiting' || animationStage === 'entering'}
+            />
+          ) : (
+            <div className="text-white/60 text-lg italic py-8 text-center">
+              Waiting for player data...
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Safe cassette player display */}
       <div className="absolute bottom-6 left-6 right-6 z-10">
         <CassettePlayerDisplay 
           players={safePlayers} 
@@ -771,7 +930,8 @@ export function HostGameView({
         />
       </div>
 
-      {showResultModal && cardPlacementResult && (
+      {/* Safe result modal rendering */}
+      {showResultModal && cardPlacementResult && safeCurrentSong && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-3xl flex items-center justify-center z-50 animate-epic-modal-appear">
           <div className="text-center space-y-10 p-10 animate-epic-modal-content">
             <div className={`text-9xl mb-8 ${
@@ -788,13 +948,13 @@ export function HostGameView({
             </div>
             <div className="bg-white/10 backdrop-blur-3xl rounded-3xl p-10 border border-white/20 max-w-2xl animate-epic-card-rise shadow-3xl">
               <div className="text-4xl font-bold text-white mb-4">
-                {cardPlacementResult.song.deezer_title}
+                {cardPlacementResult.song.deezer_title || 'Unknown Song'}
               </div>
               <div className="text-3xl text-white/80 mb-8 font-medium">
-                by {cardPlacementResult.song.deezer_artist}
+                by {cardPlacementResult.song.deezer_artist || 'Unknown Artist'}
               </div>
               <div className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-full font-black text-3xl animate-epic-year-pulse shadow-2xl">
-                {cardPlacementResult.song.release_year}
+                {cardPlacementResult.song.release_year || '2024'}
               </div>
             </div>
             <div className="text-white/70 text-2xl animate-epic-text-slide-up">
@@ -805,6 +965,7 @@ export function HostGameView({
             </div>
           </div>
           
+          {/* Styles remain the same */}
           <style>{`
             @keyframes epic-modal-appear {
               0% {
