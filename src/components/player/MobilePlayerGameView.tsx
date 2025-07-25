@@ -52,50 +52,70 @@ export default function MobilePlayerGameView({
   // Refs for performance optimization
   const audioCleanupRef = useRef<() => void>();
 
-  // Debug current player data
-  useEffect(() => {
-    console.log('📱 MOBILE VIEW: Current player data:', {
+  // Enhanced timeline processing with better validation and debugging
+  const timelineSongs = useMemo(() => {
+    console.log('🎵 MOBILE TIMELINE: Processing player timeline:', {
       playerId: currentPlayer?.id,
       playerName: currentPlayer?.name,
-      timeline: currentPlayer?.timeline,
-      timelineLength: currentPlayer?.timeline?.length || 0,
-      isMyTurn,
-      gameEnded
+      rawTimeline: currentPlayer?.timeline,
+      timelineLength: currentPlayer?.timeline?.length || 0
     });
-  }, [currentPlayer, isMyTurn, gameEnded]);
 
-  // Get sorted timeline songs for placement - with enhanced validation
-  const timelineSongs = useMemo(() => {
     if (!currentPlayer?.timeline) {
-      console.log('📱 MOBILE VIEW: No timeline data available');
+      console.log('🎵 MOBILE TIMELINE: No timeline data available');
       return [];
     }
 
-    const validSongs = currentPlayer.timeline
+    const processedSongs = currentPlayer.timeline
       .filter(song => {
         if (!song) {
-          console.warn('📱 MOBILE VIEW: Found null song in timeline');
+          console.warn('🎵 MOBILE TIMELINE: Found null song in timeline');
           return false;
         }
         if (!song.release_year) {
-          console.warn('📱 MOBILE VIEW: Song missing release year:', song);
+          console.warn('🎵 MOBILE TIMELINE: Song missing release year:', song);
+          return false;
+        }
+        if (!song.deezer_title || !song.deezer_artist) {
+          console.warn('🎵 MOBILE TIMELINE: Song missing title or artist:', song);
           return false;
         }
         return true;
       })
-      .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+      .sort((a, b) => {
+        const yearA = parseInt(a.release_year);
+        const yearB = parseInt(b.release_year);
+        return yearA - yearB;
+      });
 
-    console.log('📱 MOBILE VIEW: Processed timeline songs:', {
-      original: currentPlayer.timeline.length,
-      valid: validSongs.length,
-      songs: validSongs.map(s => ({ title: s.deezer_title, year: s.release_year }))
+    console.log('🎵 MOBILE TIMELINE: Processed songs:', {
+      originalCount: currentPlayer.timeline.length,
+      validCount: processedSongs.length,
+      songs: processedSongs.map(s => ({
+        title: s.deezer_title,
+        artist: s.deezer_artist,
+        year: s.release_year
+      }))
     });
 
-    return validSongs;
-  }, [currentPlayer?.timeline]);
+    return processedSongs;
+  }, [currentPlayer?.timeline, currentPlayer?.id, currentPlayer?.name]);
 
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;
+
+  // Enhanced debug logging for timeline state
+  useEffect(() => {
+    console.log('🎵 MOBILE TIMELINE: State update:', {
+      hasCurrentPlayer: !!currentPlayer,
+      playerName: currentPlayer?.name,
+      timelineLength: timelineSongs.length,
+      totalPositions,
+      selectedPosition,
+      isMyTurn,
+      gameEnded
+    });
+  }, [currentPlayer, timelineSongs, totalPositions, selectedPosition, isMyTurn, gameEnded]);
 
   // Handle debug menu clicks
   const handleDebugClick = () => {
@@ -201,22 +221,17 @@ export default function MobilePlayerGameView({
       setIsSubmitting(true);
       setError(null);
 
-      console.log('📱 MOBILE VIEW: Placing card:', {
-        song: currentSong.deezer_title,
-        position: selectedPosition,
-        playerName: currentPlayer.name
-      });
-
+      console.log('🎵 MOBILE PLACE CARD: Placing card at position:', selectedPosition);
       const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
         setError('Failed to place card. Please try again.');
-        console.error('📱 MOBILE VIEW: Card placement failed:', result);
+        console.error('🎵 MOBILE PLACE CARD: Failed to place card');
       } else {
-        console.log('📱 MOBILE VIEW: Card placement successful');
+        console.log('🎵 MOBILE PLACE CARD: Card placed successfully');
       }
     } catch (err) {
-      console.error('📱 MOBILE VIEW: Card placement error:', err);
+      console.error('Card placement error:', err);
       setError('Failed to place card. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -242,12 +257,6 @@ export default function MobilePlayerGameView({
       setSelectedPosition(selectedPosition + 1);
     }
   };
-
-  // Enhanced universal play/pause handler
-  const handleUniversalPlayPause = useCallback(() => {
-    console.log('📱 MOBILE VIEW: Universal play/pause triggered');
-    onPlayPause();
-  }, [onPlayPause]);
 
   // Cleanup audio on unmount or turn change
   useEffect(() => {
@@ -376,7 +385,7 @@ export default function MobilePlayerGameView({
               </div>
               
               <Button
-                onClick={handleUniversalPlayPause}
+                onClick={onPlayPause}
                 className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
                 disabled={!currentSong?.preview_url}
               >
@@ -412,17 +421,17 @@ export default function MobilePlayerGameView({
                   </div>
                 </div>
                 
-                {/* Show timeline even when waiting */}
-                {timelineSongs.length > 0 && (
-                  <div className="mt-8 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25">
-                    <div className="text-white text-lg font-semibold mb-4">Your Timeline</div>
+                {/* Show timeline even when waiting - FORCE DISPLAY */}
+                <div className="mt-8 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25">
+                  <div className="text-white text-lg font-semibold mb-4">Your Timeline</div>
+                  {timelineSongs.length > 0 ? (
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {timelineSongs.map((song, index) => {
                         const cardColor = getCardColor(song);
                         return (
                           <div
                             key={song.id}
-                            className="w-24 h-24 rounded-xl border border-white/20 flex-shrink-0 shadow-lg"
+                            className="w-24 h-24 rounded-xl border border-white/20 flex-shrink-0 shadow-lg relative"
                             style={{ 
                               backgroundColor: cardColor.backgroundColor,
                               backgroundImage: cardColor.backgroundImage
@@ -444,13 +453,17 @@ export default function MobilePlayerGameView({
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center text-white/60 py-8">
+                      <div className="text-sm">No cards in your timeline yet</div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Game interface */}
+          {/* Game interface - FORCE TIMELINE DISPLAY */}
           {isMyTurn && !gameEnded && (
             <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
               <div className="text-center mb-4">
@@ -460,19 +473,30 @@ export default function MobilePlayerGameView({
                 </div>
               </div>
 
-              {/* Timeline display */}
+              {/* Timeline display - ENHANCED FORCING */}
               <div className="flex-1 min-h-0">
-                {timelineSongs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center text-white/60">
-                      <div className="text-lg mb-2">No cards yet</div>
-                      <div className="text-sm">Place your first card!</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col">
-                    {/* Timeline cards */}
-                    <div className="flex-1 flex items-center justify-center overflow-x-auto pb-4">
+                <div className="h-full flex flex-col">
+                  {/* Timeline cards - FORCE DISPLAY EVEN IF EMPTY */}
+                  <div className="flex-1 flex items-center justify-center overflow-x-auto pb-4">
+                    {timelineSongs.length === 0 ? (
+                      <div className="text-center text-white/60">
+                        <div className="text-lg mb-2">No cards yet</div>
+                        <div className="text-sm">Place your first card!</div>
+                        
+                        {/* Show position selector even with no cards */}
+                        <div className="mt-6 flex justify-center">
+                          <div 
+                            className={cn(
+                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
+                              "bg-green-400 border-green-400 text-white"
+                            )}
+                            onClick={() => setSelectedPosition(0)}
+                          >
+                            <Check className="w-6 h-6" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2 min-w-max px-4">
                         {/* Position indicator before first card */}
                         <div 
@@ -539,9 +563,11 @@ export default function MobilePlayerGameView({
                           );
                         })}
                       </div>
-                    </div>
+                    )}
+                  </div>
 
-                    {/* Position navigation */}
+                  {/* Position navigation - only show if there are cards */}
+                  {timelineSongs.length > 0 && (
                     <div className="flex items-center justify-between pt-3 border-t border-white/20">
                       <Button
                         onClick={() => navigatePosition('prev')}
@@ -563,8 +589,8 @@ export default function MobilePlayerGameView({
                         <ChevronRight className="w-5 h-5 text-white" />
                       </Button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -614,10 +640,12 @@ export default function MobilePlayerGameView({
           </div>
           {debugMode && (
             <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
-              <div className="font-semibold mb-1">Debug Info:</div>
+              <div className="font-semibold mb-1">Timeline Debug:</div>
               <div>Timeline Length: {timelineSongs.length}</div>
-              <div>Is My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
-              <div>Is Playing: {isPlaying ? 'Yes' : 'No'}</div>
+              <div>Total Positions: {totalPositions}</div>
+              <div>Selected Position: {selectedPosition}</div>
+              <div>Player: {currentPlayer?.name}</div>
+              <div>My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
               {currentSong && (
                 <>
                   <div>Current Song: {currentSong.deezer_title}</div>
