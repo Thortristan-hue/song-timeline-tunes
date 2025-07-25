@@ -51,6 +51,23 @@ const TimelineSongCard = React.memo(({
   index: number; 
   isError?: boolean;
 }) => {
+  const cardStyle = useMemo(() => {
+    if (isError || !song?.deezer_artist) {
+      return {
+        WebkitTapHighlightColor: 'transparent',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: 'translateZ(0)'
+      };
+    }
+    
+    return {
+      ...getArtistColor(song.deezer_artist),
+      WebkitTapHighlightColor: 'transparent',
+      WebkitBackfaceVisibility: 'hidden',
+      transform: 'translateZ(0)'
+    };
+  }, [song?.deezer_artist, isError]);
+
   if (isError || !song) {
     return (
       <div className="flex-shrink-0 w-36 h-28 rounded-xl border border-red-400/50 bg-red-900/30 overflow-hidden mobile-touch-optimized">
@@ -61,13 +78,6 @@ const TimelineSongCard = React.memo(({
       </div>
     );
   }
-
-  const cardStyle = useMemo(() => ({
-    ...getArtistColor(song.deezer_artist),
-    WebkitTapHighlightColor: 'transparent',
-    WebkitBackfaceVisibility: 'hidden',
-    transform: 'translateZ(0)'
-  }), [song.deezer_artist]);
 
   return (
     <div 
