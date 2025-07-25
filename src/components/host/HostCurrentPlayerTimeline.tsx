@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Music, Star, Calendar } from 'lucide-react';
 import { Player, Song } from '@/types/game';
@@ -22,27 +22,9 @@ export function HostCurrentPlayerTimeline({
   mobileViewport,
   isTransitioning = false
 }: HostCurrentPlayerTimelineProps) {
-  // DEFENSIVE RENDERING: Ensure we always have a valid player object
-  const safeCurrentPlayer = useMemo(() => {
-    if (!currentTurnPlayer) {
-      console.warn('⚠️  HostCurrentPlayerTimeline: Missing currentTurnPlayer, using fallback');
-      return {
-        id: 'loading',
-        name: 'Loading Player...',
-        timeline: [],
-        color: '#6B7280',
-        timelineColor: '#6B7280',
-        score: 0
-      };
-    }
-    return currentTurnPlayer;
-  }, [currentTurnPlayer]);
-
   const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
   const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
   const [visibleCards, setVisibleCards] = useState<number[]>([]);
-  const [newlyPlacedCardIndex, setNewlyPlacedCardIndex] = useState<number | null>(null);
-  const [cardsShifting, setCardsShifting] = useState<boolean>(false);
 
   // Handle turn transitions with enhanced animations
   useEffect(() => {
@@ -55,7 +37,7 @@ export function HostCurrentPlayerTimeline({
         setTimelineState('entering');
         
         // Animate cards appearing one by one
-        const cardIndices = safeCurrentPlayer.timeline.map((_, index) => index);
+        const cardIndices = currentTurnPlayer.timeline.map((_, index) => index);
         setVisibleCards([]);
         
         cardIndices.forEach((index, i) => {
@@ -71,27 +53,9 @@ export function HostCurrentPlayerTimeline({
     } else {
       // Normal stable state
       setTimelineState('stable');
-      setVisibleCards(safeCurrentPlayer.timeline.map((_, index) => index));
+      setVisibleCards(currentTurnPlayer.timeline.map((_, index) => index));
     }
-  }, [isTransitioning, safeCurrentPlayer]);
-
-  // Handle new card placement animation
-  useEffect(() => {
-    if (cardPlacementResult && cardPlacementResult.correct) {
-      const newCardIndex = safeCurrentPlayer.timeline.length - 1;
-      setNewlyPlacedCardIndex(newCardIndex);
-      setCardsShifting(true);
-      
-      // First animate existing cards making room
-      setTimeout(() => {
-        // Then animate the new card sliding in
-        setTimeout(() => {
-          setCardsShifting(false);
-          setNewlyPlacedCardIndex(null);
-        }, 800);
-      }, 300);
-    }
-  }, [cardPlacementResult, safeCurrentPlayer.timeline.length]);
+  }, [isTransitioning, currentTurnPlayer]);
 
   // Trigger feedback animation when placement result changes
   useEffect(() => {
@@ -109,25 +73,13 @@ export function HostCurrentPlayerTimeline({
     }
   }, [cardPlacementResult]);
 
-  // DEFENSIVE RENDERING: Handle edge cases gracefully
-  if (safeCurrentPlayer.id === 'loading') {
-    return (
-      <div className="flex justify-center items-center w-full z-20">
-        <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
-          <Music className="h-8 w-8 opacity-50 animate-pulse" />
-          <span>Setting up player timeline...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex justify-center items-center w-full z-20">
       <div className="flex gap-2 items-center overflow-x-auto pb-2">
-        {safeCurrentPlayer.timeline.length === 0 ? (
+        {currentTurnPlayer.timeline.length === 0 ? (
           <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
             <Music className="h-8 w-8 opacity-50" />
-            <span>Waiting for {safeCurrentPlayer.name} to place their first card...</span>
+            <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
           </div>
         ) : (
           <>
@@ -138,16 +90,12 @@ export function HostCurrentPlayerTimeline({
               }`}
             />
             
-            {safeCurrentPlayer.timeline.map((song, index) => (
+            {currentTurnPlayer.timeline.map((song, index) => (
               <React.Fragment key={`${song.deezer_title}-${index}`}>
-                {/* Song card with enhanced animations and mobile optimization */}
+                {/* Song card with enhanced animations - now square and consistent */}
                 <div
-                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 mobile-touch-optimized ${
-                    newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
-                  } ${
-                    cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
-                  } ${
-                    cardsShifting && index > (newlyPlacedCardIndex || 0) ? 'animate-card-shift-right' : ''
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
+                    cardPlacementResult && cardPlacementResult.correct && index === currentTurnPlayer.timeline.length - 1 ? 'animate-epic-card-drop' : ''
                   } ${
                     !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
                   } ${
@@ -159,13 +107,9 @@ export function HostCurrentPlayerTimeline({
                     backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
                     backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
                     animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
-                                   timelineState === 'exiting' ? `${(safeCurrentPlayer.timeline.length - index) * 0.05}s` : 
+                                   timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
                                    '0s',
-                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s',
-                    // Enhanced performance for mobile
-                    transform: 'translateZ(0)',
-                    WebkitBackfaceVisibility: 'hidden',
-                    backfaceVisibility: 'hidden'
+                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
                   }}
                 >
                   {/* Mobile viewport indicator badge */}
@@ -181,19 +125,19 @@ export function HostCurrentPlayerTimeline({
                     {/* Artist name - medium, white, wrapped, max 20 letters per line */}
                     <div className="text-sm font-medium text-white leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_artist || 'Unknown Artist', 20)}
+                        {truncateText(song.deezer_artist, 20)}
                       </div>
                     </div>
                     
                     {/* Song release year - large, white */}
                     <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
-                      {song.release_year || '2024'}
+                      {song.release_year}
                     </div>
                     
                     {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
                     <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_title || 'Unknown Song', 20)}
+                        {truncateText(song.deezer_title, 20)}
                       </div>
                     </div>
                   </div>
@@ -222,6 +166,8 @@ export function HostCurrentPlayerTimeline({
           </div>
         </div>
       )}
+
+      {/* Enhanced CSS animations for turn transitions */}
     </div>
   );
 }

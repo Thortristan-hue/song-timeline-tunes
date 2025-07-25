@@ -48,19 +48,19 @@ export function HostLobby({
 
   // Debug logging for player updates
   useEffect(() => {
-    console.log('LOBBY: Players updated:', players);
-    console.log('LOBBY: Player count:', players.length);
+    console.log('🧍 HostLobby: Players updated:', players);
+    console.log('🧍 HostLobby: Player count:', players.length);
   }, [players]);
 
   const handleCreateRoom = useCallback(async () => {
-    console.log('LOBBY: Creating room...');
+    console.log('🏠 Creating room...');
     const success = await createRoom();
     if (success) {
       setRoomCreated(true);
       soundEffects.playGameStart();
-      console.log('SUCCESS: Room created successfully');
+      console.log('✅ Room created successfully');
     } else {
-      console.error('ERROR: Failed to create room');
+      console.error('❌ Failed to create room');
     }
   }, [createRoom, soundEffects]);
 
@@ -225,7 +225,7 @@ export function HostLobby({
   }
 
   const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
-  console.log('QR: Generated code URL:', gameUrl);
+  console.log('🔗 Generated QR code URL:', gameUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
@@ -427,7 +427,7 @@ export function HostLobby({
                           <div className="flex items-center gap-3">
                             <Radio className="h-4 w-4 text-[#a53b8b]" />
                             <div>
-                              <div className="font-semibold">Fiend Mode (BROKEN!! IN DEVELOPMENT)</div>
+                              <div className="font-semibold">Fiend Mode</div>
                               <div className="text-xs text-[#d9e8dd]/70">Guess the year on timeline • Score by accuracy</div>
                             </div>
                           </div>
@@ -436,7 +436,7 @@ export function HostLobby({
                           <div className="flex items-center gap-3">
                             <Timer className="h-4 w-4 text-[#107793]" />
                             <div>
-                              <div className="font-semibold">Sprint Mode (BROKEN!! IN DEVELOPMENT)</div>
+                              <div className="font-semibold">Sprint Mode</div>
                               <div className="text-xs text-[#d9e8dd]/70">Simultaneous play • Race to target</div>
                             </div>
                           </div>
@@ -551,7 +551,7 @@ export function HostLobby({
               {/* Start Game Button - Moved to top */}
               <Button
                 onClick={() => {
-                  console.log('GAME: Starting game with players:', players);
+                  console.log('🎮 Starting game with players:', players);
                   soundEffects.playGameStart();
                   onStartGame();
                 }}

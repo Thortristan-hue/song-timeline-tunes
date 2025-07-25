@@ -7,7 +7,6 @@ import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
-import { LoadingScreen } from '@/components/LoadingScreen';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -78,35 +77,22 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with comprehensive error handling and logging
+  // Enhanced room phase listener with better error handling
   useEffect(() => {
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 PHASE TRANSITION: Room transitioned to playing phase - starting game');
-      console.log('🎮 PHASE TRANSITION: Room data:', { 
+      console.log('🎮 Room transitioned to playing phase - starting game');
+      console.log('🎮 Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         isHost,
-        playersCount: players.length,
-        currentPlayerName: currentPlayer?.name,
-        lobbyCode: room.lobby_code
+        playersCount: players.length 
       });
       
-      // Additional safety checks before transition
-      if (!room.id) {
-        console.error('❌ PHASE TRANSITION: Cannot transition to playing - missing room ID');
-        return;
-      }
-      
-      if (isHost && players.length === 0) {
-        console.warn('⚠️  PHASE TRANSITION: Host transitioning with no players - this might cause issues');
-      }
-      
-      console.log('✅ PHASE TRANSITION: All checks passed, transitioning to playing phase');
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, currentPlayer?.name, room?.lobby_code]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {
@@ -156,9 +142,8 @@ function Index() {
       await startGame();
       // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
-      console.log('🎮 Game start request completed successfully');
     } catch (error) {
-      console.error('❌ Failed to start game:', error);
+      console.error('Failed to start game:', error);
     }
   };
 
@@ -204,15 +189,23 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
-  // Enhanced loading state with new loading screen
+  // Modern loading state
   if (isLoading && gamePhase !== 'menu') {
     return (
       <GameErrorBoundary>
-        <LoadingScreen
-          title="Setting things up..."
-          subtitle="Getting your music game experience ready"
-          variant="connection"
-        />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0">
+            <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+          </div>
+          <div className="text-center text-white relative z-10">
+            <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
+              <div className="text-3xl animate-spin">🎵</div>
+            </div>
+            <div className="text-2xl font-semibold mb-2">Setting things up...</div>
+            <div className="text-white/60 max-w-md mx-auto">Getting your music game experience ready</div>
+          </div>
+        </div>
       </GameErrorBoundary>
     );
   }
@@ -262,113 +255,19 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && (
-            /* DEFENSIVE RENDERING: Comprehensive safety checks with enhanced fallbacks */
-            (() => {
-              console.log('🎮 GamePlay Rendering Check:', {
-                hasRoom: !!room,
-                hasCurrentPlayer: !!currentPlayer,
-                roomPhase: room?.phase,
-                gamePhase,
-                isHost,
-                playersCount: players.length,
-                timestamp: new Date().toISOString()
-              });
-
-              // Always show meaningful UI - never a white screen
-              if (!room) {
-                console.warn('⚠️  GamePlay: Missing room data, showing connection fallback');
-                return (
-                  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden flex items-center justify-center p-4">
-                    <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-                      <div className="text-4xl mb-4">🔗</div>
-                      <div className="text-2xl font-bold mb-3">Connection Issue</div>
-                      <div className="text-lg mb-4">Unable to connect to game room</div>
-                      <div className="text-sm text-white/60 mb-6">Please check your connection and try again</div>
-                      <button
-                        onClick={handleBackToMenu}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
-                      >
-                        Back to Menu
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-
-              // ENHANCED: Show loading screen for host during game initialization
-              if (isHost && (!room.songs || room.songs.length === 0)) {
-                console.log('🎮 HOST: Game initialization in progress - showing loading screen');
-                return (
-                  <LoadingScreen 
-                    title="Initializing Game..."
-                    subtitle="Loading songs and preparing the game. This may take a moment."
-                    variant="game"
-                  />
-                );
-              }
-
-              // ENHANCED: Show loading screen for players during game initialization
-              if (!isHost && (!room.current_song)) {
-                console.log('🎮 PLAYER: Waiting for host to initialize game - showing loading screen');
-                return (
-                  <LoadingScreen 
-                    title="Host Setting Up Game..."
-                    subtitle="Please wait while the host loads songs and prepares the game."
-                    variant="initialization"
-                  />
-                );
-              }
-
-              if (!currentPlayer && !isHost) {
-                console.warn('⚠️  GamePlay: Missing player data for non-host, showing player loading fallback');
-                return (
-                  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 relative overflow-hidden flex items-center justify-center p-4">
-                    <div className="text-center text-white relative z-10 max-w-md mx-auto p-6">
-                      <div className="text-4xl mb-4">👤</div>
-                      <div className="text-2xl font-bold mb-3">Getting Player Data...</div>
-                      <div className="text-lg mb-4">Setting up your game profile</div>
-                      <div className="text-sm text-white/60 mb-6">This usually takes just a moment</div>
-                      
-                      {/* Debug info for development */}
-                      {process.env.NODE_ENV === 'development' && (
-                        <div className="bg-black/50 p-3 rounded-lg text-xs text-left mb-4">
-                          <div className="font-bold mb-2">Debug Info:</div>
-                          <div>Room: {room ? '✓' : '✗'}</div>
-                          <div>Is Host: {isHost ? 'Yes' : 'No'}</div>
-                          <div>Current Player: {currentPlayer ? '✓' : '✗'}</div>
-                          <div>Players Count: {players.length}</div>
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={handleBackToMenu}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
-                      >
-                        Back to Menu
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Now render the actual GamePlay component with all required data
-              console.log('✅ All required data available, rendering GamePlay component');
-              return (
-                <GamePlay
-                  room={room}
-                  players={players}
-                  currentPlayer={currentPlayer}
-                  isHost={isHost}
-                  onPlaceCard={handlePlaceCard}
-                  onSetCurrentSong={setCurrentSong}
-                  customSongs={customSongs}
-                  connectionStatus={connectionStatus}
-                  onReconnect={forceReconnect}
-                  onReplayGame={handlePlayAgain}
-                />
-              );
-            })()
+          {gamePhase === 'playing' && room && currentPlayer && (
+            <GamePlay
+              room={room}
+              players={players}
+              currentPlayer={currentPlayer}
+              isHost={isHost}
+              onPlaceCard={handlePlaceCard}
+              onSetCurrentSong={setCurrentSong}
+              customSongs={customSongs}
+              connectionStatus={connectionStatus}
+              onReconnect={forceReconnect}
+              onReplayGame={handlePlayAgain}
+            />
           )}
 
           {gamePhase === 'finished' && winner && (

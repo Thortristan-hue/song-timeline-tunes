@@ -161,20 +161,6 @@ export default {
 				'wiggle': {
 					'0%, 100%': { transform: 'rotate(-3deg)' },
 					'50%': { transform: 'rotate(3deg)' }
-				},
-				'scan': {
-					'0%': { transform: 'translateX(-100%)' },
-					'100%': { transform: 'translateX(100%)' }
-				},
-				'gradient': {
-					'0%, 100%': { 
-						backgroundPosition: '0% 50%',
-						backgroundSize: '200% 200%'
-					},
-					'50%': { 
-						backgroundPosition: '100% 50%',
-						backgroundSize: '200% 200%'
-					}
 				}
 			},
 			animation: {
@@ -193,9 +179,7 @@ export default {
 				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
 				'card-hover': 'card-hover 0.3s ease-out forwards',
 				'spin-slow': 'spin-slow 20s linear infinite',
-				'wiggle': 'wiggle 1s ease-in-out infinite',
-				'scan': 'scan 4s ease-in-out infinite',
-				'gradient': 'gradient 3s ease infinite'
+				'wiggle': 'wiggle 1s ease-in-out infinite'
 			}
 		}
 	},

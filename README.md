@@ -69,13 +69,6 @@ Rythmy is a social music guessing game that tests players' knowledge of music hi
 - `src/data/defaultPlaylist.json` - Default song collection with metadata (title, artist, year, Deezer IDs)
 - `src/types/game.ts` - TypeScript interfaces for Song, Player, GameRoom, and other game entities
 
-### Utilities & Helpers
-
-#### Utility Functions (`src/utils/`)
-- `src/utils/constants.ts` - Centralized game constants and configuration values
-- `src/utils/validation.ts` - Common validation functions for data integrity
-- `src/utils/testing.ts` - Test utilities and mock data generators for development
-
 ### Styling & Design System
 
 #### CSS Architecture
@@ -139,24 +132,21 @@ Complete shadcn/ui component collection including:
 ### Classic/Timeliner Mode
 - **Turn-based gameplay**: Players take turns placing songs chronologically on their timelines
 - **Mystery cards**: Each player receives mystery song cards to place in correct chronological order
-- **Enhanced UI**: Features progress tracking, animated turn indicators, and improved visual feedback
 - **Winning condition**: First player to correctly place 10 cards wins
 - **Mechanics**: Traditional turn-based gameplay with strategic card placement decisions
 
 ### Fiend Mode
 - **Year guessing**: Players listen to 30-second song previews and guess the release year
-- **Enhanced timeline slider**: Modern UI with confidence indicators, accuracy preview, and animated feedback
+- **Timeline slider**: Players use a timeline slider on their phones to select years
 - **Scoring system**: Points based on accuracy of year guesses (closer = more points)
-- **Visual enhancements**: Progress bars for rounds and time tracking, radar-style background effects
 - **Rounds**: Host selects number of rounds in lobby (3-10 rounds, default: 5)
 - **Winning condition**: Player with highest cumulative score after all rounds
 
-### Sprint Mode (Sniper Mode)
-- **Simultaneous racing**: All player timelines displayed on host's screen with radar-like interface
+### Sprint Mode
+- **Simultaneous racing**: All player timelines displayed on host's screen
 - **Pre-placed cards**: Players start with random cards already on their timeline
 - **Mystery previews**: Players receive random mystery song previews on phones
-- **Enhanced feedback**: Radar sweeping animations, scope overlays, and dynamic mission-style feedback
-- **Timeout system**: Incorrect placements result in 5-second timeout penalty with enhanced visual feedback
+- **Timeout system**: Incorrect placements result in 5-second timeout penalty
 - **Target goal**: Host sets target number of cards (default: 10)
 - **Winning condition**: First player to reach target number of correctly placed cards
 
@@ -180,13 +170,6 @@ Complete shadcn/ui component collection including:
 - Game statistics and final results shown
 
 ## Technical Features
-
-### UI/UX Enhancements
-- **Modern Player Interfaces**: Redesigned player screens for all game modes with enhanced visual feedback
-- **Progress Tracking**: Real-time progress bars and completion indicators
-- **Animated Feedback**: Smooth transitions, hover effects, and interactive animations
-- **Radar-Style Effects**: Sprint Mode features radar sweeping animations and scope overlays
-- **Enhanced Typography**: Improved readability with better color contrast and font hierarchy
 
 ### Performance Optimizations
 - 20-song playlist with pre-validated audio previews to prevent API failures
