@@ -1,9 +1,9 @@
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -52,41 +52,50 @@ export default function MobilePlayerGameView({
   // Refs for performance optimization
   const audioCleanupRef = useRef<() => void>();
 
-  // Get sorted timeline songs for placement
+  // Debug current player data
+  useEffect(() => {
+    console.log('📱 MOBILE VIEW: Current player data:', {
+      playerId: currentPlayer?.id,
+      playerName: currentPlayer?.name,
+      timeline: currentPlayer?.timeline,
+      timelineLength: currentPlayer?.timeline?.length || 0,
+      isMyTurn,
+      gameEnded
+    });
+  }, [currentPlayer, isMyTurn, gameEnded]);
+
+  // Get sorted timeline songs for placement - with enhanced validation
   const timelineSongs = useMemo(() => {
-    return currentPlayer.timeline
-      .filter(song => song !== null)
+    if (!currentPlayer?.timeline) {
+      console.log('📱 MOBILE VIEW: No timeline data available');
+      return [];
+    }
+
+    const validSongs = currentPlayer.timeline
+      .filter(song => {
+        if (!song) {
+          console.warn('📱 MOBILE VIEW: Found null song in timeline');
+          return false;
+        }
+        if (!song.release_year) {
+          console.warn('📱 MOBILE VIEW: Song missing release year:', song);
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
-  }, [currentPlayer.timeline]);
+
+    console.log('📱 MOBILE VIEW: Processed timeline songs:', {
+      original: currentPlayer.timeline.length,
+      valid: validSongs.length,
+      songs: validSongs.map(s => ({ title: s.deezer_title, year: s.release_year }))
+    });
+
+    return validSongs;
+  }, [currentPlayer?.timeline]);
 
   // Total positions available (before first, between each song, after last)
   const totalPositions = timelineSongs.length + 1;
-
-  // Universal controller for host audio
-  const sendUniversalAudioControl = useCallback(async (action: 'toggle') => {
-    try {
-      console.log('📱 MOBILE: Sending universal audio control:', { action, song: currentSong?.deezer_title });
-      
-      await supabase
-        .channel(`room:${roomCode}`)
-        .send({
-          type: 'broadcast',
-          event: 'audio_control',
-          payload: {
-            action,
-            song: currentSong,
-            timestamp: Date.now()
-          }
-        });
-    } catch (error) {
-      console.error('Failed to send universal audio control:', error);
-    }
-  }, [roomCode, currentSong]);
-
-  // Handle universal play/pause
-  const handleUniversalPlayPause = useCallback(() => {
-    sendUniversalAudioControl('toggle');
-  }, [sendUniversalAudioControl]);
 
   // Handle debug menu clicks
   const handleDebugClick = () => {
@@ -192,13 +201,22 @@ export default function MobilePlayerGameView({
       setIsSubmitting(true);
       setError(null);
 
+      console.log('📱 MOBILE VIEW: Placing card:', {
+        song: currentSong.deezer_title,
+        position: selectedPosition,
+        playerName: currentPlayer.name
+      });
+
       const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
         setError('Failed to place card. Please try again.');
+        console.error('📱 MOBILE VIEW: Card placement failed:', result);
+      } else {
+        console.log('📱 MOBILE VIEW: Card placement successful');
       }
     } catch (err) {
-      console.error('Card placement error:', err);
+      console.error('📱 MOBILE VIEW: Card placement error:', err);
       setError('Failed to place card. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -224,6 +242,12 @@ export default function MobilePlayerGameView({
       setSelectedPosition(selectedPosition + 1);
     }
   };
+
+  // Enhanced universal play/pause handler
+  const handleUniversalPlayPause = useCallback(() => {
+    console.log('📱 MOBILE VIEW: Universal play/pause triggered');
+    onPlayPause();
+  }, [onPlayPause]);
 
   // Cleanup audio on unmount or turn change
   useEffect(() => {
@@ -334,7 +358,7 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* Universal Audio Control - Always visible */}
+        {/* Universal Vinyl Player Section - Always visible */}
         <div className="flex-shrink-0 py-4">
           <div className="flex justify-center">
             <div className="relative">
@@ -364,7 +388,7 @@ export default function MobilePlayerGameView({
           </div>
           <div className="text-center mt-2">
             <div className="text-white/80 text-sm font-medium">
-              {isMyTurn ? 'Mystery Song' : 'Remote Control'}
+              {isMyTurn ? 'Mystery Song' : 'Universal Remote'}
             </div>
           </div>
         </div>
@@ -386,10 +410,42 @@ export default function MobilePlayerGameView({
                   <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
                     Wait for your turn
                   </div>
-                  <div className="text-white/60 text-sm">
-                    Use the record player above to control audio
-                  </div>
                 </div>
+                
+                {/* Show timeline even when waiting */}
+                {timelineSongs.length > 0 && (
+                  <div className="mt-8 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25">
+                    <div className="text-white text-lg font-semibold mb-4">Your Timeline</div>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {timelineSongs.map((song, index) => {
+                        const cardColor = getCardColor(song);
+                        return (
+                          <div
+                            key={song.id}
+                            className="w-24 h-24 rounded-xl border border-white/20 flex-shrink-0 shadow-lg"
+                            style={{ 
+                              backgroundColor: cardColor.backgroundColor,
+                              backgroundImage: cardColor.backgroundImage
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl" />
+                            <div className="p-2 h-full flex flex-col items-center justify-between text-white relative z-10">
+                              <div className="text-xs font-medium text-center leading-tight text-white overflow-hidden">
+                                {truncateText(song.deezer_artist, 10)}
+                              </div>
+                              <div className="text-lg font-black text-white">
+                                {song.release_year}
+                              </div>
+                              <div className="text-xs text-center italic text-white leading-tight opacity-90 overflow-hidden">
+                                {truncateText(song.deezer_title, 10)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -556,12 +612,18 @@ export default function MobilePlayerGameView({
           >
             {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
           </div>
-          {debugMode && currentSong && (
+          {debugMode && (
             <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
-              <div className="font-semibold mb-1">Song Debug Info:</div>
-              <div>Title: {currentSong.deezer_title}</div>
-              <div>Artist: {currentSong.deezer_artist}</div>
-              <div>Release Year: {currentSong.release_year}</div>
+              <div className="font-semibold mb-1">Debug Info:</div>
+              <div>Timeline Length: {timelineSongs.length}</div>
+              <div>Is My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
+              <div>Is Playing: {isPlaying ? 'Yes' : 'No'}</div>
+              {currentSong && (
+                <>
+                  <div>Current Song: {currentSong.deezer_title}</div>
+                  <div>Release Year: {currentSong.release_year}</div>
+                </>
+              )}
             </div>
           )}
         </div>

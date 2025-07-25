@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -57,12 +58,13 @@ export function GamePlay({
   // Initialize universal audio controller
   useEffect(() => {
     if (room?.id) {
+      console.log('🎵 GAMEPLAY: Initializing audio manager for room:', room.id, 'isHost:', isHost);
       audioManager.initialize(room.id, isHost);
       
       // Subscribe to audio state changes
       const handleAudioStateChange = (playing: boolean, song?: Song) => {
+        console.log('🎵 GAMEPLAY: Audio state changed - playing:', playing, 'song:', song?.deezer_title);
         setIsPlaying(playing);
-        console.log(`🎵 UNIVERSAL CONTROLLER: Audio state changed - playing: ${playing}, song: ${song?.deezer_title}`);
       };
 
       audioManager.addPlayStateListener(handleAudioStateChange);
@@ -73,20 +75,61 @@ export function GamePlay({
     }
   }, [room?.id, isHost]);
 
-  // Universal audio control handler
+  // Universal audio control handler with enhanced debugging
   const handlePlayPause = useCallback(async () => {
-    if (room?.current_song) {
-      console.log('🎵 UNIVERSAL CONTROLLER: Play/pause triggered for:', room.current_song.deezer_title);
-      await audioManager.togglePlayPause(room.current_song);
+    if (!room?.current_song) {
+      console.warn('🎵 GAMEPLAY: No current song available for play/pause');
+      return;
     }
-  }, [room?.current_song]);
+
+    console.log('🎵 GAMEPLAY: Play/pause triggered for:', room.current_song.deezer_title);
+    console.log('🎵 GAMEPLAY: Current player is host:', isHost);
+    
+    if (isHost) {
+      // Host controls audio directly
+      await audioManager.togglePlayPause(room.current_song);
+    } else {
+      // Mobile player sends universal control command
+      console.log('📱 GAMEPLAY: Sending universal control command from mobile player');
+      const success = await audioManager.sendUniversalAudioControl('toggle', room.current_song);
+      if (!success) {
+        console.error('📱 GAMEPLAY: Failed to send universal control command');
+        toast({
+          title: "Connection Issue",
+          description: "Unable to control audio. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [room?.current_song, isHost, toast]);
+
+  // Debug current player timeline
+  useEffect(() => {
+    if (currentPlayer) {
+      console.log('🎮 GAMEPLAY: Current player timeline:', {
+        playerId: currentPlayer.id,
+        playerName: currentPlayer.name,
+        timelineLength: currentPlayer.timeline?.length || 0,
+        timeline: currentPlayer.timeline
+      });
+    }
+  }, [currentPlayer]);
 
   // Check if game has proper data
   const hasGameData = useMemo(() => {
-    return room && 
+    const hasData = room && 
            room.songs && 
            room.songs.length > 0 && 
            room.current_song;
+    
+    console.log('🎮 GAMEPLAY: Game data check:', {
+      hasRoom: !!room,
+      hasSongs: !!(room?.songs && room.songs.length > 0),
+      hasCurrentSong: !!room?.current_song,
+      hasData
+    });
+    
+    return hasData;
   }, [room]);
 
   // Handle game initialization check
@@ -264,6 +307,15 @@ export function GamePlay({
     // Get current turn player
     const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
     const isMyTurn = currentPlayer?.id === room.current_player_id;
+
+    // Debug log before rendering mobile view
+    console.log('📱 GAMEPLAY: Rendering mobile view with:', {
+      currentPlayer: currentPlayer?.name,
+      currentTurnPlayer: currentTurnPlayer?.name,
+      isMyTurn,
+      currentPlayerTimeline: currentPlayer?.timeline,
+      gameMode: room.gamemode
+    });
 
     // Route to appropriate game mode component based on room.gamemode
     switch (room.gamemode) {
