@@ -44,6 +44,25 @@ export default function MobilePlayerGameView({
   const [error, setError] = useState<string | null>(null);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  // Enhanced data validation
+  const isValidCurrentSong = useMemo(() => {
+    if (!currentSong || typeof currentSong !== 'object') {
+      console.warn('📱 VALIDATION: Invalid currentSong object:', currentSong);
+      return false;
+    }
+    
+    if (!currentSong.id || !currentSong.deezer_title || !currentSong.release_year) {
+      console.warn('📱 VALIDATION: CurrentSong missing required fields:', {
+        id: currentSong.id,
+        title: currentSong.deezer_title,
+        year: currentSong.release_year
+      });
+      return false;
+    }
+    
+    return true;
+  }, [currentSong]);
+
   // Universal audio control - enhanced with validation and error handling
   const universalPlayPause = useCallback(async () => {
     if (!isValidCurrentSong) {
@@ -55,12 +74,8 @@ export default function MobilePlayerGameView({
     console.log('📱 UNIVERSAL CONTROL: Triggering play/pause on host for:', currentSong.deezer_title);
     
     try {
-      const result = await onPlayPause(); // This triggers the host device audio via AudioManager
-      if (result === false) {
-        console.warn('📱 UNIVERSAL CONTROL: Command failed, showing user feedback');
-        setError('Universal remote temporarily unavailable. Please try again.');
-        setTimeout(() => setError(null), 3000); // Clear error after 3 seconds
-      }
+      await onPlayPause(); // This triggers the host device audio via AudioManager
+      console.log('📱 UNIVERSAL CONTROL: Command sent successfully');
     } catch (error) {
       console.error('📱 UNIVERSAL CONTROL: Error triggering play/pause:', error);
       setError('Failed to control host audio. Check your connection.');
@@ -176,24 +191,6 @@ export default function MobilePlayerGameView({
     return getArtistColor(song.deezer_artist);
   };
 
-  // Enhanced data validation
-  const isValidCurrentSong = useMemo(() => {
-    if (!currentSong || typeof currentSong !== 'object') {
-      console.warn('📱 VALIDATION: Invalid currentSong object:', currentSong);
-      return false;
-    }
-    
-    if (!currentSong.id || !currentSong.deezer_title || !currentSong.release_year) {
-      console.warn('📱 VALIDATION: CurrentSong missing required fields:', {
-        id: currentSong.id,
-        title: currentSong.deezer_title,
-        year: currentSong.release_year
-      });
-      return false;
-    }
-    
-    return true;
-  }, [currentSong]);
 
   const isValidPlayerData = useMemo(() => {
     if (!currentPlayer || !currentPlayer.id || !currentPlayer.name) {
@@ -236,9 +233,8 @@ export default function MobilePlayerGameView({
       const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
-        const errorMsg = result.error || 'Failed to place card. Please try again.';
-        setError(errorMsg);
-        console.error('📱 PLACE CARD: Failed:', errorMsg);
+        setError('Failed to place card. Please try again.');
+        console.error('📱 PLACE CARD: Failed');
       } else {
         console.log('📱 PLACE CARD: Success!');
       }
