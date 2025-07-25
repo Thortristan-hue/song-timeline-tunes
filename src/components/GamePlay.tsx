@@ -44,7 +44,9 @@ export default function GamePlay({
     console.log('Ending game...');
   };
 
-  if (!room || !currentPlayer) {
+  // For host, we only need room data
+  // For players, we need both room and currentPlayer
+  if (!room || (!isHost && !currentPlayer)) {
     return <div>Loading...</div>;
   }
 
@@ -66,11 +68,11 @@ export default function GamePlay({
             />
           ) : (
             <MobilePlayerGameView
-              currentPlayer={currentPlayer}
-              currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer}
+              currentPlayer={currentPlayer!}
+              currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer!}
               currentSong={room.current_song || { id: '', deezer_title: '', deezer_artist: '', release_year: '', deezer_album: '', genre: '', cardColor: '', preview_url: '', deezer_url: '' }}
               roomCode={room.lobby_code}
-              isMyTurn={gameLogic.getCurrentPlayer()?.id === currentPlayer.id}
+              isMyTurn={gameLogic.getCurrentPlayer()?.id === currentPlayer?.id}
               isPlaying={gameLogic.gameState.isPlaying}
               onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
               onPlaceCard={onPlaceCard}
