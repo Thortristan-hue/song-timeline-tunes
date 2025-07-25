@@ -71,17 +71,17 @@ export default function GamePlay({
           {isHost ? (
             <HostGameView
               currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer}
-              previousPlayer={gameLogic.getPreviousPlayer()}
+              previousPlayer={undefined}
               currentSong={room.current_song}
               roomCode={room.lobby_code}
               players={players}
               mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
               isPlaying={gameLogic.gameState.isPlaying}
               onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
-              cardPlacementResult={gameLogic.gameState.lastPlacementResult}
-              transitioning={gameLogic.gameState.transitioning}
-              highlightedGapIndex={gameLogic.gameState.highlightedGapIndex}
-              mobileViewport={gameLogic.gameState.mobileViewport}
+              cardPlacementResult={null}
+              transitioning={gameLogic.gameState.transitioningTurn}
+              highlightedGapIndex={null}
+              mobileViewport={null}
             />
           ) : (
             <MobilePlayerGameView
