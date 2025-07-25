@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoinFlow } from '@/components/MobileJoinFlow';
 import MobilePlayerLobby from '@/components/MobilePlayerLobby';
-import { GamePlay } from '@/components/GamePlay';
+import GamePlay from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
