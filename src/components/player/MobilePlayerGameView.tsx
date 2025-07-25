@@ -99,9 +99,7 @@ const TimelineGap = React.memo(({
   afterYear?: string | null;
   isPulsing?: boolean;
 }) => {
-  if (!isMyTurn) return null;
-
-  // Position description
+  // Position description - always compute these hooks
   const label = useMemo(() => {
     if (position === 0) return 'First';
     if (position === totalPositions - 1) return 'Last';
@@ -119,6 +117,9 @@ const TimelineGap = React.memo(({
       return 'Any year';
     }
   }, [beforeYear, afterYear]);
+
+  // Return early after hooks are called
+  if (!isMyTurn) return null;
 
   return (
     <div className="relative">

@@ -11,7 +11,9 @@ import { audioManager } from '@/services/AudioManager';
 import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { FiendModePlayerView } from '@/components/fiend/FiendModePlayerView';
+import { FiendModeHostView } from '@/components/fiend/FiendModeHostView';
 import { SprintModePlayerView } from '@/components/sprint/SprintModePlayerView';
+import { SprintModeHostView } from '@/components/sprint/SprintModeHostView';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
 import MobileGameOverScreen from '@/components/player/MobileGameOverScreen';
 
@@ -212,21 +214,52 @@ export function GamePlay({
 
   // Main game view
   if (isHost) {
-    return (
-      <HostGameView
-        currentTurnPlayer={players.find(p => p.id === room.current_player_id) || players[0]}
-        currentSong={room.current_song}
-        roomCode={room.lobby_code}
-        players={players}
-        mysteryCardRevealed={false}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        cardPlacementResult={null}
-        transitioning={false}
-        highlightedGapIndex={null}
-        mobileViewport={null}
-      />
-    );
+    // Route to appropriate host view based on game mode
+    switch (room.gamemode) {
+      case 'fiend':
+        return (
+          <FiendModeHostView
+            players={players}
+            currentSong={room.current_song!}
+            roundNumber={room.current_turn || 1}
+            totalRounds={room.gamemode_settings?.rounds || 5}
+            roomCode={room.lobby_code}
+            timeLeft={30} // TODO: Implement actual timer logic
+            playerGuesses={{}} // TODO: Implement player guesses tracking
+          />
+        );
+        
+      case 'sprint':
+        return (
+          <SprintModeHostView
+            players={players}
+            currentSong={room.current_song!}
+            targetCards={room.gamemode_settings?.targetCards || 10}
+            roomCode={room.lobby_code}
+            timeLeft={30} // TODO: Implement actual timer logic
+            playerTimeouts={{}} // TODO: Implement timeout tracking
+            recentPlacements={{}} // TODO: Implement recent placement tracking
+          />
+        );
+        
+      case 'classic':
+      default:
+        return (
+          <HostGameView
+            currentTurnPlayer={players.find(p => p.id === room.current_player_id) || players[0]}
+            currentSong={room.current_song}
+            roomCode={room.lobby_code}
+            players={players}
+            mysteryCardRevealed={false}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            cardPlacementResult={null}
+            transitioning={false}
+            highlightedGapIndex={null}
+            mobileViewport={null}
+          />
+        );
+    }
   } else {
     // Get current turn player
     const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
