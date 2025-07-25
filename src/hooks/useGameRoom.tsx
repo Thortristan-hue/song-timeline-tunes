@@ -106,20 +106,6 @@ export function useGameRoom() {
         onUpdate: (payload: any) => {
           console.log('REALTIME: Player updated instantly:', payload.new);
           fetchPlayersOptimized(room.id, true);
-          
-          // ENHANCED: Update current player if it's our player
-          if (currentPlayer && payload.new.id === currentPlayer.id) {
-            console.log('REALTIME: Current player timeline updated:', payload.new.timeline);
-            const updatedPlayer: Player = {
-              id: payload.new.id,
-              name: payload.new.name,
-              color: payload.new.color,
-              timelineColor: payload.new.timeline_color,
-              score: payload.new.score,
-              timeline: convertJsonToSongs(payload.new.timeline)
-            };
-            setCurrentPlayer(updatedPlayer);
-          }
         },
         onDelete: (payload: any) => {
           console.log('REALTIME: Player left instantly:', payload.old);
@@ -127,7 +113,7 @@ export function useGameRoom() {
         }
       }
     ];
-  }, [room?.id, currentPlayer?.id]);
+  }, [room?.id]);
 
   // ENHANCED: Real-time subscription with instant updates
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
@@ -293,16 +279,6 @@ export function useGameRoom() {
       setRoom(convertDatabaseRoomToGameRoom(roomData));
       setCurrentPlayer(player);
       setIsHost(false);
-      
-      // ENHANCED: If game is already playing, fetch the current player's timeline
-      if (roomData.phase === 'playing') {
-        console.log('🔄 JOIN: Game already in progress, fetching current timeline...');
-        // Refresh player data after joining
-        setTimeout(() => {
-          fetchCurrentPlayerTimeline(player.id);
-        }, 1000);
-      }
-      
       console.log('SUCCESS: Joined room successfully:', lobbyCode);
       return true;
     } catch (error) {
@@ -315,41 +291,7 @@ export function useGameRoom() {
     }
   }, [sessionId]);
 
-  // NEW: Function to fetch current player's timeline
-  const fetchCurrentPlayerTimeline = useCallback(async (playerId: string) => {
-    if (!playerId) return;
-    
-    try {
-      console.log('🔄 TIMELINE: Fetching timeline for player:', playerId);
-      
-      const { data: playerData, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', playerId)
-        .single();
-        
-      if (error) throw error;
-      
-      console.log('🔄 TIMELINE: Raw player data from database:', playerData);
-      console.log('🔄 TIMELINE: Timeline field:', playerData.timeline);
-      
-      const updatedPlayer: Player = {
-        id: playerData.id,
-        name: playerData.name,
-        color: playerData.color,
-        timelineColor: playerData.timeline_color,
-        score: playerData.score,
-        timeline: convertJsonToSongs(playerData.timeline)
-      };
-      
-      console.log('🔄 TIMELINE: Converted player timeline:', updatedPlayer.timeline);
-      setCurrentPlayer(updatedPlayer);
-      
-    } catch (error) {
-      console.error('ERROR: Failed to fetch player timeline:', error);
-    }
-  }, []);
-
+  // ENHANCED: Instant game state updates using real-time
   const updatePlayer = useCallback(async (updates: Partial<Pick<Player, 'name' | 'color'>>) => {
     if (!currentPlayer || !room) return;
 
@@ -605,13 +547,6 @@ export function useGameRoom() {
     }
   }, [room, currentPlayer]);
 
-  // ENHANCED: Expose the timeline refresh function
-  const refreshCurrentPlayerTimeline = useCallback(() => {
-    if (currentPlayer?.id) {
-      fetchCurrentPlayerTimeline(currentPlayer.id);
-    }
-  }, [currentPlayer?.id, fetchCurrentPlayerTimeline]);
-
   return {
     // State
     room,
@@ -634,7 +569,6 @@ export function useGameRoom() {
     placeCard,
     setCurrentSong,
     assignStartingCards,
-    kickPlayer: isHost ? kickPlayer : undefined,
-    refreshCurrentPlayerTimeline
+    kickPlayer: isHost ? kickPlayer : undefined
   };
 }
