@@ -52,70 +52,120 @@ export default function MobilePlayerGameView({
   // Refs for performance optimization
   const audioCleanupRef = useRef<() => void>();
 
-  // Enhanced timeline processing with better validation and debugging
-  const timelineSongs = useMemo(() => {
-    console.log('🎵 MOBILE TIMELINE: Processing player timeline:', {
-      playerId: currentPlayer?.id,
-      playerName: currentPlayer?.name,
-      rawTimeline: currentPlayer?.timeline,
-      timelineLength: currentPlayer?.timeline?.length || 0
-    });
+  // COMPLETELY REWRITTEN TIMELINE LOGIC - Multi-source approach
+  const timelineData = useMemo(() => {
+    console.log('🔍 TIMELINE DEBUG: Starting timeline analysis');
+    console.log('🔍 TIMELINE DEBUG: Current player:', currentPlayer);
+    console.log('🔍 TIMELINE DEBUG: Player timeline raw:', currentPlayer?.timeline);
+    console.log('🔍 TIMELINE DEBUG: Timeline type:', typeof currentPlayer?.timeline);
+    console.log('🔍 TIMELINE DEBUG: Timeline length:', currentPlayer?.timeline?.length);
 
-    if (!currentPlayer?.timeline) {
-      console.log('🎵 MOBILE TIMELINE: No timeline data available');
-      return [];
+    // Multi-source timeline extraction
+    let rawTimeline: any[] = [];
+    
+    // Method 1: Direct timeline access
+    if (currentPlayer?.timeline && Array.isArray(currentPlayer.timeline)) {
+      rawTimeline = currentPlayer.timeline;
+      console.log('🔍 TIMELINE DEBUG: Method 1 - Direct access successful:', rawTimeline.length);
+    }
+    
+    // Method 2: Object property access (fallback)
+    if (rawTimeline.length === 0 && currentPlayer && 'timeline' in currentPlayer) {
+      const timelineProperty = (currentPlayer as any).timeline;
+      if (Array.isArray(timelineProperty)) {
+        rawTimeline = timelineProperty;
+        console.log('🔍 TIMELINE DEBUG: Method 2 - Property access successful:', rawTimeline.length);
+      }
+    }
+    
+    // Method 3: JSON parsing fallback
+    if (rawTimeline.length === 0 && currentPlayer?.timeline) {
+      try {
+        const parsed = typeof currentPlayer.timeline === 'string' 
+          ? JSON.parse(currentPlayer.timeline) 
+          : currentPlayer.timeline;
+        if (Array.isArray(parsed)) {
+          rawTimeline = parsed;
+          console.log('🔍 TIMELINE DEBUG: Method 3 - JSON parsing successful:', rawTimeline.length);
+        }
+      } catch (e) {
+        console.log('🔍 TIMELINE DEBUG: Method 3 - JSON parsing failed:', e);
+      }
     }
 
-    const processedSongs = currentPlayer.timeline
-      .filter(song => {
-        if (!song) {
-          console.warn('🎵 MOBILE TIMELINE: Found null song in timeline');
+    // Aggressive validation and processing
+    const processedSongs = rawTimeline
+      .filter((item, index) => {
+        console.log(`🔍 TIMELINE DEBUG: Processing item ${index}:`, item);
+        
+        // Null/undefined check
+        if (!item) {
+          console.log(`🔍 TIMELINE DEBUG: Item ${index} is null/undefined`);
           return false;
         }
-        if (!song.release_year) {
-          console.warn('🎵 MOBILE TIMELINE: Song missing release year:', song);
-          return false;
-        }
-        if (!song.deezer_title || !song.deezer_artist) {
-          console.warn('🎵 MOBILE TIMELINE: Song missing title or artist:', song);
-          return false;
-        }
-        return true;
+        
+        // Basic song structure validation
+        const hasId = item.id || item.ID || item._id;
+        const hasTitle = item.deezer_title || item.title || item.name;
+        const hasArtist = item.deezer_artist || item.artist;
+        const hasYear = item.release_year || item.year || item.releaseYear;
+        
+        console.log(`🔍 TIMELINE DEBUG: Item ${index} validation:`, {
+          hasId: !!hasId,
+          hasTitle: !!hasTitle,
+          hasArtist: !!hasArtist,
+          hasYear: !!hasYear
+        });
+        
+        return hasId && hasTitle && hasArtist && hasYear;
+      })
+      .map((item, index) => {
+        // Normalize song object structure
+        const normalizedSong = {
+          id: item.id || item.ID || item._id || `song-${index}`,
+          deezer_title: item.deezer_title || item.title || item.name || 'Unknown Title',
+          deezer_artist: item.deezer_artist || item.artist || 'Unknown Artist',
+          release_year: String(item.release_year || item.year || item.releaseYear || '2000'),
+          deezer_album: item.deezer_album || item.album || 'Unknown Album',
+          genre: item.genre || 'Unknown',
+          cardColor: item.cardColor || '#3b82f6',
+          preview_url: item.preview_url || item.previewUrl || '',
+          deezer_url: item.deezer_url || item.deezerUrl || ''
+        };
+        
+        console.log(`🔍 TIMELINE DEBUG: Normalized song ${index}:`, normalizedSong);
+        return normalizedSong;
       })
       .sort((a, b) => {
-        const yearA = parseInt(a.release_year);
-        const yearB = parseInt(b.release_year);
+        const yearA = parseInt(a.release_year) || 0;
+        const yearB = parseInt(b.release_year) || 0;
         return yearA - yearB;
       });
 
-    console.log('🎵 MOBILE TIMELINE: Processed songs:', {
-      originalCount: currentPlayer.timeline.length,
-      validCount: processedSongs.length,
-      songs: processedSongs.map(s => ({
-        title: s.deezer_title,
-        artist: s.deezer_artist,
-        year: s.release_year
-      }))
-    });
-
-    return processedSongs;
-  }, [currentPlayer?.timeline, currentPlayer?.id, currentPlayer?.name]);
-
-  // Total positions available (before first, between each song, after last)
-  const totalPositions = timelineSongs.length + 1;
-
-  // Enhanced debug logging for timeline state
-  useEffect(() => {
-    console.log('🎵 MOBILE TIMELINE: State update:', {
-      hasCurrentPlayer: !!currentPlayer,
-      playerName: currentPlayer?.name,
-      timelineLength: timelineSongs.length,
+    console.log('🔍 TIMELINE DEBUG: Final processed songs:', processedSongs);
+    console.log('🔍 TIMELINE DEBUG: Total songs after processing:', processedSongs.length);
+    
+    // Calculate positions
+    const totalPositions = processedSongs.length + 1;
+    
+    const result = {
+      songs: processedSongs,
       totalPositions,
-      selectedPosition,
-      isMyTurn,
-      gameEnded
-    });
-  }, [currentPlayer, timelineSongs, totalPositions, selectedPosition, isMyTurn, gameEnded]);
+      hasCards: processedSongs.length > 0,
+      debugInfo: {
+        rawTimelineLength: rawTimeline.length,
+        processedSongsLength: processedSongs.length,
+        playerName: currentPlayer?.name,
+        playerId: currentPlayer?.id
+      }
+    };
+    
+    console.log('🔍 TIMELINE DEBUG: Final result:', result);
+    return result;
+  }, [currentPlayer, currentPlayer?.timeline, currentPlayer?.id, currentPlayer?.name]);
+
+  // Extract values for easier access
+  const { songs: timelineSongs, totalPositions, hasCards, debugInfo } = timelineData;
 
   // Handle debug menu clicks
   const handleDebugClick = () => {
@@ -221,14 +271,10 @@ export default function MobilePlayerGameView({
       setIsSubmitting(true);
       setError(null);
 
-      console.log('🎵 MOBILE PLACE CARD: Placing card at position:', selectedPosition);
       const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
         setError('Failed to place card. Please try again.');
-        console.error('🎵 MOBILE PLACE CARD: Failed to place card');
-      } else {
-        console.log('🎵 MOBILE PLACE CARD: Card placed successfully');
       }
     } catch (err) {
       console.error('Card placement error:', err);
@@ -240,7 +286,7 @@ export default function MobilePlayerGameView({
 
   // Get position description
   const getPositionDescription = (position: number) => {
-    if (timelineSongs.length === 0) return 'First card';
+    if (!hasCards) return 'First card';
     if (position === 0) return 'Before first song';
     if (position === timelineSongs.length) return 'After last song';
     
@@ -421,16 +467,18 @@ export default function MobilePlayerGameView({
                   </div>
                 </div>
                 
-                {/* Show timeline even when waiting - FORCE DISPLAY */}
+                {/* FORCE TIMELINE DISPLAY EVEN WHEN WAITING */}
                 <div className="mt-8 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25">
                   <div className="text-white text-lg font-semibold mb-4">Your Timeline</div>
-                  {timelineSongs.length > 0 ? (
+                  
+                  {/* FORCE DISPLAY WITH MULTIPLE FALLBACKS */}
+                  {hasCards ? (
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {timelineSongs.map((song, index) => {
                         const cardColor = getCardColor(song);
                         return (
                           <div
-                            key={song.id}
+                            key={`${song.id}-${index}`}
                             className="w-24 h-24 rounded-xl border border-white/20 flex-shrink-0 shadow-lg relative"
                             style={{ 
                               backgroundColor: cardColor.backgroundColor,
@@ -473,12 +521,12 @@ export default function MobilePlayerGameView({
                 </div>
               </div>
 
-              {/* Timeline display - ENHANCED FORCING */}
+              {/* FORCED TIMELINE DISPLAY */}
               <div className="flex-1 min-h-0">
                 <div className="h-full flex flex-col">
-                  {/* Timeline cards - FORCE DISPLAY EVEN IF EMPTY */}
+                  {/* Timeline cards - FORCE DISPLAY */}
                   <div className="flex-1 flex items-center justify-center overflow-x-auto pb-4">
-                    {timelineSongs.length === 0 ? (
+                    {!hasCards ? (
                       <div className="text-center text-white/60">
                         <div className="text-lg mb-2">No cards yet</div>
                         <div className="text-sm">Place your first card!</div>
@@ -514,8 +562,8 @@ export default function MobilePlayerGameView({
                         {timelineSongs.map((song, index) => {
                           const cardColor = getCardColor(song);
                           return (
-                            <React.Fragment key={song.id}>
-                              {/* Song card */}
+                            <React.Fragment key={`${song.id}-${index}`}>
+                              {/* Song card - FORCED DISPLAY */}
                               <div
                                 className={cn(
                                   "w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
@@ -567,7 +615,7 @@ export default function MobilePlayerGameView({
                   </div>
 
                   {/* Position navigation - only show if there are cards */}
-                  {timelineSongs.length > 0 && (
+                  {hasCards && (
                     <div className="flex items-center justify-between pt-3 border-t border-white/20">
                       <Button
                         onClick={() => navigatePosition('prev')}
@@ -641,10 +689,11 @@ export default function MobilePlayerGameView({
           {debugMode && (
             <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
               <div className="font-semibold mb-1">Timeline Debug:</div>
-              <div>Timeline Length: {timelineSongs.length}</div>
+              <div>Has Cards: {hasCards ? 'Yes' : 'No'}</div>
+              <div>Songs Count: {timelineSongs.length}</div>
               <div>Total Positions: {totalPositions}</div>
-              <div>Selected Position: {selectedPosition}</div>
-              <div>Player: {currentPlayer?.name}</div>
+              <div>Raw Timeline Length: {debugInfo.rawTimelineLength}</div>
+              <div>Player: {debugInfo.playerName}</div>
               <div>My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
               {currentSong && (
                 <>
