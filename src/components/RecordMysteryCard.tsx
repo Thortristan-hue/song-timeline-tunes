@@ -25,7 +25,8 @@ export function RecordMysteryCard({
       <button
         onClick={onPlayPause}
         disabled={!song?.preview_url || !onPlayPause}
-        className={`cursor-pointer group relative transition-all duration-500 hover:scale-110 active:scale-95 ${
+        data-testid="mystery-card-button"
+        className={`cursor-pointer group relative transition-all duration-500 hover:scale-110 active:scale-95 mobile-touch-optimized ${
           !song?.preview_url || !onPlayPause ? 'opacity-50 cursor-not-allowed' : ''
         }`}
         title={song?.preview_url ? 'Play/Pause Mystery Song' : 'Audio preview not available'}
