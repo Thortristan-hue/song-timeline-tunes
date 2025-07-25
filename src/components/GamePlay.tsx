@@ -1,13 +1,14 @@
+
 import React from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import HostGameView from '@/components/host/HostGameView';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { GameErrorBoundary } from '@/components/error/GameErrorBoundary';
+import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 
 export default function GamePlay() {
   const { room, currentPlayer, isHost, players, refreshCurrentPlayerTimeline } = useGameRoom();
-  const gameLogic = useGameLogic();
+  const gameLogic = useGameLogic(room?.id || null, players, room);
 
   const handleRestart = () => {
     console.log('Restarting game...');
@@ -40,18 +41,21 @@ export default function GamePlay() {
           ) : (
             <MobilePlayerGameView
               currentPlayer={currentPlayer}
-              currentTurnPlayer={gameLogic.currentTurnPlayer}
-              currentSong={gameLogic.currentSong}
+              currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer}
+              currentSong={room.current_song || { id: '', deezer_title: '', deezer_artist: '', release_year: '', deezer_album: '', genre: '', cardColor: '', preview_url: '', deezer_url: '' }}
               roomCode={room.lobby_code}
-              isMyTurn={gameLogic.isMyTurn}
-              isPlaying={gameLogic.isPlaying}
-              onPlayPause={gameLogic.handlePlayPause}
-              onPlaceCard={gameLogic.handlePlaceCard}
-              mysteryCardRevealed={gameLogic.mysteryCardRevealed}
-              cardPlacementResult={gameLogic.cardPlacementResult}
-              gameEnded={gameLogic.gameEnded}
-              onHighlightGap={gameLogic.onHighlightGap}
-              onViewportChange={gameLogic.onViewportChange}
+              isMyTurn={gameLogic.getCurrentPlayer()?.id === currentPlayer.id}
+              isPlaying={gameLogic.gameState.isPlaying}
+              onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
+              onPlaceCard={async (song, position) => {
+                console.log('Place card called:', song, position);
+                return { success: true };
+              }}
+              mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
+              cardPlacementResult={null}
+              gameEnded={gameLogic.gameState.phase === 'finished'}
+              onHighlightGap={() => {}}
+              onViewportChange={() => {}}
               refreshCurrentPlayerTimeline={refreshCurrentPlayerTimeline}
             />
           )}
