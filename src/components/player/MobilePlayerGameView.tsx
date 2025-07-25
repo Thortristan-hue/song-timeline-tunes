@@ -22,8 +22,8 @@ interface MobilePlayerGameViewProps {
   onViewportChange?: (viewportInfo: { startIndex: number; endIndex: number; totalCards: number } | null) => void;
 }
 
-// Song Card Component
-const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: boolean }) => {
+// Enhanced Song Card Component with animations
+const SongCard = React.memo(({ song, isLarge = false, isAnimating = false }: { song: Song; isLarge?: boolean; isAnimating?: boolean }) => {
   const cardStyle = useMemo(() => {
     if (!song?.deezer_artist) {
       return { backgroundColor: '#374151', borderColor: '#6B7280' };
@@ -48,12 +48,18 @@ const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: 
   return (
     <div
       className={cn(
-        "flex-shrink-0 rounded-lg border border-white/20 shadow-lg transition-all duration-200 hover:scale-105 active:scale-98",
-        isLarge ? "w-40 h-32" : "w-28 h-24"
+        "flex-shrink-0 rounded-lg border border-white/20 shadow-lg transition-all duration-300 relative overflow-hidden",
+        isLarge ? "w-40 h-32" : "w-28 h-24",
+        isAnimating ? "animate-pulse scale-105 shadow-2xl" : "hover:scale-105 active:scale-98"
       )}
       style={cardStyle}
     >
-      <div className="w-full h-full p-2 flex flex-col justify-between text-white">
+      {/* Shimmer effect for new cards */}
+      {isAnimating && (
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 animate-shimmer" />
+      )}
+      
+      <div className="w-full h-full p-2 flex flex-col justify-between text-white relative z-10">
         <div className={cn("font-semibold leading-tight line-clamp-2", isLarge ? "text-sm" : "text-xs")}>
           {truncateText(song.deezer_title || 'Unknown', isLarge ? 30 : 20)}
         </div>
@@ -62,7 +68,7 @@ const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: 
             {truncateText(song.deezer_artist || 'Unknown', isLarge ? 15 : 10)}
           </div>
           <div className={cn(
-            "bg-white/20 px-1.5 py-0.5 rounded font-bold", 
+            "bg-white/20 px-1.5 py-0.5 rounded font-bold backdrop-blur-sm", 
             isLarge ? "text-sm" : "text-xs"
           )}>
             {song.release_year || '????'}
@@ -73,7 +79,7 @@ const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: 
   );
 });
 
-// Timeline Gap Component
+// Enhanced Timeline Gap Component with better animations
 const TimelineGap = React.memo(({ 
   position, 
   isSelected, 
@@ -81,7 +87,8 @@ const TimelineGap = React.memo(({
   isMyTurn,
   totalPositions,
   beforeYear,
-  afterYear
+  afterYear,
+  isPulsing = false
 }: { 
   position: number; 
   isSelected: boolean; 
@@ -90,47 +97,65 @@ const TimelineGap = React.memo(({
   totalPositions: number;
   beforeYear?: string | null;
   afterYear?: string | null;
+  isPulsing?: boolean;
 }) => {
-  if (!isMyTurn) return null;
-
-  // Position description
+  // Position description - always compute these hooks
   const label = useMemo(() => {
     if (position === 0) return 'First';
     if (position === totalPositions - 1) return 'Last';
     return `${position + 1}`;
   }, [position, totalPositions]);
 
+  const yearRange = useMemo(() => {
+    if (beforeYear && afterYear) {
+      return `Between ${beforeYear} - ${afterYear}`;
+    } else if (beforeYear) {
+      return `After ${beforeYear}`;
+    } else if (afterYear) {
+      return `Before ${afterYear}`;
+    } else {
+      return 'Any year';
+    }
+  }, [beforeYear, afterYear]);
+
+  // Return early after hooks are called
+  if (!isMyTurn) return null;
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex-shrink-0 rounded-lg border-2 flex flex-col items-center justify-center transition-all duration-200",
-        isSelected 
-          ? "bg-green-500/30 border-green-400 text-green-100 shadow-lg scale-110 -translate-y-1" 
-          : "border-white/40 text-white/70 hover:border-white/80 hover:bg-white/10 hover:scale-110 active:scale-95"
-      )}
-      style={{
-        width: "40px",
-        minWidth: "40px",
-        height: "80px",
-        WebkitTapHighlightColor: 'transparent',
-        touchAction: 'manipulation'
-      }}
-    >
-      <span className="text-sm font-bold">{label}</span>
-      
-      {isSelected && (position > 0 || position < totalPositions - 1) && (
-        <div className="mt-1 text-xs text-green-200 text-center">
-          {beforeYear && afterYear && (
-            <div className="px-1">
-              <div>{beforeYear}</div>
-              <div>↓</div>
-              <div>{afterYear}</div>
-            </div>
-          )}
+    <div className="relative">
+      <button
+        onClick={onClick}
+        className={cn(
+          "w-12 h-24 rounded-lg border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center text-xs font-medium relative overflow-hidden",
+          isSelected
+            ? "border-yellow-400 bg-yellow-400/20 text-yellow-300 scale-110 shadow-lg shadow-yellow-400/30"
+            : "border-white/30 bg-white/5 text-white/60 hover:border-white/50 hover:bg-white/10 hover:text-white/80",
+          isPulsing && !isSelected && "animate-pulse border-blue-400 bg-blue-400/20"
+        )}
+      >
+        {/* Animated background for selected position */}
+        {isSelected && (
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 animate-pulse" />
+        )}
+        
+        <div className="relative z-10 text-center">
+          <div className="text-lg mb-1">
+            {isSelected ? '🎯' : '+'}
+          </div>
+          <div className="text-xs leading-tight">
+            {label}
+          </div>
         </div>
-      )}
-    </button>
+        
+        {/* Tooltip */}
+        {isSelected && (
+          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 animate-fade-in">
+            {yearRange}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+          </div>
+        )}
+      </button>
+    </div>
   );
 });
 
@@ -512,60 +537,73 @@ export default function MobilePlayerGameView({
 
   // Main Game View
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex flex-col relative overflow-hidden">
       
-      {/* Enhanced Header */}
-      <div className="flex-shrink-0 p-3 border-b border-white/10">
-        <div className="text-center">
-          <h1 className="text-xl font-bold text-white">
-            {currentPlayer.name}
-          </h1>
-          
-          <div className="flex justify-center items-center gap-3 mt-2">
-            <div className="text-white/60 text-sm">
-              Score: {currentPlayer.score || 0}
+      {/* Enhanced Background Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-green-500/5 rounded-full blur-xl animate-ping" style={{ animationDuration: '4000ms' }} />
+      </div>
+
+      {/* Enhanced Header with Progress */}
+      <div className="flex-shrink-0 p-4 border-b border-white/10 relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+              <Music className="h-5 w-5 text-white" />
             </div>
-            
-            <div className="h-4 w-px bg-white/20"></div>
-            
-            <div className="text-white/60 text-sm">
+            <div>
+              <h1 className="text-lg font-bold text-white">
+                {currentPlayer.name}
+              </h1>
+              <div className="text-xs text-white/60">Timeliner Mode</div>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <div className="text-sm text-white/80 mb-1">
               Room: {roomCode}
             </div>
-          </div>
-
-          {/* Turn Status Indicator */}
-          <div className={cn(
-            "mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-300",
-            isMyTurn 
-              ? "bg-green-500/20 border-green-400/30 text-green-300" 
-              : "bg-blue-500/20 border-blue-400/30 text-blue-300"
-          )}>
-            {isMyTurn ? (
-              <>
-                <Target className="w-4 h-4" />
-                Your Turn - Place the Mystery Card
-              </>
-            ) : (
-              <>
-                <Clock className="w-4 h-4" />
-                {currentTurnPlayer.name}'s Turn
-              </>
-            )}
-          </div>
-          
-          <div className="mt-3">
-            <div className={cn(
-              "inline-block px-4 py-1.5 rounded-full text-sm font-semibold border",
-              gameEnded 
-                ? 'bg-gray-500/20 border-gray-400 text-gray-300'
-                : isMyTurn 
-                  ? 'bg-green-500/20 border-green-400 text-green-300 animate-pulse' 
-                  : 'bg-blue-500/20 border-blue-400 text-blue-300'
-            )}>
-              {gameEnded ? 'Game Over' : 
-               isMyTurn ? '🎯 Your Turn' : `⏳ ${currentTurnPlayer.name}'s Turn`}
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-yellow-400" />
+              <span className="text-sm font-bold text-yellow-400">
+                {currentPlayer.timeline.length} cards
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Timeline Progress Indicator */}
+        <div className="bg-white/10 rounded-full p-1 mb-2">
+          <div className="flex items-center justify-between text-xs text-white/70 mb-1 px-2">
+            <span>Timeline Progress</span>
+            <span>{currentPlayer.timeline.length}/10 songs</span>
+          </div>
+          <Progress 
+            value={(currentPlayer.timeline.length / 10) * 100} 
+            className="h-2 bg-white/10"
+          />
+        </div>
+
+        {/* Turn Indicator */}
+        <div className={cn(
+          "text-center py-2 px-4 rounded-lg text-sm font-medium transition-all duration-300",
+          isMyTurn 
+            ? "bg-green-500/20 border border-green-400/30 text-green-300 animate-pulse" 
+            : "bg-white/5 border border-white/20 text-white/60"
+        )}>
+          {isMyTurn ? (
+            <div className="flex items-center justify-center gap-2">
+              <Clock className="h-4 w-4 animate-spin" />
+              Your Turn - Place the Mystery Card
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              {currentTurnPlayer.name}'s Turn
+            </div>
+          )}
         </div>
       </div>
 
@@ -599,27 +637,7 @@ export default function MobilePlayerGameView({
       </div>
 
       {/* Timeline Section */}
-      <div className="flex-1 flex flex-col relative">
-        {/* Timeline Title and Info */}
-        <div className="p-2 text-center">
-          <h2 className="text-base font-bold text-white flex items-center justify-center gap-2">
-            <span>🎵 Your Timeline</span>
-            <span className="text-white/70 text-sm">({playerTimeline.length} songs)</span>
-          </h2>
-          
-          {/* Simple Progress Bar */}
-          <div className="mt-2 max-w-xs mx-auto">
-            <div className="flex items-center justify-between text-xs text-white/60 mb-1">
-              <span>Progress</span>
-              <span>{playerTimeline.length}/10 songs</span>
-            </div>
-            <Progress 
-              value={(playerTimeline.length / 10) * 100} 
-              className="h-2 bg-white/10"
-            />
-          </div>
-        </div>
-        
+      <div className="flex-1 flex flex-col relative">        
         {isMyTurn && (
           <div className="px-3 mb-1 text-center">
             <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg py-2 flex items-center justify-center gap-2 text-blue-200">
