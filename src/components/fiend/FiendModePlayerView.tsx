@@ -476,7 +476,7 @@ export function FiendModePlayerView({
         </Card>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes audioBar {
           0% { height: 8px; }
           100% { height: 24px; }

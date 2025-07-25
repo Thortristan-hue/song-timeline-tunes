@@ -118,10 +118,10 @@ export class MockAudio {
   paused = true;
   volume = 1;
   
-  play = jest.fn(() => Promise.resolve());
-  pause = jest.fn();
-  load = jest.fn();
+  play = () => Promise.resolve();
+  pause = () => {};
+  load = () => {};
   
-  addEventListener = jest.fn();
-  removeEventListener = jest.fn();
+  addEventListener = () => {};
+  removeEventListener = () => {};
 }
