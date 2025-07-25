@@ -5,9 +5,35 @@ import HostGameView from '@/components/host/HostGameView';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
+import { GameRoom, Player, Song } from '@/types/game';
+import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 
-export default function GamePlay() {
-  const { room, currentPlayer, isHost, players, refreshCurrentPlayerTimeline } = useGameRoom();
+interface GamePlayProps {
+  room: GameRoom;
+  players: Player[];
+  currentPlayer: Player | null;
+  isHost: boolean;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean; error?: string; correct?: boolean }>;
+  onSetCurrentSong: (song: Song) => void;
+  customSongs: Song[];
+  connectionStatus: ConnectionStatus;
+  onReconnect: () => void;
+  onReplayGame: () => void;
+}
+
+export default function GamePlay({
+  room,
+  players,
+  currentPlayer,
+  isHost,
+  onPlaceCard,
+  onSetCurrentSong,
+  customSongs,
+  connectionStatus,
+  onReconnect,
+  onReplayGame
+}: GamePlayProps) {
+  const { refreshCurrentPlayerTimeline } = useGameRoom();
   const gameLogic = useGameLogic(room?.id || null, players, room);
 
   const handleRestart = () => {
@@ -47,10 +73,7 @@ export default function GamePlay() {
               isMyTurn={gameLogic.getCurrentPlayer()?.id === currentPlayer.id}
               isPlaying={gameLogic.gameState.isPlaying}
               onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
-              onPlaceCard={async (song, position) => {
-                console.log('Place card called:', song, position);
-                return { success: true };
-              }}
+              onPlaceCard={onPlaceCard}
               mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
               cardPlacementResult={null}
               gameEnded={gameLogic.gameState.phase === 'finished'}
