@@ -59,9 +59,7 @@ export default function HostGameView({
 
       {/* Current Player Timeline */}
       <HostCurrentPlayerTimeline
-        currentPlayer={currentTurnPlayer}
-        timeline={currentPlayerTimeline}
-        gameLogic={gameLogic}
+        currentTurnPlayer={currentTurnPlayer}
       />
 
       {/* Cassette Players Display */}
