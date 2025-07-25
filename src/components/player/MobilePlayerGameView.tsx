@@ -22,6 +22,85 @@ interface MobilePlayerGameViewProps {
   onViewportChange?: (viewportInfo: { startIndex: number; endIndex: number; totalCards: number } | null) => void;
 }
 
+// Memoized position description component for better performance
+const PositionDescription = React.memo(({ position, timeline }: { position: number; timeline: Song[] }) => {
+  const description = useMemo(() => {
+    if (timeline.length === 0) return 'First card';
+    if (position === 0) return 'Before first song';
+    if (position === timeline.length) return 'After last song';
+    
+    const beforeSong = timeline[position - 1];
+    const afterSong = timeline[position];
+    return `Between ${beforeSong?.release_year || '????'} and ${afterSong?.release_year || '????'}`;
+  }, [position, timeline]);
+
+  return (
+    <div className="text-blue-200 text-sm font-medium">
+      📍 {description}
+    </div>
+  );
+});
+
+// Memoized song card component for better performance
+const TimelineSongCard = React.memo(({ 
+  song, 
+  index, 
+  isError = false 
+}: { 
+  song?: Song; 
+  index: number; 
+  isError?: boolean;
+}) => {
+  const cardStyle = useMemo(() => {
+    if (isError || !song?.deezer_artist) {
+      return {
+        WebkitTapHighlightColor: 'transparent',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: 'translateZ(0)'
+      };
+    }
+    
+    return {
+      ...getArtistColor(song.deezer_artist),
+      WebkitTapHighlightColor: 'transparent',
+      WebkitBackfaceVisibility: 'hidden',
+      transform: 'translateZ(0)'
+    };
+  }, [song?.deezer_artist, isError]);
+
+  if (isError || !song) {
+    return (
+      <div className="flex-shrink-0 w-36 h-28 rounded-xl border border-red-400/50 bg-red-900/30 overflow-hidden mobile-touch-optimized">
+        <div className="w-full h-full p-3 flex flex-col justify-center items-center">
+          <div className="text-red-300 text-lg">⚠️</div>
+          <div className="text-red-300 text-xs">Invalid Song</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="flex-shrink-0 w-36 h-28 rounded-xl border border-white/20 overflow-hidden transition-all duration-300 shadow-lg mobile-touch-optimized"
+      style={cardStyle}
+    >
+      <div className="w-full h-full p-3 flex flex-col justify-between">
+        <div className="text-white text-xs font-bold leading-tight">
+          {truncateText(song.deezer_title || 'Unknown Song', 18)}
+        </div>
+        <div className="flex justify-between items-end">
+          <div className="text-white/80 text-xs">
+            {song.deezer_artist ? truncateText(song.deezer_artist, 12) : 'Unknown'}
+          </div>
+          <div className="text-white font-bold text-sm bg-white/20 px-2 py-1 rounded">
+            {song.release_year || '????'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function MobilePlayerGameView({
   currentPlayer,
   currentTurnPlayer,
@@ -128,7 +207,7 @@ export default function MobilePlayerGameView({
     return validSongs;
   }, [currentPlayer]);
 
-  // Universal audio control
+  // Universal audio control with improved feedback
   const universalPlayPause = useCallback(async () => {
     if (!isValidCurrentSong) {
       console.warn('📱 UNIVERSAL CONTROL: Cannot control audio - invalid song data');
@@ -138,13 +217,32 @@ export default function MobilePlayerGameView({
 
     console.log('📱 UNIVERSAL CONTROL: Triggering play/pause on host for:', currentSong.deezer_title);
     
+    // Provide immediate visual feedback
+    const button = document.querySelector('[data-testid="mystery-card-button"]');
+    if (button) {
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        button.style.transform = 'scale(1)';
+      }, 150);
+    }
+    
     try {
       await onPlayPause();
       console.log('📱 UNIVERSAL CONTROL: Command sent successfully');
+      
+      // Haptic feedback for supported devices
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
     } catch (error) {
       console.error('📱 UNIVERSAL CONTROL: Error triggering play/pause:', error);
       setError('Failed to control host audio. Check your connection.');
       setTimeout(() => setError(null), 3000);
+      
+      // Error vibration pattern
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
     }
   }, [onPlayPause, currentSong, isValidCurrentSong]);
 
@@ -197,35 +295,53 @@ export default function MobilePlayerGameView({
     }
   }, [selectedPosition, totalPositions]);
 
-  // Get position description
-  const getPositionDescription = (position: number) => {
-    if (playerTimeline.length === 0) return 'First card';
-    if (position === 0) return 'Before first song';
-    if (position === playerTimeline.length) return 'After last song';
-    
-    const beforeSong = playerTimeline[position - 1];
-    const afterSong = playerTimeline[position];
-    return `Between ${beforeSong?.release_year || '????'} and ${afterSong?.release_year || '????'}`;
-  };
-
-  // Touch handling
+  // Enhanced touch handling for better Firefox iOS compatibility
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMyTurn || gameEnded) return;
-    setTouchStartX(e.touches[0].clientX);
+    
+    // Prevent default to avoid Firefox iOS issues
+    e.preventDefault();
+    
+    // Store multiple touch points for better accuracy
+    const touch = e.touches[0];
+    setTouchStartX(touch.clientX);
+    
+    // Add visual feedback
+    const target = e.currentTarget;
+    target.style.transform = 'scale(0.98)';
+    target.style.transition = 'transform 0.1s ease-out';
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStartX || !isMyTurn || gameEnded) return;
     
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchDiff = touchStartX - touchEndX;
-    const minSwipeDistance = 50;
+    // Remove visual feedback
+    const target = e.currentTarget;
+    target.style.transform = 'scale(1)';
     
+    const touch = e.changedTouches[0];
+    const touchEndX = touch.clientX;
+    const touchDiff = touchStartX - touchEndX;
+    const minSwipeDistance = 60; // Increased for better Firefox iOS detection
+    
+    // Enhanced swipe detection with velocity consideration
     if (Math.abs(touchDiff) > minSwipeDistance) {
-      if (touchDiff > 0 && selectedPosition < totalPositions - 1) {
-        setSelectedPosition(prev => prev + 1);
-      } else if (touchDiff < 0 && selectedPosition > 0) {
-        setSelectedPosition(prev => prev - 1);
+      // Prevent accidental swipes
+      const swipeVelocity = Math.abs(touchDiff) / 100; // Simple velocity calculation
+      
+      if (swipeVelocity > 0.6) { // Minimum velocity threshold
+        if (touchDiff > 0 && selectedPosition < totalPositions - 1) {
+          setSelectedPosition(prev => prev + 1);
+          // Haptic feedback simulation for supported devices
+          if ('vibrate' in navigator) {
+            navigator.vibrate(10);
+          }
+        } else if (touchDiff < 0 && selectedPosition > 0) {
+          setSelectedPosition(prev => prev - 1);
+          if ('vibrate' in navigator) {
+            navigator.vibrate(10);
+          }
+        }
       }
     }
     
@@ -454,23 +570,26 @@ export default function MobilePlayerGameView({
               
               {isMyTurn && (
                 <div className="mt-3 bg-blue-500/20 border border-blue-400/30 rounded-lg px-3 py-2">
-                  <div className="text-blue-200 text-sm font-medium">
-                    📍 {getPositionDescription(selectedPosition)}
-                  </div>
+                  <PositionDescription position={selectedPosition} timeline={playerTimeline} />
                 </div>
               )}
             </div>
 
-            {/* Timeline Display */}
+            {/* Timeline Display with enhanced mobile optimization */}
             <div className="flex-1 min-h-0">
               {playerTimeline.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-white/60 bg-white/5 rounded-xl p-6 border border-white/10">
+                  <div className="text-center text-white/60 bg-white/5 rounded-xl p-6 border border-white/10 mobile-touch-optimized">
                     <div className="text-4xl mb-3">🎼</div>
                     <div className="text-lg mb-2 font-semibold">Empty Timeline</div>
                     <div className="text-sm">
                       {isMyTurn ? 'Place your first song to get started!' : 'Waiting for songs to be added...'}
                     </div>
+                    {isMyTurn && (
+                      <div className="mt-4 text-xs text-white/40 animate-mobile-scroll-hint">
+                        👆 Tap gap indicators above to place songs
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -481,7 +600,13 @@ export default function MobilePlayerGameView({
                   style={{ 
                     scrollbarWidth: 'none', 
                     msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch'
+                    WebkitOverflowScrolling: 'touch',
+                    // Enhanced Firefox iOS compatibility
+                    overflowScrolling: 'touch',
+                    // Prevent scroll chaining and improve performance
+                    overscrollBehavior: 'contain',
+                    // Smooth momentum scrolling
+                    scrollBehavior: 'smooth'
                   }}
                 >
                   <div className="flex items-center gap-3 min-w-max">
@@ -493,53 +618,34 @@ export default function MobilePlayerGameView({
                       return (
                         <div key={index} className="flex items-center gap-3">
                           
-                          {/* Gap indicator for placement */}
+                          {/* Gap indicator for placement - Enhanced for mobile touch */}
                           {isMyTurn && (
                             <div 
                               className={cn(
-                                "w-12 h-24 rounded-xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer flex-shrink-0 text-sm font-bold",
+                                "min-w-[44px] w-16 h-28 rounded-xl border-2 flex items-center justify-center transition-all duration-300 cursor-pointer flex-shrink-0 text-sm font-bold touch-manipulation active:scale-95",
                                 selectedPosition === index 
-                                  ? "bg-gradient-to-br from-green-400/30 to-green-500/30 border-green-300 text-green-100 scale-110 animate-pulse shadow-lg shadow-green-400/30" 
-                                  : "border-white/30 text-white/50 hover:border-white/50 hover:bg-white/5"
+                                  ? "bg-gradient-to-br from-green-400/40 to-green-500/40 border-green-300 text-green-100 scale-110 animate-pulse shadow-lg shadow-green-400/30 ring-2 ring-green-300/50" 
+                                  : "border-white/40 text-white/60 hover:border-white/60 hover:bg-white/10 active:bg-white/20"
                               )}
                               onClick={() => setSelectedPosition(index)}
+                              style={{
+                                WebkitTapHighlightColor: 'transparent',
+                                WebkitTouchCallout: 'none',
+                                WebkitUserSelect: 'none',
+                                userSelect: 'none'
+                              }}
                             >
                               {index + 1}
                             </div>
                           )}
                           
-                          {/* Song card */}
-                          {!isLastPosition && songAtPosition && (
-                            <div 
-                              className={cn(
-                                "flex-shrink-0 w-32 h-24 rounded-xl border border-white/20 overflow-hidden transition-all duration-300 shadow-lg",
-                                songAtPosition.deezer_artist ? getArtistColor(songAtPosition.deezer_artist) : "bg-gray-600"
-                              )}
-                            >
-                              <div className="w-full h-full p-3 flex flex-col justify-between">
-                                <div className="text-white text-xs font-bold leading-tight">
-                                  {truncateText(songAtPosition.deezer_title || 'Unknown Song', 18)}
-                                </div>
-                                <div className="flex justify-between items-end">
-                                  <div className="text-white/80 text-xs">
-                                    {songAtPosition.deezer_artist ? truncateText(songAtPosition.deezer_artist, 12) : 'Unknown'}
-                                  </div>
-                                  <div className="text-white font-bold text-sm bg-white/20 px-2 py-1 rounded">
-                                    {songAtPosition.release_year || '????'}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Error card for invalid songs */}
-                          {!isLastPosition && !songAtPosition && (
-                            <div className="flex-shrink-0 w-32 h-24 rounded-xl border border-red-400/50 bg-red-900/30 overflow-hidden">
-                              <div className="w-full h-full p-3 flex flex-col justify-center items-center">
-                                <div className="text-red-300 text-lg">⚠️</div>
-                                <div className="text-red-300 text-xs">Invalid Song</div>
-                              </div>
-                            </div>
+                          {/* Song card using memoized component */}
+                          {!isLastPosition && (
+                            <TimelineSongCard 
+                              song={songAtPosition} 
+                              index={index} 
+                              isError={!songAtPosition}
+                            />
                           )}
                         </div>
                       );
@@ -556,42 +662,55 @@ export default function MobilePlayerGameView({
           <div className="flex-shrink-0 p-4 border-t border-white/10">
             <div className="space-y-4">
               
-              {/* Position Navigation */}
+              {/* Position Navigation - Enhanced for mobile */}
               <div className="flex items-center justify-center gap-4">
                 <Button
                   onClick={() => navigatePosition('prev')}
                   disabled={selectedPosition === 0}
-                  className="bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-30 px-4 py-2 rounded-xl"
+                  className="bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-30 px-6 py-3 rounded-xl min-w-[44px] min-h-[44px] touch-manipulation active:scale-95 transition-transform duration-150"
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none'
+                  }}
                 >
                   <ChevronLeft className="w-5 h-5" />
                   Prev
                 </Button>
                 
-                <div className="text-center text-white/80 text-sm min-w-[100px]">
+                <div className="text-center text-white/80 text-sm min-w-[100px] font-medium">
                   {selectedPosition + 1} / {totalPositions}
                 </div>
                 
                 <Button
                   onClick={() => navigatePosition('next')}
                   disabled={selectedPosition === totalPositions - 1}
-                  className="bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-30 px-4 py-2 rounded-xl"
+                  className="bg-white/10 border border-white/20 text-white hover:bg-white/20 disabled:opacity-30 px-6 py-3 rounded-xl min-w-[44px] min-h-[44px] touch-manipulation active:scale-95 transition-transform duration-150"
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none'
+                  }}
                 >
                   Next
                   <ChevronRight className="w-5 h-5" />
                 </Button>
               </div>
               
-              {/* Place Card Button */}
+              {/* Place Card Button - Enhanced for mobile */}
               <div className="flex justify-center">
                 <Button
                   onClick={handlePlaceCard}
                   disabled={isSubmitting || !currentSong}
                   className={cn(
-                    "px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 min-w-[250px]",
+                    "px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 min-w-[280px] min-h-[56px] touch-manipulation active:scale-95",
                     isSubmitting
                       ? "bg-gray-600 text-gray-300"
-                      : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white shadow-lg"
+                      : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white shadow-lg hover:shadow-xl"
                   )}
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitTouchCallout: 'none',
+                    transform: 'translateZ(0)' // Hardware acceleration
+                  }}
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">

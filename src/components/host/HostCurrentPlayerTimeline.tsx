@@ -140,9 +140,9 @@ export function HostCurrentPlayerTimeline({
             
             {safeCurrentPlayer.timeline.map((song, index) => (
               <React.Fragment key={`${song.deezer_title}-${index}`}>
-                {/* Song card with enhanced animations */}
+                {/* Song card with enhanced animations and mobile optimization */}
                 <div
-                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 mobile-touch-optimized ${
                     newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
                   } ${
                     cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
@@ -161,7 +161,11 @@ export function HostCurrentPlayerTimeline({
                     animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
                                    timelineState === 'exiting' ? `${(safeCurrentPlayer.timeline.length - index) * 0.05}s` : 
                                    '0s',
-                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
+                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s',
+                    // Enhanced performance for mobile
+                    transform: 'translateZ(0)',
+                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'hidden'
                   }}
                 >
                   {/* Mobile viewport indicator badge */}
