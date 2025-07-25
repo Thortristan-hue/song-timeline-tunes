@@ -10,6 +10,8 @@ import { audioManager } from '@/services/AudioManager';
 // Import game mode components with correct syntax
 import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import { FiendModePlayerView } from '@/components/fiend/FiendModePlayerView';
+import { SprintModePlayerView } from '@/components/sprint/SprintModePlayerView';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
 import MobileGameOverScreen from '@/components/player/MobileGameOverScreen';
 
@@ -230,20 +232,80 @@ export function GamePlay({
     const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
     const isMyTurn = currentPlayer?.id === room.current_player_id;
 
-    return (
-      <MobilePlayerGameView
-        currentPlayer={currentPlayer!}
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={room.current_song!}
-        roomCode={room.lobby_code}
-        isMyTurn={isMyTurn}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onPlaceCard={handlePlaceCard}
-        mysteryCardRevealed={false}
-        cardPlacementResult={null}
-        gameEnded={false}
-      />
-    );
+    // Route to appropriate game mode component based on room.gamemode
+    switch (room.gamemode) {
+      case 'fiend':
+        return (
+          <FiendModePlayerView
+            currentPlayer={currentPlayer!}
+            currentSong={room.current_song!}
+            roomCode={room.lobby_code}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onSubmitGuess={async (year: number) => {
+              // Implementation for Fiend mode year guessing
+              const actualYear = parseInt(room.current_song?.release_year || '2024');
+              const yearDifference = Math.abs(year - actualYear);
+              const accuracy = Math.max(0, 100 - (yearDifference * 2));
+              const points = Math.round(accuracy);
+              
+              try {
+                // Update player score (add points to current score)
+                const newScore = (currentPlayer!.score || 0) + points;
+                await GameService.updatePlayerScore(room.id, currentPlayer!.id, newScore);
+                return { success: true, accuracy, points };
+              } catch (error) {
+                console.error('Failed to submit Fiend mode guess:', error);
+                return { success: false };
+              }
+            }}
+            gameEnded={false}
+            roundNumber={room.current_turn || 1}
+            totalRounds={room.gamemode_settings?.rounds || 5}
+            timeLeft={30} // TODO: Implement actual timer logic
+          />
+        );
+        
+      case 'sprint':
+        return (
+          <SprintModePlayerView
+            currentPlayer={currentPlayer!}
+            currentSong={room.current_song!}
+            roomCode={room.lobby_code}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={async (song: Song, position: number) => {
+              const result = await handlePlaceCard(song, position);
+              return { 
+                success: result.success, 
+                correct: result.success // Simplified for now - actual logic would determine correctness
+              };
+            }}
+            gameEnded={false}
+            targetCards={room.gamemode_settings?.targetCards || 10}
+            timeLeft={30} // TODO: Implement actual timer logic
+            isInTimeout={false} // TODO: Implement timeout logic
+            timeoutRemaining={0}
+          />
+        );
+        
+      case 'classic':
+      default:
+        return (
+          <MobilePlayerGameView
+            currentPlayer={currentPlayer!}
+            currentTurnPlayer={currentTurnPlayer}
+            currentSong={room.current_song!}
+            roomCode={room.lobby_code}
+            isMyTurn={isMyTurn}
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onPlaceCard={handlePlaceCard}
+            mysteryCardRevealed={false}
+            cardPlacementResult={null}
+            gameEnded={false}
+          />
+        );
+    }
   }
 }
