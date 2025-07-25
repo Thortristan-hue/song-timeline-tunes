@@ -4,7 +4,6 @@ import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, Volume2, MapPin }
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -46,17 +45,12 @@ const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: 
   }
 
   return (
-    <motion.div
+    <div
       className={cn(
-        "flex-shrink-0 rounded-lg border border-white/20 shadow-lg",
+        "flex-shrink-0 rounded-lg border border-white/20 shadow-lg transition-all duration-200 hover:scale-105 active:scale-98",
         isLarge ? "w-40 h-32" : "w-28 h-24"
       )}
       style={cardStyle}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.98 }}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
     >
       <div className="w-full h-full p-2 flex flex-col justify-between text-white">
         <div className={cn("font-semibold leading-tight line-clamp-2", isLarge ? "text-sm" : "text-xs")}>
@@ -74,7 +68,7 @@ const SongCard = React.memo(({ song, isLarge = false }: { song: Song; isLarge?: 
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 
@@ -106,13 +100,13 @@ const TimelineGap = React.memo(({
   }, [position, totalPositions]);
 
   return (
-    <motion.button
+    <button
       onClick={onClick}
       className={cn(
-        "flex-shrink-0 rounded-lg border-2 flex flex-col items-center justify-center transition-colors",
+        "flex-shrink-0 rounded-lg border-2 flex flex-col items-center justify-center transition-all duration-200",
         isSelected 
-          ? "bg-green-500/30 border-green-400 text-green-100 shadow-lg" 
-          : "border-white/40 text-white/70 hover:border-white/80 hover:bg-white/10"
+          ? "bg-green-500/30 border-green-400 text-green-100 shadow-lg scale-110 -translate-y-1" 
+          : "border-white/40 text-white/70 hover:border-white/80 hover:bg-white/10 hover:scale-110 active:scale-95"
       )}
       style={{
         width: "40px",
@@ -121,9 +115,6 @@ const TimelineGap = React.memo(({
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'manipulation'
       }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
-      animate={isSelected ? { y: -5 } : { y: 0 }}
     >
       <span className="text-sm font-bold">{label}</span>
       
@@ -138,16 +129,9 @@ const TimelineGap = React.memo(({
           )}
         </div>
       )}
-    </motion.button>
+    </button>
   );
 });
-
-// Year Marker Component
-const YearMarker = ({ year }: { year?: string | null }) => (
-  <div className="text-xs text-white/60 bg-white/10 px-2 py-1 rounded-full">
-    {year || '????'}
-  </div>
-);
 
 export default function MobilePlayerGameView({
   currentPlayer,
@@ -185,22 +169,46 @@ export default function MobilePlayerGameView({
     return currentSong && currentSong.id && currentSong.deezer_title;
   }, [currentSong]);
 
-  // Timeline Processing
+  // Timeline Processing - FIXED: Ensure player timeline is properly displayed
   const playerTimeline = useMemo(() => {
+    console.log('Processing player timeline:', currentPlayer?.timeline);
+    
     if (!currentPlayer?.timeline || !Array.isArray(currentPlayer.timeline)) {
+      console.log('No timeline found or not an array');
       return [];
     }
 
-    return currentPlayer.timeline
-      .filter(song => song && song.id && song.deezer_title)
+    const filteredTimeline = currentPlayer.timeline
+      .filter(song => {
+        const isValid = song && song.id && song.deezer_title;
+        if (!isValid) {
+          console.log('Filtering out invalid song:', song);
+        }
+        return isValid;
+      })
       .sort((a, b) => {
         const yearA = parseInt(a.release_year || '2024');
         const yearB = parseInt(b.release_year || '2024');
         return yearA - yearB;
       });
+
+    console.log('Filtered and sorted timeline:', filteredTimeline);
+    return filteredTimeline;
   }, [currentPlayer?.timeline]);
 
   const totalPositions = playerTimeline.length + 1;
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Mobile Player View Debug:', {
+      currentPlayer: currentPlayer?.name,
+      playerTimeline: playerTimeline.length,
+      currentSong: currentSong?.deezer_title,
+      isMyTurn,
+      selectedPosition,
+      totalPositions
+    });
+  }, [currentPlayer, playerTimeline, currentSong, isMyTurn, selectedPosition, totalPositions]);
 
   // Error Handling
   const showError = useCallback((message: string, duration = 3000) => {
@@ -462,36 +470,16 @@ export default function MobilePlayerGameView({
           ? 'bg-gradient-to-br from-green-600/90 to-green-900/90 backdrop-blur-sm' 
           : 'bg-gradient-to-br from-red-600/90 to-red-900/90 backdrop-blur-sm'
       )}>
-        <motion.div 
-          className="text-center space-y-6 max-w-sm w-full"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        >
-          <motion.div 
-            className="text-6xl mb-4 text-white"
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3, type: "spring" }}
-          >
+        <div className="text-center space-y-6 max-w-sm w-full animate-fade-in">
+          <div className="text-6xl mb-4 text-white animate-scale-in">
             {isCorrect ? '✓' : '✗'}
-          </motion.div>
+          </div>
           
-          <motion.div 
-            className="text-3xl font-bold text-white"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
+          <div className="text-3xl font-bold text-white">
             {isCorrect ? 'Correct!' : 'Incorrect'}
-          </motion.div>
+          </div>
           
-          <motion.div 
-            className="bg-white/95 rounded-2xl p-6 shadow-xl"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
+          <div className="bg-white/95 rounded-2xl p-6 shadow-xl">
             <div className="text-lg font-bold text-gray-900 mb-2">
               {cardPlacementResult.song.deezer_title}
             </div>
@@ -504,14 +492,9 @@ export default function MobilePlayerGameView({
             )}>
               {cardPlacementResult.song.release_year}
             </div>
-          </motion.div>
+          </div>
           
-          <motion.div 
-            className="text-white text-lg"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.6 }}
-          >
+          <div className="text-white text-lg">
             {isCorrect ? (
               <div>
                 <div className="font-bold">Perfect!</div>
@@ -520,8 +503,8 @@ export default function MobilePlayerGameView({
             ) : (
               <div className="font-bold">Better luck next time!</div>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -574,11 +557,7 @@ export default function MobilePlayerGameView({
           </div>
         </div>
         
-        <motion.div 
-          className="transform"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
+        <div className="transform transition-transform duration-200 hover:scale-105 active:scale-98">
           <RecordMysteryCard 
             song={currentSong}
             isRevealed={mysteryCardRevealed}
@@ -586,7 +565,7 @@ export default function MobilePlayerGameView({
             onPlayPause={handleAudioControl}
             className="w-48 h-48"
           />
-        </motion.div>
+        </div>
 
         {isMyTurn && (
           <div className="text-center mt-2 text-white/70 text-sm flex items-center justify-center">
@@ -635,20 +614,13 @@ export default function MobilePlayerGameView({
             </div>
           ) : (
             <div ref={timelineContainerRef} className="flex-1 relative flex flex-col overflow-hidden">
-              <AnimatePresence>
-                {isMyTurn && (
-                  <motion.div
-                    className="absolute left-0 right-0 top-1 z-10 pointer-events-none flex items-center justify-center"
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                  >
-                    <div className="bg-green-500/20 text-green-300 border border-green-400/30 rounded-full px-3 py-1 text-xs font-medium shadow-lg">
-                      Swipe timeline or use arrows to navigate
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {isMyTurn && (
+                <div className="absolute left-0 right-0 top-1 z-10 pointer-events-none flex items-center justify-center">
+                  <div className="bg-green-500/20 text-green-300 border border-green-400/30 rounded-full px-3 py-1 text-xs font-medium shadow-lg animate-fade-in">
+                    Swipe timeline or use arrows to navigate
+                  </div>
+                </div>
+              )}
               
               {/* Timeline Scroll View */}
               <div 
@@ -788,20 +760,13 @@ export default function MobilePlayerGameView({
       </div>
 
       {/* Error Display */}
-      <AnimatePresence>
-        {error && (
-          <motion.div 
-            className="fixed bottom-4 left-4 right-4 z-60"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-          >
-            <div className="bg-red-500/90 backdrop-blur-sm text-white text-center py-3 px-4 rounded-lg border border-red-400/50 shadow-lg">
-              {error}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {error && (
+        <div className="fixed bottom-4 left-4 right-4 z-60">
+          <div className="bg-red-500/90 backdrop-blur-sm text-white text-center py-3 px-4 rounded-lg border border-red-400/50 shadow-lg animate-fade-in">
+            {error}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
