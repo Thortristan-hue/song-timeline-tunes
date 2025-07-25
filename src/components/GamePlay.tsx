@@ -5,6 +5,7 @@ import { GameService } from '@/services/gameService';
 import { useToast } from '@/components/ui/use-toast';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { audioManager } from '@/services/AudioManager';
 
 // Import game mode components with correct syntax
 import { HostGameView } from '@/components/HostVisuals';
@@ -17,7 +18,7 @@ interface GamePlayProps {
   players: Player[];
   currentPlayer: Player | null;
   isHost: boolean;
-  onPlaceCard: (song: Song, position: number) => Promise<any>;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean; error?: string }>;
   onSetCurrentSong: (song: Song) => Promise<void>;
   customSongs?: Song[];
   connectionStatus: ConnectionStatus;
@@ -40,6 +41,7 @@ export function GamePlay({
   const { toast } = useToast();
   const [gameInitialized, setGameInitialized] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Initialize game logic
   const { gameState, getCurrentPlayer } = useGameLogic(
@@ -47,6 +49,33 @@ export function GamePlay({
     players,
     room
   );
+
+  // Initialize universal audio controller
+  useEffect(() => {
+    if (room?.id) {
+      audioManager.initialize(room.id, isHost);
+      
+      // Subscribe to audio state changes
+      const handleAudioStateChange = (playing: boolean, song?: Song) => {
+        setIsPlaying(playing);
+        console.log(`🎵 UNIVERSAL CONTROLLER: Audio state changed - playing: ${playing}, song: ${song?.deezer_title}`);
+      };
+
+      audioManager.addPlayStateListener(handleAudioStateChange);
+
+      return () => {
+        audioManager.removePlayStateListener(handleAudioStateChange);
+      };
+    }
+  }, [room?.id, isHost]);
+
+  // Universal audio control handler
+  const handlePlayPause = useCallback(async () => {
+    if (room?.current_song) {
+      console.log('🎵 UNIVERSAL CONTROLLER: Play/pause triggered for:', room.current_song.deezer_title);
+      await audioManager.togglePlayPause(room.current_song);
+    }
+  }, [room?.current_song]);
 
   // Check if game has proper data
   const hasGameData = useMemo(() => {
@@ -188,8 +217,8 @@ export function GamePlay({
         roomCode={room.lobby_code}
         players={players}
         mysteryCardRevealed={false}
-        isPlaying={false}
-        onPlayPause={() => {}}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
         cardPlacementResult={null}
         transitioning={false}
         highlightedGapIndex={null}
@@ -208,8 +237,8 @@ export function GamePlay({
         currentSong={room.current_song!}
         roomCode={room.lobby_code}
         isMyTurn={isMyTurn}
-        isPlaying={false} // This should be managed by audio service
-        onPlayPause={() => {}} // This should trigger host audio control
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
         onPlaceCard={handlePlaceCard}
         mysteryCardRevealed={false}
         cardPlacementResult={null}
