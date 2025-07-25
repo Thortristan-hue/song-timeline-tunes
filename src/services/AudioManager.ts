@@ -59,7 +59,11 @@ class AudioManager {
     try {
       // Create a unique channel name for this room
       const channelName = `audio-control-${this.roomId}`;
-      this.realtimeChannel = supabase.channel(channelName);
+      this.realtimeChannel = supabase.channel(channelName, {
+        config: {
+          broadcast: { self: false }
+        }
+      });
       
       this.realtimeChannel
         .on('broadcast', { event: 'audio_control' }, (payload: any) => {
@@ -181,49 +185,42 @@ class AudioManager {
       roomId: this.roomId
     });
 
-    const maxRetries = 3;
-    let attempt = 0;
-
-    while (attempt < maxRetries) {
-      try {
-        // Create a fresh channel for sending the command
-        const channelName = `audio-control-${this.roomId}`;
-        const channel = supabase.channel(channelName);
-        
-        console.log(`📱 MOBILE: Attempt ${attempt + 1} - sending command via channel: ${channelName}`);
-        
-        const result = await channel.send({
-          type: 'broadcast',
-          event: 'audio_control',
-          payload: { action, song, timestamp: Date.now() }
-        });
-
-        console.log('📱 MOBILE: Send result:', result);
-
-        // Check if the send was successful
-        if (result === 'ok') {
-          console.log(`📱 MOBILE: Successfully sent audio control command on attempt ${attempt + 1}`);
-          return true;
-        } else {
-          throw new Error(`Send failed with result: ${result}`);
+    try {
+      // Create a fresh channel for sending the command
+      const channelName = `audio-control-${this.roomId}`;
+      const channel = supabase.channel(channelName, {
+        config: {
+          broadcast: { self: false }
         }
+      });
+      
+      console.log(`📱 MOBILE: Sending command via channel: ${channelName}`);
+      
+      // Send the command
+      const result = await channel.send({
+        type: 'broadcast',
+        event: 'audio_control',
+        payload: { action, song, timestamp: Date.now() }
+      });
 
-      } catch (error) {
-        attempt++;
-        console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt}/${maxRetries}):`, error);
-        
-        if (attempt < maxRetries) {
-          // Exponential backoff: wait 500ms, then 1s, then 2s
-          const delay = 500 * Math.pow(2, attempt - 1);
-          console.log(`📱 MOBILE: Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          console.error('❌ MOBILE: Failed to send audio control command after all retries');
-          return false;
-        }
+      console.log('📱 MOBILE: Send result:', result);
+
+      // Clean up the channel
+      await supabase.removeChannel(channel);
+
+      // Check if the send was successful
+      if (result === 'ok') {
+        console.log('📱 MOBILE: Successfully sent audio control command');
+        return true;
+      } else {
+        console.error('❌ MOBILE: Failed to send audio control command:', result);
+        return false;
       }
+
+    } catch (error) {
+      console.error('❌ MOBILE: Failed to send audio control command:', error);
+      return false;
     }
-    return false;
   }
 
   /**

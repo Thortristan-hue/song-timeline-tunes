@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import HostGameView from '@/components/host/HostGameView';
+import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { GameRoom, Player, Song } from '@/types/game';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
+import { audioManager } from '@/services/AudioManager';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -36,6 +37,19 @@ export default function GamePlay({
   const { refreshCurrentPlayerTimeline } = useGameRoom();
   const gameLogic = useGameLogic(room?.id || null, players, room);
 
+  // Initialize audio manager with proper room and role
+  useEffect(() => {
+    if (room?.id) {
+      console.log(`🎵 Initializing audio manager for room ${room.id} as ${isHost ? 'HOST' : 'MOBILE'}`);
+      audioManager.initialize(room.id, isHost);
+    }
+
+    return () => {
+      console.log('🧹 Cleaning up audio manager');
+      audioManager.cleanup();
+    };
+  }, [room?.id, isHost]);
+
   const handleRestart = () => {
     console.log('Restarting game...');
   };
@@ -55,7 +69,7 @@ export default function GamePlay({
       <div className="w-full max-w-7xl mx-auto">
         <GameErrorBoundary>
           {isHost ? (
-            <HostGameView
+            <HostVisuals
               room={room}
               players={players}
               currentPlayer={currentPlayer}
