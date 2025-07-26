@@ -1248,3 +1248,25 @@
 .mobile-safe-area-right {
   padding-right: env(safe-area-inset-right);
 }
+
+/* Additional floating animations for musical elements */
+@keyframes float-up {
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-float-up {
+  animation: float-up 6s linear infinite;
+}

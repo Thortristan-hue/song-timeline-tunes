@@ -1,12 +1,13 @@
 
 import React from 'react';
 import { GameRoom, Player } from '@/types/game';
-import { HostGameBackground } from './HostGameBackground';
-import { HostMysteryCard } from '@/components/GameVisuals';
+import { DynamicBackground } from '@/components/DynamicBackground';
+import { EnhancedMysteryCard } from '@/components/EnhancedMysteryCard';
 import { GameHeader } from '@/components/GameVisuals';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
 import { HostCurrentPlayerTimeline } from './HostCurrentPlayerTimeline';
+import { FloatingMusicElements } from '@/components/FloatingMusicElements';
 
 interface HostGameViewProps {
   room: GameRoom;
@@ -36,8 +37,14 @@ export default function HostGameView({
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 overflow-hidden">
-      {/* Background Effects */}
-      <HostGameBackground />
+      {/* Enhanced Dynamic Background */}
+      <DynamicBackground currentSong={room.current_song} isPlaying={gameLogic.gameState.isPlaying} />
+      
+      {/* Floating Musical Elements */}
+      <FloatingMusicElements 
+        isPlaying={gameLogic.gameState.isPlaying} 
+        intensity={room.current_song ? 1 : 0.5} 
+      />
       
       {/* Game Header */}
       <GameHeader 
@@ -47,15 +54,40 @@ export default function HostGameView({
         gameEnded={gameLogic.gameState.phase === 'finished'}
       />
 
-      {/* Mystery Card Display */}
-      <HostMysteryCard
-        currentSong={room.current_song}
-        currentTurnPlayer={currentTurnPlayer}
-        mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
-        isPlaying={gameLogic.gameState.isPlaying}
-        onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
-        cardPlacementResult={null}
-      />
+      {/* Enhanced Mystery Card Display */}
+      <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="text-center space-y-6">
+          {/* Current Player Info */}
+          <div className="bg-slate-800/80 backdrop-blur-md px-8 py-4 rounded-2xl border border-indigo-400/30 shadow-lg animate-fade-in">
+            <div className="flex items-center justify-center gap-4 text-white">
+              <div 
+                className="w-6 h-6 rounded-full border-2 border-white shadow-lg animate-pulse" 
+                style={{ backgroundColor: currentTurnPlayer.color }}
+              />
+              <div className="text-center">
+                <div className="font-bold text-xl">{currentTurnPlayer.name}'s Turn</div>
+                <div className="text-sm text-indigo-200">Score: {currentTurnPlayer.score}/10</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Mystery Card */}
+          <EnhancedMysteryCard
+            song={room.current_song}
+            isRevealed={gameLogic.gameState.phase === 'playing'}
+            isPlaying={gameLogic.gameState.isPlaying}
+            onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
+            className="scale-110"
+          />
+
+          {/* Audio Controls */}
+          <div className="bg-slate-800/80 backdrop-blur-lg rounded-2xl p-6 border border-slate-600/50 animate-slide-in-right">
+            <div className="text-lg text-slate-300 text-center mb-4">
+              {currentTurnPlayer.name} is placing their card...
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Current Player Timeline */}
       <HostCurrentPlayerTimeline

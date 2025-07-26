@@ -67,12 +67,14 @@ class AudioManager {
       
       this.realtimeChannel
         .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-          console.log('🎵 HOST: Received audio control command:', payload);
+          console.log('🎵 HOST: Received audio control broadcast event:', payload);
+          console.log('🎵 HOST: Full payload structure:', JSON.stringify(payload, null, 2));
           
           if (payload && payload.payload) {
+            console.log('🎵 HOST: Processing payload:', payload.payload);
             this.handleUniversalAudioControl(payload.payload);
           } else {
-            console.warn('🎵 HOST: Invalid audio control payload:', payload);
+            console.warn('🎵 HOST: Invalid audio control payload structure:', payload);
           }
         })
         .subscribe((status: string) => {
