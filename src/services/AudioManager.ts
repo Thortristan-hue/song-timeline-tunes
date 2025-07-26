@@ -49,7 +49,7 @@ class AudioManager {
   }
 
   /**
-   * Subscribe to real-time audio control events (host only) with enhanced error handling
+   * Subscribe to real-time audio control events (host only) with enhanced reliability
    */
   private subscribeToAudioControl() {
     if (!this.roomId) return;
@@ -57,43 +57,81 @@ class AudioManager {
     console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId}`);
 
     try {
-      // Create a unique channel name for this room
-      const channelName = `audio-control-${this.roomId}`;
-      this.realtimeChannel = supabase.channel(channelName, {
-        config: {
-          broadcast: { self: false }
-        }
-      });
+      // Method 1: Broadcast channel subscription (primary)
+      this.subscribeToBroadcast();
       
-      this.realtimeChannel
-        .on('broadcast', { event: 'audio_control' }, (payload: any) => {
-          console.log('🎵 HOST: Received audio control broadcast event:', payload);
-          console.log('🎵 HOST: Full payload structure:', JSON.stringify(payload, null, 2));
-          
-          if (payload && payload.payload) {
-            console.log('🎵 HOST: Processing payload:', payload.payload);
-            this.handleUniversalAudioControl(payload.payload);
-          } else {
-            console.warn('🎵 HOST: Invalid audio control payload structure:', payload);
-          }
-        })
-        .subscribe((status: string) => {
-          console.log(`🎵 HOST: Audio control subscription status: ${status}`);
-          
-          if (status === 'SUBSCRIBED') {
-            console.log('✅ HOST: Audio control subscription established successfully');
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ HOST: Audio control subscription error');
-          } else if (status === 'TIMED_OUT') {
-            console.error('❌ HOST: Audio control subscription timed out');
-          } else if (status === 'CLOSED') {
-            console.log('🔌 HOST: Audio control subscription closed');
-          }
-        });
-
+      // Method 2: Database subscription (fallback)
+      this.subscribeToDatabaseChanges();
+      
     } catch (error) {
       console.error('❌ HOST: Failed to set up audio control subscription:', error);
     }
+  }
+
+  /**
+   * Subscribe to broadcast messages (primary method)
+   */
+  private subscribeToBroadcast() {
+    const channelName = `audio-control-${this.roomId}`;
+    this.realtimeChannel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: false }
+      }
+    });
+    
+    this.realtimeChannel
+      .on('broadcast', { event: 'audio_control' }, (payload: any) => {
+        console.log('🎵 HOST: Received audio control broadcast event:', payload);
+        
+        if (payload && payload.payload) {
+          console.log('🎵 HOST: Processing broadcast payload:', payload.payload);
+          this.handleUniversalAudioControl(payload.payload);
+        } else {
+          console.warn('🎵 HOST: Invalid audio control payload structure:', payload);
+        }
+      })
+      .subscribe((status: string) => {
+        console.log(`🎵 HOST: Broadcast subscription status: ${status}`);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ HOST: Broadcast subscription established successfully');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ HOST: Broadcast subscription error - falling back to database');
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ HOST: Broadcast subscription timed out - falling back to database');
+        }
+      });
+  }
+
+  /**
+   * Subscribe to database changes (fallback method)
+   */
+  private subscribeToDatabaseChanges() {
+    if (!this.roomId) return;
+
+    const databaseChannel = supabase.channel(`db-audio-control-${this.roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'game_moves',
+          filter: `room_id=eq.${this.roomId}`
+        },
+        (payload) => {
+          console.log('🎵 HOST: Received database change:', payload);
+          
+          if (payload.new && 
+              payload.new.move_type === 'audio_control' && 
+              payload.new.move_data) {
+            console.log('🎵 HOST: Processing database audio control:', payload.new.move_data);
+            this.handleUniversalAudioControl(payload.new.move_data);
+          }
+        }
+      )
+      .subscribe((status: string) => {
+        console.log(`🎵 HOST: Database subscription status: ${status}`);
+      });
   }
 
   /**
@@ -168,7 +206,7 @@ class AudioManager {
   }
 
   /**
-   * Send universal audio control command (mobile only) with enhanced error handling
+   * Send universal audio control command (mobile only) with enhanced reliability
    */
   async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
     if (!this.roomId) {
@@ -188,41 +226,146 @@ class AudioManager {
     });
 
     try {
-      // Create a fresh channel for sending the command
-      const channelName = `audio-control-${this.roomId}`;
-      const channel = supabase.channel(channelName, {
-        config: {
-          broadcast: { self: false }
-        }
-      });
-      
-      console.log(`📱 MOBILE: Sending command via channel: ${channelName}`);
-      
-      // Send the command
-      const result = await channel.send({
-        type: 'broadcast',
-        event: 'audio_control',
-        payload: { action, song, timestamp: Date.now() }
-      });
+      // Enhanced reliability: try multiple approaches
+      const results = await Promise.allSettled([
+        this.sendViaBroadcast(action, song),
+        this.sendViaDatabase(action, song)
+      ]);
 
-      console.log('📱 MOBILE: Send result:', result);
+      // Check if at least one method succeeded
+      const successCount = results.filter(result => 
+        result.status === 'fulfilled' && result.value === true
+      ).length;
 
-      // Clean up the channel
-      await supabase.removeChannel(channel);
-
-      // Check if the send was successful
-      if (result === 'ok') {
-        console.log('📱 MOBILE: Successfully sent audio control command');
+      if (successCount > 0) {
+        console.log(`📱 MOBILE: Successfully sent audio control command (${successCount}/2 methods succeeded)`);
         return true;
       } else {
-        console.error('❌ MOBILE: Failed to send audio control command:', result);
+        console.error('❌ MOBILE: All audio control methods failed:', results);
         return false;
       }
-
     } catch (error) {
       console.error('❌ MOBILE: Failed to send audio control command:', error);
       return false;
     }
+  }
+
+  /**
+   * Send command via broadcast channel (primary method)
+   */
+  private async sendViaBroadcast(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
+    try {
+      const channelName = `audio-control-${this.roomId}`;
+      const channel = supabase.channel(channelName, {
+        config: {
+          broadcast: { 
+            self: false,
+            ack: true // Request acknowledgment
+          }
+        }
+      });
+      
+      // Wait for channel to be ready
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Channel subscription timeout')), 5000);
+        
+        channel.subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            clearTimeout(timeout);
+            resolve(status);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            clearTimeout(timeout);
+            reject(new Error(`Channel subscription failed: ${status}`));
+          }
+        });
+      });
+
+      console.log(`📱 MOBILE: Sending command via broadcast channel: ${channelName}`);
+      
+      // Send the command with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        const result = await channel.send({
+          type: 'broadcast',
+          event: 'audio_control',
+          payload: { 
+            action, 
+            song, 
+            timestamp: Date.now(),
+            attempt: attempts + 1,
+            playerId: this.getCurrentPlayerId() // Add player identification
+          }
+        });
+
+        if (result === 'ok') {
+          console.log(`📱 MOBILE: Broadcast sent successfully on attempt ${attempts + 1}`);
+          await supabase.removeChannel(channel);
+          return true;
+        }
+
+        attempts++;
+        console.warn(`📱 MOBILE: Broadcast attempt ${attempts} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+      }
+
+      await supabase.removeChannel(channel);
+      throw new Error(`Failed to send broadcast after ${maxAttempts} attempts`);
+      
+    } catch (error) {
+      console.error('❌ MOBILE: Broadcast method failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send command via database (fallback method)
+   */
+  private async sendViaDatabase(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('game_moves')
+        .insert({
+          room_id: this.roomId,
+          player_id: this.getCurrentPlayerId(),
+          move_type: 'audio_control',
+          move_data: {
+            action,
+            song: song ? {
+              id: song.id,
+              deezer_title: song.deezer_title,
+              deezer_artist: song.deezer_artist,
+              release_year: song.release_year,
+              preview_url: song.preview_url
+            } : null,
+            timestamp: Date.now()
+          }
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('📱 MOBILE: Successfully sent command via database');
+      return true;
+    } catch (error) {
+      console.error('❌ MOBILE: Database method failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get current player ID for identification
+   */
+  private getCurrentPlayerId(): string {
+    // Try to get from localStorage or generate a temporary ID
+    let playerId = localStorage.getItem('rythmy_player_id');
+    if (!playerId) {
+      playerId = 'mobile_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('rythmy_player_id', playerId);
+    }
+    return playerId;
   }
 
   /**
