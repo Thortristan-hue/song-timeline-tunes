@@ -415,7 +415,54 @@
   }
 }
 
-/* ... keep existing code (all other animations) */
+/* New enhanced animations for visual improvements */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.4;
+  }
+  25% { 
+    transform: translateY(-20px) rotate(5deg); 
+    opacity: 0.8;
+  }
+  50% { 
+    transform: translateY(-40px) rotate(-5deg); 
+    opacity: 1;
+  }
+  75% { 
+    transform: translateY(-20px) rotate(3deg); 
+    opacity: 0.8;
+  }
+}
+
+@keyframes shimmer {
+  0% { 
+    background-position: -200px 0; 
+  }
+  100% { 
+    background-position: 200px 0; 
+  }
+}
+
+@keyframes fade-in {
+  0% { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes audio-bounce {
+  0%, 100% { 
+    transform: scaleY(1); 
+  }
+  50% { 
+    transform: scaleY(1.5); 
+  }
+}
 
 /* Enhanced animation classes with improved performance and GRANDIOSE effects */
 .animate-spin-slow { 
@@ -425,6 +472,25 @@
 .animate-pulse-glow { 
   animation: animate-pulse-glow 4s ease-in-out infinite; 
   will-change: transform, filter, opacity;
+}
+
+/* New animation utility classes */
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-audio-bounce {
+  animation: audio-bounce 0.6s ease-in-out infinite;
 }
 
 /* GRANDIOSE card placement animations with enhanced cinematic timing */

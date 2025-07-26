@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
+import { DynamicBackground } from '@/components/DynamicBackground';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -396,7 +397,14 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+    <>
+      {/* Dynamic background component */}
+      <DynamicBackground 
+        isPlaying={isPlaying} 
+        currentSong={currentSong}
+      />
+      
+      <div className="fixed inset-0 z-40">
       {/* Safe area container */}
       <div className="h-full flex flex-col px-4 pt-safe-top pb-safe-bottom">
         
@@ -426,38 +434,106 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* Universal Vinyl Player Section - Always visible */}
+        {/* Enhanced Universal Vinyl Player Section with Audio Visualization */}
         <div className="flex-shrink-0 py-4">
           <div className="flex justify-center">
             <div className="relative">
+              {/* Outer glow ring that pulses with audio */}
               <div className={cn(
-                "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
-                isPlaying && "animate-spin"
+                "absolute -inset-2 rounded-full transition-all duration-300",
+                isPlaying 
+                  ? "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 animate-pulse" 
+                  : "bg-white/5"
+              )} />
+              
+              {/* Spectrum analyzer visualization rings */}
+              {isPlaying && (
+                <>
+                  <div className="absolute -inset-1 border border-blue-400/30 rounded-full animate-pulse" style={{animationDelay: '0s'}} />
+                  <div className="absolute -inset-2 border border-purple-400/20 rounded-full animate-pulse" style={{animationDelay: '0.5s'}} />
+                  <div className="absolute -inset-3 border border-pink-400/10 rounded-full animate-pulse" style={{animationDelay: '1s'}} />
+                </>
+              )}
+              
+              {/* Main vinyl record */}
+              <div className={cn(
+                "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 transition-all duration-500 relative overflow-hidden",
+                isPlaying 
+                  ? "animate-spin border-white/60 shadow-blue-500/20" 
+                  : "border-white/40 hover:border-white/60 hover:shadow-lg"
               )}>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
-                </div>
-                
+                {/* Vinyl grooves */}
                 <div className="absolute inset-1 border border-white/10 rounded-full" />
-                <div className="absolute inset-2 border border-white/10 rounded-full" />
-                <div className="absolute inset-3 border border-white/10 rounded-full" />
+                <div className="absolute inset-2 border border-white/8 rounded-full" />
+                <div className="absolute inset-3 border border-white/6 rounded-full" />
+                <div className="absolute inset-4 border border-white/4 rounded-full" />
+                
+                {/* Center label with shimmer effect */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className={cn(
+                    "w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50 relative",
+                    isPlaying && "animate-pulse"
+                  )}>
+                    {isPlaying && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-ping" />
+                    )}
+                  </div>
+                </div>
               </div>
               
+              {/* Enhanced play/pause button */}
               <Button
                 onClick={onPlayPause}
-                className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                className={cn(
+                  "absolute inset-0 w-full h-full border-0 rounded-full transition-all duration-300 group",
+                  !currentSong?.preview_url 
+                    ? "bg-black/40 cursor-not-allowed" 
+                    : "bg-black/20 hover:bg-black/40 hover:scale-105"
+                )}
                 disabled={!currentSong?.preview_url}
               >
-                <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                <div className={cn(
+                  "text-white text-lg transition-all duration-300",
+                  isPlaying 
+                    ? "group-hover:scale-110" 
+                    : "group-hover:scale-125 drop-shadow-lg"
+                )}>
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
                 </div>
               </Button>
+              
+              {/* Audio waveform preview (placeholder) */}
+              {isPlaying && (
+                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex items-end space-x-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-1 bg-gradient-to-t from-blue-400 to-purple-400 rounded-full animate-pulse"
+                      style={{
+                        height: `${Math.random() * 12 + 4}px`,
+                        animationDelay: `${i * 0.1}s`,
+                        animationDuration: '0.8s'
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          <div className="text-center mt-2">
-            <div className="text-white/80 text-sm font-medium">
+          
+          {/* Enhanced status text with dynamic content */}
+          <div className="text-center mt-4">
+            <div className={cn(
+              "text-white/90 text-sm font-medium transition-all duration-300",
+              isPlaying && "animate-pulse"
+            )}>
               {isMyTurn ? 'Mystery Song' : 'Universal Remote'}
             </div>
+            {isPlaying && currentSong && (
+              <div className="text-white/60 text-xs mt-1 animate-fade-in">
+                ♪ Now Playing ♪
+              </div>
+            )}
           </div>
         </div>
 
@@ -777,8 +853,9 @@ export default function MobilePlayerGameView({
               </Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+         </div>
+       )}
+       </div>
+     </>
+   );
+ }
