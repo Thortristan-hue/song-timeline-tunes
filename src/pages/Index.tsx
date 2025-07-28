@@ -104,6 +104,10 @@ export default function Index() {
     handlePhaseChange('menu');
   };
 
+  const handleUpdatePlayer = async (name: string, character: string) => {
+    await updatePlayer({ name, character });
+  };
+
   const renderCurrentPhase = () => {
     switch (gameState.phase) {
       case 'menu':
@@ -121,7 +125,6 @@ export default function Index() {
           <HostLobby
             room={room}
             players={players}
-            isHost={isHost}
             onStartGame={handleStartGame}
             onLeaveRoom={handleLeaveRoom}
             onUpdateSongs={updateRoomSongs}
@@ -136,7 +139,6 @@ export default function Index() {
         return (
           <MobileJoin
             onJoinRoom={handleJoinRoom}
-            onBack={() => handlePhaseChange('menu')}
             gameState={gameState}
             setGameState={setGameState}
           />
@@ -148,7 +150,7 @@ export default function Index() {
             room={room}
             players={players}
             currentPlayer={currentPlayer}
-            onUpdatePlayer={updatePlayer}
+            onUpdatePlayer={handleUpdatePlayer}
             onLeaveRoom={handleLeaveRoom}
             gameState={gameState}
             setGameState={setGameState}
@@ -164,7 +166,6 @@ export default function Index() {
             isHost={isHost}
             onPlaceCard={placeCard}
             onSetCurrentSong={setCurrentSong}
-            onAssignStartingCards={assignStartingCards}
             onGameEnd={handleGameEnd}
             gameState={gameState}
             setGameState={setGameState}
@@ -177,6 +178,7 @@ export default function Index() {
             winner={gameState.winner}
             players={players}
             onBackToMenu={handleBackToMenu}
+            onPlayAgain={handleBackToMenu}
           />
         );
       
