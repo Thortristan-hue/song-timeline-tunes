@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { GameRoom, Player, Song, GameMode, GameModeSettings } from '@/types/game';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
@@ -44,8 +44,64 @@ export const useGameRoom = (): UseGameRoomReturn => {
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const { connectionStatus, forceReconnect } = useRealtimeSubscription([]);
+
+  // Create stable subscription configs that only change when room changes
+  const subscriptionConfigs = useMemo(() => {
+    if (!room?.id) {
+      return [];
+    }
+
+    return [
+      {
+        table: 'game_rooms',
+        filter: `id=eq.${room.id}`,
+        onUpdate: (payload: any) => {
+          if (payload.new && typeof payload.new === 'object') {
+            const newData = payload.new as any;
+            const typedRoom: GameRoom = {
+              id: newData.id,
+              lobby_code: newData.lobby_code,
+              host_id: newData.host_id,
+              host_name: newData.host_name || '',
+              created_at: newData.created_at,
+              updated_at: newData.updated_at,
+              phase: newData.phase as 'lobby' | 'playing' | 'finished',
+              gamemode: newData.gamemode as GameMode,
+              gamemode_settings: newData.gamemode_settings as GameModeSettings,
+              songs: Array.isArray(newData.songs) ? (newData.songs as unknown as Song[]) : [],
+              current_song: newData.current_song ? (newData.current_song as unknown as Song) : null,
+              current_turn: newData.current_turn,
+              current_player_id: newData.current_player_id
+            };
+            setRoom(typedRoom);
+          }
+        },
+        onError: (error: Error) => {
+          console.error('Room subscription error:', error);
+          setError(error.message);
+        }
+      },
+      {
+        table: 'players',
+        filter: `room_id=eq.${room.id}`,
+        onUpdate: () => {
+          fetchPlayers(room.id);
+        },
+        onInsert: () => {
+          fetchPlayers(room.id);
+        },
+        onDelete: () => {
+          fetchPlayers(room.id);
+        },
+        onError: (error: Error) => {
+          console.error('Players subscription error:', error);
+          setError(error.message);
+        }
+      }
+    ];
+  }, [room?.id]);
+
+  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
   const fetchRoom = useCallback(async (roomId: string) => {
     try {
@@ -60,7 +116,6 @@ export const useGameRoom = (): UseGameRoomReturn => {
       }
 
       if (roomData) {
-        // Type cast the database response to our GameRoom type
         const typedRoom: GameRoom = {
           id: roomData.id,
           lobby_code: roomData.lobby_code,
@@ -135,49 +190,16 @@ export const useGameRoom = (): UseGameRoomReturn => {
     }
   }, []);
 
+  // Legacy subscription methods - kept for compatibility but not used internally
   const subscribeToRoomUpdates = useCallback((roomId: string) => {
-    const roomSubscription = supabase
-      .channel(`room_updates_${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms' }, (payload) => {
-        if (payload.new && typeof payload.new === 'object') {
-          const newData = payload.new as any;
-          const typedRoom: GameRoom = {
-            id: newData.id,
-            lobby_code: newData.lobby_code,
-            host_id: newData.host_id,
-            host_name: newData.host_name || '',
-            created_at: newData.created_at,
-            updated_at: newData.updated_at,
-            phase: newData.phase as 'lobby' | 'playing' | 'finished',
-            gamemode: newData.gamemode as GameMode,
-            gamemode_settings: newData.gamemode_settings as GameModeSettings,
-            songs: Array.isArray(newData.songs) ? (newData.songs as unknown as Song[]) : [],
-            current_song: newData.current_song ? (newData.current_song as unknown as Song) : null,
-            current_turn: newData.current_turn,
-            current_player_id: newData.current_player_id
-          };
-          setRoom(typedRoom);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(roomSubscription);
-    };
+    // This is now handled by useRealtimeSubscription
+    return () => {};
   }, []);
 
   const subscribeToPlayerUpdates = useCallback((roomId: string) => {
-    const playersSubscription = supabase
-      .channel(`player_updates_${roomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => {
-        fetchPlayers(roomId);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(playersSubscription);
-    };
-  }, [fetchPlayers]);
+    // This is now handled by useRealtimeSubscription
+    return () => {};
+  }, []);
 
   const transformPlayer = (dbPlayer: any): Player => {
     return {
@@ -231,7 +253,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
-          host_id: 'temp-host-id', // Required field
+          host_id: 'temp-host-id',
           host_name: hostName,
           phase: 'lobby',
           gamemode: 'classic',
@@ -315,7 +337,6 @@ export const useGameRoom = (): UseGameRoomReturn => {
   };
 
   const updatePlayer = async (updates: { name?: string; character?: string }): Promise<void> => {
-    // Simplified implementation
     console.log('Update player:', updates);
   };
 
@@ -378,7 +399,6 @@ export const useGameRoom = (): UseGameRoomReturn => {
   };
 
   const placeCard = async (song: Song, position: number): Promise<{ success: boolean; error?: string; correct?: boolean }> => {
-    // Simplified implementation
     console.log('Place card:', song, position);
     return { success: true };
   };
@@ -390,12 +410,10 @@ export const useGameRoom = (): UseGameRoomReturn => {
   };
 
   const assignStartingCards = async (): Promise<void> => {
-    // Simplified implementation
     console.log('Assign starting cards');
   };
 
   const kickPlayer = async (playerId: string): Promise<boolean> => {
-    // Simplified implementation
     console.log('Kick player:', playerId);
     return true;
   };
