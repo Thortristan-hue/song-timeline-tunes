@@ -218,7 +218,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
     }
   };
 
-  // Simplified game room management functions without GameService
+  // Simplified game room management functions
   const createRoom = async (hostName: string): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
@@ -231,6 +231,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
+          host_id: 'temp-host-id', // Required field
           host_name: hostName,
           phase: 'lobby',
           gamemode: 'classic',

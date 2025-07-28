@@ -6,8 +6,8 @@ import { GameState, GamePhase } from '@/types/game';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoin } from '@/components/MobileJoin';
-import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
-import { GamePlay } from '@/components/GamePlay';
+import MobilePlayerLobby from '@/components/MobilePlayerLobby';
+import GamePlay from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
@@ -81,6 +81,7 @@ export default function Index() {
         await audioManager.initialize(room.id, false);
       }
     }
+    return success;
   };
 
   const handleStartGame = async () => {
@@ -120,7 +121,6 @@ export default function Index() {
           <HostLobby
             room={room}
             players={players}
-            currentPlayer={currentPlayer}
             isHost={isHost}
             onStartGame={handleStartGame}
             onLeaveRoom={handleLeaveRoom}
@@ -177,8 +177,6 @@ export default function Index() {
             winner={gameState.winner}
             players={players}
             onBackToMenu={handleBackToMenu}
-            gameState={gameState}
-            setGameState={setGameState}
           />
         );
       
@@ -191,7 +189,12 @@ export default function Index() {
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
         <ConnectionStatus 
-          status={connectionStatus} 
+          connectionStatus={{
+            isConnected: connectionStatus === 'connected',
+            isReconnecting: connectionStatus === 'connecting',
+            lastError: connectionStatus === 'error' ? 'Connection error' : null,
+            retryCount: 0
+          }} 
           onReconnect={forceReconnect}
         />
         
