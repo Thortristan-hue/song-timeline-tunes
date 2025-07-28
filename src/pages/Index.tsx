@@ -109,8 +109,6 @@ export default function Index() {
           <MainMenu
             onCreateRoom={handleCreateRoom}
             onJoinRoom={() => handlePhaseChange('mobileJoin')}
-            gameState={gameState}
-            setGameState={setGameState}
           />
         );
       
@@ -120,11 +118,8 @@ export default function Index() {
             room={room}
             players={players}
             onStartGame={handleStartGame}
-            onUpdateSongs={updateRoomSongs}
             onUpdateGamemode={updateRoomGamemode}
             onKickPlayer={kickPlayer}
-            gameState={gameState}
-            setGameState={setGameState}
           />
         );
       
@@ -132,6 +127,7 @@ export default function Index() {
         return (
           <MobileJoin
             onJoinRoom={handleJoinRoom}
+            onBackToMenu={handleBackToMenu}
           />
         );
       
@@ -142,8 +138,6 @@ export default function Index() {
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
-            gameState={gameState}
-            setGameState={setGameState}
           />
         );
       
@@ -156,8 +150,15 @@ export default function Index() {
             isHost={isHost}
             onPlaceCard={placeCard}
             onSetCurrentSong={setCurrentSong}
-            gameState={gameState}
-            setGameState={setGameState}
+            customSongs={room?.songs || []}
+            connectionStatus={{
+              isConnected: connectionStatus === 'connected',
+              isReconnecting: connectionStatus === 'connecting',
+              lastError: connectionStatus === 'error' ? 'Connection error' : null,
+              retryCount: 0
+            }}
+            onReconnect={forceReconnect}
+            onReplayGame={handleBackToMenu}
           />
         );
       
