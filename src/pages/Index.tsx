@@ -61,14 +61,12 @@ export default function Index() {
     setGameState(prev => ({ ...prev, phase: newPhase }));
   };
 
-  const handleCreateRoom = async (hostName: string) => {
-    const lobbyCode = await createRoom(hostName);
-    if (lobbyCode) {
-      handlePhaseChange('hostLobby');
-      // Initialize audio manager as host
-      if (room?.id) {
-        await audioManager.initialize(room.id, true);
-      }
+  const handleCreateRoom = async () => {
+    // MainMenu will handle getting the host name internally
+    handlePhaseChange('hostLobby');
+    // Initialize audio manager as host
+    if (room?.id) {
+      await audioManager.initialize(room.id, true);
     }
   };
 
@@ -93,10 +91,6 @@ export default function Index() {
     leaveRoom();
     audioManager.cleanup();
     handlePhaseChange('menu');
-  };
-
-  const handleGameEnd = () => {
-    handlePhaseChange('finished');
   };
 
   const handleBackToMenu = () => {
@@ -126,7 +120,6 @@ export default function Index() {
             room={room}
             players={players}
             onStartGame={handleStartGame}
-            onLeaveRoom={handleLeaveRoom}
             onUpdateSongs={updateRoomSongs}
             onUpdateGamemode={updateRoomGamemode}
             onKickPlayer={kickPlayer}
@@ -139,8 +132,6 @@ export default function Index() {
         return (
           <MobileJoin
             onJoinRoom={handleJoinRoom}
-            gameState={gameState}
-            setGameState={setGameState}
           />
         );
       
@@ -151,7 +142,6 @@ export default function Index() {
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
-            onLeaveRoom={handleLeaveRoom}
             gameState={gameState}
             setGameState={setGameState}
           />
@@ -166,7 +156,6 @@ export default function Index() {
             isHost={isHost}
             onPlaceCard={placeCard}
             onSetCurrentSong={setCurrentSong}
-            onGameEnd={handleGameEnd}
             gameState={gameState}
             setGameState={setGameState}
           />
