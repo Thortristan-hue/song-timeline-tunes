@@ -9,7 +9,6 @@ import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { GameRoom, Player, Song } from '@/types/game';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { audioManager } from '@/services/AudioManager';
-import TurnAndAudioDebugger from '@/components/TurnAndAudioDebugger';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -49,12 +48,32 @@ export default function GamePlay({
   
   // Audio state management
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+  const [connectionRetryCount, setConnectionRetryCount] = useState(0);
 
-  // Initialize audio manager with proper room and role
+  // Initialize audio manager with proper room and role and connection retry logic
   useEffect(() => {
     if (room?.id) {
       console.log(`🎵 Initializing audio manager for room ${room.id} as ${isHost ? 'HOST' : 'MOBILE'}`);
-      audioManager.initialize(room.id, isHost);
+      
+      // Initialize with retry logic
+      const initializeWithRetry = async (attempts = 3) => {
+        try {
+          await audioManager.initialize(room.id, isHost);
+          setConnectionRetryCount(0);
+        } catch (error) {
+          console.error(`❌ Audio manager initialization failed (attempt ${4 - attempts}):`, error);
+          
+          if (attempts > 1) {
+            console.log(`🔄 Retrying audio manager initialization in 2s...`);
+            setTimeout(() => initializeWithRetry(attempts - 1), 2000);
+          } else {
+            console.error('❌ Audio manager initialization failed after 3 attempts');
+            setConnectionRetryCount(prev => prev + 1);
+          }
+        }
+      };
+
+      initializeWithRetry();
       
       // Set up audio state listener
       const handleAudioStateChange = (isPlaying: boolean, song?: Song) => {
@@ -75,7 +94,7 @@ export default function GamePlay({
         audioManager.cleanup();
       };
     }
-  }, [room?.id, isHost, onSetCurrentSong]);
+  }, [room?.id, isHost, onSetCurrentSong, connectionRetryCount]);
 
   // Enhanced card placement with turn management
   const handleEnhancedPlaceCard = useCallback(async (song: Song, position: number) => {
@@ -104,7 +123,7 @@ export default function GamePlay({
     }
   }, [room?.id, currentPlayer, turnManager, refreshCurrentPlayerTimeline]);
 
-  // Universal audio control
+  // Enhanced universal audio control with better error handling
   const handleAudioToggle = useCallback(async () => {
     console.log('🎵 GAMEPLAY: Audio toggle requested');
     
@@ -116,14 +135,26 @@ export default function GamePlay({
     try {
       const success = await audioManager.togglePlayPause(room.current_song);
       if (!success) {
-        console.warn('🎵 GAMEPLAY: Audio toggle failed, falling back to local state');
-        // Fallback for immediate UI feedback
+        console.warn('🎵 GAMEPLAY: Audio toggle failed, attempting reconnection...');
+        
+        // Attempt to reinitialize audio manager on failure
+        if (connectionRetryCount < 3) {
+          setTimeout(() => {
+            console.log('🔄 Attempting to reinitialize audio manager...');
+            audioManager.initialize(room.id, isHost);
+            setConnectionRetryCount(prev => prev + 1);
+          }, 1000);
+        }
+        
+        // Still provide immediate UI feedback
         setAudioIsPlaying(!audioIsPlaying);
       }
     } catch (error) {
       console.error('❌ GAMEPLAY: Audio toggle error:', error);
+      // Provide fallback UI feedback
+      setAudioIsPlaying(!audioIsPlaying);
     }
-  }, [room?.current_song, audioIsPlaying]);
+  }, [room?.current_song, audioIsPlaying, connectionRetryCount, room?.id, isHost]);
 
   // For host, we only need room data
   // For players, we need both room and currentPlayer
@@ -169,13 +200,6 @@ export default function GamePlay({
             />
           )}
         </GameErrorBoundary>
-        
-        {/* Debug Component - remove in production */}
-        <TurnAndAudioDebugger 
-          roomId={room.id}
-          isHost={isHost}
-          currentSong={room.current_song || undefined}
-        />
       </div>
     </div>
   );

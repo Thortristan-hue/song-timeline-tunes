@@ -16,6 +16,9 @@ class AudioManager {
   private roomId: string | null = null;
   private isHost: boolean = false;
   private realtimeChannel: any = null;
+  private connectionRetryCount: number = 0;
+  private maxRetries: number = 3;
+  private reconnectTimeout: number | null = null;
 
   private constructor() {}
 
@@ -27,9 +30,9 @@ class AudioManager {
   }
 
   /**
-   * Initialize the audio manager for a specific room and role
+   * Initialize the audio manager for a specific room and role with enhanced error handling
    */
-  initialize(roomId: string, isHost: boolean) {
+  async initialize(roomId: string, isHost: boolean): Promise<void> {
     this.roomId = roomId;
     this.isHost = isHost;
     
@@ -38,20 +41,26 @@ class AudioManager {
     // Clean up any existing subscription
     if (this.realtimeChannel) {
       console.log('🎵 AUDIO MANAGER: Cleaning up existing channel');
-      supabase.removeChannel(this.realtimeChannel);
+      await supabase.removeChannel(this.realtimeChannel);
       this.realtimeChannel = null;
+    }
+    
+    // Clear any existing reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
     
     // Subscribe to audio control events if this is the host
     if (isHost && roomId) {
-      this.subscribeToAudioControl();
+      await this.subscribeToAudioControl();
     }
   }
 
   /**
-   * Subscribe to real-time audio control events (host only) with enhanced error handling
+   * Subscribe to real-time audio control events with enhanced error handling and retry logic
    */
-  private subscribeToAudioControl() {
+  private async subscribeToAudioControl(): Promise<void> {
     if (!this.roomId) return;
 
     console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId}`);
@@ -61,14 +70,14 @@ class AudioManager {
       const channelName = `audio-control-${this.roomId}`;
       this.realtimeChannel = supabase.channel(channelName, {
         config: {
-          broadcast: { self: false }
+          broadcast: { self: false },
+          presence: { key: 'audio-manager' }
         }
       });
       
       this.realtimeChannel
         .on('broadcast', { event: 'audio_control' }, (payload: any) => {
           console.log('🎵 HOST: Received audio control broadcast event:', payload);
-          console.log('🎵 HOST: Full payload structure:', JSON.stringify(payload, null, 2));
           
           if (payload && payload.payload) {
             console.log('🎵 HOST: Processing payload:', payload.payload);
@@ -77,23 +86,52 @@ class AudioManager {
             console.warn('🎵 HOST: Invalid audio control payload structure:', payload);
           }
         })
-        .subscribe((status: string) => {
+        .subscribe(async (status: string) => {
           console.log(`🎵 HOST: Audio control subscription status: ${status}`);
           
           if (status === 'SUBSCRIBED') {
             console.log('✅ HOST: Audio control subscription established successfully');
+            this.connectionRetryCount = 0; // Reset retry count on successful connection
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ HOST: Audio control subscription error');
+            await this.handleConnectionError();
           } else if (status === 'TIMED_OUT') {
             console.error('❌ HOST: Audio control subscription timed out');
+            await this.handleConnectionError();
           } else if (status === 'CLOSED') {
             console.log('🔌 HOST: Audio control subscription closed');
+            // Only retry if we didn't intentionally close the connection
+            if (this.roomId && this.isHost) {
+              await this.handleConnectionError();
+            }
           }
         });
 
     } catch (error) {
       console.error('❌ HOST: Failed to set up audio control subscription:', error);
+      await this.handleConnectionError();
     }
+  }
+
+  /**
+   * Handle connection errors with exponential backoff retry logic
+   */
+  private async handleConnectionError(): Promise<void> {
+    if (this.connectionRetryCount >= this.maxRetries) {
+      console.error(`❌ HOST: Maximum retry attempts (${this.maxRetries}) reached for audio control`);
+      return;
+    }
+
+    this.connectionRetryCount++;
+    const retryDelay = Math.min(1000 * Math.pow(2, this.connectionRetryCount - 1), 10000); // Exponential backoff, max 10s
+    
+    console.log(`🔄 HOST: Retrying audio control connection in ${retryDelay}ms (attempt ${this.connectionRetryCount}/${this.maxRetries})`);
+    
+    this.reconnectTimeout = setTimeout(async () => {
+      if (this.roomId && this.isHost) {
+        await this.subscribeToAudioControl();
+      }
+    }, retryDelay);
   }
 
   /**
@@ -168,7 +206,7 @@ class AudioManager {
   }
 
   /**
-   * Send universal audio control command (mobile only) with enhanced error handling
+   * Send universal audio control command with enhanced error handling and retry logic
    */
   async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
     if (!this.roomId) {
@@ -187,42 +225,56 @@ class AudioManager {
       roomId: this.roomId
     });
 
-    try {
-      // Create a fresh channel for sending the command
-      const channelName = `audio-control-${this.roomId}`;
-      const channel = supabase.channel(channelName, {
-        config: {
-          broadcast: { self: false }
+    // Retry logic for mobile commands
+    const maxAttempts = 3;
+    let attempt = 0;
+
+    while (attempt < maxAttempts) {
+      try {
+        // Create a fresh channel for sending the command
+        const channelName = `audio-control-${this.roomId}`;
+        const channel = supabase.channel(channelName, {
+          config: {
+            broadcast: { self: false }
+          }
+        });
+        
+        console.log(`📱 MOBILE: Sending command via channel: ${channelName} (attempt ${attempt + 1}/${maxAttempts})`);
+        
+        // Send the command
+        const result = await channel.send({
+          type: 'broadcast',
+          event: 'audio_control',
+          payload: { action, song, timestamp: Date.now() }
+        });
+
+        console.log('📱 MOBILE: Send result:', result);
+
+        // Clean up the channel
+        await supabase.removeChannel(channel);
+
+        // Check if the send was successful
+        if (result === 'ok') {
+          console.log('📱 MOBILE: Successfully sent audio control command');
+          return true;
+        } else {
+          console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt + 1}):`, result);
         }
-      });
-      
-      console.log(`📱 MOBILE: Sending command via channel: ${channelName}`);
-      
-      // Send the command
-      const result = await channel.send({
-        type: 'broadcast',
-        event: 'audio_control',
-        payload: { action, song, timestamp: Date.now() }
-      });
 
-      console.log('📱 MOBILE: Send result:', result);
-
-      // Clean up the channel
-      await supabase.removeChannel(channel);
-
-      // Check if the send was successful
-      if (result === 'ok') {
-        console.log('📱 MOBILE: Successfully sent audio control command');
-        return true;
-      } else {
-        console.error('❌ MOBILE: Failed to send audio control command:', result);
-        return false;
+      } catch (error) {
+        console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt + 1}):`, error);
       }
 
-    } catch (error) {
-      console.error('❌ MOBILE: Failed to send audio control command:', error);
-      return false;
+      attempt++;
+      if (attempt < maxAttempts) {
+        const delay = 1000 * attempt; // Incremental delay
+        console.log(`📱 MOBILE: Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+
+    console.error('❌ MOBILE: Failed to send audio control command after all attempts');
+    return false;
   }
 
   /**
@@ -387,13 +439,19 @@ class AudioManager {
   }
 
   /**
-   * Cleanup method to be called when switching rooms or unmounting
+   * Enhanced cleanup method with proper connection handling
    */
   cleanup(): void {
     console.log('🧹 AUDIO MANAGER: Cleaning up');
     
     // Stop any playing audio
     this.stop();
+    
+    // Clear reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     
     // Remove realtime subscription
     if (this.realtimeChannel) {
@@ -403,6 +461,9 @@ class AudioManager {
     
     // Clear listeners
     this.playStateListeners = [];
+    
+    // Reset connection state
+    this.connectionRetryCount = 0;
     
     // Reset state
     this.roomId = null;
