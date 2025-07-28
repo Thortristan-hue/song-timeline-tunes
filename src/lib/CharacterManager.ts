@@ -35,6 +35,20 @@ export const AVAILABLE_CHARACTERS: Character[] = [
   }
 ];
 
+// Character color mapping for consistent player colors
+export const CHARACTER_COLORS: Record<string, string> = {
+  'mike': '#4ECDC4',
+  'steve': '#FF6B6B', 
+  'villudrillu': '#45B7D1'
+};
+
+/**
+ * Get color for a character
+ */
+export function getCharacterColor(characterId: string): string {
+  return CHARACTER_COLORS[characterId] || '#6B7280'; // Gray fallback
+}
+
 export class CharacterManager {
   private static instance: CharacterManager;
   private selectedCharacter: Character | null = null;

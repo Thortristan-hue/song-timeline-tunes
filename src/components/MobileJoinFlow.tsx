@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
+import { Character } from '@/lib/CharacterManager';
 
 interface MobileJoinFlowProps {
-  onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
+  onJoinRoom: (lobbyCode: string, playerName: string, character: Character) => Promise<boolean>;
   onBackToMenu: () => void;
   isLoading?: boolean;
   autoJoinCode?: string;
@@ -27,9 +28,9 @@ export function MobileJoinFlow({
     setCurrentStep('setup');
   };
 
-  const handlePlayerSetup = async (name: string, color: string) => {
-    console.log('🔗 Player setup:', { name, color, code: verifiedCode });
-    return await onJoinRoom(verifiedCode, name);
+  const handlePlayerSetup = async (name: string, character: Character) => {
+    console.log('🔗 Player setup:', { name, character: character.displayName, code: verifiedCode });
+    return await onJoinRoom(verifiedCode, name, character);
   };
 
   const handleBackToCodeEntry = () => {

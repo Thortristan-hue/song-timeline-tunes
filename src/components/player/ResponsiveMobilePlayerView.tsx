@@ -546,7 +546,7 @@ export default function ResponsiveMobilePlayerView({
           </div>
           
           {/* Right: Character icon */}
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 bg-white/10">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10">
             <img 
               src={getCharacterImagePath(selectedCharacter?.id || currentPlayer.name || 'mike')}
               alt="Player character"

@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useRealtimeSubscription, ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { GameService } from '@/services/gameService';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
+import { Character, getCharacterColor } from '@/lib/CharacterManager';
 
 // ENHANCED: Reduced debounce for snappier updates
 const PLAYER_UPDATE_DEBOUNCE = 500; // Reduced from 1500ms
@@ -249,7 +250,7 @@ export function useGameRoom() {
     }
   }, [sessionId]);
 
-  const joinRoom = useCallback(async (lobbyCode: string, playerName: string): Promise<boolean> => {
+  const joinRoom = useCallback(async (lobbyCode: string, playerName: string, character?: Character): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
@@ -263,14 +264,19 @@ export function useGameRoom() {
 
       if (roomError) throw new Error('Room not found');
 
+      // Get character info and color
+      const characterId = character?.id || 'mike';
+      const characterColor = getCharacterColor(characterId);
+
       // Create player
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
           room_id: roomData.id,
           name: playerName,
-          color: '#3b82f6',
-          timeline_color: '#3b82f6',
+          color: characterColor,
+          timeline_color: characterColor,
+          character: characterId,
           player_session_id: sessionId,
           is_host: false,
           score: 0,

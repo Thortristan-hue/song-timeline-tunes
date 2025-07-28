@@ -2,17 +2,15 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, User, Palette } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-
-const PLAYER_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-];
+import { CharacterSelection } from '@/components/CharacterSelection';
+import { useCharacterSelection, Character } from '@/lib/CharacterManager';
 
 interface MobilePlayerSetupProps {
   lobbyCode: string;
-  onPlayerSetup: (name: string, color: string) => Promise<boolean>;
+  onPlayerSetup: (name: string, character: Character) => Promise<boolean>;
   onBackToCodeEntry: () => void;
   isLoading?: boolean;
 }
@@ -24,10 +22,14 @@ export function MobilePlayerSetup({
   isLoading = false 
 }: MobilePlayerSetupProps) {
   const [playerName, setPlayerName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(PLAYER_COLORS[0]);
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
   const { toast } = useToast();
+  const { selectedCharacter, selectCharacter } = useCharacterSelection();
+
+  const handleCharacterSelect = (character: Character) => {
+    selectCharacter(character.id);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +50,15 @@ export function MobilePlayerSetup({
       return;
     }
 
-    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'color:', selectedColor);
+    if (!selectedCharacter) {
+      setError('Please select a character');
+      return;
+    }
+
+    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'character:', selectedCharacter.displayName);
     
     try {
-      const success = await onPlayerSetup(playerName.trim(), selectedColor);
+      const success = await onPlayerSetup(playerName.trim(), selectedCharacter);
       if (success) {
         soundEffects.playPlayerJoin();
       } else {
@@ -86,7 +93,7 @@ export function MobilePlayerSetup({
             Set Up Your Profile
           </h1>
           <p className="text-[#d9e8dd] text-lg mb-2">
-            Choose your name and color
+            Choose your name and character
           </p>
           <div className="inline-flex items-center px-3 py-1 bg-white/10 rounded-full">
             <span className="text-[#4CC9F0] font-mono font-bold text-sm">Room: {lobbyCode}</span>
@@ -112,27 +119,18 @@ export function MobilePlayerSetup({
             />
           </div>
 
-          {/* Color Selection */}
+          {/* Character Selection */}
           <div className="space-y-2">
-            <Label className="text-white font-medium flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              Choose Your Color
+            <Label className="text-white font-medium">
+              Choose Your Character
             </Label>
-            <div className="grid grid-cols-4 gap-3">
-              {PLAYER_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setSelectedColor(color)}
-                  className={`w-12 h-12 rounded-xl border-2 transition-all duration-200 ${
-                    selectedColor === color
-                      ? 'border-white shadow-lg scale-110'
-                      : 'border-white/20 hover:border-white/40 hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  disabled={isLoading}
-                />
-              ))}
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <CharacterSelection
+                onCharacterSelect={handleCharacterSelect}
+                showLabel={false}
+                compact={true}
+                className="justify-center"
+              />
             </div>
           </div>
 
@@ -143,7 +141,7 @@ export function MobilePlayerSetup({
           <Button
             type="submit"
             className="w-full h-14 bg-gradient-to-r from-[#107793] to-[#a53b8b] hover:from-[#a53b8b] hover:to-[#107793] text-white font-semibold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
-            disabled={isLoading || !playerName.trim()}
+            disabled={isLoading || !playerName.trim() || !selectedCharacter}
           >
             {isLoading ? 'Joining...' : 'Join Game'}
           </Button>

@@ -12,6 +12,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { Character } from '@/lib/CharacterManager';
 
 function Index() {
   const soundEffects = useSoundEffects();
@@ -134,10 +135,10 @@ function Index() {
     }
   };
 
-  const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
+  const handleJoinRoom = async (lobbyCode: string, name: string, character: Character): Promise<boolean> => {
     try {
-      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
-      const success = await joinRoom(lobbyCode, name);
+      console.log('🎮 Attempting to join room with:', { lobbyCode, name, character: character.displayName });
+      const success = await joinRoom(lobbyCode, name, character);
       if (success) {
         setPlayerName(name);
         setGamePhase('mobileLobby');
