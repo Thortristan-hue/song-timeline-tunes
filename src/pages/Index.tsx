@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -205,6 +204,17 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
+  // Fix the updateRoomGamemode to return boolean instead of void
+  const handleUpdateRoomGamemode = async (gamemode: any, settings: any): Promise<boolean> => {
+    try {
+      await updateRoomGamemode(gamemode, settings);
+      return true;
+    } catch (error) {
+      console.error('Failed to update room gamemode:', error);
+      return false;
+    }
+  };
+
   // Enhanced loading state with new loading screen
   if (isLoading && gamePhase !== 'menu') {
     return (
@@ -240,7 +250,7 @@ function Index() {
               isLoading={isLoading}
               createRoom={handleCreateRoom}
               onKickPlayer={handleKickPlayer}
-              updateRoomGamemode={updateRoomGamemode}
+              updateRoomGamemode={handleUpdateRoomGamemode}
             />
           )}
 

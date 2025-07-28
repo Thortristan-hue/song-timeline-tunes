@@ -3,7 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { GameRoom, Player, Song, GameMode, GameModeSettings } from '@/types/game';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
-import { gameService } from '@/services/gameService';
+import { GameService } from '@/services/gameService';
+
+const gameService = new GameService();
 
 interface UseGameRoomReturn {
   room: GameRoom | null;
@@ -45,7 +47,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { connectionStatus, forceReconnect } = useRealtimeSubscription();
+  const { connectionStatus, forceReconnect } = useRealtimeSubscription([]);
 
   const fetchRoom = useCallback(async (roomId: string) => {
     try {
@@ -62,12 +64,19 @@ export const useGameRoom = (): UseGameRoomReturn => {
       if (roomData) {
         // Type cast the database response to our GameRoom type
         const typedRoom: GameRoom = {
-          ...roomData,
+          id: roomData.id,
+          lobby_code: roomData.lobby_code,
+          host_id: roomData.host_id,
+          host_name: roomData.host_name || '',
+          created_at: roomData.created_at,
+          updated_at: roomData.updated_at,
           phase: roomData.phase as 'lobby' | 'playing' | 'finished',
           gamemode: roomData.gamemode as GameMode,
           gamemode_settings: roomData.gamemode_settings as GameModeSettings,
-          songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : [],
-          current_song: roomData.current_song as Song | null
+          songs: Array.isArray(roomData.songs) ? (roomData.songs as unknown as Song[]) : [],
+          current_song: roomData.current_song as Song | null,
+          current_turn: roomData.current_turn,
+          current_player_id: roomData.current_player_id
         };
         setRoom(typedRoom);
       } else {
@@ -132,14 +141,22 @@ export const useGameRoom = (): UseGameRoomReturn => {
     const roomSubscription = supabase
       .channel(`room_updates_${roomId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms' }, (payload) => {
-        if (payload.new) {
+        if (payload.new && typeof payload.new === 'object') {
+          const newData = payload.new as any;
           const typedRoom: GameRoom = {
-            ...payload.new,
-            phase: payload.new.phase as 'lobby' | 'playing' | 'finished',
-            gamemode: payload.new.gamemode as GameMode,
-            gamemode_settings: payload.new.gamemode_settings as GameModeSettings,
-            songs: Array.isArray(payload.new.songs) ? payload.new.songs as Song[] : [],
-            current_song: payload.new.current_song as Song | null
+            id: newData.id,
+            lobby_code: newData.lobby_code,
+            host_id: newData.host_id,
+            host_name: newData.host_name || '',
+            created_at: newData.created_at,
+            updated_at: newData.updated_at,
+            phase: newData.phase as 'lobby' | 'playing' | 'finished',
+            gamemode: newData.gamemode as GameMode,
+            gamemode_settings: newData.gamemode_settings as GameModeSettings,
+            songs: Array.isArray(newData.songs) ? (newData.songs as unknown as Song[]) : [],
+            current_song: newData.current_song as Song | null,
+            current_turn: newData.current_turn,
+            current_player_id: newData.current_player_id
           };
           setRoom(typedRoom);
         }
@@ -171,7 +188,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score,
-      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : []
+      timeline: Array.isArray(dbPlayer.timeline) ? (dbPlayer.timeline as unknown as Song[]) : []
     };
   };
 
@@ -190,7 +207,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
         return;
       }
 
-      const updatedTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as Song[] : [];
+      const updatedTimeline = Array.isArray(playerData.timeline) ? (playerData.timeline as unknown as Song[]) : [];
       
       setCurrentPlayer(prev => prev ? {
         ...prev,
@@ -347,6 +364,12 @@ export const useGameRoom = (): UseGameRoomReturn => {
     }
   };
 
+  // Convert ConnectionStatus to simple string
+  const simpleConnectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error' = 
+    connectionStatus.isConnected ? 'connected' :
+    connectionStatus.isReconnecting ? 'connecting' :
+    connectionStatus.lastError ? 'error' : 'disconnected';
+
   return {
     room,
     players,
@@ -354,7 +377,7 @@ export const useGameRoom = (): UseGameRoomReturn => {
     isHost,
     isLoading,
     error,
-    connectionStatus,
+    connectionStatus: simpleConnectionStatus,
     setRoom,
     setPlayers,
     setCurrentPlayer,
