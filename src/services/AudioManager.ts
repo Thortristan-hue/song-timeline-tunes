@@ -18,7 +18,8 @@ class AudioManager {
   private realtimeChannel: any = null;
   private connectionRetryCount: number = 0;
   private maxRetries: number = 3;
-  private reconnectTimeout: number | null = null;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  private connectionState: 'disconnected' | 'connecting' | 'connected' | 'failed' = 'disconnected';
 
   private constructor() {}
 
@@ -35,6 +36,7 @@ class AudioManager {
   async initialize(roomId: string, isHost: boolean): Promise<void> {
     this.roomId = roomId;
     this.isHost = isHost;
+    this.connectionState = 'disconnected';
     
     console.log(`🎵 AUDIO MANAGER: Initializing for room ${roomId} as ${isHost ? 'HOST' : 'MOBILE'}`);
     
@@ -61,9 +63,10 @@ class AudioManager {
    * Subscribe to real-time audio control events with enhanced error handling and retry logic
    */
   private async subscribeToAudioControl(): Promise<void> {
-    if (!this.roomId) return;
+    if (!this.roomId || this.connectionState === 'connecting') return;
 
-    console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId}`);
+    this.connectionState = 'connecting';
+    console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId} (attempt ${this.connectionRetryCount + 1})`);
 
     try {
       // Create a unique channel name for this room
@@ -91,15 +94,19 @@ class AudioManager {
           
           if (status === 'SUBSCRIBED') {
             console.log('✅ HOST: Audio control subscription established successfully');
+            this.connectionState = 'connected';
             this.connectionRetryCount = 0; // Reset retry count on successful connection
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ HOST: Audio control subscription error');
+            this.connectionState = 'failed';
             await this.handleConnectionError();
           } else if (status === 'TIMED_OUT') {
             console.error('❌ HOST: Audio control subscription timed out');
+            this.connectionState = 'failed';
             await this.handleConnectionError();
           } else if (status === 'CLOSED') {
             console.log('🔌 HOST: Audio control subscription closed');
+            this.connectionState = 'disconnected';
             // Only retry if we didn't intentionally close the connection
             if (this.roomId && this.isHost) {
               await this.handleConnectionError();
@@ -109,6 +116,7 @@ class AudioManager {
 
     } catch (error) {
       console.error('❌ HOST: Failed to set up audio control subscription:', error);
+      this.connectionState = 'failed';
       await this.handleConnectionError();
     }
   }
@@ -119,6 +127,7 @@ class AudioManager {
   private async handleConnectionError(): Promise<void> {
     if (this.connectionRetryCount >= this.maxRetries) {
       console.error(`❌ HOST: Maximum retry attempts (${this.maxRetries}) reached for audio control`);
+      this.connectionState = 'failed';
       return;
     }
 
@@ -128,7 +137,7 @@ class AudioManager {
     console.log(`🔄 HOST: Retrying audio control connection in ${retryDelay}ms (attempt ${this.connectionRetryCount}/${this.maxRetries})`);
     
     this.reconnectTimeout = setTimeout(async () => {
-      if (this.roomId && this.isHost) {
+      if (this.roomId && this.isHost && this.connectionState !== 'connected') {
         await this.subscribeToAudioControl();
       }
     }, retryDelay);
@@ -439,6 +448,13 @@ class AudioManager {
   }
 
   /**
+   * Get connection status for debugging
+   */
+  getConnectionStatus(): string {
+    return this.connectionState;
+  }
+
+  /**
    * Enhanced cleanup method with proper connection handling
    */
   cleanup(): void {
@@ -464,6 +480,7 @@ class AudioManager {
     
     // Reset connection state
     this.connectionRetryCount = 0;
+    this.connectionState = 'disconnected';
     
     // Reset state
     this.roomId = null;
