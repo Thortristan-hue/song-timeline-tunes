@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -72,17 +73,25 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Phase synchronization from room data
+  // Phase synchronization from room data - CRITICAL: Update currentSong state
   useEffect(() => {
     if (roomData) {
+      console.log('🎯 ROOM DATA UPDATE:', {
+        currentSong: roomData.current_song,
+        phase: roomData.phase,
+        currentTurn: roomData.current_turn
+      });
+      
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
         currentTurnIndex: roomData.current_turn || 0,
-        phase: roomData.phase === 'playing' ? 'playing' : prev.phase
+        phase: roomData.phase === 'playing' ? 'playing' : prev.phase,
+        // CRITICAL: Update available songs from room data
+        availableSongs: roomData.songs ? (Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : prev.availableSongs) : prev.availableSongs
       }));
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData]);
+  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData?.songs]);
 
   // Initialize game with optimized song loading
   const initializeGame = useCallback(async () => {
@@ -131,21 +140,42 @@ export function useClassicGameLogic(
     }
   }, [toast, gameState.playlistInitialized]);
 
-  // Place card in timeline (turn-based)
+  // CRITICAL FIX: Place card in timeline with proper mystery card update
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {
     if (!roomId || gameState.phase !== 'playing') {
+      console.error('❌ PLACE CARD: Invalid state', { roomId, phase: gameState.phase });
       return { success: false };
     }
 
+    console.log('🃏 PLACE CARD: Starting placement', {
+      song: song.deezer_title,
+      position,
+      playerId,
+      availableSongsCount: gameState.availableSongs.length
+    });
+
     try {
+      // CRITICAL: Pass current available songs to the service
       const result = await GameService.placeCardAndAdvanceTurn(
         roomId,
         playerId,
         song,
-        position
+        position,
+        gameState.availableSongs // Pass current available songs
       );
 
+      console.log('🎯 PLACE CARD RESULT:', result);
+
       if (result.success) {
+        // CRITICAL: Update local state to remove placed song from available songs
+        setGameState(prev => ({
+          ...prev,
+          availableSongs: prev.availableSongs.filter(s => s.id !== song.id),
+          usedSongs: [...prev.usedSongs, song]
+        }));
+        
+        console.log('✅ PLACE CARD: Local state updated, song removed from available pool');
+
         // Check if game ended
         if (result.gameEnded && result.winner) {
           setGameState(prev => ({
@@ -160,10 +190,10 @@ export function useClassicGameLogic(
 
       return { success: false };
     } catch (error) {
-      console.error('Failed to place card in classic mode:', error);
+      console.error('❌ PLACE CARD: Failed:', error);
       return { success: false };
     }
-  }, [roomId, gameState.phase]);
+  }, [roomId, gameState.phase, gameState.availableSongs]);
 
   return {
     gameState,
