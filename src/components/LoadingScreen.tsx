@@ -30,7 +30,7 @@ export function LoadingScreen({
   const Icon = getIcon();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 relative overflow-hidden flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-800 to-slate-900 relative overflow-hidden flex items-center justify-center">
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
         {/* Floating Music Notes */}

@@ -8,6 +8,8 @@ import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
 import { HostCurrentPlayerTimeline } from './HostCurrentPlayerTimeline';
 import { FloatingMusicElements } from '@/components/FloatingMusicElements';
+import { universalAudioController } from '@/services/UniversalAudioController';
+import { useEffect } from 'react';
 
 interface HostGameViewProps {
   room: GameRoom;
@@ -34,6 +36,17 @@ export default function HostGameView({
 }: HostGameViewProps) {
   const currentTurnPlayer = gameLogic.getCurrentPlayer() || players[0];
   const currentPlayerTimeline = currentTurnPlayer?.timeline || [];
+
+  // Initialize universal audio controller for host
+  useEffect(() => {
+    if (room.id && isHost) {
+      universalAudioController.initialize(room.id, true, playerName);
+    }
+    
+    return () => {
+      universalAudioController.cleanup();
+    };
+  }, [room.id, isHost, playerName]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 overflow-hidden">
@@ -76,7 +89,7 @@ export default function HostGameView({
             song={room.current_song}
             isRevealed={gameLogic.gameState.phase === 'playing'}
             isPlaying={gameLogic.gameState.isPlaying}
-            onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
+            onPlayPause={() => universalAudioController.togglePlayPause(room.current_song)}
             className="scale-110"
           />
 

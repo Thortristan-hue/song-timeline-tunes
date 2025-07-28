@@ -4,6 +4,7 @@ import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, RefreshCw } from 
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
 import { DynamicBackground } from '@/components/DynamicBackground';
+import { universalAudioController } from '@/services/UniversalAudioController';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -483,7 +484,7 @@ export default function MobilePlayerGameView({
               
               {/* Enhanced play/pause button */}
               <Button
-                onClick={onPlayPause}
+                onClick={() => universalAudioController.togglePlayPause(currentSong)}
                 className={cn(
                   "absolute inset-0 w-full h-full border-0 rounded-full transition-all duration-300 group",
                   !currentSong?.preview_url 

@@ -63,6 +63,32 @@
   animation: stagger-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Enhanced card stagger entrance with shimmer */
+@keyframes card-stagger-entrance {
+  0% { 
+    opacity: 0; 
+    transform: translateY(30px) scale(0.9); 
+    filter: blur(2px);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: translateY(10px) scale(1.05); 
+    filter: blur(1px);
+    box-shadow: 0 0 15px 0 rgba(59, 130, 246, 0.3);
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+    filter: blur(0px);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.animate-card-stagger-entrance {
+  animation: card-stagger-entrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Magnetic Snap Effect */
 @keyframes magnetic-snap {
   0% { 

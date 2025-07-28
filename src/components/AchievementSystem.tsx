@@ -146,7 +146,7 @@ export function AchievementSystem({ className = "", playerId }: AchievementSyste
             triggerUnlockNotification(newAchievement);
           }
         }
-        return achievement.id === achievementId ? newAchievement : achievement;
+        return achievement.id === achievementId ? achievement : achievement;
       });
       
       saveAchievements(newAchievements);

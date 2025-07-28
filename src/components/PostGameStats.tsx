@@ -403,7 +403,7 @@ export function PostGameStats({
       </div>
 
       {/* Category Content */}
-      <div className={cn("transition-all duration-300", getCSSClass('STAGGER_ENTRANCE'))}>
+      <div className={cn("transition-all duration-300", getCSSClass('CARD_STAGGER_ENTRANCE'))}>
         {categories[selectedCategory as keyof typeof categories].component}
       </div>
     </div>
