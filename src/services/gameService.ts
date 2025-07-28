@@ -118,13 +118,15 @@ export class GameService {
     return Array.from(usedSongIds);
   }
 
-  // Select a fresh mystery card that hasn't been used anywhere in the game
+  // ENHANCED: Select a fresh mystery card with improved validation and logging
   private static async selectFreshMysteryCard(
     roomId: string, 
     availableSongs: Song[], 
     players: Player[], 
     currentMysteryCard?: Song
   ): Promise<Song | null> {
+    console.log('🎯 ENHANCED MYSTERY CARD SELECTION: Starting selection process');
+    
     const usedSongIds = await this.getAllUsedSongs(roomId, players, currentMysteryCard);
     
     // Filter out already used songs
@@ -132,20 +134,64 @@ export class GameService {
       song && song.id && !usedSongIds.includes(song.id)
     );
     
-    console.log('🎯 FRESH MYSTERY CARD SELECTION:', {
+    // Enhanced logging with more details
+    console.log('🎯 ENHANCED MYSTERY CARD SELECTION:', {
       totalAvailable: availableSongs.length,
       alreadyUsed: usedSongIds.length,
-      availableForSelection: unusedSongs.length
+      availableForSelection: unusedSongs.length,
+      usedSongs: usedSongIds.slice(0, 5), // Show first 5 used songs
+      currentMystery: currentMysteryCard?.deezer_title || 'None'
     });
     
+    // Enhanced validation
     if (unusedSongs.length === 0) {
       console.error('❌ CRITICAL: No unused songs available!');
+      console.log('📊 FALLBACK ANALYSIS:', {
+        availableSongsDetails: availableSongs.map(s => ({ id: s.id, title: s.deezer_title })).slice(0, 3),
+        playersTimelines: players.map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          timelineLength: p.timeline?.length || 0 
+        }))
+      });
+      
+      // ENHANCED FALLBACK: Try to use any available song as last resort
+      if (availableSongs.length > 0) {
+        console.log('🆘 FALLBACK: Using any available song as mystery card');
+        const fallbackSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+        console.log('🆘 FALLBACK SELECTED:', fallbackSong.deezer_title);
+        return fallbackSong;
+      }
+      
       return null;
     }
     
+    // ENHANCED: Prioritize songs with preview URLs
+    const songsWithPreview = unusedSongs.filter(song => song.preview_url && song.preview_url.trim() !== '');
+    const songsToChooseFrom = songsWithPreview.length > 0 ? songsWithPreview : unusedSongs;
+    
+    console.log('🎵 PREVIEW URL ANALYSIS:', {
+      totalUnused: unusedSongs.length,
+      withPreview: songsWithPreview.length,
+      usingPreviewPriority: songsWithPreview.length > 0
+    });
+    
     // Select random unused song
-    const selectedSong = unusedSongs[Math.floor(Math.random() * unusedSongs.length)];
-    console.log('✅ SELECTED FRESH MYSTERY CARD:', selectedSong.deezer_title);
+    const selectedSong = songsToChooseFrom[Math.floor(Math.random() * songsToChooseFrom.length)];
+    
+    // Enhanced validation of selected song
+    if (!selectedSong || !selectedSong.id || !selectedSong.deezer_title) {
+      console.error('❌ SELECTED SONG VALIDATION FAILED:', selectedSong);
+      return null;
+    }
+    
+    console.log('✅ ENHANCED MYSTERY CARD SELECTED:', {
+      title: selectedSong.deezer_title,
+      artist: selectedSong.deezer_artist,
+      year: selectedSong.release_year,
+      hasPreview: Boolean(selectedSong.preview_url),
+      id: selectedSong.id
+    });
     
     return selectedSong;
   }
@@ -251,7 +297,7 @@ export class GameService {
     return initialMysteryCard;
   }
 
-  // CRITICAL FIX: Ensure mystery card updates properly in database
+  // ENHANCED: Card placement with improved turn advancement and animation coordination
   static async placeCardAndAdvanceTurn(
     roomId: string,
     playerId: string,
@@ -260,8 +306,8 @@ export class GameService {
     availableSongs?: Song[]
   ): Promise<{ success: boolean; correct?: boolean; error?: string; gameEnded?: boolean; winner?: Player }> {
     try {
-      console.log('🃏 CARD PLACEMENT: Starting with turn advancement');
-      console.log('🎯 AVAILABLE SONGS FOR NEXT MYSTERY:', availableSongs?.length || 0);
+      console.log('🃏 ENHANCED CARD PLACEMENT: Starting with improved turn advancement');
+      console.log('🎯 ENHANCED: Available songs for next mystery:', availableSongs?.length || 0);
 
       // Get current room data to access songs
       const { data: roomData, error: roomError } = await supabase
@@ -271,6 +317,7 @@ export class GameService {
         .single();
 
       if (roomError || !roomData) {
+        console.error('❌ ENHANCED: Room not found:', roomError);
         return { success: false, error: 'Room not found' };
       }
 
@@ -282,20 +329,21 @@ export class GameService {
         try {
           roomSongs = Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [];
         } catch (e) {
-          console.error('Failed to parse room songs:', e);
+          console.error('ENHANCED: Failed to parse room songs:', e);
           return { success: false, error: 'Invalid room songs data' };
         }
       }
 
       if (roomSongs.length === 0) {
-        console.error('❌ CRITICAL: No available songs found in room or provided');
+        console.error('❌ ENHANCED CRITICAL: No available songs found in room or provided');
         return { success: false, error: 'No available songs' };
       }
 
-      console.log('🎯 USING SONGS:', {
+      console.log('🎯 ENHANCED: Using songs:', {
         source: availableSongs ? 'provided' : 'room',
         count: roomSongs.length,
-        placedSong: song.deezer_title
+        placedSong: song.deezer_title,
+        roomPhase: roomData.phase
       });
 
       // Get current player data
@@ -306,20 +354,39 @@ export class GameService {
         .single();
 
       if (playerError || !playerData) {
+        console.error('❌ ENHANCED: Player not found:', playerError);
         return { success: false, error: 'Player not found' };
       }
 
-      // Update player's timeline
+      // ENHANCED: Validate player timeline structure
       const currentTimeline = Array.isArray(playerData.timeline) ? (playerData.timeline as unknown as Song[]) : [];
+      console.log('🎯 ENHANCED: Current player timeline validation:', {
+        playerId: playerData.id,
+        playerName: playerData.name,
+        timelineLength: currentTimeline.length,
+        timelineValid: Array.isArray(currentTimeline)
+      });
+
+      // Update player's timeline
       const newTimeline = [...currentTimeline];
       newTimeline.splice(position, 0, song);
 
-      // Check if placement was correct (chronological order)
+      // ENHANCED: Check if placement was correct with detailed logging
       let isCorrect = true;
+      const validationDetails = [];
+      
       if (newTimeline.length > 1) {
         for (let i = 1; i < newTimeline.length; i++) {
           const prevYear = parseInt(newTimeline[i-1].release_year);
           const currYear = parseInt(newTimeline[i].release_year);
+          
+          validationDetails.push({
+            position: i,
+            prevSong: `${newTimeline[i-1].deezer_title} (${prevYear})`,
+            currSong: `${newTimeline[i].deezer_title} (${currYear})`,
+            valid: prevYear <= currYear
+          });
+          
           if (prevYear > currYear) {
             isCorrect = false;
             break;
@@ -327,7 +394,15 @@ export class GameService {
         }
       }
 
-      // CRITICAL FIX: Only add to timeline if placement is correct
+      console.log('📝 ENHANCED PLACEMENT VALIDATION:', {
+        placementCorrect: isCorrect,
+        placedSong: `${song.deezer_title} (${song.release_year})`,
+        position,
+        newTimelineLength: newTimeline.length,
+        chronologyCheck: validationDetails
+      });
+
+      // ENHANCED: Only add to timeline if placement is correct
       const finalTimeline = isCorrect ? newTimeline : currentTimeline;
       const newScore = playerData.score + (isCorrect ? 1 : 0);
 
@@ -342,21 +417,23 @@ export class GameService {
         .eq('id', playerId);
 
       if (updateError) {
+        console.error('❌ ENHANCED: Failed to update player:', updateError);
         throw updateError;
       }
 
-      console.log('✅ CARD PLACEMENT: Player timeline updated');
+      console.log('✅ ENHANCED: Player timeline updated successfully');
 
-      // Check for game end condition (10 cards) - only if placement was correct
+      // ENHANCED: Check for game end condition with proper validation
       if (isCorrect && finalTimeline.length >= 10) {
-        console.log('🎯 GAME END: Player reached 10 cards');
-        await this.endGame(roomId, playerId);
+        console.log('🎯 ENHANCED GAME END: Player reached 10 cards');
         
         const updatedPlayer = this.convertDatabasePlayerToPlayer({
           ...playerData,
           timeline: finalTimeline as unknown as Json,
           score: newScore
         });
+        
+        await this.endGame(roomId, playerId);
         
         return { 
           success: true, 
@@ -375,31 +452,47 @@ export class GameService {
         .order('joined_at', { ascending: true });
 
       if (playersError || !allPlayers) {
+        console.error('❌ ENHANCED: Failed to get players:', playersError);
         return { success: false, error: 'Failed to get players' };
       }
 
-      // Calculate next turn
+      // ENHANCED: Calculate next turn with validation
       const currentTurn = roomData.current_turn || 0;
       const nextTurn = (currentTurn + 1) % allPlayers.length;
-      const nextPlayerId = allPlayers[nextTurn]?.id;
+      const nextPlayer = allPlayers[nextTurn];
 
-      console.log('🎯 TURN ADVANCEMENT:', {
+      if (!nextPlayer) {
+        console.error('❌ ENHANCED: Next player not found');
+        return { success: false, error: 'Next player not found' };
+      }
+
+      console.log('🎯 ENHANCED TURN ADVANCEMENT:', {
         currentTurn,
         nextTurn,
-        nextPlayer: allPlayers[nextTurn]?.name,
-        placedSong: song.deezer_title
-      });
-
-      // CRITICAL: Remove the placed song from available songs for next mystery card selection
-      const availableForNextMystery = roomSongs.filter(s => s.id !== song.id);
-      console.log('🎯 SONG REMOVAL: Removed placed song from pool:', {
+        nextPlayer: nextPlayer.name,
+        totalPlayers: allPlayers.length,
         placedSong: song.deezer_title,
-        remainingCount: availableForNextMystery.length
+        placementResult: isCorrect ? 'CORRECT' : 'INCORRECT'
       });
 
-      // Get fresh mystery card for next turn
+      // ENHANCED: Remove the placed song from available songs for next mystery card selection
+      const availableForNextMystery = roomSongs.filter(s => s.id !== song.id);
+      console.log('🎯 ENHANCED SONG REMOVAL: Removed placed song from pool:', {
+        placedSong: song.deezer_title,
+        previousCount: roomSongs.length,
+        remainingCount: availableForNextMystery.length,
+        removalSuccessful: availableForNextMystery.length === (roomSongs.length - 1)
+      });
+
+      // ENHANCED: Get fresh mystery card with improved selection
       const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
       const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
+      
+      console.log('🎯 ENHANCED: Current mystery card analysis:', {
+        current: currentMysteryCard?.deezer_title || 'None',
+        currentId: currentMysteryCard?.id || 'None',
+        aboutToBeReplaced: true
+      });
       
       const nextMysteryCard = await this.selectFreshMysteryCard(
         roomId,
@@ -409,36 +502,92 @@ export class GameService {
       );
       
       if (!nextMysteryCard) {
-        console.error('❌ CRITICAL: No fresh mystery card available for next turn!');
-        return { success: false, error: 'No fresh mystery card available' };
+        console.error('❌ ENHANCED CRITICAL: No fresh mystery card available for next turn!');
+        
+        // ENHANCED FALLBACK: Emergency song selection
+        console.log('🆘 ENHANCED EMERGENCY: Attempting emergency song selection');
+        const emergencySongs = roomSongs.filter(s => s.id !== song.id);
+        if (emergencySongs.length > 0) {
+          const emergencyCard = emergencySongs[Math.floor(Math.random() * emergencySongs.length)];
+          console.log('🆘 ENHANCED EMERGENCY: Selected emergency card:', emergencyCard.deezer_title);
+          
+          // Continue with emergency card
+          const { error: emergencyUpdateError } = await supabase
+            .from('game_rooms')
+            .update({
+              current_turn: nextTurn,
+              current_song: emergencyCard as unknown as Json,
+              current_player_id: nextPlayer.id,
+              songs: emergencySongs as unknown as Json,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', roomId);
+
+          if (emergencyUpdateError) {
+            console.error('❌ ENHANCED EMERGENCY: Failed to update room:', emergencyUpdateError);
+            return { success: false, error: 'Failed to advance turn with emergency card' };
+          }
+
+          // Record the move with emergency flag
+          await this.recordGameMove(roomId, playerId, 'card_placement', {
+            song,
+            position,
+            correct: isCorrect,
+            oldMysteryCard: currentMysteryCard?.id,
+            nextMysteryCard: emergencyCard.id,
+            newScore,
+            timelineLength: finalTimeline.length,
+            turnAdvanced: true,
+            songsRemaining: emergencySongs.length,
+            emergencyCardUsed: true
+          });
+
+          return { success: true, correct: isCorrect };
+        }
+        
+        return { success: false, error: 'No mystery card available and no emergency options' };
       }
 
-      console.log('🎯 NEW MYSTERY CARD SELECTED:', {
+      console.log('🎯 ENHANCED NEW MYSTERY CARD SELECTED:', {
         title: nextMysteryCard.deezer_title,
         artist: nextMysteryCard.deezer_artist,
-        year: nextMysteryCard.release_year
+        year: nextMysteryCard.release_year,
+        id: nextMysteryCard.id,
+        hasPreview: Boolean(nextMysteryCard.preview_url)
       });
 
-      // CRITICAL: Update room with filtered songs (remove placed song) and new mystery card
+      // ENHANCED: Update room with comprehensive logging
+      const roomUpdateData = {
+        current_turn: nextTurn,
+        current_song: nextMysteryCard as unknown as Json,
+        current_player_id: nextPlayer.id,
+        songs: availableForNextMystery as unknown as Json,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('🎯 ENHANCED ROOM UPDATE:', {
+        previousTurn: currentTurn,
+        newTurn: nextTurn,
+        previousPlayer: allPlayers[currentTurn]?.name,
+        newPlayer: nextPlayer.name,
+        previousSongsCount: roomSongs.length,
+        newSongsCount: availableForNextMystery.length,
+        mysteryCardChanged: currentMysteryCard?.id !== nextMysteryCard.id
+      });
+
       const { error: turnUpdateError } = await supabase
         .from('game_rooms')
-        .update({
-          current_turn: nextTurn,
-          current_song: nextMysteryCard as unknown as Json,
-          current_player_id: nextPlayerId,
-          songs: availableForNextMystery as unknown as Json, // Update available songs
-          updated_at: new Date().toISOString()
-        })
+        .update(roomUpdateData)
         .eq('id', roomId);
 
       if (turnUpdateError) {
-        console.error('❌ TURN ADVANCEMENT: Failed:', turnUpdateError);
+        console.error('❌ ENHANCED TURN ADVANCEMENT: Failed:', turnUpdateError);
         throw turnUpdateError;
       }
 
-      console.log('✅ TURN ADVANCEMENT: Room updated with new mystery card');
+      console.log('✅ ENHANCED TURN ADVANCEMENT: Room updated successfully');
 
-      // Record the move
+      // ENHANCED: Record comprehensive move data
       await this.recordGameMove(roomId, playerId, 'card_placement', {
         song,
         position,
@@ -448,15 +597,20 @@ export class GameService {
         newScore,
         timelineLength: finalTimeline.length,
         turnAdvanced: true,
-        songsRemaining: availableForNextMystery.length
+        songsRemaining: availableForNextMystery.length,
+        playerName: playerData.name,
+        nextPlayerName: nextPlayer.name,
+        turnNumber: nextTurn,
+        timestamp: new Date().toISOString()
       });
 
-      console.log('✅ TURN ADVANCEMENT: Turn advanced successfully with fresh mystery card');
-      console.log('🎯 NEXT MYSTERY CARD:', nextMysteryCard.deezer_title, '(' + nextMysteryCard.release_year + ')');
+      console.log('✅ ENHANCED TURN ADVANCEMENT: Turn advanced successfully with fresh mystery card');
+      console.log('🎯 ENHANCED NEXT MYSTERY CARD:', `${nextMysteryCard.deezer_title} by ${nextMysteryCard.deezer_artist} (${nextMysteryCard.release_year})`);
+
       return { success: true, correct: isCorrect };
     } catch (error) {
-      console.error('❌ CARD PLACEMENT: Failed:', error);
-      return { success: false, error: 'Failed to place card and advance turn' };
+      console.error('❌ ENHANCED CARD PLACEMENT: Failed:', error);
+      return { success: false, error: 'Enhanced card placement and turn advancement failed' };
     }
   }
 
