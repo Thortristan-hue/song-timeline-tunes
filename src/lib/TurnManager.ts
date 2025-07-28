@@ -20,8 +20,10 @@ export interface TurnChangeResult {
   newMysteryCard?: Song;
   nextPlayer?: Player;
   animationsCompleted: boolean;
-  correct?: boolean;
+  correct: boolean;  // Made required to match GameService
   error?: string;
+  gameEnded?: boolean;
+  winner?: Player;
 }
 
 export class TurnManager {
@@ -152,7 +154,9 @@ export class TurnManager {
         newMysteryCard,
         nextPlayer,
         animationsCompleted: true,
-        correct: placementResult.correct || false
+        correct: placementResult.correct || false,
+        gameEnded: placementResult.gameEnded || false,
+        winner: placementResult.winner
       };
 
     } catch (error) {

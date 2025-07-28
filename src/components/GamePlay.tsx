@@ -1,13 +1,15 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { HostGameView } from '@/components/HostVisuals';
 import ResponsiveMobilePlayerView from '@/components/player/ResponsiveMobilePlayerView';
 import { useGameLogic } from '@/hooks/useGameLogic';
+import { useEnhancedTurnManager } from '@/hooks/useEnhancedTurnManager';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { GameRoom, Player, Song } from '@/types/game';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { audioManager } from '@/services/AudioManager';
+import TurnAndAudioDebugger from '@/components/TurnAndAudioDebugger';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -36,27 +38,92 @@ export default function GamePlay({
 }: GamePlayProps) {
   const { refreshCurrentPlayerTimeline } = useGameRoom();
   const gameLogic = useGameLogic(room?.id || null, players, room);
+  
+  // Enhanced turn management with animation coordination
+  const turnManager = useEnhancedTurnManager({
+    roomId: room?.id || '',
+    availableSongs: customSongs || [],
+    allPlayers: players,
+    currentPlayer: gameLogic.getCurrentPlayer()
+  });
+  
+  // Audio state management
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
 
   // Initialize audio manager with proper room and role
   useEffect(() => {
     if (room?.id) {
       console.log(`🎵 Initializing audio manager for room ${room.id} as ${isHost ? 'HOST' : 'MOBILE'}`);
       audioManager.initialize(room.id, isHost);
+      
+      // Set up audio state listener
+      const handleAudioStateChange = (isPlaying: boolean, song?: Song) => {
+        console.log('🎵 Audio state changed:', { isPlaying, song: song?.deezer_title });
+        setAudioIsPlaying(isPlaying);
+        if (song) {
+          onSetCurrentSong(song);
+        }
+      };
+      
+      audioManager.addPlayStateListener(handleAudioStateChange);
+      // Initialize with current state
+      setAudioIsPlaying(audioManager.getIsPlaying());
+      
+      return () => {
+        console.log('🧹 Cleaning up audio manager');
+        audioManager.removePlayStateListener(handleAudioStateChange);
+        audioManager.cleanup();
+      };
     }
+  }, [room?.id, isHost, onSetCurrentSong]);
 
-    return () => {
-      console.log('🧹 Cleaning up audio manager');
-      audioManager.cleanup();
-    };
-  }, [room?.id, isHost]);
+  // Enhanced card placement with turn management
+  const handleEnhancedPlaceCard = useCallback(async (song: Song, position: number) => {
+    console.log('🎯 GAMEPLAY: Enhanced card placement requested');
+    
+    if (!room?.id || !currentPlayer) {
+      return { success: false, error: 'Missing room or player data' };
+    }
+    
+    try {
+      // Use the enhanced turn manager for coordinated placement and turn advancement
+      const result = await turnManager.placeCardWithAnimation(song, position);
+      
+      if (result.success) {
+        // Refresh timeline after successful placement
+        await refreshCurrentPlayerTimeline?.();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ GAMEPLAY: Enhanced card placement failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Card placement failed' 
+      };
+    }
+  }, [room?.id, currentPlayer, turnManager, refreshCurrentPlayerTimeline]);
 
-  const handleRestart = () => {
-    console.log('Restarting game...');
-  };
-
-  const handleEndGame = () => {
-    console.log('Ending game...');
-  };
+  // Universal audio control
+  const handleAudioToggle = useCallback(async () => {
+    console.log('🎵 GAMEPLAY: Audio toggle requested');
+    
+    if (!room?.current_song) {
+      console.warn('🎵 GAMEPLAY: No current song available');
+      return;
+    }
+    
+    try {
+      const success = await audioManager.togglePlayPause(room.current_song);
+      if (!success) {
+        console.warn('🎵 GAMEPLAY: Audio toggle failed, falling back to local state');
+        // Fallback for immediate UI feedback
+        setAudioIsPlaying(!audioIsPlaying);
+      }
+    } catch (error) {
+      console.error('❌ GAMEPLAY: Audio toggle error:', error);
+    }
+  }, [room?.current_song, audioIsPlaying]);
 
   // For host, we only need room data
   // For players, we need both room and currentPlayer
@@ -76,10 +143,10 @@ export default function GamePlay({
               roomCode={room.lobby_code}
               players={players}
               mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
-              isPlaying={gameLogic.gameState.isPlaying}
-              onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
+              isPlaying={audioIsPlaying}
+              onPlayPause={handleAudioToggle}
               cardPlacementResult={null}
-              transitioning={gameLogic.gameState.transitioningTurn}
+              transitioning={turnManager.isTransitioning}
               highlightedGapIndex={null}
               mobileViewport={null}
             />
@@ -90,9 +157,9 @@ export default function GamePlay({
               currentSong={room.current_song || { id: '', deezer_title: '', deezer_artist: '', release_year: '', deezer_album: '', genre: '', cardColor: '', preview_url: '', deezer_url: '' }}
               roomCode={room.lobby_code}
               isMyTurn={gameLogic.getCurrentPlayer()?.id === currentPlayer?.id}
-              isPlaying={gameLogic.gameState.isPlaying}
-              onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
-              onPlaceCard={onPlaceCard}
+              isPlaying={audioIsPlaying}
+              onPlayPause={handleAudioToggle}
+              onPlaceCard={handleEnhancedPlaceCard}
               mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
               cardPlacementResult={null}
               gameEnded={gameLogic.gameState.phase === 'finished'}
@@ -102,6 +169,13 @@ export default function GamePlay({
             />
           )}
         </GameErrorBoundary>
+        
+        {/* Debug Component - remove in production */}
+        <TurnAndAudioDebugger 
+          roomId={room.id}
+          isHost={isHost}
+          currentSong={room.current_song || undefined}
+        />
       </div>
     </div>
   );
