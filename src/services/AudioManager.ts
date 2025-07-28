@@ -1,11 +1,11 @@
+
 import { DeezerAudioService } from './DeezerAudioService';
 import { Song } from '@/types/game';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Universal Audio Controller for cross-device audio synchronization
+ * Simplified Universal Audio Controller
  * Handles playing mystery songs and coordinating between host and mobile devices
- * Provides universal control where mobile devices can control host audio playback
  */
 class AudioManager {
   private static instance: AudioManager;
@@ -16,10 +16,8 @@ class AudioManager {
   private roomId: string | null = null;
   private isHost: boolean = false;
   private realtimeChannel: any = null;
-  private connectionRetryCount: number = 0;
-  private maxRetries: number = 3;
-  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private connectionState: 'disconnected' | 'connecting' | 'connected' | 'failed' = 'disconnected';
+  private isInitialized: boolean = false;
 
   private constructor() {}
 
@@ -31,27 +29,21 @@ class AudioManager {
   }
 
   /**
-   * Initialize the audio manager for a specific room and role with enhanced error handling
+   * Initialize the audio manager for a specific room and role
    */
   async initialize(roomId: string, isHost: boolean): Promise<void> {
+    // Prevent multiple initializations for the same room
+    if (this.isInitialized && this.roomId === roomId && this.isHost === isHost) {
+      console.log('🎵 AUDIO MANAGER: Already initialized for this room and role');
+      return;
+    }
+
     this.roomId = roomId;
     this.isHost = isHost;
+    this.isInitialized = true;
     this.connectionState = 'disconnected';
     
     console.log(`🎵 AUDIO MANAGER: Initializing for room ${roomId} as ${isHost ? 'HOST' : 'MOBILE'}`);
-    
-    // Clean up any existing subscription
-    if (this.realtimeChannel) {
-      console.log('🎵 AUDIO MANAGER: Cleaning up existing channel');
-      await supabase.removeChannel(this.realtimeChannel);
-      this.realtimeChannel = null;
-    }
-    
-    // Clear any existing reconnect timeout
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
     
     // Subscribe to audio control events if this is the host
     if (isHost && roomId) {
@@ -60,15 +52,20 @@ class AudioManager {
   }
 
   /**
-   * Subscribe to real-time audio control events with enhanced error handling and retry logic
+   * Subscribe to real-time audio control events
    */
   private async subscribeToAudioControl(): Promise<void> {
     if (!this.roomId || this.connectionState === 'connecting') return;
 
     this.connectionState = 'connecting';
-    console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId} (attempt ${this.connectionRetryCount + 1})`);
+    console.log(`🎵 HOST: Setting up audio control subscription for room ${this.roomId}`);
 
     try {
+      // Clean up existing channel
+      if (this.realtimeChannel) {
+        await supabase.removeChannel(this.realtimeChannel);
+      }
+
       // Create a unique channel name for this room
       const channelName = `audio-control-${this.roomId}`;
       this.realtimeChannel = supabase.channel(channelName, {
@@ -85,8 +82,6 @@ class AudioManager {
           if (payload && payload.payload) {
             console.log('🎵 HOST: Processing payload:', payload.payload);
             this.handleUniversalAudioControl(payload.payload);
-          } else {
-            console.warn('🎵 HOST: Invalid audio control payload structure:', payload);
           }
         })
         .subscribe(async (status: string) => {
@@ -95,56 +90,23 @@ class AudioManager {
           if (status === 'SUBSCRIBED') {
             console.log('✅ HOST: Audio control subscription established successfully');
             this.connectionState = 'connected';
-            this.connectionRetryCount = 0; // Reset retry count on successful connection
-          } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ HOST: Audio control subscription error');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('❌ HOST: Audio control subscription failed');
             this.connectionState = 'failed';
-            await this.handleConnectionError();
-          } else if (status === 'TIMED_OUT') {
-            console.error('❌ HOST: Audio control subscription timed out');
-            this.connectionState = 'failed';
-            await this.handleConnectionError();
           } else if (status === 'CLOSED') {
             console.log('🔌 HOST: Audio control subscription closed');
             this.connectionState = 'disconnected';
-            // Only retry if we didn't intentionally close the connection
-            if (this.roomId && this.isHost) {
-              await this.handleConnectionError();
-            }
           }
         });
 
     } catch (error) {
       console.error('❌ HOST: Failed to set up audio control subscription:', error);
       this.connectionState = 'failed';
-      await this.handleConnectionError();
     }
   }
 
   /**
-   * Handle connection errors with exponential backoff retry logic
-   */
-  private async handleConnectionError(): Promise<void> {
-    if (this.connectionRetryCount >= this.maxRetries) {
-      console.error(`❌ HOST: Maximum retry attempts (${this.maxRetries}) reached for audio control`);
-      this.connectionState = 'failed';
-      return;
-    }
-
-    this.connectionRetryCount++;
-    const retryDelay = Math.min(1000 * Math.pow(2, this.connectionRetryCount - 1), 10000); // Exponential backoff, max 10s
-    
-    console.log(`🔄 HOST: Retrying audio control connection in ${retryDelay}ms (attempt ${this.connectionRetryCount}/${this.maxRetries})`);
-    
-    this.reconnectTimeout = setTimeout(async () => {
-      if (this.roomId && this.isHost && this.connectionState !== 'connected') {
-        await this.subscribeToAudioControl();
-      }
-    }, retryDelay);
-  }
-
-  /**
-   * Handle universal audio control commands from mobile devices with enhanced validation
+   * Handle universal audio control commands from mobile devices
    */
   private async handleUniversalAudioControl(command: { action: 'play' | 'pause' | 'toggle', song?: Song, timestamp?: number }) {
     if (!this.isHost) {
@@ -152,7 +114,6 @@ class AudioManager {
       return;
     }
 
-    // Validate command structure
     if (!command || !command.action) {
       console.error('❌ HOST: Invalid audio control command received:', command);
       return;
@@ -167,7 +128,6 @@ class AudioManager {
     console.log('🎵 HOST: Processing audio control command:', {
       action: command.action,
       song: command.song?.deezer_title,
-      timestamp: command.timestamp,
       currentSong: this.currentSong?.deezer_title,
       isPlaying: this.isPlaying
     });
@@ -179,8 +139,6 @@ class AudioManager {
             await this.playSong(command.song);
           } else if (this.currentSong) {
             await this.resume();
-          } else {
-            console.warn('🎵 HOST: No valid song to play');
           }
           break;
         case 'pause':
@@ -189,101 +147,50 @@ class AudioManager {
         case 'toggle':
           if (command.song && this.isValidSong(command.song)) {
             await this.togglePlayPause(command.song);
-          } else {
-            console.warn('🎵 HOST: No valid song provided for toggle');
           }
           break;
-        default:
-          console.error('❌ HOST: Unknown audio control action:', command.action);
       }
     } catch (error) {
       console.error('❌ HOST: Failed to handle audio control:', error);
-      // Notify listeners of the error
       this.notifyPlayStateChange();
     }
   }
 
   /**
-   * Validate song object has required fields
+   * Validate song object
    */
   private isValidSong(song: Song): boolean {
-    return !!(song && 
-             song.id && 
-             song.deezer_title && 
-             song.deezer_artist && 
-             song.release_year);
+    return !!(song && song.id && song.deezer_title && song.deezer_artist);
   }
 
   /**
-   * Send universal audio control command with enhanced error handling and retry logic
+   * Send universal audio control command
    */
   async sendUniversalAudioControl(action: 'play' | 'pause' | 'toggle', song?: Song): Promise<boolean> {
-    if (!this.roomId) {
-      console.error('📱 MOBILE: Cannot send audio control - no room ID');
+    if (!this.roomId || this.isHost) {
       return false;
     }
 
-    if (this.isHost) {
-      console.warn('📱 HOST: Host should not send audio control commands');
+    console.log('📱 MOBILE: Sending audio control command:', { action, song: song?.deezer_title });
+
+    try {
+      const channelName = `audio-control-${this.roomId}`;
+      const channel = supabase.channel(channelName, {
+        config: { broadcast: { self: false } }
+      });
+      
+      const result = await channel.send({
+        type: 'broadcast',
+        event: 'audio_control',
+        payload: { action, song, timestamp: Date.now() }
+      });
+
+      await supabase.removeChannel(channel);
+      return result === 'ok';
+    } catch (error) {
+      console.error('❌ MOBILE: Failed to send audio control command:', error);
       return false;
     }
-
-    console.log('📱 MOBILE: Sending audio control command:', { 
-      action, 
-      song: song?.deezer_title,
-      roomId: this.roomId
-    });
-
-    // Retry logic for mobile commands
-    const maxAttempts = 3;
-    let attempt = 0;
-
-    while (attempt < maxAttempts) {
-      try {
-        // Create a fresh channel for sending the command
-        const channelName = `audio-control-${this.roomId}`;
-        const channel = supabase.channel(channelName, {
-          config: {
-            broadcast: { self: false }
-          }
-        });
-        
-        console.log(`📱 MOBILE: Sending command via channel: ${channelName} (attempt ${attempt + 1}/${maxAttempts})`);
-        
-        // Send the command
-        const result = await channel.send({
-          type: 'broadcast',
-          event: 'audio_control',
-          payload: { action, song, timestamp: Date.now() }
-        });
-
-        console.log('📱 MOBILE: Send result:', result);
-
-        // Clean up the channel
-        await supabase.removeChannel(channel);
-
-        // Check if the send was successful
-        if (result === 'ok') {
-          console.log('📱 MOBILE: Successfully sent audio control command');
-          return true;
-        } else {
-          console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt + 1}):`, result);
-        }
-
-      } catch (error) {
-        console.error(`❌ MOBILE: Failed to send audio control command (attempt ${attempt + 1}):`, error);
-      }
-
-      attempt++;
-      if (attempt < maxAttempts) {
-        const delay = 1000 * attempt; // Incremental delay
-        console.log(`📱 MOBILE: Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-
-    console.error('❌ MOBILE: Failed to send audio control command after all attempts');
-    return false;
   }
 
   /**
@@ -404,22 +311,15 @@ class AudioManager {
   }
 
   /**
-   * Toggle play/pause with universal control support and enhanced error handling
+   * Toggle play/pause
    */
   async togglePlayPause(song?: Song): Promise<boolean> {
-    // If not host, send command to host instead of playing locally
+    // If not host, send command to host
     if (!this.isHost && this.roomId) {
-      const success = await this.sendUniversalAudioControl('toggle', song);
-      if (!success) {
-        console.warn('📱 MOBILE: Universal control command failed, falling back to local feedback');
-        // Still update local state for immediate UI feedback
-        this.isPlaying = !this.isPlaying;
-        this.notifyPlayStateChange();
-      }
-      return success;
+      return await this.sendUniversalAudioControl('toggle', song);
     }
 
-    // Host-only logic for actual audio playback
+    // Host-only logic
     const targetSong = song || this.currentSong;
     
     if (!targetSong) {
@@ -448,26 +348,13 @@ class AudioManager {
   }
 
   /**
-   * Get connection status for debugging
-   */
-  getConnectionStatus(): string {
-    return this.connectionState;
-  }
-
-  /**
-   * Enhanced cleanup method with proper connection handling
+   * Cleanup method
    */
   cleanup(): void {
     console.log('🧹 AUDIO MANAGER: Cleaning up');
     
     // Stop any playing audio
     this.stop();
-    
-    // Clear reconnect timeout
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
     
     // Remove realtime subscription
     if (this.realtimeChannel) {
@@ -478,11 +365,9 @@ class AudioManager {
     // Clear listeners
     this.playStateListeners = [];
     
-    // Reset connection state
-    this.connectionRetryCount = 0;
-    this.connectionState = 'disconnected';
-    
     // Reset state
+    this.connectionState = 'disconnected';
+    this.isInitialized = false;
     this.roomId = null;
     this.isHost = false;
   }

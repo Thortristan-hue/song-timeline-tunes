@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { HostGameView } from '@/components/HostVisuals';
 import ResponsiveMobilePlayerView from '@/components/player/ResponsiveMobilePlayerView';
@@ -49,65 +49,60 @@ export default function GamePlay({
   
   // Audio state management
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
-  const [connectionRetryCount, setConnectionRetryCount] = useState(0);
+  const audioInitializedRef = useRef(false);
 
-  // Initialize audio manager with proper room and role and connection retry logic
+  // Initialize audio manager once per room
   useEffect(() => {
-    if (room?.id) {
+    if (room?.id && !audioInitializedRef.current) {
       console.log(`🎵 Initializing audio manager for room ${room.id} as ${isHost ? 'HOST' : 'MOBILE'}`);
+      audioInitializedRef.current = true;
       
-      // Initialize with retry logic
-      const initializeWithRetry = async (attempts = 3) => {
+      const initializeAudio = async () => {
         try {
           await audioManager.initialize(room.id, isHost);
-          setConnectionRetryCount(0);
-        } catch (error) {
-          console.error(`❌ Audio manager initialization failed (attempt ${4 - attempts}):`, error);
           
-          if (attempts > 1) {
-            console.log(`🔄 Retrying audio manager initialization in 2s...`);
-            setTimeout(() => initializeWithRetry(attempts - 1), 2000);
-          } else {
-            console.error('❌ Audio manager initialization failed after 3 attempts');
-            setConnectionRetryCount(prev => prev + 1);
-          }
+          // Set up audio state listener
+          const handleAudioStateChange = (isPlaying: boolean, song?: Song) => {
+            console.log('🎵 Audio state changed:', { isPlaying, song: song?.deezer_title });
+            setAudioIsPlaying(isPlaying);
+            if (song) {
+              onSetCurrentSong(song);
+            }
+          };
+          
+          audioManager.addPlayStateListener(handleAudioStateChange);
+          // Initialize with current state
+          setAudioIsPlaying(audioManager.getIsPlaying());
+          
+        } catch (error) {
+          console.error('❌ Audio manager initialization failed:', error);
         }
       };
 
-      initializeWithRetry();
-      
-      // Set up audio state listener
-      const handleAudioStateChange = (isPlaying: boolean, song?: Song) => {
-        console.log('🎵 Audio state changed:', { isPlaying, song: song?.deezer_title });
-        setAudioIsPlaying(isPlaying);
-        if (song) {
-          onSetCurrentSong(song);
-        }
-      };
-      
-      audioManager.addPlayStateListener(handleAudioStateChange);
-      // Initialize with current state
-      setAudioIsPlaying(audioManager.getIsPlaying());
-      
-      return () => {
-        console.log('🧹 Cleaning up audio manager');
-        audioManager.removePlayStateListener(handleAudioStateChange);
-        audioManager.cleanup();
-      };
+      initializeAudio();
     }
-  }, [room?.id, isHost, onSetCurrentSong, connectionRetryCount]);
 
-  // Enhanced card placement with turn management
+    // Cleanup only when component unmounts or room changes
+    return () => {
+      if (audioInitializedRef.current) {
+        console.log('🧹 Cleaning up audio manager');
+        audioManager.cleanup();
+        audioInitializedRef.current = false;
+      }
+    };
+  }, [room?.id, isHost]); // Only depend on room.id and isHost
+
+  // Simplified card placement without the complex turn management
   const handleEnhancedPlaceCard = useCallback(async (song: Song, position: number) => {
-    console.log('🎯 GAMEPLAY: Enhanced card placement requested');
+    console.log('🎯 GAMEPLAY: Card placement requested');
     
     if (!room?.id || !currentPlayer) {
       return { success: false, error: 'Missing room or player data' };
     }
     
     try {
-      // Use the enhanced turn manager for coordinated placement and turn advancement
-      const result = await turnManager.placeCardWithAnimation(song, position);
+      // Use the original onPlaceCard function for now to avoid complexity
+      const result = await onPlaceCard(song, position);
       
       if (result.success) {
         // Refresh timeline after successful placement
@@ -116,15 +111,15 @@ export default function GamePlay({
       
       return result;
     } catch (error) {
-      console.error('❌ GAMEPLAY: Enhanced card placement failed:', error);
+      console.error('❌ GAMEPLAY: Card placement failed:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Card placement failed' 
       };
     }
-  }, [room?.id, currentPlayer, turnManager, refreshCurrentPlayerTimeline]);
+  }, [room?.id, currentPlayer, onPlaceCard, refreshCurrentPlayerTimeline]);
 
-  // Enhanced universal audio control with better error handling
+  // Simplified audio toggle
   const handleAudioToggle = useCallback(async () => {
     console.log('🎵 GAMEPLAY: Audio toggle requested');
     
@@ -136,18 +131,8 @@ export default function GamePlay({
     try {
       const success = await audioManager.togglePlayPause(room.current_song);
       if (!success) {
-        console.warn('🎵 GAMEPLAY: Audio toggle failed, attempting reconnection...');
-        
-        // Attempt to reinitialize audio manager on failure
-        if (connectionRetryCount < 3) {
-          setTimeout(() => {
-            console.log('🔄 Attempting to reinitialize audio manager...');
-            audioManager.initialize(room.id, isHost);
-            setConnectionRetryCount(prev => prev + 1);
-          }, 1000);
-        }
-        
-        // Still provide immediate UI feedback
+        console.warn('🎵 GAMEPLAY: Audio toggle failed');
+        // Provide immediate UI feedback as fallback
         setAudioIsPlaying(!audioIsPlaying);
       }
     } catch (error) {
@@ -155,7 +140,7 @@ export default function GamePlay({
       // Provide fallback UI feedback
       setAudioIsPlaying(!audioIsPlaying);
     }
-  }, [room?.current_song, audioIsPlaying, connectionRetryCount, room?.id, isHost]);
+  }, [room?.current_song, audioIsPlaying]);
 
   // For host, we only need room data
   // For players, we need both room and currentPlayer
