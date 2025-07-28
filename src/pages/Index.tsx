@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { audioManager } from '@/services/AudioManager';
@@ -101,6 +102,17 @@ export default function Index() {
     await updatePlayer({ name, character });
   };
 
+  const handleCreateRoomInLobby = async () => {
+    const hostName = 'Host'; // Default host name
+    const lobbyCode = await createRoom(hostName);
+    return !!lobbyCode;
+  };
+
+  const handleSetCustomSongs = (songs: any[]) => {
+    // Handle custom songs - for now just log
+    console.log('Custom songs set:', songs);
+  };
+
   const renderCurrentPhase = () => {
     switch (gameState.phase) {
       case 'menu':
@@ -115,8 +127,13 @@ export default function Index() {
         return (
           <HostLobby
             room={room}
+            lobbyCode={room?.lobby_code || ''}
             players={players}
             onStartGame={handleStartGame}
+            onBackToMenu={handleBackToMenu}
+            setCustomSongs={handleSetCustomSongs}
+            isLoading={isLoading}
+            createRoom={handleCreateRoomInLobby}
             updateRoomGamemode={updateRoomGamemode}
             onKickPlayer={kickPlayer}
           />
