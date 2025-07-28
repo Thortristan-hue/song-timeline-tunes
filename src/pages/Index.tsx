@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { audioManager } from '@/services/AudioManager';
@@ -118,7 +117,7 @@ export default function Index() {
             room={room}
             players={players}
             onStartGame={handleStartGame}
-            onUpdateGamemode={updateRoomGamemode}
+            updateRoomGamemode={updateRoomGamemode}
             onKickPlayer={kickPlayer}
           />
         );
@@ -138,6 +137,7 @@ export default function Index() {
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
+            onBackToMenu={handleBackToMenu}
           />
         );
       
