@@ -115,6 +115,7 @@ export function useGameRoom() {
               name: payload.new.name,
               color: payload.new.color,
               timelineColor: payload.new.timeline_color,
+              character: payload.new.character || 'mike',
               score: payload.new.score,
               timeline: convertJsonToSongs(payload.new.timeline)
             };
@@ -165,6 +166,7 @@ export function useGameRoom() {
         name: p.name,
         color: p.color,
         timelineColor: p.timeline_color,
+        character: p.character || 'mike', // Default to mike if not set
         score: p.score,
         timeline: convertJsonToSongs(p.timeline)
       }));
@@ -271,6 +273,7 @@ export function useGameRoom() {
           name: playerName,
           color: '#3b82f6',
           timeline_color: '#3b82f6',
+          character: 'mike', // Default character
           player_session_id: sessionId,
           is_host: false,
           score: 0,
@@ -286,6 +289,7 @@ export function useGameRoom() {
         name: playerData.name,
         color: playerData.color,
         timelineColor: playerData.timeline_color,
+        character: playerData.character,
         score: playerData.score,
         timeline: convertJsonToSongs(playerData.timeline)
       };
@@ -338,6 +342,7 @@ export function useGameRoom() {
         name: playerData.name,
         color: playerData.color,
         timelineColor: playerData.timeline_color,
+        character: playerData.character || 'mike',
         score: playerData.score,
         timeline: convertJsonToSongs(playerData.timeline)
       };
@@ -350,7 +355,7 @@ export function useGameRoom() {
     }
   }, []);
 
-  const updatePlayer = useCallback(async (updates: Partial<Pick<Player, 'name' | 'color'>>) => {
+  const updatePlayer = useCallback(async (updates: Partial<Pick<Player, 'name' | 'color' | 'character'>>) => {
     if (!currentPlayer || !room) return;
 
     try {
@@ -363,7 +368,8 @@ export function useGameRoom() {
         .update({
           name: updates.name,
           color: updates.color,
-          timeline_color: updates.color
+          timeline_color: updates.color,
+          character: updates.character
         })
         .eq('id', currentPlayer.id);
       
