@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Crown, Users, Play, Pause, Music, Check, X } from 'lucide-react';
+import { Crown, Users, Play, Pause, Music, Check, X, Timer, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
-import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { Button } from '@/components/ui/button';
-import { getArtistColor, truncateText } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { getArtistColor, truncateText, cn } from '@/lib/utils';
 import { audioManager } from '@/services/AudioManager';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
@@ -172,6 +173,7 @@ export function HostGameBackground() {
   );
 }
 
+// Host Header Component
 function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCount?: number }) {
   const safeRoomCode = roomCode || 'XXXX';
   const safePlayersCount = playersCount || 0;
@@ -209,6 +211,288 @@ function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCoun
   );
 }
 
+// Enhanced Host Current Player Timeline Component
+function HostCurrentPlayerTimeline({ 
+  currentTurnPlayer, 
+  previousTurnPlayer,
+  cardPlacementResult, 
+  highlightedGapIndex,
+  mobileViewport,
+  isTransitioning = false
+}: {
+  currentTurnPlayer: Player;
+  previousTurnPlayer?: Player;
+  cardPlacementResult?: { correct: boolean; song: Song } | null;
+  highlightedGapIndex?: number | null;
+  mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
+  isTransitioning?: boolean;
+}) {
+  // DEFENSIVE RENDERING: Ensure we always have a valid player object
+  const safeCurrentPlayer = useMemo(() => {
+    if (!currentTurnPlayer) {
+      console.warn('⚠️  HostCurrentPlayerTimeline: Missing currentTurnPlayer, using fallback');
+      return {
+        id: 'loading',
+        name: 'Loading Player...',
+        timeline: [],
+        color: '#6B7280',
+        timelineColor: '#6B7280',
+        score: 0
+      };
+    }
+    return currentTurnPlayer;
+  }, [currentTurnPlayer]);
+
+  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
+  const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
+  const [visibleCards, setVisibleCards] = useState<number[]>([]);
+  const [newlyPlacedCardIndex, setNewlyPlacedCardIndex] = useState<number | null>(null);
+  const [cardsShifting, setCardsShifting] = useState<boolean>(false);
+
+  // Handle turn transitions with enhanced animations
+  useEffect(() => {
+    if (isTransitioning) {
+      // Start exit animation for previous player
+      setTimelineState('exiting');
+      
+      // After exit completes, switch to new player and enter
+      setTimeout(() => {
+        setTimelineState('entering');
+        
+        // Animate cards appearing one by one
+        const cardIndices = safeCurrentPlayer.timeline.map((_, index) => index);
+        setVisibleCards([]);
+        
+        cardIndices.forEach((index, i) => {
+          setTimeout(() => {
+            setVisibleCards(prev => [...prev, index]);
+          }, i * 150);
+        });
+        
+        setTimeout(() => {
+          setTimelineState('stable');
+        }, cardIndices.length * 150 + 500);
+      }, 1000);
+    } else {
+      // Normal stable state
+      setTimelineState('stable');
+      setVisibleCards(safeCurrentPlayer.timeline.map((_, index) => index));
+    }
+  }, [isTransitioning, safeCurrentPlayer]);
+
+  // Handle new card placement animation
+  useEffect(() => {
+    if (cardPlacementResult && cardPlacementResult.correct) {
+      const newCardIndex = safeCurrentPlayer.timeline.length - 1;
+      setNewlyPlacedCardIndex(newCardIndex);
+      setCardsShifting(true);
+      
+      // First animate existing cards making room
+      setTimeout(() => {
+        // Then animate the new card sliding in
+        setTimeout(() => {
+          setCardsShifting(false);
+          setNewlyPlacedCardIndex(null);
+        }, 800);
+      }, 300);
+    }
+  }, [cardPlacementResult, safeCurrentPlayer.timeline.length]);
+
+  // Trigger feedback animation when placement result changes
+  useEffect(() => {
+    if (cardPlacementResult) {
+      const animationClass = cardPlacementResult.correct 
+        ? 'animate-host-feedback-correct' 
+        : 'animate-host-feedback-incorrect';
+      
+      setFeedbackAnimation(animationClass);
+      
+      // Clear animation after it completes
+      setTimeout(() => {
+        setFeedbackAnimation('');
+      }, 1000);
+    }
+  }, [cardPlacementResult]);
+
+  // DEFENSIVE RENDERING: Handle edge cases gracefully
+  if (safeCurrentPlayer.id === 'loading') {
+    return (
+      <div className="flex justify-center items-center w-full z-20">
+        <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
+          <Music className="h-8 w-8 opacity-50 animate-pulse" />
+          <span>Setting up player timeline...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex justify-center items-center w-full z-20">
+      <div className="flex gap-2 items-center overflow-x-auto pb-2">
+        {safeCurrentPlayer.timeline.length === 0 ? (
+          <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
+            <Music className="h-8 w-8 opacity-50" />
+            <span>Waiting for {safeCurrentPlayer.name} to place their first card...</span>
+          </div>
+        ) : (
+          <>
+            {/* Gap before first card */}
+            <div 
+              className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+              }`}
+            />
+            
+            {safeCurrentPlayer.timeline.map((song, index) => (
+              <React.Fragment key={`${song.deezer_title}-${index}`}>
+                {/* Song card with enhanced animations and mobile optimization */}
+                <div
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 mobile-touch-optimized ${
+                    newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
+                  } ${
+                    cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
+                  } ${
+                    cardsShifting && index > (newlyPlacedCardIndex || 0) ? 'animate-card-shift-right' : ''
+                  } ${
+                    !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
+                  } ${
+                    timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
+                  } ${
+                    mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
+                  }`}
+                  style={{
+                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
+                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
+                    animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
+                                   timelineState === 'exiting' ? `${(safeCurrentPlayer.timeline.length - index) * 0.05}s` : 
+                                   '0s',
+                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s',
+                    // Enhanced performance for mobile
+                    transform: 'translateZ(0)',
+                    WebkitBackfaceVisibility: 'hidden',
+                    backfaceVisibility: 'hidden'
+                  }}
+                >
+                  {/* Mobile viewport indicator badge */}
+                  {mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex && (
+                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg animate-pulse border border-blue-300">
+                      👀
+                    </div>
+                  )}
+                  
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                  
+                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-2">
+                    {/* Artist name - medium, white, wrapped, max 20 letters per line */}
+                    <div className="text-sm font-medium text-white leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_artist || 'Unknown Artist', 20)}
+                      </div>
+                    </div>
+                    
+                    {/* Song release year - large, white */}
+                    <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
+                      {song.release_year || '2024'}
+                    </div>
+                    
+                    {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
+                    <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_title || 'Unknown Song', 20)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Gap after this card */}
+                <div 
+                  className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                    highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+                  }`}
+                />
+              </React.Fragment>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Mobile Viewport Indicator */}
+      {mobileViewport && (
+        <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2">
+          <div className="bg-blue-500/20 backdrop-blur-md rounded-xl px-4 py-2 border border-blue-400/30">
+            <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span>Mobile viewing: Cards {mobileViewport.startIndex + 1}-{mobileViewport.endIndex + 1} of {mobileViewport.totalCards}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Host All Players Overview Component
+function HostAllPlayersOverview({ players, currentTurnPlayer }: { players: Player[]; currentTurnPlayer: Player }) {
+  return (
+    <div className="absolute bottom-4 left-4 right-4 z-10">
+      <Card className="bg-slate-800/80 backdrop-blur-md border-slate-600/30 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Users className="h-6 w-6 text-blue-400" />
+          <h3 className="text-xl font-bold text-white">All Players ({players.length})</h3>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {players.map((player) => (
+            <Card 
+              key={player.id}
+              className={`bg-slate-800/60 backdrop-blur-md border-slate-600/30 p-4 transition-all ${
+                player.id === currentTurnPlayer?.id 
+                  ? 'ring-2 ring-yellow-400 bg-yellow-400/10' 
+                  : ''
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div 
+                  className="w-4 h-4 rounded-full border-2 border-white"
+                  style={{ backgroundColor: player.color }}
+                />
+                <div className="flex-1">
+                  <div className="text-white font-bold text-lg">{player.name}</div>
+                  <div className="text-slate-300 text-sm">{player.score}/10 points</div>
+                </div>
+                {player.id === currentTurnPlayer?.id && (
+                  <Crown className="h-4 w-4 text-yellow-400" />
+                )}
+              </div>
+              
+              <div className="flex gap-1 flex-wrap">
+                {player.timeline.slice(0, 6).map((song, index) => (
+                  <div
+                    key={index}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold border border-white/20"
+                    style={{ backgroundColor: song.cardColor || player.color }}
+                  >
+                    '{song.release_year.slice(-2)}
+                  </div>
+                ))}
+                {player.timeline.length > 6 && (
+                  <div className="w-8 h-8 rounded-lg bg-slate-600/80 flex items-center justify-center text-white text-xs font-bold border border-white/20">
+                    +{player.timeline.length - 6}
+                  </div>
+                )}
+                {player.timeline.length === 0 && (
+                  <div className="text-xs text-slate-400">No cards yet</div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// Record Player Section
 function RecordPlayerSection({
   currentSong,
   mysteryCardRevealed,
@@ -653,6 +937,7 @@ function HostTimelineDisplay({
   );
 }
 
+// Main Host Game View Component
 export function HostGameView({
   currentTurnPlayer,
   previousPlayer,
@@ -872,29 +1157,13 @@ export function HostGameView({
       <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
       
       {/* Enhanced record player section with mystery card */}
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
-        <div className="relative">
-          <div className="text-center space-y-8 max-w-sm">
-            <RecordMysteryCard 
-              song={safeCurrentSong}
-              isRevealed={safeMysteryCardRevealed}
-              isPlaying={audioIsPlaying}
-              onPlayPause={() => audioManager.togglePlayPause(safeCurrentSong)}
-            />
-            
-            <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
-              {safeCurrentSong?.preview_url ? 'Mystery Song' : 'Loading Mystery Song...'}
-            </div>
-            
-            {/* Show loading indicator or audio unavailable message */}
-            {!safeCurrentSong?.preview_url && (
-              <div className="text-white/60 text-sm italic bg-white/5 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/10">
-                {safeCurrentSong ? 'Audio preview not available' : 'Preparing song...'}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <RecordPlayerSection
+        currentSong={safeCurrentSong}
+        mysteryCardRevealed={safeMysteryCardRevealed}
+        isPlaying={audioIsPlaying}
+        onPlayPause={() => audioManager.togglePlayPause(safeCurrentSong)}
+        cardPlacementResult={cardPlacementResult}
+      />
       
       {/* Host Feedback Overlay */}
       <HostFeedbackOverlay 
@@ -922,13 +1191,8 @@ export function HostGameView({
         </div>
       </div>
 
-      {/* Safe cassette player display */}
-      <div className="absolute bottom-6 left-6 right-6 z-10">
-        <CassettePlayerDisplay 
-          players={safePlayers} 
-          currentPlayerId={safeCurrentTurnPlayer.id}
-        />
-      </div>
+      {/* All Players Overview */}
+      <HostAllPlayersOverview players={safePlayers} currentTurnPlayer={safeCurrentTurnPlayer} />
 
       {/* Safe result modal rendering */}
       {showResultModal && cardPlacementResult && safeCurrentSong && (
@@ -965,7 +1229,7 @@ export function HostGameView({
             </div>
           </div>
           
-          {/* Styles remain the same */}
+          {/* Result modal animations */}
           <style>{`
             @keyframes epic-modal-appear {
               0% {
