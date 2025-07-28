@@ -9,6 +9,7 @@ import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { GameRoom, Player, Song } from '@/types/game';
 import { ConnectionStatus } from '@/hooks/useRealtimeSubscription';
 import { audioManager } from '@/services/AudioManager';
+import { ChatIntegration } from '@/components/ChatIntegration';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -201,6 +202,18 @@ export default function GamePlay({
           )}
         </GameErrorBoundary>
       </div>
+
+      {/* Chat Integration */}
+      {currentPlayer && (
+        <ChatIntegration
+          currentPlayerId={currentPlayer.id}
+          currentPlayerName={currentPlayer.name}
+          currentPlayerCharacter={currentPlayer.character}
+          isHost={isHost}
+          showButton={true}
+          defaultMinimized={true}
+        />
+      )}
     </div>
   );
 }
