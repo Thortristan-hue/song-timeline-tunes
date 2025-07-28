@@ -3,6 +3,7 @@ import { Song } from '@/types/game';
 import { Play, Pause, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAnimationSystem } from '@/lib/AnimationSystem';
+import { useImagePreloader } from '@/hooks/useImagePreloader';
 
 interface EnhancedMysteryCardProps {
   song: Song | null;
@@ -29,6 +30,11 @@ export function EnhancedMysteryCard({
   const [beatPulse, setBeatPulse] = useState(false);
   const vinylRef = useRef<HTMLImageElement>(null);
   const { animateElement, getCSSClass } = useAnimationSystem();
+  
+  // Preload vinyl image for instant loading
+  const { isLoading: imagesLoading } = useImagePreloader({
+    images: ['/Vinyl2_rythm.png'],
+  });
 
   // Generate spectrum analyzer data
   useEffect(() => {
@@ -247,48 +253,23 @@ export function EnhancedMysteryCard({
         )}
       </button>
       
-      {/* Enhanced reveal card with beat-sync effects */}
-      {isRevealed && song && (
-        <div className={cn(
-          "absolute -bottom-20 left-1/2 transform -translate-x-1/2 text-center animate-fade-in z-30",
-          beatPulse && isPlaying ? 'animate-pulse' : ''
-        )}>
-          <div className={cn(
-            "bg-black/80 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-xs whitespace-nowrap hover:scale-105 transition-all duration-300 border border-[#107793]/30 shadow-xl",
-            beatPulse && isPlaying ? 'ring-1 ring-blue-400/30' : ''
-          )}>
-            <div className={cn(
-              "font-bold mb-1 text-sm",
-              isPlaying ? getCSSClass('CARD_SHIMMER') : ''
-            )}>
-              {song.deezer_title}
+      {/* Audio indicator only - no song metadata on host */}
+      {isPlaying && (
+        <div className="absolute -bottom-12 left-1/2 transform -translate-x-1/2 z-30">
+          <div className="flex items-center justify-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2">
+            <Volume2 className="w-4 h-4 text-blue-400" />
+            <div className="flex items-center gap-0.5">
+              {spectrumBars.slice(0, 8).map((height, i) => (
+                <div
+                  key={i}
+                  className="w-0.5 bg-blue-400 rounded-full transition-all duration-100"
+                  style={{
+                    height: `${Math.max(3, height * 0.12)}px`,
+                    opacity: audioIntensity * 0.8 + 0.2
+                  }}
+                />
+              ))}
             </div>
-            <div className="text-white/80 mb-1">{song.deezer_artist}</div>
-            <div className={cn(
-              "text-yellow-400 font-bold text-lg",
-              beatPulse && isPlaying ? 'animate-bounce' : ''
-            )}>
-              {song.release_year}
-            </div>
-            
-            {/* Enhanced audio indicator with spectrum */}
-            {isPlaying && (
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <Volume2 className="w-3 h-3 text-blue-400" />
-                <div className="flex items-center gap-0.5">
-                  {spectrumBars.slice(0, 5).map((height, i) => (
-                    <div
-                      key={i}
-                      className="w-0.5 bg-blue-400 rounded-full transition-all duration-100"
-                      style={{
-                        height: `${Math.max(2, height * 0.1)}px`,
-                        opacity: audioIntensity * 0.8 + 0.2
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

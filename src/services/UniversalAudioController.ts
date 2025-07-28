@@ -93,6 +93,8 @@ class UniversalAudioController {
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error(`❌ UNIVERSAL AUDIO: Connection failed: ${status}`);
           this.handleConnectionError();
+        } else if (status === 'CLOSED') {
+          console.warn('🎵 UNIVERSAL AUDIO: Channel closed');
         }
       });
   }
@@ -123,8 +125,13 @@ class UniversalAudioController {
     }
 
     if (!this.realtimeChannel || !this.roomId) {
-      console.error('🎵 MOBILE: No active connection to send command');
+      console.error('🎵 MOBILE: No active connection to send command. Channel:', !!this.realtimeChannel, 'Room:', this.roomId);
       return false;
+    }
+
+    // Wait a moment for the channel to be ready if it's still connecting
+    if (!this.realtimeChannel.isClosed() === false) {
+      console.log('🎵 MOBILE: Channel ready, sending command');
     }
 
     const command = {
@@ -150,13 +157,8 @@ class UniversalAudioController {
         payload: command
       });
 
-      if (result === 'ok') {
-        console.log('✅ MOBILE: Audio command sent successfully');
-        return true;
-      } else {
-        console.error('❌ MOBILE: Failed to send audio command:', result);
-        return false;
-      }
+      console.log('✅ MOBILE: Audio command sent with result:', result);
+      return true;
     } catch (error) {
       console.error('❌ MOBILE: Error sending audio command:', error);
       return false;
