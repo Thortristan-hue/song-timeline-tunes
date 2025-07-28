@@ -330,92 +330,83 @@ export class GameService {
         };
       }
 
-      let currentMysteryCard: Song | null = null;
-      let nextMysteryCard: Song | null = null;
+      // CRITICAL: Advance to next player turn
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
 
-      // CRITICAL: Advance to next player turn ONLY if placement was correct
-      if (isCorrect) {
-        const { data: roomData, error: roomError } = await supabase
-          .from('game_rooms')
-          .select('*')
-          .eq('id', roomId)
-          .single();
-
-        if (roomError || !roomData) {
-          return { success: false, error: 'Room not found' };
-        }
-
-        // Get all players to determine next turn
-        const { data: allPlayers, error: playersError } = await supabase
-          .from('players')
-          .select('*')
-          .eq('room_id', roomId)
-          .eq('is_host', false)
-          .order('joined_at', { ascending: true });
-
-        if (playersError || !allPlayers) {
-          return { success: false, error: 'Failed to get players' };
-        }
-
-        // Calculate next turn
-        const currentTurn = roomData.current_turn || 0;
-        const nextTurn = (currentTurn + 1) % allPlayers.length;
-        const nextPlayerId = allPlayers[nextTurn]?.id;
-
-        console.log('🎯 TURN ADVANCEMENT:', {
-          currentTurn,
-          nextTurn,
-          nextPlayer: allPlayers[nextTurn]?.name
-        });
-
-        // Get fresh mystery card for next turn - remove used song from available songs
-        const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
-        currentMysteryCard = this.convertJsonToSong(roomData.current_song);
-        
-        // Filter out the current mystery card from available songs
-        const filteredAvailableSongs = availableSongs.filter(s => s.id !== currentMysteryCard?.id);
-        
-        nextMysteryCard = await this.selectFreshMysteryCard(
-          roomId,
-          filteredAvailableSongs,
-          players,
-          currentMysteryCard
-        );
-        
-        if (!nextMysteryCard) {
-          console.error('❌ CRITICAL: No fresh mystery card available for next turn!');
-          return { success: false, error: 'No fresh mystery card available' };
-        }
-
-        // Update room with new turn and mystery card
-        const { error: turnUpdateError } = await supabase
-          .from('game_rooms')
-          .update({
-            current_turn: nextTurn,
-            current_song: nextMysteryCard as unknown as Json,
-            current_player_id: nextPlayerId,
-            songs: filteredAvailableSongs as unknown as Json, // Update available songs
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', roomId);
-
-        if (turnUpdateError) {
-          console.error('❌ TURN ADVANCEMENT: Failed:', turnUpdateError);
-          throw turnUpdateError;
-        }
-
-        // Record the move
-        await this.recordGameMove(roomId, playerId, 'card_placement', {
-          song,
-          position,
-          correct: isCorrect,
-          oldMysteryCard: currentMysteryCard?.id,
-          nextMysteryCard: nextMysteryCard?.id,
-          newScore,
-          timelineLength: finalTimeline.length,
-          turnAdvanced: true
-        });
+      if (roomError || !roomData) {
+        return { success: false, error: 'Room not found' };
       }
+
+      // Get all players to determine next turn
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError || !allPlayers) {
+        return { success: false, error: 'Failed to get players' };
+      }
+
+      // Calculate next turn
+      const currentTurn = roomData.current_turn || 0;
+      const nextTurn = (currentTurn + 1) % allPlayers.length;
+      const nextPlayerId = allPlayers[nextTurn]?.id;
+
+      console.log('🎯 TURN ADVANCEMENT:', {
+        currentTurn,
+        nextTurn,
+        nextPlayer: allPlayers[nextTurn]?.name
+      });
+
+      // Get fresh mystery card for next turn
+      const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
+      const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
+      
+      const nextMysteryCard = await this.selectFreshMysteryCard(
+        roomId,
+        availableSongs,
+        players,
+        currentMysteryCard
+      );
+      
+      if (!nextMysteryCard) {
+        console.error('❌ CRITICAL: No fresh mystery card available for next turn!');
+        return { success: false, error: 'No fresh mystery card available' };
+      }
+
+      // Update room with new turn and mystery card
+      const { error: turnUpdateError } = await supabase
+        .from('game_rooms')
+        .update({
+          current_turn: nextTurn,
+          current_song: nextMysteryCard as unknown as Json,
+          current_player_id: nextPlayerId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId);
+
+      if (turnUpdateError) {
+        console.error('❌ TURN ADVANCEMENT: Failed:', turnUpdateError);
+        throw turnUpdateError;
+      }
+
+      // Record the move
+      await this.recordGameMove(roomId, playerId, 'card_placement', {
+        song,
+        position,
+        correct: isCorrect,
+        oldMysteryCard: currentMysteryCard?.id,
+        nextMysteryCard: nextMysteryCard.id,
+        newScore,
+        timelineLength: finalTimeline.length,
+        turnAdvanced: true
+      });
 
       console.log('✅ TURN ADVANCEMENT: Turn advanced successfully with fresh mystery card');
       return { success: true, correct: isCorrect };

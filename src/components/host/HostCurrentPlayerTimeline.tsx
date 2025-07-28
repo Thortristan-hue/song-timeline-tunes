@@ -142,7 +142,7 @@ export function HostCurrentPlayerTimeline({
               <React.Fragment key={`${song.deezer_title}-${index}`}>
                 {/* Song card with enhanced animations and mobile optimization */}
                 <div
-                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 relative p-4 mobile-touch-optimized animate-scale-in ${
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 mobile-touch-optimized ${
                     newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
                   } ${
                     cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
