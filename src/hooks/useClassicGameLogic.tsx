@@ -142,8 +142,7 @@ export function useClassicGameLogic(
         roomId,
         playerId,
         song,
-        position,
-        gameState.availableSongs
+        position
       );
 
       if (result.success) {
@@ -164,7 +163,7 @@ export function useClassicGameLogic(
       console.error('Failed to place card in classic mode:', error);
       return { success: false };
     }
-  }, [roomId, gameState.phase, gameState.availableSongs]);
+  }, [roomId, gameState.phase]);
 
   return {
     gameState,

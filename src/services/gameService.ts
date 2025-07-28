@@ -257,10 +257,44 @@ export class GameService {
     playerId: string,
     song: Song,
     position: number,
-    availableSongs: Song[]
+    availableSongs?: Song[]
   ): Promise<{ success: boolean; correct?: boolean; error?: string; gameEnded?: boolean; winner?: Player }> {
     try {
       console.log('🃏 CARD PLACEMENT: Starting with turn advancement');
+
+      // Get current room data to access songs
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        return { success: false, error: 'Room not found' };
+      }
+
+      // Use room's songs if availableSongs not provided
+      let roomSongs: Song[] = [];
+      if (availableSongs && availableSongs.length > 0) {
+        roomSongs = availableSongs;
+      } else if (roomData.songs) {
+        try {
+          roomSongs = Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [];
+        } catch (e) {
+          console.error('Failed to parse room songs:', e);
+          return { success: false, error: 'Invalid room songs data' };
+        }
+      }
+
+      if (roomSongs.length === 0) {
+        console.error('❌ CRITICAL: No available songs found in room or provided');
+        return { success: false, error: 'No available songs' };
+      }
+
+      console.log('🎯 USING SONGS:', {
+        source: availableSongs ? 'provided' : 'room',
+        count: roomSongs.length
+      });
 
       // Get current player data
       const { data: playerData, error: playerError } = await supabase
@@ -330,17 +364,6 @@ export class GameService {
         };
       }
 
-      // CRITICAL: Advance to next player turn
-      const { data: roomData, error: roomError } = await supabase
-        .from('game_rooms')
-        .select('*')
-        .eq('id', roomId)
-        .single();
-
-      if (roomError || !roomData) {
-        return { success: false, error: 'Room not found' };
-      }
-
       // Get all players to determine next turn
       const { data: allPlayers, error: playersError } = await supabase
         .from('players')
@@ -361,16 +384,24 @@ export class GameService {
       console.log('🎯 TURN ADVANCEMENT:', {
         currentTurn,
         nextTurn,
-        nextPlayer: allPlayers[nextTurn]?.name
+        nextPlayer: allPlayers[nextTurn]?.name,
+        placedSong: song.deezer_title
       });
 
       // Get fresh mystery card for next turn
       const players = allPlayers.map(this.convertDatabasePlayerToPlayer);
       const currentMysteryCard = this.convertJsonToSong(roomData.current_song);
       
+      // CRITICAL: Remove the placed song from available songs for next mystery card selection
+      const availableForNextMystery = roomSongs.filter(s => s.id !== song.id);
+      console.log('🎯 SONG REMOVAL: Removed placed song from pool:', {
+        placedSong: song.deezer_title,
+        remainingCount: availableForNextMystery.length
+      });
+      
       const nextMysteryCard = await this.selectFreshMysteryCard(
         roomId,
-        availableSongs,
+        availableForNextMystery,
         players,
         currentMysteryCard
       );
@@ -380,13 +411,14 @@ export class GameService {
         return { success: false, error: 'No fresh mystery card available' };
       }
 
-      // Update room with new turn and mystery card
+      // CRITICAL: Update room with filtered songs (remove placed song) and new mystery card
       const { error: turnUpdateError } = await supabase
         .from('game_rooms')
         .update({
           current_turn: nextTurn,
           current_song: nextMysteryCard as unknown as Json,
           current_player_id: nextPlayerId,
+          songs: availableForNextMystery as unknown as Json, // Update available songs
           updated_at: new Date().toISOString()
         })
         .eq('id', roomId);
@@ -405,10 +437,12 @@ export class GameService {
         nextMysteryCard: nextMysteryCard.id,
         newScore,
         timelineLength: finalTimeline.length,
-        turnAdvanced: true
+        turnAdvanced: true,
+        songsRemaining: availableForNextMystery.length
       });
 
       console.log('✅ TURN ADVANCEMENT: Turn advanced successfully with fresh mystery card');
+      console.log('🎯 NEXT MYSTERY CARD:', nextMysteryCard.deezer_title, '(' + nextMysteryCard.release_year + ')');
       return { success: true, correct: isCorrect };
     } catch (error) {
       console.error('❌ CARD PLACEMENT: Failed:', error);
