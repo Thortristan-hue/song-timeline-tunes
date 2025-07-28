@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Music, Users, Palette, Gamepad2, Clock } from 'lucide-react';
 import { GameRoom, Player } from '@/types/game';
+import { CharacterSelection } from '@/components/CharacterSelection';
+import { useCharacterSelection, Character } from '@/lib/CharacterManager';
 
 interface MobilePlayerLobbyProps {
   room: GameRoom | null;
@@ -55,6 +57,9 @@ export default function MobilePlayerLobby({
   const [name, setName] = useState(currentPlayer?.name || '');
   const [selectedColor, setSelectedColor] = useState(currentPlayer?.color || PLAYER_COLORS[0]);
   const [hasChanges, setHasChanges] = useState(false);
+  
+  // Character selection
+  const { selectedCharacter, getCharacterImagePath } = useCharacterSelection();
 
   useEffect(() => {
     if (currentPlayer) {
@@ -176,6 +181,14 @@ export default function MobilePlayerLobby({
                 />
               </div>
 
+              {/* Character Selection */}
+              <div className="space-y-4">
+                <Label className="text-gray-300 font-medium text-base">
+                  Choose your character
+                </Label>
+                <CharacterSelection compact={true} />
+              </div>
+
               {/* Color Selection */}
               <div className="space-y-4">
                 <Label className="text-gray-300 font-medium text-base">
@@ -207,18 +220,28 @@ export default function MobilePlayerLobby({
               <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
                 <p className="text-gray-400 text-sm mb-3">Preview</p>
                 <div className="flex items-center gap-4">
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg shadow-sm"
-                    style={{ backgroundColor: selectedColor }}
-                  >
-                    {name.charAt(0).toUpperCase() || '?'}
+                  {/* Character icon */}
+                  <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20">
+                    <img 
+                      src={getCharacterImagePath(selectedCharacter?.id || 'mike')}
+                      alt="Player character"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/char_mike.png';
+                      }}
+                    />
                   </div>
+                  {/* Color indicator */}
+                  <div 
+                    className="w-8 h-8 rounded-xl shadow-sm"
+                    style={{ backgroundColor: selectedColor }}
+                  />
                   <div>
                     <p className="font-semibold text-white">
                       {name.trim() || 'Your name'}
                     </p>
                     <p className="text-sm text-gray-400">
-                      Ready to play
+                      {selectedCharacter ? selectedCharacter.displayName : 'No character selected'}
                     </p>
                   </div>
                 </div>

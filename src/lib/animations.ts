@@ -3,6 +3,8 @@
  * Manages all animations, transitions, and visual effects
  */
 
+import { Song } from '@/types/game';
+
 export interface AnimationConfig {
   duration: number;
   easing: string;
@@ -504,6 +506,151 @@ export class AnimationManager {
       animation.cancel();
       this.activeAnimations.delete(animationId);
     }
+  }
+
+  // Enhanced animation methods for turn management
+  async animateCardFallCorrect(config: {
+    song: Song;
+    position: number;
+    duration?: number;
+    onProgress?: (progress: number) => void;
+  }): Promise<void> {
+    console.log('🎬 ANIMATION: Card fall correct animation starting');
+    
+    // Create temporary card element for animation
+    const tempCard = this.createTempCardElement(config.song);
+    document.body.appendChild(tempCard);
+    
+    try {
+      await this.animate(tempCard, 'CARD_FALL_CORRECT', {
+        duration: (config.duration || 2.0) * 1000, // Convert to milliseconds
+        ...((config.onProgress && {
+          onUpdate: () => {
+            // Progress callback implementation would need access to animation progress
+            config.onProgress?.(0.5); // Simplified for now
+          }
+        }) || {})
+      });
+    } finally {
+      document.body.removeChild(tempCard);
+    }
+  }
+
+  async animateCardFallIncorrect(config: {
+    song: Song;
+    position: number;
+    duration?: number;
+    onProgress?: (progress: number) => void;
+  }): Promise<void> {
+    console.log('🎬 ANIMATION: Card fall incorrect animation starting');
+    
+    const tempCard = this.createTempCardElement(config.song);
+    document.body.appendChild(tempCard);
+    
+    try {
+      await this.animate(tempCard, 'CARD_FALL_INCORRECT', {
+        duration: (config.duration || 2.4) * 1000,
+        ...((config.onProgress && {
+          onUpdate: () => {
+            config.onProgress?.(0.5);
+          }
+        }) || {})
+      });
+    } finally {
+      document.body.removeChild(tempCard);
+    }
+  }
+
+  async animateCorrectPlacement(playerId: string): Promise<void> {
+    console.log('🎬 ANIMATION: Correct placement feedback for', playerId);
+    const playerElement = document.querySelector(`[data-player-id="${playerId}"]`) as HTMLElement;
+    if (playerElement) {
+      await this.animate(playerElement, 'SUCCESS_PULSE');
+    }
+  }
+
+  async animateIncorrectPlacement(playerId: string): Promise<void> {
+    console.log('🎬 ANIMATION: Incorrect placement feedback for', playerId);
+    const playerElement = document.querySelector(`[data-player-id="${playerId}"]`) as HTMLElement;
+    if (playerElement) {
+      await this.animate(playerElement, 'ERROR_SHAKE');
+    }
+  }
+
+  async animateCardsBunchUp(timelineLength: number): Promise<void> {
+    console.log('🎬 ANIMATION: Cards bunch up animation');
+    const cardElements = document.querySelectorAll('.timeline-card');
+    
+    const animations = Array.from(cardElements).map((element, index) => 
+      this.animate(element as HTMLElement, 'CARDS_BUNCH_UP', {
+        delay: index * 100 // Stagger the animation
+      })
+    );
+    
+    await Promise.all(animations);
+  }
+
+  async animateCardsSpreadOut(timelineLength: number): Promise<void> {
+    console.log('🎬 ANIMATION: Cards spread out animation');
+    const cardElements = document.querySelectorAll('.timeline-card');
+    
+    const animations = Array.from(cardElements).map((element, index) => 
+      this.animate(element as HTMLElement, 'CARDS_SPREAD_OUT', {
+        delay: index * 100
+      })
+    );
+    
+    await Promise.all(animations);
+  }
+
+  async animatePlayerHighlight(playerId: string): Promise<void> {
+    console.log('🎬 ANIMATION: Player highlight for', playerId);
+    const playerElement = document.querySelector(`[data-player-id="${playerId}"]`) as HTMLElement;
+    if (playerElement) {
+      await this.animate(playerElement, 'PLAYER_HIGHLIGHT');
+    }
+  }
+
+  async animateMysteryCardReveal(config: {
+    song: Song;
+    duration?: number;
+  }): Promise<void> {
+    console.log('🎬 ANIMATION: Mystery card reveal animation');
+    const mysteryCardElement = document.querySelector('.mystery-card') as HTMLElement;
+    if (mysteryCardElement) {
+      await this.animate(mysteryCardElement, 'BOUNCE_IN', {
+        duration: (config.duration || 1.5) * 1000
+      });
+    }
+  }
+
+  // Helper method to create temporary card elements for animations
+  private createTempCardElement(song: Song): HTMLElement {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'absolute w-28 h-36 rounded-xl border-2 flex flex-col items-center justify-between p-3 text-white shadow-2xl transform-gpu';
+    cardElement.style.cssText = `
+      left: 50%;
+      top: -120vh;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, hsl(220, 70%, 25%), hsl(220, 70%, 35%));
+      border-color: rgba(34, 197, 94, 0.6);
+      z-index: 9999;
+      pointer-events: none;
+    `;
+    
+    cardElement.innerHTML = `
+      <div class="text-xs font-bold text-center w-full leading-tight drop-shadow-sm">
+        ${song.deezer_artist.length > 14 ? song.deezer_artist.substring(0, 14) + '...' : song.deezer_artist}
+      </div>
+      <div class="text-2xl font-black text-center drop-shadow-md">
+        ${song.release_year}
+      </div>
+      <div class="text-xs italic text-center w-full leading-tight text-white/95 drop-shadow-sm">
+        ${song.deezer_title.length > 16 ? song.deezer_title.substring(0, 16) + '...' : song.deezer_title}
+      </div>
+    `;
+    
+    return cardElement;
   }
 
   stopAllAnimations(): void {
