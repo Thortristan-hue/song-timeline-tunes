@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { HostGameView } from '@/components/HostVisuals';
-import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import ResponsiveMobilePlayerView from '@/components/player/ResponsiveMobilePlayerView';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { GameRoom, Player, Song } from '@/types/game';
@@ -84,7 +84,7 @@ export default function GamePlay({
               mobileViewport={null}
             />
           ) : (
-            <MobilePlayerGameView
+            <ResponsiveMobilePlayerView
               currentPlayer={currentPlayer!}
               currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer!}
               currentSong={room.current_song || { id: '', deezer_title: '', deezer_artist: '', release_year: '', deezer_album: '', genre: '', cardColor: '', preview_url: '', deezer_url: '' }}
