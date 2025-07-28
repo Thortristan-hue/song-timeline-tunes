@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { HostGameView } from '@/components/HostVisuals';
+import HostGameView from '@/components/host/HostGameView';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
@@ -70,18 +70,15 @@ export default function GamePlay({
         <GameErrorBoundary>
           {isHost ? (
             <HostGameView
-              currentTurnPlayer={gameLogic.getCurrentPlayer() || currentPlayer}
-              previousPlayer={undefined}
-              currentSong={room.current_song}
-              roomCode={room.lobby_code}
+              room={room}
               players={players}
-              mysteryCardRevealed={gameLogic.gameState.phase === 'playing'}
-              isPlaying={gameLogic.gameState.isPlaying}
-              onPlayPause={() => gameLogic.setIsPlaying(!gameLogic.gameState.isPlaying)}
-              cardPlacementResult={null}
-              transitioning={gameLogic.gameState.transitioningTurn}
-              highlightedGapIndex={null}
-              mobileViewport={null}
+              currentPlayer={currentPlayer}
+              isHost={isHost}
+              roomCode={room.lobby_code}
+              playerName=""
+              gameLogic={gameLogic}
+              onRestart={handleRestart}
+              onEndGame={handleEndGame}
             />
           ) : (
             <MobilePlayerGameView
