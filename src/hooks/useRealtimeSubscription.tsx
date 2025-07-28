@@ -74,8 +74,14 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     try {
       cleanup();
       
-      if (configs.length === 0) {
-        console.warn('REALTIME: No subscription configs provided');
+      // Check if we have valid configs before attempting connection
+      if (!configs || configs.length === 0) {
+        console.log('REALTIME: No subscription configs provided, skipping connection');
+        setConnectionStatus({
+          isConnected: false,
+          isReconnecting: false,
+          retryCount: 0
+        });
         return;
       }
 
@@ -165,8 +171,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       console.error('ERROR: Failed to setup subscription:', error);
       handleConnectionError(error, 'setup');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configs, cleanup, handleConnectionError]);
+  }, [configs, cleanup, handleConnectionError, connectionStatus.isReconnecting]);
 
   const scheduleReconnect = useCallback(() => {
     // Prevent multiple reconnection attempts
@@ -214,7 +219,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   useEffect(() => {
     const handleOnline = () => {
       console.log('NETWORK: Came back online, reconnecting...');
-      if (!connectionStatus.isConnected) {
+      if (!connectionStatus.isConnected && configs.length > 0) {
         retryCountRef.current = 0; // Reset retry count on network recovery
         connect();
       }
@@ -236,12 +241,20 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [connect, connectionStatus.isConnected]);
+  }, [connect, connectionStatus.isConnected, configs.length]);
 
   // Initial connection and reconnection on config changes
   useEffect(() => {
     if (configs.length > 0) {
       connect();
+    } else {
+      console.log('REALTIME: No configs provided, cleaning up any existing connection');
+      cleanup();
+      setConnectionStatus({
+        isConnected: false,
+        isReconnecting: false,
+        retryCount: 0
+      });
     }
 
     return cleanup;
@@ -250,7 +263,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
   // Handle page visibility changes (reconnect when page becomes visible)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !connectionStatus.isConnected) {
+      if (document.visibilityState === 'visible' && !connectionStatus.isConnected && configs.length > 0) {
         console.log('VISIBILITY: Page became visible, checking connection...');
         retryCountRef.current = 0;
         connect();
@@ -259,13 +272,18 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [connect, connectionStatus.isConnected]);
+  }, [connect, connectionStatus.isConnected, configs.length]);
 
   const forceReconnect = useCallback(() => {
+    if (configs.length === 0) {
+      console.log('FORCE: No configs provided, skipping reconnection');
+      return;
+    }
+    
     console.log('FORCE: Reconnecting manually...');
     retryCountRef.current = 0;
     connect();
-  }, [connect]);
+  }, [connect, configs.length]);
 
   return {
     connectionStatus,
