@@ -6,7 +6,6 @@ import { EnhancedMysteryCard } from '@/components/EnhancedMysteryCard';
 import { GameHeader } from '@/components/GameVisuals';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { CircularPlayersLayout } from '@/components/CircularPlayersLayout';
-import { HostCurrentPlayerTimeline } from './HostCurrentPlayerTimeline';
 import { FloatingMusicElements } from '@/components/FloatingMusicElements';
 
 interface HostGameViewProps {
@@ -89,10 +88,14 @@ export default function HostGameView({
         </div>
       </div>
 
-      {/* Current Player Timeline */}
-      <HostCurrentPlayerTimeline
-        currentTurnPlayer={currentTurnPlayer}
-      />
+      {/* Current Player Timeline - Simple display since full timeline is in HostVisuals */}
+      <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20">
+        <div className="bg-slate-800/80 backdrop-blur-md px-6 py-3 rounded-xl border border-indigo-400/30">
+          <div className="text-white text-sm text-center">
+            Timeline: {currentPlayerTimeline.length} cards placed
+          </div>
+        </div>
+      </div>
 
       {/* Cassette Players Display */}
       <CassettePlayerDisplay
