@@ -1,3 +1,4 @@
+
 /**
  * Enhanced Audio & Haptic Feedback System
  * Manages sound effects, haptic feedback, and user preferences
@@ -253,7 +254,7 @@ export class EnhancedAudioManager {
       }
 
       // Gamepad haptic feedback (if available)
-      if ('getGamepads' in navigator && typeof navigator.getGamepads === 'function') {
+      if ('getGamepads' in navigator) {
         const gamepads = navigator.getGamepads();
         for (const gamepad of gamepads) {
           if (gamepad?.vibrationActuator) {
