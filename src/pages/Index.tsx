@@ -179,8 +179,8 @@ function Index() {
   };
 
   // Create a wrapper function for updatePlayer that matches the expected signature
-  const handleUpdatePlayer = async (name: string, color: string): Promise<void> => {
-    await updatePlayer({ name, color });
+  const handleUpdatePlayer = async (name: string, character: string): Promise<void> => {
+    await updatePlayer({ name, character });
   };
 
   const handleRestartWithSamePlayers = () => {

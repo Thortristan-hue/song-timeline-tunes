@@ -243,9 +243,6 @@ export default function ResponsiveHostView({
               </div>
             ) : (
               <div className="flex items-center justify-center gap-4 overflow-x-auto pb-4">
-                {/* Yellow centerline indicator */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-30 z-10" />
-                
                 {currentPlayerTimeline.map((song, index) => {
                   const cardColor = getCardColor(song);
                   

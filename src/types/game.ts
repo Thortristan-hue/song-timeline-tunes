@@ -50,6 +50,7 @@ export interface Player {
   name: string;
   color: string;
   timelineColor: string;
+  character?: string; // Character ID for avatar display
   score: number;
   timeline: Song[];
 }

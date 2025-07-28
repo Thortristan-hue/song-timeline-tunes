@@ -5,6 +5,8 @@ import {
   Music, Users, Trophy, Timer, Play, Smartphone, 
   Headphones, Star, Radio, Coffee, Zap, Volume2, Monitor
 } from 'lucide-react';
+import { AudioSettingsDialog } from '@/components/AudioSettingsDialog';
+import { useEnhancedAudio } from '@/lib/EnhancedAudioManager';
 
 interface MainMenuProps {
   onCreateRoom: () => void;
@@ -17,6 +19,9 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
   const [shuffledTips, setShuffledTips] = useState<string[]>([]);
   const [animationsApplied, setAnimationsApplied] = useState(false);
   const tipIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Enhanced audio system
+  const { playUISound } = useEnhancedAudio();
 
   const tips = useMemo(() => [
     "Life is short. Eat kebab.",
@@ -243,7 +248,10 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full mb-8">
           <div className="space-y-4">
             <Button
-              onClick={onCreateRoom}
+              onClick={() => {
+                playUISound('buttonClick');
+                onCreateRoom();
+              }}
               className={`w-full bg-gradient-to-r from-[#107793] to-[#0e1f2f] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow ${getAnimationClass('menu-entrance', 'stagger-3')}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#107793]/0 via-[#107793]/10 to-[#107793]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
@@ -253,7 +261,10 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             </Button>
             
             <Button
-              onClick={onJoinRoom}
+              onClick={() => {
+                playUISound('buttonClick');
+                onJoinRoom();
+              }}
               className={`w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-16 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg border-0 relative overflow-hidden group interactive-button hover-glow ${getAnimationClass('menu-entrance', 'stagger-4')}`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
@@ -375,6 +386,16 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         {/* Footer */}
         <footer className="text-center pb-8 sm:pb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
+            <AudioSettingsDialog>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#4a4f5b] hover:text-[#d9e8dd] transition-colors p-2"
+                onClick={() => playUISound('buttonClick')}
+              >
+                <Volume2 className="h-4 w-4" />
+              </Button>
+            </AudioSettingsDialog>
             <a href="#" className="text-[#4a4f5b] hover:text-[#d9e8dd] transition-colors">
               <Coffee className="h-4 w-4" />
             </a>

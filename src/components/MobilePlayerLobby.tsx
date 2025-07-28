@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Music, Users, Palette, Gamepad2, Clock } from 'lucide-react';
+import { Music, Users, Gamepad2, Clock } from 'lucide-react';
 import { GameRoom, Player } from '@/types/game';
 import { CharacterSelection } from '@/components/CharacterSelection';
 import { useCharacterSelection, Character } from '@/lib/CharacterManager';
@@ -15,19 +15,8 @@ interface MobilePlayerLobbyProps {
   players: Player[];
   currentPlayer: Player | null;
   onBackToMenu: () => void;
-  onUpdatePlayer: (name: string, color: string) => Promise<void>;
+  onUpdatePlayer: (name: string, character: string) => Promise<void>;
 }
-
-const PLAYER_COLORS = [
-  '#007AFF', // iOS blue
-  '#FF3B30', // iOS red
-  '#34C759', // iOS green
-  '#FF9500', // iOS orange
-  '#AF52DE', // iOS purple
-  '#FF2D92', // iOS pink
-  '#5AC8FA', // iOS light blue
-  '#FFCC00', // iOS yellow
-];
 
 export default function MobilePlayerLobby({ 
   room = { 
@@ -46,8 +35,8 @@ export default function MobilePlayerLobby({
   currentPlayer = { 
     id: '1', 
     name: 'Demo Player', 
-    color: PLAYER_COLORS[0],
-    timelineColor: PLAYER_COLORS[0],
+    color: '#007AFF',
+    timelineColor: '#007AFF',
     score: 0,
     timeline: []
   },
@@ -55,28 +44,31 @@ export default function MobilePlayerLobby({
   onUpdatePlayer = async () => {}
 }: MobilePlayerLobbyProps) {
   const [name, setName] = useState(currentPlayer?.name || '');
-  const [selectedColor, setSelectedColor] = useState(currentPlayer?.color || PLAYER_COLORS[0]);
   const [hasChanges, setHasChanges] = useState(false);
   
   // Character selection
-  const { selectedCharacter, getCharacterImagePath } = useCharacterSelection();
+  const { selectedCharacter, selectCharacter, getCharacterImagePath } = useCharacterSelection();
 
   useEffect(() => {
     if (currentPlayer) {
       setName(currentPlayer.name);
-      setSelectedColor(currentPlayer.color);
     }
   }, [currentPlayer]);
 
   useEffect(() => {
-    setHasChanges(name !== (currentPlayer?.name || '') || selectedColor !== (currentPlayer?.color || ''));
-  }, [name, selectedColor, currentPlayer?.name, currentPlayer?.color]);
+    setHasChanges(name !== (currentPlayer?.name || '') || selectedCharacter?.id !== (currentPlayer?.color || ''));
+  }, [name, selectedCharacter, currentPlayer?.name, currentPlayer?.color]);
 
   const handleSave = () => {
-    if (name.trim() && selectedColor) {
-      onUpdatePlayer(name.trim(), selectedColor);
+    if (name.trim() && selectedCharacter) {
+      onUpdatePlayer(name.trim(), selectedCharacter.id);
       setHasChanges(false);
     }
+  };
+
+  const handleCharacterSelect = (character: Character) => {
+    selectCharacter(character.id);
+    setHasChanges(true);
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,7 +148,7 @@ export default function MobilePlayerLobby({
           <div className="bg-gray-900 rounded-3xl p-6 shadow-2xl border border-gray-800">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center">
-                <Palette className="h-5 w-5 text-gray-400" />
+                <Users className="h-5 w-5 text-gray-400" />
               </div>
               <h2 className="text-xl font-semibold text-white">
                 Set up your player
@@ -186,34 +178,10 @@ export default function MobilePlayerLobby({
                 <Label className="text-gray-300 font-medium text-base">
                   Choose your character
                 </Label>
-                <CharacterSelection compact={true} />
-              </div>
-
-              {/* Color Selection */}
-              <div className="space-y-4">
-                <Label className="text-gray-300 font-medium text-base">
-                  Pick your color
-                </Label>
-                <div className="grid grid-cols-4 gap-4">
-                  {PLAYER_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-full aspect-square rounded-2xl transition-all duration-200 ${
-                        selectedColor === color 
-                          ? 'ring-4 ring-blue-400/50 scale-95 shadow-lg' 
-                          : 'hover:scale-105 active:scale-95'
-                      }`}
-                      style={{ backgroundColor: color }}
-                    >
-                      {selectedColor === color && (
-                        <div className="w-full h-full rounded-2xl flex items-center justify-center">
-                          <div className="w-3 h-3 bg-white rounded-full shadow-sm"></div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <CharacterSelection 
+                  compact={true} 
+                  onCharacterSelect={handleCharacterSelect}
+                />
               </div>
 
               {/* Preview */}
@@ -221,7 +189,7 @@ export default function MobilePlayerLobby({
                 <p className="text-gray-400 text-sm mb-3">Preview</p>
                 <div className="flex items-center gap-4">
                   {/* Character icon */}
-                  <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/20">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-green-400/50">
                     <img 
                       src={getCharacterImagePath(selectedCharacter?.id || 'mike')}
                       alt="Player character"
@@ -231,17 +199,12 @@ export default function MobilePlayerLobby({
                       }}
                     />
                   </div>
-                  {/* Color indicator */}
-                  <div 
-                    className="w-8 h-8 rounded-xl shadow-sm"
-                    style={{ backgroundColor: selectedColor }}
-                  />
                   <div>
-                    <p className="font-semibold text-white">
+                    <p className="font-semibold text-white text-lg">
                       {name.trim() || 'Your name'}
                     </p>
-                    <p className="text-sm text-gray-400">
-                      {selectedCharacter ? selectedCharacter.displayName : 'No character selected'}
+                    <p className="text-sm text-green-400">
+                      {selectedCharacter ? selectedCharacter.displayName : 'Select a character'}
                     </p>
                   </div>
                 </div>
@@ -250,7 +213,7 @@ export default function MobilePlayerLobby({
               {/* Save Button */}
               <Button 
                 onClick={handleSave}
-                disabled={!name.trim() || !selectedColor || !hasChanges}
+                disabled={!name.trim() || !selectedCharacter || !hasChanges}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
               >
                 {hasChanges ? 'Save changes' : 'Saved ✓'}
