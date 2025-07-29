@@ -1,7 +1,7 @@
 import { Song, Player, GameRoom } from '@/types/game';
 
 export interface GameStateMessage {
-  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM';
+  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM' | 'HOST_SET_SONGS' | 'GAME_STARTED';
   roomId: string;
   data: any;
   timestamp: number;
@@ -15,6 +15,8 @@ export class WebSocketService {
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
   private isConnecting = false;
   private roomId: string | null = null;
+  private isHost = false;
+  private roomSongs: Song[] = [];
 
   constructor() {
     this.setupEventListeners();
@@ -147,6 +149,12 @@ export class WebSocketService {
   }
 
   private handleMessage(message: GameStateMessage) {
+    // Simulate server-side behavior for song synchronization
+    if (message.type === 'HOST_SET_SONGS') {
+      this.handleHostSetSongs(message);
+      return;
+    }
+
     const listeners = this.listeners.get(message.type);
     if (listeners) {
       listeners.forEach(listener => {
@@ -157,6 +165,80 @@ export class WebSocketService {
         }
       });
     }
+  }
+
+  private handleHostSetSongs(message: GameStateMessage) {
+    console.log('🎯 HOST_SET_SONGS received:', message.data);
+    
+    // Verify this is from the host (in a real server, we'd check session/auth)
+    const { roomId, songList, hostId } = message.data;
+    
+    if (roomId !== this.roomId) {
+      console.warn('⚠️ Ignoring HOST_SET_SONGS for different room');
+      return;
+    }
+
+    // Store the songs (simulate server state)
+    this.roomSongs = songList || [];
+    console.log(`📦 Server stored ${this.roomSongs.length} songs for room ${roomId}`);
+
+    // Broadcast GAME_STARTED to all clients (simulate server broadcast)
+    const gameStartedMessage: GameStateMessage = {
+      type: 'GAME_STARTED',
+      roomId: roomId,
+      data: {
+        room: {
+          id: roomId,
+          phase: 'playing',
+          songs: this.roomSongs,
+          // Include other room data that clients need
+        },
+        timestamp: Date.now()
+      },
+      timestamp: Date.now()
+    };
+
+    console.log('📤 Server broadcasting GAME_STARTED:', gameStartedMessage);
+    
+    // Simulate server broadcast by triggering listeners
+    setTimeout(() => {
+      const listeners = this.listeners.get('GAME_STARTED');
+      if (listeners) {
+        listeners.forEach(listener => {
+          try {
+            listener(gameStartedMessage.data);
+          } catch (error) {
+            console.error('❌ Error in GAME_STARTED listener:', error);
+          }
+        });
+      }
+    }, 100); // Small delay to simulate server processing
+  }
+
+  setHostStatus(isHost: boolean) {
+    this.isHost = isHost;
+    console.log('🏠 Host status set:', isHost);
+  }
+
+  sendHostSetSongs(roomId: string, songList: Song[], hostId: string) {
+    if (!this.isHost) {
+      console.warn('⚠️ Only host can send HOST_SET_SONGS');
+      return;
+    }
+
+    const message: GameStateMessage = {
+      type: 'HOST_SET_SONGS',
+      roomId: roomId,
+      data: {
+        roomId,
+        songList,
+        hostId
+      },
+      timestamp: Date.now()
+    };
+
+    console.log('📤 Host sending HOST_SET_SONGS:', message);
+    this.sendMessage(message);
   }
 
   sendMessage(message: Partial<GameStateMessage>) {

@@ -77,49 +77,8 @@ export function GamePlay({
                    gamemode === 'sprint' ? sprintLogic : 
                    classicLogic;
 
-  // ENHANCED PERFORMANCE FIX: More resilient game initialization with 20 songs
-  useEffect(() => {
-    const shouldInitialize = room?.phase === 'playing' && 
-                           !gameInitialized &&
-                           !gameLogic.gameState.playlistInitialized;
-
-    if (shouldInitialize && isHost) {
-      console.log('🚀 ENHANCED INIT: Host initializing with 20 song resilient loading...');
-      
-      setInitializationError(null);
-      setGameInitialized(true);
-      
-      const initializeGameOptimal = async () => {
-        try {
-          // ENHANCED: Try to get 20 songs with previews for better success rate
-          console.log('⚡ RESILIENT LOAD: Loading 20 songs with previews (enhanced success rate)...');
-          const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(20);
-          
-          if (optimizedSongs.length === 0) {
-            throw new Error('No songs with valid previews found after trying multiple songs');
-          }
-
-          // ENHANCED: Accept fewer songs if we couldn't get the full 20, but need at least 8
-          if (optimizedSongs.length < 8) {
-            throw new Error(`Only ${optimizedSongs.length} songs with valid audio previews found. Need at least 8 songs for game start.`);
-          }
-
-          console.log(`🚀 RESILIENT SUCCESS: Using ${optimizedSongs.length} songs with working previews`);
-
-          // Initialize game with whatever songs we successfully got
-          await GameService.initializeGameWithStartingCards(room.id, optimizedSongs);
-          
-          console.log('⚡ RESILIENT INIT COMPLETE: Game ready with enhanced song set');
-        } catch (error) {
-          console.error('❌ RESILIENT INIT FAILED:', error);
-          setInitializationError(error instanceof Error ? error.message : 'Failed to initialize resilient game');
-          setGameInitialized(false);
-        }
-      };
-
-      initializeGameOptimal();
-    }
-  }, [room?.phase, gameInitialized, gameLogic.gameState.playlistInitialized, isHost, room?.id]);
+  // Remove old game initialization - now handled by WebSocket flow
+  // Game will be initialized when GAME_STARTED event is received
 
   // Initialize game logic after host sets up the room
   useEffect(() => {
