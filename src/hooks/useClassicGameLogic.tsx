@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -73,25 +72,52 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Phase synchronization from room data - FIX: Set phase to 'playing' when room phase changes
+  // Phase synchronization from room data - CRITICAL FIX: Use songs from room data
   useEffect(() => {
     if (roomData) {
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
         currentTurnIndex: roomData.current_turn || 0,
-        phase: roomData.phase === 'playing' ? 'playing' : prev.phase
+        phase: roomData.phase === 'playing' ? 'playing' : prev.phase,
+        // CRITICAL: Use songs from room data if available
+        availableSongs: roomData.songs && roomData.songs.length > 0 ? roomData.songs : prev.availableSongs
       }));
 
-      // CRITICAL FIX: Mark game as initialized when room enters playing phase
+      // CRITICAL FIX: Mark game as initialized when room enters playing phase AND has songs
       if (roomData.phase === 'playing') {
-        console.log('🎯 Classic Mode: Room phase changed to playing, marking as initialized');
+        console.log('🎯 Classic Mode: Room phase changed to playing');
+        
+        if (roomData.songs && roomData.songs.length > 0) {
+          console.log('🎵 Classic Mode: Using songs from room data:', roomData.songs.length);
+          setGameState(prev => ({
+            ...prev,
+            playlistInitialized: true,
+            backgroundLoadingComplete: true,
+            phase: 'playing'
+          }));
+        } else {
+          console.log('⚠️ Classic Mode: Room is playing but no songs available, staying in loading');
+        }
       }
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData]);
+  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData?.songs, roomData]);
 
   // Initialize game with optimized song loading
   const initializeGame = useCallback(async () => {
+    // If we already have songs from room data, don't fetch again
+    if (roomData?.songs && roomData.songs.length > 0) {
+      console.log('🎵 Classic Mode: Using existing songs from room data, skipping fetch');
+      setGameState(prev => ({
+        ...prev,
+        phase: 'ready',
+        availableSongs: roomData.songs,
+        playlistInitialized: true,
+        backgroundLoadingComplete: true
+      }));
+      return;
+    }
+
     if (gameState.playlistInitialized) {
       console.log('🎵 Classic Mode: Playlist already initialized, setting to ready');
       setGameState(prev => ({ ...prev, phase: 'ready' }));
@@ -138,7 +164,7 @@ export function useClassicGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, gameState.playlistInitialized]);
+  }, [toast, gameState.playlistInitialized, roomData?.songs]);
 
   // Place card in timeline (turn-based)
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {

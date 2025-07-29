@@ -476,16 +476,33 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
-      console.log('🎯 Starting game with initialization...');
+      console.log('🎯 Starting game with songs array length:', availableSongs?.length || 0);
       setIsLoading(true);
       setGameInitialized(false);
       
-      // Broadcast game start via WebSocket
-      broadcastGameStart();
-      
+      // CRITICAL FIX: Store songs in database before starting game
       if (availableSongs && availableSongs.length > 0) {
+        console.log('📦 Storing songs in database before starting game...');
+        
+        // First update the room with songs
+        const { error: songsError } = await supabase
+          .from('game_rooms')
+          .update({ 
+            songs: availableSongs as unknown as Json
+          })
+          .eq('id', room.id);
+
+        if (songsError) {
+          console.error('❌ Failed to store songs:', songsError);
+          throw songsError;
+        }
+
+        console.log('✅ Songs stored in database successfully');
+        
+        // Then initialize game with starting cards
         await GameService.initializeGameWithStartingCards(room.id, availableSongs);
       } else {
+        console.log('⚠️ No songs provided, starting game without song initialization');
         // Fallback: just set phase to playing
         const { error } = await supabase
           .from('game_rooms')
@@ -498,9 +515,13 @@ export function useGameRoom() {
         if (error) throw error;
       }
       
+      // Broadcast game start via WebSocket
+      broadcastGameStart();
+      
+      console.log('✅ Game started successfully');
       return true;
     } catch (error) {
-      console.error('Failed to start game:', error);
+      console.error('❌ Failed to start game:', error);
       setIsLoading(false);
       return false;
     }
@@ -745,223 +766,14 @@ export function useGameRoom() {
     wsReconnect,
     createRoom,
     joinRoom,
-    updatePlayer: async (updates: Partial<Player>): Promise<boolean> => {
-      if (!currentPlayer) return false;
-
-      try {
-        // Skip database update if this is the host
-        if (!isHost) {
-          const { error } = await supabase
-            .from('players')
-            .update({
-              name: updates.name,
-              color: updates.color,
-              timeline_color: updates.timelineColor,
-              character: updates.character
-            })
-            .eq('id', currentPlayer.id);
-
-          if (error) throw error;
-        }
-
-        setCurrentPlayer(prev => prev ? { ...prev, ...updates } : null);
-        return true;
-      } catch (error) {
-        console.error('Failed to update player:', error);
-        return false;
-      }
-    },
-    updateRoomSongs: async (songs: Song[]): Promise<boolean> => {
-      if (!room || !isHost) return false;
-
-      try {
-        const { error } = await supabase
-          .from('game_rooms')
-          .update({ songs: songs as unknown as Json })
-          .eq('id', room.id);
-
-        if (error) throw error;
-        return true;
-      } catch (error) {
-        console.error('Failed to update room songs:', error);
-        return false;
-      }
-    },
-    updateRoomGamemode: async (gamemode: GameMode, gamemodeSettings: GameModeSettings): Promise<boolean> => {
-      if (!room || !isHost) return false;
-
-      try {
-        console.log('🎮 Updating gamemode to:', gamemode, 'settings:', gamemodeSettings);
-        
-        // Single atomic update to prevent race conditions
-        const { error } = await supabase
-          .from('game_rooms')
-          .update({ 
-            gamemode: gamemode,
-            gamemode_settings: gamemodeSettings as unknown as Json,
-            phase: 'lobby' // Explicitly maintain lobby phase
-          })
-          .eq('id', room.id);
-
-        if (error) throw error;
-        
-        // Update local state with explicit phase maintenance
-        setRoom(prev => prev ? {
-          ...prev,
-          gamemode,
-          gamemode_settings: gamemodeSettings,
-          phase: 'lobby' as const // Ensure phase stays 'lobby'
-        } : null);
-        
-        console.log('✅ Gamemode updated successfully, phase maintained as lobby');
-        
-        return true;
-      } catch (error) {
-        console.error('Failed to update room gamemode:', error);
-        return false;
-      }
-    },
+    updatePlayer,
+    updateRoomSongs,
+    updateRoomGamemode,
     startGame,
-    leaveRoom: async () => {
-      // Only delete player record if this is a non-host player
-      if (currentPlayer && !isHost) {
-        await supabase
-          .from('players')
-          .delete()
-          .eq('id', currentPlayer.id);
-      }
-
-      setRoom(null);
-      setPlayers([]);
-      setCurrentPlayer(null);
-      setIsHost(false);
-      setGameInitialized(false);
-      hostSessionId.current = null;
-      playerSessionId.current = null;
-      isInitialFetch.current = true;
-    },
-    placeCard: async (song: Song, position: number, availableSongs: Song[] = []): Promise<{ success: boolean; correct?: boolean }> => {
-      if (!currentPlayer || !room) {
-        console.error('Cannot place card: missing currentPlayer or room');
-        return { success: false };
-      }
-
-      try {
-        console.log('🃏 Using correct GameService method for card placement');
-        
-        const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position, availableSongs);
-        
-        if (result.success) {
-          console.log('✅ Card placed and turn advanced successfully');
-          // Broadcast card placement via WebSocket
-          broadcastCardPlaced({ playerId: currentPlayer.id, song, position, correct: result.correct });
-          return { success: true, correct: result.correct };
-        } else {
-          console.error('❌ Card placement failed:', result.error);
-          return { success: false };
-        }
-      } catch (error) {
-        console.error('Failed to place card:', error);
-        return { success: false };
-      }
-    },
-    setCurrentSong: async (song: Song): Promise<void> => {
-      if (!room || !isHost) return;
-
-      try {
-        // Validate song object exists and has required properties
-        if (!song || !song.deezer_title) {
-          console.warn('⚠️ Invalid song object provided to setCurrentSong, skipping:', song);
-          return;
-        }
-
-        console.log('🎵 Host setting synchronized mystery card:', song.deezer_title);
-        await GameService.setCurrentSong(room.id, song);
-        // Broadcast song set via WebSocket
-        broadcastSongSet(song);
-      } catch (error) {
-        console.error('Failed to set current song:', error);
-        // Continue gracefully - don't let song setting errors break the game
-      }
-    },
-    assignStartingCards: async (availableSongs: Song[]): Promise<void> => {
-      if (!room || !isHost || !availableSongs.length) {
-        console.log('⚠️ Cannot assign starting cards:', { room: !!room, isHost, songsLength: availableSongs.length });
-        return;
-      }
-
-      try {
-        console.log('🃏 Assigning starting cards to players...');
-        console.log('🎯 Players to assign cards to:', players.map(p => ({ name: p.name, timelineLength: p.timeline.length })));
-        
-        for (const player of players) {
-          if (player.timeline.length === 0) {
-            const randomSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
-            console.log(`🃏 Assigning starting card to ${player.name}:`, randomSong.deezer_title);
-            
-            const { error } = await supabase
-              .from('players')
-              .update({
-                timeline: [randomSong] as unknown as Json
-              })
-              .eq('id', player.id);
-
-            if (error) {
-              console.error(`Failed to assign starting card to ${player.name}:`, error);
-            } else {
-              console.log(`✅ Successfully assigned starting card to ${player.name}`);
-            }
-          }
-        }
-        
-        // Refresh players after assigning cards
-        console.log('🔄 Refreshing players after assigning starting cards...');
-        await fetchPlayers(room.id);
-      } catch (error) {
-        console.error('Failed to assign starting cards:', error);
-      }
-    },
-    kickPlayer: async (playerId: string): Promise<boolean> => {
-      if (!room || !isHost) {
-        console.error('Cannot kick player: not host or no room');
-        return false;
-      }
-
-      try {
-        setIsLoading(true);
-        console.log('👟 Kicking player:', playerId);
-
-        // Remove player from database
-        const { error } = await supabase
-          .from('players')
-          .delete()
-          .eq('id', playerId)
-          .eq('room_id', room.id);
-
-        if (error) {
-          console.error('❌ Failed to kick player:', error);
-          setError('Failed to remove player');
-          return false;
-        }
-
-        console.log('✅ Player kicked successfully');
-        
-        // Refresh players list
-        await fetchPlayers(room.id);
-        
-        toast({
-          title: "Player removed",
-          description: "Player has been removed from the lobby",
-        });
-        
-        return true;
-      } catch (error) {
-        console.error('❌ Error kicking player:', error);
-        setError('Failed to remove player');
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    leaveRoom,
+    placeCard,
+    setCurrentSong,
+    assignStartingCards,
+    kickPlayer
   };
 }
