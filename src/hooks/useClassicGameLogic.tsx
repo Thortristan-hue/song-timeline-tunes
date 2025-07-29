@@ -19,6 +19,7 @@ interface ClassicGameLogicState {
   transitioningTurn: boolean;
   playlistInitialized: boolean;
   backgroundLoadingComplete: boolean;
+  gameFullyInitialized: boolean;
 }
 
 const MAX_SONGS_PER_SESSION = 20;
@@ -44,7 +45,8 @@ export function useClassicGameLogic(
     timeLeft: 30,
     transitioningTurn: false,
     playlistInitialized: false,
-    backgroundLoadingComplete: false
+    backgroundLoadingComplete: false,
+    gameFullyInitialized: false
   });
 
   // Filter and sync ONLY non-host players
@@ -73,54 +75,57 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // CRITICAL FIX: Phase synchronization from room data - Use songs from room data
+  // CRITICAL FIX: Single comprehensive room data handler
   useEffect(() => {
-    if (roomData) {
-      console.log('🎯 Classic Mode: Processing room data update:', {
-        currentSong: roomData.current_song,
-        songsCount: roomData.songs?.length || 0,
-        phase: roomData.phase
-      });
+    if (!roomData) return;
 
+    console.log('🎯 Classic Mode: Processing room data update:', {
+      currentSong: roomData.current_song?.deezer_title || 'none',
+      songsCount: roomData.songs?.length || 0,
+      phase: roomData.phase,
+      gameFullyInitialized: gameState.gameFullyInitialized
+    });
+
+    // Update basic room state
+    setGameState(prev => ({
+      ...prev,
+      currentSong: roomData.current_song || prev.currentSong,
+      currentTurnIndex: roomData.current_turn || 0
+    }));
+
+    // CRITICAL: Handle songs from room data and initialize game properly
+    if (roomData.songs && roomData.songs.length > 0 && !gameState.gameFullyInitialized) {
+      console.log('🎵 Classic Mode: Initializing game with songs from room data:', roomData.songs.length);
+      
       setGameState(prev => ({
         ...prev,
-        currentSong: roomData.current_song || prev.currentSong,
-        currentTurnIndex: roomData.current_turn || 0,
-        phase: roomData.phase === 'playing' ? 'playing' : prev.phase
+        availableSongs: roomData.songs,
+        playlistInitialized: true,
+        backgroundLoadingComplete: true,
+        gameFullyInitialized: true,
+        phase: roomData.phase === 'playing' ? 'playing' : 'ready'
       }));
 
-      // CRITICAL FIX: Sync songs from room data and set as availableSongs
-      if (roomData.songs && roomData.songs.length > 0) {
-        console.log('🎵 Classic Mode: Setting songs from room data as available songs:', roomData.songs.length);
-        setGameState(prev => ({
-          ...prev,
-          availableSongs: roomData.songs, // This is the key fix
-          playlistInitialized: true,
-          backgroundLoadingComplete: true
-        }));
+      // If we don't have a current song and we have available songs, set the first one
+      if (!roomData.current_song && roomData.songs.length > 0 && onSetCurrentSong) {
+        console.log('🎵 Classic Mode: Setting initial mystery card from available songs');
+        const firstSong = roomData.songs[0];
+        onSetCurrentSong(firstSong).catch(error => {
+          console.error('Failed to set initial mystery card:', error);
+        });
       }
-
-      // Mark game as ready when room enters playing phase AND has songs
-      if (roomData.phase === 'playing') {
-        console.log('🎯 Classic Mode: Room phase changed to playing');
-        
-        if (roomData.songs && roomData.songs.length > 0) {
-          console.log('🎵 Classic Mode: Using songs from room data:', roomData.songs.length);
-          setGameState(prev => ({
-            ...prev,
-            playlistInitialized: true,
-            backgroundLoadingComplete: true,
-            phase: 'playing',
-            availableSongs: roomData.songs // Ensure this is set here too
-          }));
-        } else {
-          console.log('⚠️ Classic Mode: Room is playing but no songs available, staying in loading');
-        }
-      }
+    } 
+    // If we already have songs and room phase changes to playing, update phase
+    else if (gameState.gameFullyInitialized && roomData.phase === 'playing') {
+      console.log('🎯 Classic Mode: Room phase changed to playing with existing game state');
+      setGameState(prev => ({
+        ...prev,
+        phase: 'playing'
+      }));
     }
-  }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData?.songs, roomData]);
+  }, [roomData, gameState.gameFullyInitialized, onSetCurrentSong]);
 
-  // Initialize game with optimized song loading
+  // Initialize game with optimized song loading (fallback for local song fetching)
   const initializeGame = useCallback(async () => {
     // If we already have songs from room data, don't fetch again
     if (roomData?.songs && roomData.songs.length > 0) {
@@ -130,7 +135,8 @@ export function useClassicGameLogic(
         phase: 'ready',
         availableSongs: roomData.songs,
         playlistInitialized: true,
-        backgroundLoadingComplete: true
+        backgroundLoadingComplete: true,
+        gameFullyInitialized: true
       }));
       return;
     }
@@ -165,7 +171,8 @@ export function useClassicGameLogic(
         currentTurnIndex: 0,
         timeLeft: 30,
         playlistInitialized: true,
-        backgroundLoadingComplete: true
+        backgroundLoadingComplete: true,
+        gameFullyInitialized: true
       }));
 
       console.log('✅ Classic Mode: Initialization complete');
@@ -173,7 +180,12 @@ export function useClassicGameLogic(
     } catch (error) {
       console.error('❌ Classic Mode initialization failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to initialize classic mode';
-      setGameState(prev => ({ ...prev, loadingError: errorMsg, playlistInitialized: false }));
+      setGameState(prev => ({ 
+        ...prev, 
+        loadingError: errorMsg, 
+        playlistInitialized: false,
+        gameFullyInitialized: false 
+      }));
       
       toast({
         title: "Classic Mode Setup Failed",
@@ -186,6 +198,12 @@ export function useClassicGameLogic(
   // Place card in timeline (turn-based)
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {
     if (!roomId || gameState.phase !== 'playing') {
+      console.error('Cannot place card: invalid state', { roomId: !!roomId, phase: gameState.phase });
+      return { success: false };
+    }
+
+    if (gameState.availableSongs.length === 0) {
+      console.error('Cannot place card: no available songs');
       return { success: false };
     }
 
