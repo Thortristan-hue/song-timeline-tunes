@@ -179,7 +179,7 @@ export class GameService {
       let gameEnded = false;
 
       if (newScore >= 10) {
-        // Convert database player to Player type
+        // Convert database player to Player type - use getDefaultCharacter for missing character
         winner = {
           id: playerData.id,
           name: playerData.name,
