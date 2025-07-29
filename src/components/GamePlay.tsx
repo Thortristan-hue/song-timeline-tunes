@@ -18,6 +18,7 @@ import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useRealtimeSubscription';
 import { GameRoom } from '@/types/game';
 import { HostGameOverScreen } from '@/components/host/HostGameOverScreen';
+import { createSafeAudioElement, safeAudioPlay } from '@/lib/audioUtils';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -208,26 +209,14 @@ export function GamePlay({
       currentAudioRef.current = null;
     }
     
-    // Create new audio element
-    const audio = new Audio(previewUrl);
-    audio.crossOrigin = 'anonymous';
-    audio.volume = 0.8;
-    audio.preload = 'auto';
-    
-    audio.muted = false;
-    audio.autoplay = false;
+    // Create new audio element with enhanced error handling
+    const audio = createSafeAudioElement(previewUrl, 0.8);
     
     currentAudioRef.current = audio;
     
     // Enhanced event handlers
     audio.addEventListener('ended', () => {
       console.log('🎵 Audio playback ended');
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-    });
-    
-    audio.addEventListener('error', (e) => {
-      console.error('🎵 Audio error:', e);
       setIsPlaying(false);
       gameLogic.setIsPlaying(false);
     });
@@ -239,29 +228,19 @@ export function GamePlay({
     audio.addEventListener('loadstart', () => {
       console.log('🎵 Audio loading started');
     });
-    
-    try {
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        await playPromise;
-        console.log('🎵 AUDIO SUCCESS: Playing');
+
+    // CRITICAL FIX: Use safe audio play that never blocks game logic
+    safeAudioPlay(audio, {
+      onSuccess: () => {
         setIsPlaying(true);
         gameLogic.setIsPlaying(true);
+      },
+      onError: (error) => {
+        setIsPlaying(false);
+        gameLogic.setIsPlaying(false);
+        // Game continues normally regardless of audio errors
       }
-    } catch (error) {
-      console.error('🎵 Audio play failed:', error);
-      setIsPlaying(false);
-      gameLogic.setIsPlaying(false);
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          console.warn('🎵 Audio blocked - user interaction required');
-        } else if (error.name === 'NotSupportedError') {
-          console.warn('🎵 Audio format not supported');
-        }
-      }
-    }
+    });
   };
 
   // ENHANCED: Handle incorrect card placement by removing from timeline
