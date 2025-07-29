@@ -4,6 +4,7 @@ import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
+import { EnhancedAudioPlayer } from '@/components/EnhancedAudioPlayer';
 import { Button } from '@/components/ui/button';
 import { getArtistColor, truncateText } from '@/lib/utils';
 
@@ -173,75 +174,23 @@ function CassettePlayerSection({
   onPlayPause: () => void;
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }) {
-  const [playClicked, setPlayClicked] = useState(false);
-  const [pauseClicked, setPauseClicked] = useState(false);
-  const [stopClicked, setStopClicked] = useState(false);
-
-  const handlePlayPause = () => {
+  const handleEnhancedStop = () => {
+    // Stop functionality: same as current pause (as specified in requirements)
     if (isPlaying) {
-      setPauseClicked(true);
-      setTimeout(() => setPauseClicked(false), 300);
-    } else {
-      setPlayClicked(true);
-      setTimeout(() => setPlayClicked(false), 300);
+      onPlayPause();
     }
-    onPlayPause();
-  };
-
-  const handleStop = () => {
-    setStopClicked(true);
-    setTimeout(() => setStopClicked(false), 300);
-    // Stop functionality would be implemented here
   };
 
   return (
     <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
-      <div className="relative">
-        {/* Center top: ass_cass_bg.png */}
-        <div className="relative">
-          <img 
-            src={assCassBg} 
-            alt="Cassette Player Background" 
-            className="w-80 h-48 object-contain drop-shadow-2xl"
-          />
-          
-          {/* Play, Pause, Stop button controls overlayed on cassette */}
-          <div className="absolute inset-0 flex items-center justify-center gap-4">
-            {/* Play Button */}
-            <button
-              onClick={handlePlayPause}
-              disabled={!currentSong?.preview_url || isPlaying}
-              className={`transition-all duration-300 ${playClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
-            >
-              <div className="w-12 h-12 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
-                <Play className="w-6 h-6 text-white" />
-              </div>
-            </button>
-            
-            {/* Pause Button */}
-            <button
-              onClick={handlePlayPause}
-              disabled={!currentSong?.preview_url || !isPlaying}
-              className={`transition-all duration-300 ${pauseClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
-            >
-              <div className="w-12 h-12 bg-orange-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
-                <Pause className="w-6 h-6 text-white" />
-              </div>
-            </button>
-            
-            {/* Stop Button */}
-            <button
-              onClick={handleStop}
-              disabled={!currentSong?.preview_url}
-              className={`transition-all duration-300 ${stopClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
-            >
-              <div className="w-12 h-12 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
-                <Music className="w-6 h-6 text-white" />
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
+      <EnhancedAudioPlayer
+        src={currentSong?.preview_url || null}
+        isPlaying={isPlaying}
+        onPlayPause={onPlayPause}
+        onStop={handleEnhancedStop}
+        disabled={!currentSong?.preview_url}
+        volume={0.5}
+      />
     </div>
   );
 }
