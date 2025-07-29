@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useGameRoom } from '@/hooks/useGameRoom';
@@ -13,25 +14,18 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { SongCard } from './SongCard';
 
-interface GamePlayProps {
-  room: GameRoom;
-  players: Player[];
-  currentPlayer: Player;
-  isHost: boolean;
-}
-
 export function GamePlay() {
   const { toast } = useToast();
   const { room, players, currentPlayer, isHost, placeCard, setCurrentSong } = useGameRoom();
   const [gameLogic, setGameLogic] = useState<GameLogic | null>(null);
   const [isProcessingMove, setIsProcessingMove] = useState(false);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean; song: Song | null }>({ show: false, correct: false, song: null });
-	const [winner, setWinner] = useState<Player | null>(null);
+  const [winner, setWinner] = useState<Player | null>(null);
   const [showVictoryScreen, setShowVictoryScreen] = useState(false);
   const { fire } = useConfettiStore();
 
   useEffect(() => {
-    if (room && currentPlayer) {
+    if (room && currentPlayer && players) {
       const newGameLogic = new GameLogic(room, players, currentPlayer);
       setGameLogic(newGameLogic);
     }
@@ -57,9 +51,6 @@ export function GamePlay() {
         console.log('✅ Card placed successfully');
         
         if (result.correct !== undefined) {
-          // Update player score with correct parameters (playerId, scoreChange)
-          await GameService.updatePlayerScore(currentPlayer.id, result.correct ? 1 : 0);
-          
           setFeedback({
             show: true,
             correct: result.correct,
@@ -72,7 +63,7 @@ export function GamePlay() {
           }, 2000);
         }
         
-        // Check for game end
+        // Check for game end - the result should now include these properties
         if (result.gameEnded && result.winner) {
           console.log('🎉 Game ended with winner:', result.winner.name);
           setWinner(result.winner);
@@ -120,6 +111,18 @@ export function GamePlay() {
     }
   };
 
+  const handleBackToMenu = () => {
+    setShowVictoryScreen(false);
+    // Navigate back to menu - this would need proper routing implementation
+    window.location.reload();
+  };
+
+  const handlePlayAgain = () => {
+    setShowVictoryScreen(false);
+    setWinner(null);
+    // Reset game state - this would need proper implementation
+  };
+
   if (!gameLogic) {
     return <div>Loading game...</div>;
   }
@@ -131,7 +134,12 @@ export function GamePlay() {
       )}
 
       {showVictoryScreen && winner && (
-        <VictoryScreen winner={winner} onClose={() => setShowVictoryScreen(false)} />
+        <VictoryScreen 
+          winner={winner} 
+          players={players || []}
+          onPlayAgain={handlePlayAgain}
+          onBackToMenu={handleBackToMenu}
+        />
       )}
 
       <div className="flex justify-between items-center p-4">
@@ -159,7 +167,7 @@ export function GamePlay() {
 
       <div className="flex-grow">
         <Timeline
-          songs={currentPlayer.timeline}
+          songs={currentPlayer?.timeline || []}
           onCardClick={handleCardPlacement}
           isProcessingMove={isProcessingMove}
         />
