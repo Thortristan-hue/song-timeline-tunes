@@ -1,4 +1,3 @@
-
 import { Song, Player, GameRoom } from '@/types/game';
 
 export interface GameStateMessage {
@@ -78,11 +77,31 @@ export class WebSocketService {
 
         this.ws.onmessage = (event) => {
           try {
-            const message: GameStateMessage = JSON.parse(event.data);
+            // Handle both string and object data from echo server
+            let messageData;
+            if (typeof event.data === 'string') {
+              try {
+                messageData = JSON.parse(event.data);
+              } catch (parseError) {
+                console.log('📨 WebSocket received non-JSON message, ignoring:', event.data);
+                return;
+              }
+            } else {
+              messageData = event.data;
+            }
+
+            // Validate message structure
+            if (!messageData || typeof messageData !== 'object' || !messageData.type) {
+              console.log('📨 WebSocket received invalid message structure, ignoring');
+              return;
+            }
+
+            const message: GameStateMessage = messageData;
             console.log('📨 Received WebSocket message:', message);
             this.handleMessage(message);
           } catch (error) {
-            console.error('❌ Error parsing WebSocket message:', error);
+            console.log('📨 WebSocket message processing skipped due to format:', error);
+            // Don't throw errors for message parsing issues - just log and continue
           }
         };
 
