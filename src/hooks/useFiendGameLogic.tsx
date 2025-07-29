@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -93,7 +92,7 @@ export function useFiendGameLogic(
       }
 
       if (optimizedSongs.length < gameState.totalRounds) {
-        throw new Error(`Not enough songs for ${gameState.totalRounds} rounds`);
+        console.warn(`⚠️ Only ${optimizedSongs.length} songs available for ${gameState.totalRounds} rounds, adjusting...`);
       }
 
       console.log(`🎯 Fiend Mode: Ready with ${optimizedSongs.length} songs for ${gameState.totalRounds} rounds`);
@@ -107,7 +106,8 @@ export function useFiendGameLogic(
         currentRound: 1,
         currentSong: firstSong,
         timeLeft: 30,
-        playlistInitialized: true
+        playlistInitialized: true,
+        totalRounds: Math.min(prev.totalRounds, optimizedSongs.length) // Adjust rounds to available songs
       }));
 
       // Set the first song in the room
@@ -196,13 +196,28 @@ export function useFiendGameLogic(
         return;
       }
 
-      // Get next song - fix the indexing issue
-      const nextSong = gameState.availableSongs[nextRoundNumber - 1];
+      // Get next song - fix the indexing issue and add bounds checking
+      const nextSongIndex = nextRoundNumber - 1;
       
-      if (!nextSong) {
-        console.error('❌ No next song available for round', nextRoundNumber);
+      if (nextSongIndex >= gameState.availableSongs.length) {
+        console.error('❌ No next song available for round', nextRoundNumber, 'available songs:', gameState.availableSongs.length);
+        
+        // End game early if we run out of songs
+        const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+        const winner = sortedPlayers[0];
+        
+        setGameState(prev => ({
+          ...prev,
+          phase: 'finished',
+          winner
+        }));
+        
+        await GameService.endGame(roomId, winner?.id);
         return;
       }
+      
+      const nextSong = gameState.availableSongs[nextSongIndex];
+      console.log(`🎵 Advancing to round ${nextRoundNumber} with song:`, nextSong.deezer_title);
 
       // Update game state
       setGameState(prev => ({

@@ -442,14 +442,16 @@ export function useGameRoom() {
     try {
       // Skip database update if this is the host
       if (!isHost) {
+        const updateData: any = {};
+        
+        if (updates.name) updateData.name = updates.name;
+        if (updates.color) updateData.color = updates.color;
+        if (updates.timelineColor) updateData.timeline_color = updates.timelineColor;
+        if (updates.character) updateData.character = updates.character;
+
         const { error } = await supabase
           .from('players')
-          .update({
-            name: updates.name,
-            color: updates.color,
-            timeline_color: updates.timelineColor,
-            character: updates.character
-          })
+          .update(updateData)
           .eq('id', currentPlayer.id);
 
         if (error) throw error;
