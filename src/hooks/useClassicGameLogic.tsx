@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -72,19 +73,34 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Phase synchronization from room data - CRITICAL FIX: Use songs from room data
+  // CRITICAL FIX: Phase synchronization from room data - Use songs from room data
   useEffect(() => {
     if (roomData) {
+      console.log('🎯 Classic Mode: Processing room data update:', {
+        currentSong: roomData.current_song,
+        songsCount: roomData.songs?.length || 0,
+        phase: roomData.phase
+      });
+
       setGameState(prev => ({
         ...prev,
         currentSong: roomData.current_song || prev.currentSong,
         currentTurnIndex: roomData.current_turn || 0,
-        phase: roomData.phase === 'playing' ? 'playing' : prev.phase,
-        // CRITICAL: Use songs from room data if available
-        availableSongs: roomData.songs && roomData.songs.length > 0 ? roomData.songs : prev.availableSongs
+        phase: roomData.phase === 'playing' ? 'playing' : prev.phase
       }));
 
-      // CRITICAL FIX: Mark game as initialized when room enters playing phase AND has songs
+      // CRITICAL FIX: Sync songs from room data and set as availableSongs
+      if (roomData.songs && roomData.songs.length > 0) {
+        console.log('🎵 Classic Mode: Setting songs from room data as available songs:', roomData.songs.length);
+        setGameState(prev => ({
+          ...prev,
+          availableSongs: roomData.songs, // This is the key fix
+          playlistInitialized: true,
+          backgroundLoadingComplete: true
+        }));
+      }
+
+      // Mark game as ready when room enters playing phase AND has songs
       if (roomData.phase === 'playing') {
         console.log('🎯 Classic Mode: Room phase changed to playing');
         
@@ -94,7 +110,8 @@ export function useClassicGameLogic(
             ...prev,
             playlistInitialized: true,
             backgroundLoadingComplete: true,
-            phase: 'playing'
+            phase: 'playing',
+            availableSongs: roomData.songs // Ensure this is set here too
           }));
         } else {
           console.log('⚠️ Classic Mode: Room is playing but no songs available, staying in loading');
@@ -171,6 +188,8 @@ export function useClassicGameLogic(
     if (!roomId || gameState.phase !== 'playing') {
       return { success: false };
     }
+
+    console.log('🎯 Classic Mode: Attempting to place card with available songs:', gameState.availableSongs.length);
 
     try {
       const result = await GameService.placeCardAndAdvanceTurn(
