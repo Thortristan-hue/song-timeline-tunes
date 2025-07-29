@@ -152,7 +152,7 @@ export class GameService {
             timelineColor: player.timeline_color,
             score: isCorrect ? (player.score || 0) + 1 : (player.score || 0),
             timeline: newTimeline,
-            character: player.character || 'char_dave'
+            character: 'char_dave' // Default character since it's not in database
           }
         };
       }
