@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import { getDefaultCharacter } from '@/constants/characters';
@@ -67,7 +66,7 @@ export class GameService {
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
-      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : [],
+      timeline: Array.isArray(dbPlayer.timeline) ? (dbPlayer.timeline as unknown as Song[]) : [],
       character: dbPlayer.character || getDefaultCharacter().id
     };
   }
@@ -105,7 +104,7 @@ export class GameService {
       }
 
       // 2. Validate the card placement
-      const currentTimeline = Array.isArray(player.timeline) ? (player.timeline as Song[]) : [];
+      const currentTimeline = Array.isArray(player.timeline) ? (player.timeline as unknown as Song[]) : [];
       const songAsAny = song as any;
       const correctPlacement =
         currentTimeline.length === 0 || // First card is always correct

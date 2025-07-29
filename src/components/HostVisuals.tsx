@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Song, Player } from '@/types/game';
-import RecordMysteryCard from '@/components/host/RecordMysteryCard';
-import HostCurrentPlayerTimeline from '@/components/host/HostCurrentPlayerTimeline';
-import { getDefaultCharacter, getCharacterById } from '@/constants/characters';
+import { RecordMysteryCard } from '@/components/RecordMysteryCard';
+import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
+import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@/constants/characters';
 
 interface HostGameViewProps {
   currentTurnPlayer: Player | null;
@@ -137,7 +138,7 @@ export function HostGameView({
         {currentTurnPlayer && (
           <div className="w-full max-w-6xl mb-8">
             <HostCurrentPlayerTimeline 
-              player={currentTurnPlayer}
+              currentTurnPlayer={currentTurnPlayer}
               highlightedGapIndex={highlightedGapIndex}
               mobileViewport={mobileViewport}
             />
@@ -149,12 +150,7 @@ export function HostGameView({
           <RecordMysteryCard
             song={currentSong}
             isRevealed={isCardRevealed}
-            cardResult={cardPlacementResult}
-            currentTurnPlayer={currentTurnPlayer}
-            isPlaying={isPlaying}
-            onRecordClick={handleRecordClick}
-            transitioning={transitioning}
-            ref={setRecordPlayerRef}
+            isDestroyed={cardPlacementResult?.correct === false}
           />
         </div>
 
@@ -163,7 +159,7 @@ export function HostGameView({
           <div className="flex justify-center items-end space-x-6">
             {players.map((player) => {
               const isCurrentPlayer = currentTurnPlayer?.id === player.id;
-              const character = getCharacterById(player.character || getDefaultCharacter().id);
+              const character = getCharacterByIdUtil(player.character || getDefaultCharacter().id);
               
               return (
                 <div
@@ -178,8 +174,8 @@ export function HostGameView({
                     {/* Character Image */}
                     <div className="relative">
                       <img
-                        src={character.imagePath}
-                        alt={character.name}
+                        src={character?.image || getDefaultCharacter().image}
+                        alt={character?.name || getDefaultCharacter().name}
                         className="h-20 w-20 rounded-full border-4"
                         style={{ borderColor: player.color }}
                       />
@@ -208,11 +204,4 @@ export function HostGameView({
       </div>
     </div>
   );
-}
-
-// Helper function to get character by ID
-function getCharacterById(characterId: string) {
-  // Import characters from constants
-  const { characters } = require('@/constants/characters');
-  return characters.find((char: any) => char.id === characterId) || characters[0];
 }
