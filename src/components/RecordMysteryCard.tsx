@@ -22,10 +22,18 @@ const CASSETTE_IMAGES = [
   cassetteYellow
 ];
 
-// Function to get a random cassette image
-const getRandomCassetteImage = () => {
-  const randomIndex = Math.floor(Math.random() * CASSETTE_IMAGES.length);
-  return CASSETTE_IMAGES[randomIndex];
+// Function to get a random cassette image based on song ID for consistency
+const getRandomCassetteImage = (songId?: string) => {
+  if (!songId) {
+    return CASSETTE_IMAGES[0]; // Default fallback
+  }
+  // Use song ID to consistently get the same cassette for the same song
+  const hash = songId.split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0);
+    return a & a;
+  }, 0);
+  const index = Math.abs(hash) % CASSETTE_IMAGES.length;
+  return CASSETTE_IMAGES[index];
 };
 
 interface CassetteMysteryCardProps {
@@ -41,8 +49,8 @@ export function RecordMysteryCard({
   isDestroyed = false,
   className = "" 
 }: CassetteMysteryCardProps) {
-  // Use the same random cassette throughout the component lifecycle
-  const [cassetteImage] = React.useState(() => getRandomCassetteImage());
+  // Get consistent cassette image for this song
+  const cassetteImage = getRandomCassetteImage(song?.id);
 
   return (
     <div className={`relative ${className}`}>
@@ -58,13 +66,13 @@ export function RecordMysteryCard({
             !isRevealed ? 'cassette-pulse' : 'animate-pulse'
           }`}
           style={{
-            filter: !isRevealed ? 'drop-shadow(0 0 15px rgba(16, 119, 147, 0.6))' : 'none'
+            filter: !isRevealed ? 'drop-shadow(0 0 15px rgba(73, 66, 82, 0.6))' : 'none'
           }}
         />
         
         {isRevealed && song && (
           <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-center animate-fade-in-up">
-            <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap hover:scale-105 transition-all duration-300 border border-[#107793]/30">
+            <div className="bg-black/80 backdrop-blur-sm rounded-lg px-3 py-1 text-white text-xs whitespace-nowrap hover:scale-105 transition-all duration-300 border border-[#494252]/30">
               <div className="font-bold animate-shimmer">{song.deezer_title}</div>
               <div className="text-white/80">{song.deezer_artist}</div>
               <div className="text-yellow-400 font-bold animate-bounce">{song.release_year}</div>
@@ -77,11 +85,11 @@ export function RecordMysteryCard({
         @keyframes cassette-pulse {
           0%, 100% {
             transform: scale(1);
-            filter: drop-shadow(0 0 15px rgba(16, 119, 147, 0.6));
+            filter: drop-shadow(0 0 15px rgba(73, 66, 82, 0.6));
           }
           50% {
             transform: scale(1.05);
-            filter: drop-shadow(0 0 25px rgba(16, 119, 147, 0.8));
+            filter: drop-shadow(0 0 25px rgba(73, 66, 82, 0.8));
           }
         }
         
