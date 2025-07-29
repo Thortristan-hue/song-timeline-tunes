@@ -14,6 +14,7 @@ interface DatabasePlayer {
   score: number;
   timeline: Json;
   room_id: string;
+  character?: string;
   created_at?: string;
 }
 
@@ -77,7 +78,8 @@ export function useGameRoom() {
       color: dbPlayer.color,
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
-      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as unknown as Song[] : []
+      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as unknown as Song[] : [],
+      character: dbPlayer.character
     };
   }, []);
 
@@ -442,7 +444,8 @@ export function useGameRoom() {
           .update({
             name: updates.name,
             color: updates.color,
-            timeline_color: updates.timelineColor
+            timeline_color: updates.timelineColor,
+            character: updates.character
           })
           .eq('id', currentPlayer.id);
 

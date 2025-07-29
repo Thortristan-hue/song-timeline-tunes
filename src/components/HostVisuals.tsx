@@ -115,7 +115,7 @@ export function HostGameBackground() {
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          background: 'linear-gradient(135deg, #494252 0%, #2d2a35 25%, #1f1c24 50%, #2d2a35 75%, #494252 100%)',
+          background: 'linear-gradient(135deg, #494252 0%, #3a3048 25%, #2b2535 50%, #3a3048 75%, #494252 100%)',
           zIndex: 1
         }}
       />
@@ -210,7 +210,7 @@ function CassettePlayerSection({
             <button
               onClick={handlePlayPause}
               disabled={!currentSong?.preview_url || isPlaying}
-              className={`transition-all duration-300 ${playClicked ? 'transform rotate-180' : ''}`}
+              className={`transition-all duration-300 ${playClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
               <img 
                 src={buttonBlue} 
@@ -223,7 +223,7 @@ function CassettePlayerSection({
             <button
               onClick={handlePlayPause}
               disabled={!currentSong?.preview_url || !isPlaying}
-              className={`transition-all duration-300 ${pauseClicked ? 'transform rotate-180' : ''}`}
+              className={`transition-all duration-300 ${pauseClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
               <img 
                 src={buttonOrange} 
@@ -236,7 +236,7 @@ function CassettePlayerSection({
             <button
               onClick={handleStop}
               disabled={!currentSong?.preview_url}
-              className={`transition-all duration-300 ${stopClicked ? 'transform rotate-180' : ''}`}
+              className={`transition-all duration-300 ${stopClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
               <img 
                 src={buttonBlue} 
@@ -244,12 +244,6 @@ function CassettePlayerSection({
                 className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
               />
             </button>
-          </div>
-        </div>
-        
-        <div className="text-center mt-4">
-          <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
-            Mystery Song Playing
           </div>
         </div>
       </div>
@@ -733,8 +727,13 @@ export function HostGameView({
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Simplified background with only gradient */}
       <HostGameBackground />
+      
+      {/* Header with required assets */}
       <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
+      
+      {/* Center cassette player */}
       <CassettePlayerSection 
         currentSong={currentSong}
         mysteryCardRevealed={safeMysteryCardRevealed}
@@ -767,6 +766,7 @@ export function HostGameView({
         type={cardPlacementResult?.correct ? 'correct' : 'incorrect'}
       />
       
+      {/* Timeline - the main content */}
       <div className="absolute top-1/2 left-0 right-0 z-30 mt-8">
         <div className="flex justify-center">
           <HostCurrentPlayerTimeline
@@ -780,13 +780,15 @@ export function HostGameView({
         </div>
       </div>
 
-      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+      {/* Player character display at bottom */}
+      <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-10">
         <CassettePlayerDisplay 
           players={safePlayers} 
           currentPlayerId={safeCurrentTurnPlayer.id}
         />
       </div>
 
+      {/* Result modal */}
       {showResultModal && cardPlacementResult && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-3xl flex items-center justify-center z-50 animate-epic-modal-appear">
           <div className="text-center space-y-10 p-10 animate-epic-modal-content">

@@ -5,26 +5,32 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Music, Users, Palette, Gamepad2, Clock } from 'lucide-react';
+import { Music, Users, User, Gamepad2, Clock } from 'lucide-react';
 import { GameRoom, Player } from '@/types/game';
+
+// Import character images
+import charPlayer1 from '@/assets/char_player1.png';
+import charPlayer2 from '@/assets/char_player2.png';
+import charPlayer3 from '@/assets/char_player3.png';
+import charPlayer4 from '@/assets/char_player4.png';
+import charPlayer5 from '@/assets/char_player5.png';
+import charPlayer6 from '@/assets/char_player6.png';
 
 interface MobilePlayerLobbyProps {
   room: GameRoom | null;
   players: Player[];
   currentPlayer: Player | null;
   onBackToMenu: () => void;
-  onUpdatePlayer: (name: string, color: string) => Promise<void>;
+  onUpdatePlayer: (name: string, character: string) => Promise<void>;
 }
 
-const PLAYER_COLORS = [
-  '#007AFF', // iOS blue
-  '#FF3B30', // iOS red
-  '#34C759', // iOS green
-  '#FF9500', // iOS orange
-  '#AF52DE', // iOS purple
-  '#FF2D92', // iOS pink
-  '#5AC8FA', // iOS light blue
-  '#FFCC00', // iOS yellow
+const PLAYER_CHARACTERS = [
+  { id: 'char_player1', name: 'Player 1', image: charPlayer1, color: '#007AFF' },
+  { id: 'char_player2', name: 'Player 2', image: charPlayer2, color: '#FF3B30' },
+  { id: 'char_player3', name: 'Player 3', image: charPlayer3, color: '#34C759' },
+  { id: 'char_player4', name: 'Player 4', image: charPlayer4, color: '#FF9500' },
+  { id: 'char_player5', name: 'Player 5', image: charPlayer5, color: '#AF52DE' },
+  { id: 'char_player6', name: 'Player 6', image: charPlayer6, color: '#FF2D92' },
 ];
 
 export default function MobilePlayerLobby({ 
@@ -44,38 +50,49 @@ export default function MobilePlayerLobby({
   currentPlayer = { 
     id: '1', 
     name: 'Demo Player', 
-    color: PLAYER_COLORS[0],
-    timelineColor: PLAYER_COLORS[0],
+    color: PLAYER_CHARACTERS[0].color,
+    timelineColor: PLAYER_CHARACTERS[0].color,
     score: 0,
-    timeline: []
+    timeline: [],
+    character: PLAYER_CHARACTERS[0].id
   },
   onBackToMenu = () => {},
   onUpdatePlayer = async () => {}
 }: MobilePlayerLobbyProps) {
   const [name, setName] = useState(currentPlayer?.name || '');
-  const [selectedColor, setSelectedColor] = useState(currentPlayer?.color || PLAYER_COLORS[0]);
+  const [selectedCharacter, setSelectedCharacter] = useState(currentPlayer?.character || PLAYER_CHARACTERS[0].id);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (currentPlayer) {
       setName(currentPlayer.name);
-      setSelectedColor(currentPlayer.color);
+      setSelectedCharacter(currentPlayer.character || PLAYER_CHARACTERS[0].id);
     }
   }, [currentPlayer]);
 
   useEffect(() => {
-    setHasChanges(name !== (currentPlayer?.name || '') || selectedColor !== (currentPlayer?.color || ''));
-  }, [name, selectedColor, currentPlayer?.name, currentPlayer?.color]);
+    setHasChanges(
+      name !== (currentPlayer?.name || '') || 
+      selectedCharacter !== (currentPlayer?.character || PLAYER_CHARACTERS[0].id)
+    );
+  }, [name, selectedCharacter, currentPlayer?.name, currentPlayer?.character]);
 
   const handleSave = () => {
-    if (name.trim() && selectedColor) {
-      onUpdatePlayer(name.trim(), selectedColor);
+    if (name.trim() && selectedCharacter) {
+      // Use the character's associated color for compatibility
+      const selectedCharacterData = PLAYER_CHARACTERS.find(char => char.id === selectedCharacter);
+      const color = selectedCharacterData?.color || PLAYER_CHARACTERS[0].color;
+      onUpdatePlayer(name.trim(), selectedCharacter);
       setHasChanges(false);
     }
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
+  };
+
+  const getSelectedCharacterData = () => {
+    return PLAYER_CHARACTERS.find(char => char.id === selectedCharacter) || PLAYER_CHARACTERS[0];
   };
 
   if (room?.phase === 'playing') {
@@ -151,7 +168,7 @@ export default function MobilePlayerLobby({
           <div className="bg-gray-900 rounded-3xl p-6 shadow-2xl border border-gray-800">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center">
-                <Palette className="h-5 w-5 text-gray-400" />
+                <User className="h-5 w-5 text-gray-400" />
               </div>
               <h2 className="text-xl font-semibold text-white">
                 Set up your player
@@ -176,26 +193,32 @@ export default function MobilePlayerLobby({
                 />
               </div>
 
-              {/* Color Selection */}
+              {/* Character Selection */}
               <div className="space-y-4">
                 <Label className="text-gray-300 font-medium text-base">
-                  Pick your color
+                  Choose your character
                 </Label>
-                <div className="grid grid-cols-4 gap-4">
-                  {PLAYER_COLORS.map((color) => (
+                <div className="grid grid-cols-3 gap-4">
+                  {PLAYER_CHARACTERS.map((character) => (
                     <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-full aspect-square rounded-2xl transition-all duration-200 ${
-                        selectedColor === color 
+                      key={character.id}
+                      onClick={() => setSelectedCharacter(character.id)}
+                      className={`relative aspect-square rounded-2xl overflow-hidden transition-all duration-200 ${
+                        selectedCharacter === character.id 
                           ? 'ring-4 ring-blue-400/50 scale-95 shadow-lg' 
                           : 'hover:scale-105 active:scale-95'
                       }`}
-                      style={{ backgroundColor: color }}
                     >
-                      {selectedColor === color && (
-                        <div className="w-full h-full rounded-2xl flex items-center justify-center">
-                          <div className="w-3 h-3 bg-white rounded-full shadow-sm"></div>
+                      <img 
+                        src={character.image} 
+                        alt={character.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {selectedCharacter === character.id && (
+                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                            <div className="w-3 h-3 bg-white rounded-full"></div>
+                          </div>
                         </div>
                       )}
                     </button>
@@ -207,18 +230,19 @@ export default function MobilePlayerLobby({
               <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
                 <p className="text-gray-400 text-sm mb-3">Preview</p>
                 <div className="flex items-center gap-4">
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg shadow-sm"
-                    style={{ backgroundColor: selectedColor }}
-                  >
-                    {name.charAt(0).toUpperCase() || '?'}
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
+                    <img 
+                      src={getSelectedCharacterData().image} 
+                      alt="Selected character"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div>
                     <p className="font-semibold text-white">
                       {name.trim() || 'Your name'}
                     </p>
                     <p className="text-sm text-gray-400">
-                      Ready to play
+                      Playing as {getSelectedCharacterData().name}
                     </p>
                   </div>
                 </div>
@@ -227,7 +251,7 @@ export default function MobilePlayerLobby({
               {/* Save Button */}
               <Button 
                 onClick={handleSave}
-                disabled={!name.trim() || !selectedColor || !hasChanges}
+                disabled={!name.trim() || !selectedCharacter || !hasChanges}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 text-lg rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
               >
                 {hasChanges ? 'Save changes' : 'Saved ✓'}
