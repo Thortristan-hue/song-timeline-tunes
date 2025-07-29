@@ -14,8 +14,8 @@ import assRoomcode from '@/assets/ass_roomcode.png';
 import assSpeaker from '@/assets/ass_speaker.png';
 import assCassBg from '@/assets/ass_cass_bg.png';
 // TODO: Add missing button assets
-// import buttonBlue from '@/assets/button_blue.png';
-// import buttonOrange from '@/assets/button_orange.png';
+import assstop from '@/assets/ass_stop.png';
+import assplay from '@/assets/ass_play.png';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
