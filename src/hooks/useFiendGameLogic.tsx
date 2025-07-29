@@ -187,8 +187,43 @@ export function useFiendGameLogic(
         return;
       }
 
-      // Get next song
-      const nextSong = gameState.availableSongs[nextRoundNumber - 1];
+      // Get next song with validation
+      let nextSong = gameState.availableSongs[nextRoundNumber - 1];
+      
+      // Validate next song exists and has required properties
+      if (!nextSong || !nextSong.deezer_title) {
+        console.warn('⚠️ No valid song available for round', nextRoundNumber, ', skipping to next available song or ending game');
+        
+        // Try to find next valid song
+        let validSong: Song | null = null;
+        for (let i = nextRoundNumber - 1; i < gameState.availableSongs.length; i++) {
+          const candidate = gameState.availableSongs[i];
+          if (candidate && candidate.deezer_title) {
+            validSong = candidate;
+            break;
+          }
+        }
+        
+        if (!validSong) {
+          console.warn('⚠️ No more valid songs available, ending game early');
+          const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+          const winner = sortedPlayers[0];
+          
+          setGameState(prev => ({
+            ...prev,
+            phase: 'finished',
+            winner
+          }));
+          
+          if (winner) {
+            await GameService.endGame(roomId, winner.id);
+          }
+          return;
+        }
+        
+        // Use the valid song we found
+        nextSong = validSong;
+      }
       
       // Update game state
       setGameState(prev => ({
@@ -200,13 +235,14 @@ export function useFiendGameLogic(
         timeLeft: 30
       }));
 
-      // Update room data
-      if (onSetCurrentSong) {
+      // Update room data - only call if we have a valid song and callback
+      if (onSetCurrentSong && nextSong) {
         await onSetCurrentSong(nextSong);
       }
 
     } catch (error) {
       console.error('Failed to advance to next round:', error);
+      // Continue gracefully - don't let round advancement errors break the game
     }
   }, [roomId, gameState.currentRound, gameState.totalRounds, gameState.availableSongs, gameState.players, onSetCurrentSong]);
 
