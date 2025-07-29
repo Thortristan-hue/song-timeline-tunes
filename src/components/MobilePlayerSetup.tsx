@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,7 @@ export function MobilePlayerSetup({
   isLoading = false 
 }: MobilePlayerSetupProps) {
   const [playerName, setPlayerName] = useState('');
-  const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0);
+  const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0); // Default to first character
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
   const { toast } = useToast();
@@ -58,6 +59,12 @@ export function MobilePlayerSetup({
 
     if (playerName.trim().length > 20) {
       setError('Name must be less than 20 characters');
+      return;
+    }
+
+    // Ensure we always have a character selected
+    if (!selectedCharacter) {
+      setError('Please select a character');
       return;
     }
 
@@ -179,7 +186,7 @@ export function MobilePlayerSetup({
           <Button
             type="submit"
             className="w-full h-14 bg-gradient-to-r from-[#107793] to-[#a53b8b] hover:from-[#a53b8b] hover:to-[#107793] text-white font-semibold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
-            disabled={isLoading || !playerName.trim()}
+            disabled={isLoading || !playerName.trim() || !selectedCharacter}
           >
             {isLoading ? 'Joining...' : 'Join Game'}
           </Button>

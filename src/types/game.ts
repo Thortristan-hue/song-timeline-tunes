@@ -52,7 +52,7 @@ export interface Player {
   timelineColor: string;
   score: number;
   timeline: Song[];
-  character?: string; // Optional for backward compatibility
+  character: string; // Now required - every player must have a character
 }
 
 export interface GameRoom {

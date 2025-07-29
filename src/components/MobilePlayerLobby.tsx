@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,8 +15,6 @@ interface MobilePlayerLobbyProps {
   onBackToMenu: () => void;
   onUpdatePlayer: (name: string, character: string) => Promise<void>;
 }
-
-
 
 export default function MobilePlayerLobby({ 
   room = { 
@@ -40,7 +37,7 @@ export default function MobilePlayerLobby({
     timelineColor: getDefaultCharacter().color,
     score: 0,
     timeline: [],
-    character: getDefaultCharacter().id
+    character: getDefaultCharacter().id // Always have a default character
   },
   onBackToMenu = () => {},
   onUpdatePlayer = async () => {}
@@ -91,10 +88,6 @@ export default function MobilePlayerLobby({
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-  };
-
-  const getSelectedCharacterData = () => {
-    return selectedCharacter;
   };
 
   if (room?.phase === 'playing') {
@@ -244,7 +237,7 @@ export default function MobilePlayerLobby({
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
                     <img 
-                      src={getSelectedCharacterData().image} 
+                      src={selectedCharacter.image} 
                       alt="Selected character"
                       className="w-full h-full object-cover"
                     />
@@ -254,7 +247,7 @@ export default function MobilePlayerLobby({
                       {name.trim() || 'Your name'}
                     </p>
                     <p className="text-sm text-gray-400">
-                      Playing as {getSelectedCharacterData().name}
+                      Playing as {selectedCharacter.name}
                     </p>
                   </div>
                 </div>

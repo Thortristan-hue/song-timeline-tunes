@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Player } from '@/types/game';
 import { GAME_CHARACTERS, getCharacterById, getDefaultCharacter } from '@/constants/characters';
 
-// Import cassette images as backup
+// Import cassette images as backup only
 import cassetteBlue from '@/assets/cassette-blue.png';
 import cassetteGreen from '@/assets/cassette-green.png';
 import cassetteLightBlue from '@/assets/cassette-lightblue.png';
@@ -26,21 +27,21 @@ const CASSETTE_IMAGES: Record<string, string> = {
   yellow: cassetteYellow,
 };
 
-const getPlayerImage = (player: Player): string => {
-  // Use character if available
+const getPlayerImage = (player: Player): { image: string; isCharacter: boolean } => {
+  // Always prioritize character if available
   if (player.character) {
     const character = getCharacterById(player.character);
     if (character) {
-      return character.image;
+      return { image: character.image, isCharacter: true };
     }
   }
   
-  // Fallback to cassette based on color
+  // Fallback to cassette based on color (only if no character)
   const colorLower = player.color.toLowerCase();
   
   for (const [key, image] of Object.entries(CASSETTE_IMAGES)) {
     if (colorLower.includes(key)) {
-      return image;
+      return { image, isCharacter: false };
     }
   }
 
@@ -50,15 +51,15 @@ const getPlayerImage = (player: Player): string => {
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
 
-    if (r > g && r > b) return cassetteRed;
-    if (g > r && g > b) return cassetteGreen;
-    if (b > r && b > g) return cassetteBlue;
-    if (r > 200 && g > 200) return cassetteYellow;
-    if (r > 150 && b > 150) return cassettePink;
-    if (g > 150 && b > 150) return cassettePurple;
+    if (r > g && r > b) return { image: cassetteRed, isCharacter: false };
+    if (g > r && g > b) return { image: cassetteGreen, isCharacter: false };
+    if (b > r && b > g) return { image: cassetteBlue, isCharacter: false };
+    if (r > 200 && g > 200) return { image: cassetteYellow, isCharacter: false };
+    if (r > 150 && b > 150) return { image: cassettePink, isCharacter: false };
+    if (g > 150 && b > 150) return { image: cassettePurple, isCharacter: false };
   }
 
-  return cassetteBlue;
+  return { image: cassetteBlue, isCharacter: false };
 };
 
 export const CassettePlayerDisplay = ({
@@ -78,8 +79,7 @@ export const CassettePlayerDisplay = ({
         {players.map((player, index) => {
           const isCurrent = player.id === currentPlayerId;
           const isExpanded = expandedPlayer === player.id;
-          const playerImage = getPlayerImage(player);
-          const isCharacter = player.character && getCharacterById(player.character);
+          const { image: playerImage, isCharacter } = getPlayerImage(player);
 
           return (
             <div 
@@ -90,89 +90,58 @@ export const CassettePlayerDisplay = ({
               <div
                 className={`relative cursor-pointer transition-all duration-300 ${
                   isCurrent 
-                    ? 'scale-130 player-elevate' // Made current player 1.3x larger as required
+                    ? 'scale-130 player-elevate' 
                     : 'scale-100 hover:scale-105 hover-lift'
                 } ${isCurrent ? 'character-bounce' : ''}`}
                 onClick={() => setExpandedPlayer(prev => prev === player.id ? null : player.id)}
               >
-                {isCharacter ? (
-                  // Character display - name on top, cards on bottom right
-                  <div className="relative flex flex-col items-center">
-                    {/* Player name at top */}
-                    <div className="mb-1 text-center">
-                      <div className={`bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 ${
-                        isCurrent ? 'animate-pulse border border-[#494252]/50' : ''
-                      }`}>
-                        <div className="text-white font-bold text-xs truncate max-w-16">
-                          {player.name}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Character image */}
-                    <div className="relative">
-                      <img
-                        src={playerImage}
-                        alt={`${player.name}'s character`}
-                        className={`w-16 h-20 object-contain drop-shadow-md transition-all duration-300 ${
-                          isCurrent ? 'drop-shadow-2xl' : ''
-                        }`}
-                        style={{
-                          filter: isCurrent ? 'drop-shadow(0 0 15px rgba(73, 66, 82, 0.8))' : 'none'
-                        }}
-                      />
-                      
-                      {/* Card count at bottom right */}
-                      <div className="absolute -bottom-1 -right-1">
-                        <div className={`bg-yellow-500 text-black font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center border border-white ${
-                          isCurrent ? 'animate-bounce' : ''
-                        }`}>
-                          {player.timeline.length}
-                        </div>
+                {/* Always use character-style display now */}
+                <div className="relative flex flex-col items-center">
+                  {/* Player name at top */}
+                  <div className="mb-1 text-center">
+                    <div className={`bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 ${
+                      isCurrent ? 'animate-pulse border border-[#494252]/50' : ''
+                    }`}>
+                      <div className="text-white font-bold text-xs truncate max-w-16">
+                        {player.name}
                       </div>
                     </div>
                   </div>
-                ) : (
-                  // Cassette display (fallback)
-                  <>
+                  
+                  {/* Character or cassette image */}
+                  <div className="relative">
                     <img
                       src={playerImage}
-                      alt={`${player.name}'s cassette`}
-                      className={`w-36 h-24 object-contain drop-shadow-md transition-all duration-300 ${
+                      alt={`${player.name}'s ${isCharacter ? 'character' : 'cassette'}`}
+                      className={`${
+                        isCharacter 
+                          ? 'w-16 h-20 object-contain' 
+                          : 'w-20 h-16 object-contain'
+                      } drop-shadow-md transition-all duration-300 ${
                         isCurrent ? 'drop-shadow-2xl' : ''
                       }`}
                       style={{
-                        filter: isCurrent ? 'drop-shadow(0 0 20px rgba(73, 66, 82, 0.6))' : 'none'
+                        filter: isCurrent ? 'drop-shadow(0 0 15px rgba(73, 66, 82, 0.8))' : 'none'
                       }}
                     />
-
-                    <div className="absolute inset-0 flex flex-col justify-between p-2">
-                      {/* Name text in purple area (top) */}
-                      <div className="flex justify-start">
-                        <span className={`text-white font-bold text-xs max-w-[60px] truncate bg-purple-900/50 px-1 rounded transition-all duration-300 ${
-                          isCurrent ? 'animate-pulse' : ''
-                        }`}>
-                          {player.name}
-                        </span>
-                      </div>
-                      
-                      {/* Card number in pink area (bottom right) */}
-                      <div className="flex justify-end">
-                        <span className={`text-white font-bold text-xs bg-pink-600/70 rounded px-1 transition-all duration-300 ${
-                          isCurrent ? 'bg-pink-500 animate-bounce' : ''
-                        }`}>
-                          {player.timeline.length}
-                        </span>
+                    
+                    {/* Card count badge */}
+                    <div className="absolute -bottom-1 -right-1">
+                      <div className={`bg-yellow-500 text-black font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center border border-white ${
+                        isCurrent ? 'animate-bounce' : ''
+                      }`}>
+                        {player.timeline.length}
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
+                </div>
 
                 {isCurrent && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white animate-pulse glow-pulse"></div>
                 )}
               </div>
 
+              {/* Timeline expansion popup */}
               {isExpanded && player.timeline.length > 0 && (
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 max-h-52 overflow-y-auto bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 z-30 animate-scale-in">
                   <div className="sticky top-0 bg-slate-800 py-1 border-b border-slate-700">
