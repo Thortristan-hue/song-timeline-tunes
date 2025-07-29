@@ -26,13 +26,14 @@ export function MobileJoinFlow({
   currentPlayer,
   onUpdatePlayer
 }: MobileJoinFlowProps) {
-  const [currentStep, setCurrentStep] = useState<'code' | 'setup'>('code');
+  const [currentStep, setCurrentStep] = useState<'code' | 'setup' | 'joining'>('code');
   const [verifiedCode, setVerifiedCode] = useState<string>('');
   const [playerName, setPlayerName] = useState('');
   const [selectedCharacter, setSelectedCharacter] = useState(GAME_CHARACTERS[0]);
   const [joining, setJoining] = useState(false);
   
   console.log('🔗 MobileJoinFlow rendered with autoJoinCode:', autoJoinCode);
+  console.log('🔗 Current step:', currentStep, 'Current player:', currentPlayer?.name);
 
   const handleCodeSubmit = (code: string) => {
     console.log('🔗 Code submitted:', code);
@@ -40,32 +41,39 @@ export function MobileJoinFlow({
     setCurrentStep('setup');
   };
 
-  const handlePlayerSetup = async (name: string, character: string) => {
-    console.log('🔗 Player setup:', { name, character, code: verifiedCode });
-    return await onJoinRoom(verifiedCode, name);
-  };
-
-  const handleBackToCodeEntry = () => {
-    setCurrentStep('code');
-    setVerifiedCode('');
-  };
-
   const handleJoinRoom = async () => {
-    if (!playerName.trim()) return;
+    if (!playerName.trim() || !verifiedCode) return;
+    
+    console.log('🎮 Attempting to join room with:', { lobbyCode: verifiedCode, name: playerName.trim() });
     
     setJoining(true);
+    setCurrentStep('joining');
+    
     try {
       const success = await onJoinRoom(verifiedCode, playerName.trim());
       console.log('🔗 Join room result:', success);
+      
+      if (!success) {
+        // Reset to setup step if join failed
+        setCurrentStep('setup');
+      }
+      // If successful, the parent component will handle the state change
     } catch (error) {
       console.error('❌ Join room error:', error);
+      setCurrentStep('setup');
     } finally {
       setJoining(false);
     }
   };
 
-  // If we have a current player and onUpdatePlayer function, show setup screen
-  if (currentStep === 'setup' && currentPlayer && onUpdatePlayer) {
+  const handleBackToCodeEntry = () => {
+    setCurrentStep('code');
+    setVerifiedCode('');
+    setPlayerName('');
+  };
+
+  // If we have a current player and onUpdatePlayer function, show the player setup component
+  if (currentPlayer && onUpdatePlayer) {
     return (
       <MobilePlayerSetup
         currentPlayer={currentPlayer}
@@ -74,7 +82,32 @@ export function MobileJoinFlow({
     );
   }
 
-  // If we're on setup step but don't have the required props, show manual setup
+  // Show joining state
+  if (currentStep === 'joining') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 flex items-center justify-center">
+        <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Joining Room...</h2>
+          <div className="flex justify-center">
+            <div className="flex space-x-1">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+                  style={{
+                    animationDelay: `${i * 0.15}s`,
+                    animationDuration: '1.2s'
+                  }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show manual setup if we're on setup step but don't have the required props
   if (currentStep === 'setup') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 flex items-center justify-center">
