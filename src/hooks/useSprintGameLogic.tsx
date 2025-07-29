@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -106,13 +107,21 @@ export function useSprintGameLogic(
 
       console.log(`🎯 Sprint Mode: Ready with ${optimizedSongs.length} songs for ${gameState.targetCards} card race`);
 
+      // Set the first song when initializing
+      const firstSong = optimizedSongs[0];
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
         availableSongs: optimizedSongs,
+        currentSong: firstSong,
         timeLeft: 30,
         playlistInitialized: true
       }));
+
+      // Set the first song in the room
+      if (onSetCurrentSong && firstSong) {
+        await onSetCurrentSong(firstSong);
+      }
 
     } catch (error) {
       console.error('❌ Sprint Mode initialization failed:', error);
@@ -125,7 +134,7 @@ export function useSprintGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, gameState.playlistInitialized, gameState.targetCards]);
+  }, [toast, gameState.playlistInitialized, gameState.targetCards, onSetCurrentSong]);
 
   // Place card in timeline (real-time, all players can play simultaneously)
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -97,14 +98,22 @@ export function useFiendGameLogic(
 
       console.log(`🎯 Fiend Mode: Ready with ${optimizedSongs.length} songs for ${gameState.totalRounds} rounds`);
 
+      // Set the first song when initializing
+      const firstSong = optimizedSongs[0];
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
         availableSongs: optimizedSongs,
         currentRound: 1,
+        currentSong: firstSong,
         timeLeft: 30,
         playlistInitialized: true
       }));
+
+      // Set the first song in the room
+      if (onSetCurrentSong && firstSong) {
+        await onSetCurrentSong(firstSong);
+      }
 
     } catch (error) {
       console.error('❌ Fiend Mode initialization failed:', error);
@@ -117,7 +126,7 @@ export function useFiendGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, gameState.playlistInitialized, gameState.totalRounds]);
+  }, [toast, gameState.playlistInitialized, gameState.totalRounds, onSetCurrentSong]);
 
   // Submit year guess
   const submitGuess = useCallback(async (year: number, playerId: string): Promise<{ success: boolean; accuracy?: number; points?: number }> => {
@@ -187,9 +196,14 @@ export function useFiendGameLogic(
         return;
       }
 
-      // Get next song
+      // Get next song - fix the indexing issue
       const nextSong = gameState.availableSongs[nextRoundNumber - 1];
       
+      if (!nextSong) {
+        console.error('❌ No next song available for round', nextRoundNumber);
+        return;
+      }
+
       // Update game state
       setGameState(prev => ({
         ...prev,
