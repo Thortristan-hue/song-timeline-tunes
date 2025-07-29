@@ -2,26 +2,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, User, Palette } from 'lucide-react';
+import { ArrowLeft, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-
-// Import character assets
-import char1 from '@/assets/char_player1.png';
-import char2 from '@/assets/char_player2.png';
-import char3 from '@/assets/char_player3.png';
-import char4 from '@/assets/char_player4.png';
-import char5 from '@/assets/char_player5.png';
-import char6 from '@/assets/char_player6.png';
-
-const PLAYER_CHARACTERS = [
-  { id: 'player1', name: 'Player 1', image: char1 },
-  { id: 'player2', name: 'Player 2', image: char2 },
-  { id: 'player3', name: 'Player 3', image: char3 },
-  { id: 'player4', name: 'Player 4', image: char4 },
-  { id: 'player5', name: 'Player 5', image: char5 },
-  { id: 'player6', name: 'Player 6', image: char6 }
-];
+import { GAME_CHARACTERS, getDefaultCharacter } from '@/constants/characters';
 
 interface MobilePlayerSetupProps {
   lobbyCode: string;
@@ -37,10 +21,26 @@ export function MobilePlayerSetup({
   isLoading = false 
 }: MobilePlayerSetupProps) {
   const [playerName, setPlayerName] = useState('');
-  const [selectedCharacter, setSelectedCharacter] = useState(PLAYER_CHARACTERS[0].id);
+  const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0);
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
   const { toast } = useToast();
+
+  const selectedCharacter = GAME_CHARACTERS[selectedCharacterIndex];
+
+  const handlePreviousCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === 0 ? GAME_CHARACTERS.length - 1 : prev - 1
+    );
+    soundEffects.playButtonClick();
+  };
+
+  const handleNextCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === GAME_CHARACTERS.length - 1 ? 0 : prev + 1
+    );
+    soundEffects.playButtonClick();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,10 +61,10 @@ export function MobilePlayerSetup({
       return;
     }
 
-    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'character:', selectedCharacter);
+    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'character:', selectedCharacter.id);
     
     try {
-      const success = await onPlayerSetup(playerName.trim(), selectedCharacter);
+      const success = await onPlayerSetup(playerName.trim(), selectedCharacter.id);
       if (success) {
         soundEffects.playPlayerJoin();
       } else {
@@ -125,32 +125,50 @@ export function MobilePlayerSetup({
             />
           </div>
 
-          {/* Character Selection */}
-          <div className="space-y-2">
+          {/* Character Selection Carousel */}
+          <div className="space-y-4">
             <Label className="text-white font-medium flex items-center gap-2">
               <User className="w-4 h-4" />
               Choose Your Character
             </Label>
-            <div className="grid grid-cols-3 gap-3">
-              {PLAYER_CHARACTERS.map((character) => (
-                <button
-                  key={character.id}
-                  type="button"
-                  onClick={() => setSelectedCharacter(character.id)}
-                  className={`w-16 h-16 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
-                    selectedCharacter === character.id
-                      ? 'border-white shadow-lg scale-110'
-                      : 'border-white/20 hover:border-white/40 hover:scale-105'
-                  }`}
-                  disabled={isLoading}
-                >
+            
+            <div className="flex items-center justify-center gap-4">
+              {/* Previous Button */}
+              <button
+                type="button"
+                onClick={handlePreviousCharacter}
+                className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              {/* Character Display */}
+              <div className="flex flex-col items-center">
+                <div className="w-24 h-24 rounded-2xl border-2 border-white shadow-lg overflow-hidden bg-white/5 backdrop-blur-sm">
                   <img 
-                    src={character.image} 
-                    alt={character.name}
+                    src={selectedCharacter.image} 
+                    alt={selectedCharacter.name}
                     className="w-full h-full object-cover"
                   />
-                </button>
-              ))}
+                </div>
+                <p className="text-white text-sm font-medium mt-2">
+                  {selectedCharacter.name}
+                </p>
+                <p className="text-white/60 text-xs">
+                  {selectedCharacterIndex + 1} / {GAME_CHARACTERS.length}
+                </p>
+              </div>
+
+              {/* Next Button */}
+              <button
+                type="button"
+                onClick={handleNextCharacter}
+                className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
 

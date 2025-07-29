@@ -12,8 +12,9 @@ import assRythmy from '@/assets/ass_rythmy.png';
 import assRoomcode from '@/assets/ass_roomcode.png';
 import assSpeaker from '@/assets/ass_speaker.png';
 import assCassBg from '@/assets/ass_cass_bg.png';
-import buttonBlue from '@/assets/button_blue.png';
-import buttonOrange from '@/assets/button_orange.png';
+// TODO: Add missing button assets
+// import buttonBlue from '@/assets/button_blue.png';
+// import buttonOrange from '@/assets/button_orange.png';
 
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
@@ -212,11 +213,9 @@ function CassettePlayerSection({
               disabled={!currentSong?.preview_url || isPlaying}
               className={`transition-all duration-300 ${playClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
-              <img 
-                src={buttonBlue} 
-                alt="Play" 
-                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
-              />
+              <div className="w-12 h-12 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
+                <Play className="w-6 h-6 text-white" />
+              </div>
             </button>
             
             {/* Pause Button */}
@@ -225,11 +224,9 @@ function CassettePlayerSection({
               disabled={!currentSong?.preview_url || !isPlaying}
               className={`transition-all duration-300 ${pauseClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
-              <img 
-                src={buttonOrange} 
-                alt="Pause" 
-                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
-              />
+              <div className="w-12 h-12 bg-orange-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
+                <Pause className="w-6 h-6 text-white" />
+              </div>
             </button>
             
             {/* Stop Button */}
@@ -238,11 +235,9 @@ function CassettePlayerSection({
               disabled={!currentSong?.preview_url}
               className={`transition-all duration-300 ${stopClicked ? 'transform rotate-180' : ''} disabled:opacity-50`}
             >
-              <img 
-                src={buttonBlue} 
-                alt="Stop" 
-                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
-              />
+              <div className="w-12 h-12 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-all duration-200">
+                <Music className="w-6 h-6 text-white" />
+              </div>
             </button>
           </div>
         </div>
