@@ -2,19 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
+import { Player } from '@/types/game';
 
 interface MobileJoinFlowProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
   onBackToMenu: () => void;
   isLoading?: boolean;
   autoJoinCode?: string;
+  currentPlayer?: Player;
+  onUpdatePlayer?: (updates: Partial<Player>) => Promise<boolean>;
 }
 
 export function MobileJoinFlow({ 
   onJoinRoom, 
   onBackToMenu, 
   isLoading = false, 
-  autoJoinCode = '' 
+  autoJoinCode = '',
+  currentPlayer,
+  onUpdatePlayer
 }: MobileJoinFlowProps) {
   const [currentStep, setCurrentStep] = useState<'code' | 'setup'>('code');
   const [verifiedCode, setVerifiedCode] = useState<string>('');
@@ -37,15 +42,20 @@ export function MobileJoinFlow({
     setVerifiedCode('');
   };
 
-  if (currentStep === 'setup') {
+  // If we have a current player and onUpdatePlayer function, show setup screen
+  if (currentStep === 'setup' && currentPlayer && onUpdatePlayer) {
     return (
       <MobilePlayerSetup
-        lobbyCode={verifiedCode}
-        onPlayerSetup={handlePlayerSetup}
-        onBackToCodeEntry={handleBackToCodeEntry}
-        isLoading={isLoading}
+        currentPlayer={currentPlayer}
+        onUpdatePlayer={onUpdatePlayer}
       />
     );
+  }
+
+  // If we're on setup step but don't have the required props, fall back to code entry
+  if (currentStep === 'setup') {
+    // This is a fallback for the old flow - you may want to handle this differently
+    setCurrentStep('code');
   }
 
   return (
