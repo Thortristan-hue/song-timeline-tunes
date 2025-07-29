@@ -27,8 +27,8 @@ export function MobileJoinFlow({
     setCurrentStep('setup');
   };
 
-  const handlePlayerSetup = async (name: string, color: string) => {
-    console.log('🔗 Player setup:', { name, color, code: verifiedCode });
+  const handlePlayerSetup = async (name: string, character: string) => {
+    console.log('🔗 Player setup:', { name, character, code: verifiedCode });
     return await onJoinRoom(verifiedCode, name);
   };
 
