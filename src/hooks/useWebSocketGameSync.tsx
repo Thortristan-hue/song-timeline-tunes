@@ -27,16 +27,22 @@ export function useWebSocketGameSync(
     lastError: null
   });
 
+  // FIXED: Track connection ready state separately from connecting state
+  const [isConnectionReady, setIsConnectionReady] = useState(false);
+
   // Connect to WebSocket when room ID is available
   useEffect(() => {
     if (!roomId) {
       setSyncState(prev => ({ ...prev, isConnected: false }));
+      setIsConnectionReady(false);
       return;
     }
 
     const connectToRoom = async () => {
       try {
         setSyncState(prev => ({ ...prev, isConnecting: true, lastError: null }));
+        setIsConnectionReady(false);
+        
         await websocketService.connect(roomId);
         
         const status = websocketService.getConnectionStatus();
@@ -47,6 +53,15 @@ export function useWebSocketGameSync(
           reconnectAttempts: status.reconnectAttempts
         }));
 
+        // FIXED: Wait for connection to be fully ready before allowing message sending
+        if (status.isConnected) {
+          // Add a small delay to ensure the connection is fully established
+          setTimeout(() => {
+            setIsConnectionReady(true);
+            console.log('🔗 WebSocket connection ready for message sending');
+          }, 100);
+        }
+
       } catch (error) {
         console.error('❌ Failed to connect to WebSocket:', error);
         setSyncState(prev => ({ 
@@ -54,6 +69,7 @@ export function useWebSocketGameSync(
           isConnecting: false,
           lastError: error instanceof Error ? error.message : 'Connection failed'
         }));
+        setIsConnectionReady(false);
         
         toast({
           title: "Connection Issue",
@@ -67,6 +83,7 @@ export function useWebSocketGameSync(
 
     return () => {
       websocketService.disconnect();
+      setIsConnectionReady(false);
     };
   }, [roomId, toast]);
 
@@ -114,66 +131,90 @@ export function useWebSocketGameSync(
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet]);
 
-  // Broadcast functions
+  // FIXED: Broadcast functions now check if connection is ready before sending
   const broadcastRoomUpdate = useCallback((roomData: Partial<GameRoom>) => {
-    if (!roomId) return;
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot broadcast room update - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
     
+    console.log('📤 Broadcasting room update:', roomData);
     websocketService.sendMessage({
       type: 'ROOM_UPDATE',
       roomId,
       data: roomData
     });
-  }, [roomId]);
+  }, [roomId, isConnectionReady]);
 
   const broadcastPlayerUpdate = useCallback((players: Player[]) => {
-    if (!roomId) return;
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot broadcast player update - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
     
+    console.log('📤 Broadcasting player update:', players);
     websocketService.sendMessage({
       type: 'PLAYER_UPDATE',
       roomId,
       data: players
     });
-  }, [roomId]);
+  }, [roomId, isConnectionReady]);
 
   const broadcastGameStart = useCallback(() => {
-    if (!roomId) return;
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot broadcast game start - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
     
+    console.log('📤 Broadcasting game start');
     websocketService.sendMessage({
       type: 'GAME_START',
       roomId,
       data: { timestamp: Date.now() }
     });
-  }, [roomId]);
+  }, [roomId, isConnectionReady]);
 
   const broadcastCardPlaced = useCallback((cardData: any) => {
-    if (!roomId) return;
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot broadcast card placed - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
     
+    console.log('📤 Broadcasting card placed:', cardData);
     websocketService.sendMessage({
       type: 'CARD_PLACED',
       roomId,
       data: cardData
     });
-  }, [roomId]);
+  }, [roomId, isConnectionReady]);
 
   const broadcastSongSet = useCallback((song: Song) => {
-    if (!roomId) return;
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot broadcast song set - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
     
+    console.log('📤 Broadcasting song set:', song);
     websocketService.sendMessage({
       type: 'SONG_SET',
       roomId,
       data: song
     });
-  }, [roomId]);
+  }, [roomId, isConnectionReady]);
 
   const forceReconnect = useCallback(() => {
     if (roomId) {
       setSyncState(prev => ({ ...prev, reconnectAttempts: 0 }));
+      setIsConnectionReady(false);
       websocketService.connect(roomId);
     }
   }, [roomId]);
 
   return {
-    syncState,
+    syncState: {
+      ...syncState,
+      isReady: isConnectionReady
+    },
     broadcastRoomUpdate,
     broadcastPlayerUpdate,
     broadcastGameStart,

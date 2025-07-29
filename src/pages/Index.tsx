@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -54,7 +55,8 @@ function Index() {
     currentPlayer: currentPlayer?.name,
     autoJoinCode,
     gameInitialized,
-    isLoading
+    isLoading,
+    wsReady: wsState.isReady
   });
 
   // Enhanced auto-join from URL parameters (QR code)
@@ -81,23 +83,34 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // FIXED: Simplified room phase transition logic - no longer dependent on gameInitialized
+  // FIXED: Improved room phase transition logic with proper game start validation
   useEffect(() => {
-    // Transition to playing when room phase changes to playing, regardless of gameInitialized status
+    // Only transition to playing when:
+    // 1. Room phase is actually 'playing' 
+    // 2. We're not already in playing phase
+    // 3. For non-hosts: ensure we have a valid connection to receive the transition
     if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game immediately');
-      console.log('🎮 Room data:', { 
-        phase: room.phase, 
-        id: room.id, 
-        hostId: room.host_id,
-        isHost,
-        playersCount: players.length
-      });
+      // FIXED: Add validation to ensure this is a legitimate game start
+      const shouldTransition = isHost || (wsState.isReady && players.length > 0);
       
-      setGamePhase('playing');
-      soundEffects.playGameStart();
+      if (shouldTransition) {
+        console.log('🎮 Valid room transition to playing phase - starting game');
+        console.log('🎮 Room data:', { 
+          phase: room.phase, 
+          id: room.id, 
+          hostId: room.host_id,
+          isHost,
+          playersCount: players.length,
+          wsReady: wsState.isReady
+        });
+        
+        setGamePhase('playing');
+        soundEffects.playGameStart();
+      } else {
+        console.warn('⚠️ Ignoring premature room phase transition - connection not ready or no players');
+      }
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, wsState.isReady]);
 
   // Check for winner
   useEffect(() => {
@@ -201,7 +214,7 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
-  // FIXED: Simplified loading state - only show when actually loading during critical operations
+  // FIXED: More specific loading state - only show when creating room
   if (isLoading && gamePhase === 'hostLobby' && !room) {
     return (
       <GameErrorBoundary>
