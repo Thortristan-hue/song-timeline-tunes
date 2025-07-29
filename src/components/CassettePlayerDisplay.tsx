@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
 import { Player } from '@/types/game';
-
-// Import character images
-import charPlayer1 from '@/assets/char_player1.png';
-import charPlayer2 from '@/assets/char_player2.png';
-import charPlayer3 from '@/assets/char_player3.png';
-import charPlayer4 from '@/assets/char_player4.png';
-import charPlayer5 from '@/assets/char_player5.png';
-import charPlayer6 from '@/assets/char_player6.png';
+import { GAME_CHARACTERS, getCharacterById, getDefaultCharacter } from '@/constants/characters';
 
 // Import cassette images as backup
 import cassetteBlue from '@/assets/cassette-blue.png';
@@ -18,15 +11,6 @@ import cassettePink from '@/assets/cassette-pink.png';
 import cassettePurple from '@/assets/cassette-purple.png';
 import cassetteRed from '@/assets/cassetee-red.png';
 import cassetteYellow from '@/assets/cassette-yellow.png';
-
-const CHARACTER_IMAGES: Record<string, string> = {
-  'char_player1': charPlayer1,
-  'char_player2': charPlayer2,
-  'char_player3': charPlayer3,
-  'char_player4': charPlayer4,
-  'char_player5': charPlayer5,
-  'char_player6': charPlayer6,
-};
 
 const CASSETTE_IMAGES: Record<string, string> = {
   blue: cassetteBlue,
@@ -44,8 +28,11 @@ const CASSETTE_IMAGES: Record<string, string> = {
 
 const getPlayerImage = (player: Player): string => {
   // Use character if available
-  if (player.character && CHARACTER_IMAGES[player.character]) {
-    return CHARACTER_IMAGES[player.character];
+  if (player.character) {
+    const character = getCharacterById(player.character);
+    if (character) {
+      return character.image;
+    }
   }
   
   // Fallback to cassette based on color
@@ -92,7 +79,7 @@ export const CassettePlayerDisplay = ({
           const isCurrent = player.id === currentPlayerId;
           const isExpanded = expandedPlayer === player.id;
           const playerImage = getPlayerImage(player);
-          const isCharacter = player.character && CHARACTER_IMAGES[player.character];
+          const isCharacter = player.character && getCharacterById(player.character);
 
           return (
             <div 
@@ -103,34 +90,41 @@ export const CassettePlayerDisplay = ({
               <div
                 className={`relative cursor-pointer transition-all duration-300 ${
                   isCurrent 
-                    ? 'scale-105 player-elevate' 
-                    : 'scale-90 hover:scale-95 hover-lift'
+                    ? 'scale-130 player-elevate' // Made current player 1.3x larger as required
+                    : 'scale-100 hover:scale-105 hover-lift'
                 } ${isCurrent ? 'character-bounce' : ''}`}
                 onClick={() => setExpandedPlayer(prev => prev === player.id ? null : player.id)}
               >
                 {isCharacter ? (
-                  // Character display
-                  <div className="relative">
-                    <img
-                      src={playerImage}
-                      alt={`${player.name}'s character`}
-                      className={`w-16 h-20 object-contain drop-shadow-md transition-all duration-300 ${
-                        isCurrent ? 'drop-shadow-2xl' : ''
-                      }`}
-                      style={{
-                        filter: isCurrent ? 'drop-shadow(0 0 15px rgba(73, 66, 82, 0.8))' : 'none'
-                      }}
-                    />
-                    
-                    {/* Name and score overlay for character */}
-                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-center">
-                      <div className={`bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 min-w-12 ${
+                  // Character display - name on top, cards on bottom right
+                  <div className="relative flex flex-col items-center">
+                    {/* Player name at top */}
+                    <div className="mb-1 text-center">
+                      <div className={`bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 ${
                         isCurrent ? 'animate-pulse border border-[#494252]/50' : ''
                       }`}>
-                        <div className="text-white font-bold text-xs truncate max-w-12">
+                        <div className="text-white font-bold text-xs truncate max-w-16">
                           {player.name}
                         </div>
-                        <div className={`text-yellow-400 font-bold text-xs ${
+                      </div>
+                    </div>
+                    
+                    {/* Character image */}
+                    <div className="relative">
+                      <img
+                        src={playerImage}
+                        alt={`${player.name}'s character`}
+                        className={`w-16 h-20 object-contain drop-shadow-md transition-all duration-300 ${
+                          isCurrent ? 'drop-shadow-2xl' : ''
+                        }`}
+                        style={{
+                          filter: isCurrent ? 'drop-shadow(0 0 15px rgba(73, 66, 82, 0.8))' : 'none'
+                        }}
+                      />
+                      
+                      {/* Card count at bottom right */}
+                      <div className="absolute -bottom-1 -right-1">
+                        <div className={`bg-yellow-500 text-black font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center border border-white ${
                           isCurrent ? 'animate-bounce' : ''
                         }`}>
                           {player.timeline.length}
@@ -227,6 +221,10 @@ export const CassettePlayerDisplay = ({
         
         .character-bounce {
           animation: character-bounce 2s ease-in-out infinite;
+        }
+        
+        .scale-130 {
+          transform: scale(1.3);
         }
       `}</style>
     </div>

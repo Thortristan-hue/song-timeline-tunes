@@ -8,8 +8,9 @@ import assRoomcode from '@/assets/ass_roomcode.png';
 import assRythmy from '@/assets/ass_rythmy.png';
 import assSpeaker from '@/assets/ass_speaker.png';
 import assCassBg from '@/assets/ass_cass_bg.png';
-import buttonBlue from '@/assets/button_blue.png';
-import buttonOrange from '@/assets/button_orange.png';
+// TODO: Add missing button assets
+// import buttonBlue from '@/assets/button_blue.png';
+// import buttonOrange from '@/assets/button_orange.png';
 
 interface FiendModeHostViewProps {
   players: Player[];
@@ -96,8 +97,7 @@ export function FiendModeHostView({
               onClick={onPlayPause}
               className="relative hover:scale-110 transition-transform duration-200"
             >
-              <img src={buttonBlue} alt="Pause" className="h-8 w-8" />
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-transform duration-200">
                 <Pause className="h-4 w-4 text-white" />
               </div>
             </button>
@@ -107,8 +107,7 @@ export function FiendModeHostView({
               onClick={onPlayPause}
               className="relative hover:scale-110 transition-transform duration-200"
             >
-              <img src={buttonBlue} alt="Play" className="h-8 w-8" />
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 bg-blue-500 rounded flex items-center justify-center hover:scale-110 transition-transform duration-200">
                 <Play className="h-4 w-4 text-white" />
               </div>
             </button>
@@ -118,8 +117,7 @@ export function FiendModeHostView({
               onClick={onStop}
               className="relative hover:scale-110 transition-transform duration-200"
             >
-              <img src={buttonOrange} alt="Stop" className="h-8 w-8" />
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 bg-orange-500 rounded flex items-center justify-center hover:scale-110 transition-transform duration-200">
                 <Square className="h-4 w-4 text-white" />
               </div>
             </button>

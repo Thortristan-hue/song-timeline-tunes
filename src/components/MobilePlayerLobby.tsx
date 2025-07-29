@@ -5,16 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Music, Users, User, Gamepad2, Clock } from 'lucide-react';
+import { Music, Users, User, Gamepad2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GameRoom, Player } from '@/types/game';
-
-// Import character images
-import charPlayer1 from '@/assets/char_player1.png';
-import charPlayer2 from '@/assets/char_player2.png';
-import charPlayer3 from '@/assets/char_player3.png';
-import charPlayer4 from '@/assets/char_player4.png';
-import charPlayer5 from '@/assets/char_player5.png';
-import charPlayer6 from '@/assets/char_player6.png';
+import { GAME_CHARACTERS, getCharacterById, getDefaultCharacter } from '@/constants/characters';
 
 interface MobilePlayerLobbyProps {
   room: GameRoom | null;
@@ -24,14 +17,7 @@ interface MobilePlayerLobbyProps {
   onUpdatePlayer: (name: string, character: string) => Promise<void>;
 }
 
-const PLAYER_CHARACTERS = [
-  { id: 'char_player1', name: 'Player 1', image: charPlayer1, color: '#007AFF' },
-  { id: 'char_player2', name: 'Player 2', image: charPlayer2, color: '#FF3B30' },
-  { id: 'char_player3', name: 'Player 3', image: charPlayer3, color: '#34C759' },
-  { id: 'char_player4', name: 'Player 4', image: charPlayer4, color: '#FF9500' },
-  { id: 'char_player5', name: 'Player 5', image: charPlayer5, color: '#AF52DE' },
-  { id: 'char_player6', name: 'Player 6', image: charPlayer6, color: '#FF2D92' },
-];
+
 
 export default function MobilePlayerLobby({ 
   room = { 
@@ -50,39 +36,55 @@ export default function MobilePlayerLobby({
   currentPlayer = { 
     id: '1', 
     name: 'Demo Player', 
-    color: PLAYER_CHARACTERS[0].color,
-    timelineColor: PLAYER_CHARACTERS[0].color,
+    color: getDefaultCharacter().color,
+    timelineColor: getDefaultCharacter().color,
     score: 0,
     timeline: [],
-    character: PLAYER_CHARACTERS[0].id
+    character: getDefaultCharacter().id
   },
   onBackToMenu = () => {},
   onUpdatePlayer = async () => {}
 }: MobilePlayerLobbyProps) {
   const [name, setName] = useState(currentPlayer?.name || '');
-  const [selectedCharacter, setSelectedCharacter] = useState(currentPlayer?.character || PLAYER_CHARACTERS[0].id);
+  const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(() => {
+    const currentCharacter = currentPlayer?.character ? 
+      GAME_CHARACTERS.findIndex(char => char.id === currentPlayer.character) : 0;
+    return currentCharacter >= 0 ? currentCharacter : 0;
+  });
   const [hasChanges, setHasChanges] = useState(false);
+
+  const selectedCharacter = GAME_CHARACTERS[selectedCharacterIndex];
+
+  const handlePreviousCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === 0 ? GAME_CHARACTERS.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === GAME_CHARACTERS.length - 1 ? 0 : prev + 1
+    );
+  };
 
   useEffect(() => {
     if (currentPlayer) {
       setName(currentPlayer.name);
-      setSelectedCharacter(currentPlayer.character || PLAYER_CHARACTERS[0].id);
+      const characterIndex = GAME_CHARACTERS.findIndex(char => char.id === currentPlayer.character);
+      setSelectedCharacterIndex(characterIndex >= 0 ? characterIndex : 0);
     }
   }, [currentPlayer]);
 
   useEffect(() => {
     setHasChanges(
       name !== (currentPlayer?.name || '') || 
-      selectedCharacter !== (currentPlayer?.character || PLAYER_CHARACTERS[0].id)
+      selectedCharacter.id !== (currentPlayer?.character || getDefaultCharacter().id)
     );
-  }, [name, selectedCharacter, currentPlayer?.name, currentPlayer?.character]);
+  }, [name, selectedCharacter.id, currentPlayer?.name, currentPlayer?.character]);
 
   const handleSave = () => {
     if (name.trim() && selectedCharacter) {
-      // Use the character's associated color for compatibility
-      const selectedCharacterData = PLAYER_CHARACTERS.find(char => char.id === selectedCharacter);
-      const color = selectedCharacterData?.color || PLAYER_CHARACTERS[0].color;
-      onUpdatePlayer(name.trim(), selectedCharacter);
+      onUpdatePlayer(name.trim(), selectedCharacter.id);
       setHasChanges(false);
     }
   };
@@ -92,7 +94,7 @@ export default function MobilePlayerLobby({
   };
 
   const getSelectedCharacterData = () => {
-    return PLAYER_CHARACTERS.find(char => char.id === selectedCharacter) || PLAYER_CHARACTERS[0];
+    return selectedCharacter;
   };
 
   if (room?.phase === 'playing') {
@@ -193,36 +195,46 @@ export default function MobilePlayerLobby({
                 />
               </div>
 
-              {/* Character Selection */}
+              {/* Character Selection Carousel */}
               <div className="space-y-4">
                 <Label className="text-gray-300 font-medium text-base">
                   Choose your character
                 </Label>
-                <div className="grid grid-cols-3 gap-4">
-                  {PLAYER_CHARACTERS.map((character) => (
-                    <button
-                      key={character.id}
-                      onClick={() => setSelectedCharacter(character.id)}
-                      className={`relative aspect-square rounded-2xl overflow-hidden transition-all duration-200 ${
-                        selectedCharacter === character.id 
-                          ? 'ring-4 ring-blue-400/50 scale-95 shadow-lg' 
-                          : 'hover:scale-105 active:scale-95'
-                      }`}
-                    >
+                <div className="flex items-center justify-center gap-4">
+                  {/* Previous Button */}
+                  <button
+                    type="button"
+                    onClick={handlePreviousCharacter}
+                    className="w-10 h-10 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:bg-gray-600 transition-all duration-200"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  {/* Character Display */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-2xl border-2 border-blue-400 shadow-lg overflow-hidden bg-gray-800">
                       <img 
-                        src={character.image} 
-                        alt={character.name}
+                        src={selectedCharacter.image} 
+                        alt={selectedCharacter.name}
                         className="w-full h-full object-cover"
                       />
-                      {selectedCharacter === character.id && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                    </div>
+                    <p className="text-white text-sm font-medium mt-2">
+                      {selectedCharacter.name}
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      {selectedCharacterIndex + 1} / {GAME_CHARACTERS.length}
+                    </p>
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    type="button"
+                    onClick={handleNextCharacter}
+                    className="w-10 h-10 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center text-gray-300 hover:bg-gray-600 transition-all duration-200"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 

@@ -163,29 +163,15 @@ function Index() {
   };
 
   // Create a wrapper function for updatePlayer that matches the expected signature
-  const handleUpdatePlayer = async (name: string, characterOrColor: string): Promise<void> => {
-    // Check if this is a character ID or color
-    const isCharacter = characterOrColor.startsWith('char_player');
+  const handleUpdatePlayer = async (name: string, characterId: string): Promise<void> => {
+    // Import the character constants
+    const { GAME_CHARACTERS } = await import('@/constants/characters');
     
-    if (isCharacter) {
-      // Map character to associated color for compatibility
-      const PLAYER_CHARACTERS = [
-        { id: 'char_player1', color: '#007AFF' },
-        { id: 'char_player2', color: '#FF3B30' },
-        { id: 'char_player3', color: '#34C759' },
-        { id: 'char_player4', color: '#FF9500' },
-        { id: 'char_player5', color: '#AF52DE' },
-        { id: 'char_player6', color: '#FF2D92' },
-      ];
-      
-      const selectedCharacter = PLAYER_CHARACTERS.find(char => char.id === characterOrColor);
-      const color = selectedCharacter?.color || '#007AFF';
-      
-      await updatePlayer({ name, color, character: characterOrColor });
-    } else {
-      // Backward compatibility for color-only updates
-      await updatePlayer({ name, color: characterOrColor });
-    }
+    // Find the character data
+    const selectedCharacter = GAME_CHARACTERS.find(char => char.id === characterId);
+    const color = selectedCharacter?.color || '#007AFF';
+    
+    await updatePlayer({ name, color, character: characterId });
   };
 
   const handleRestartWithSamePlayers = () => {
