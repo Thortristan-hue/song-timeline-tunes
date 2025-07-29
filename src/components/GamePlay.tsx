@@ -5,7 +5,7 @@ import { useGameRoom } from '@/hooks/useGameRoom';
 import { Timeline } from '@/components/Timeline';
 import { CardGrid } from '@/components/CardGrid';
 import { GameService } from '@/services/gameService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Shuffle, CheckCircle, XCircle } from 'lucide-react';
 import { GameLogic } from '@/services/gameLogic';
@@ -14,9 +14,37 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { SongCard } from './SongCard';
 
-export function GamePlay() {
+interface GamePlayProps {
+  room: GameRoom;
+  players: Player[];
+  currentPlayer: Player;
+  isHost: boolean;
+  onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player }>;
+  onSetCurrentSong: (song: Song) => Promise<void>;
+  customSongs: Song[];
+  connectionStatus: {
+    isConnected: boolean;
+    isReconnecting: boolean;
+    lastError: string | null;
+    retryCount: number;
+  };
+  onReconnect: () => void;
+  onReplayGame: () => void;
+}
+
+export function GamePlay({ 
+  room, 
+  players, 
+  currentPlayer, 
+  isHost, 
+  onPlaceCard, 
+  onSetCurrentSong, 
+  customSongs, 
+  connectionStatus, 
+  onReconnect, 
+  onReplayGame 
+}: GamePlayProps) {
   const { toast } = useToast();
-  const { room, players, currentPlayer, isHost, placeCard, setCurrentSong } = useGameRoom();
   const [gameLogic, setGameLogic] = useState<GameLogic | null>(null);
   const [isProcessingMove, setIsProcessingMove] = useState(false);
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean; song: Song | null }>({ show: false, correct: false, song: null });
@@ -45,7 +73,7 @@ export function GamePlay() {
     try {
       console.log('🃏 Card placement attempted:', { song: song.deezer_title, position });
       
-      const result = await placeCard(song, position, gameLogic.availableSongs);
+      const result = await onPlaceCard(song, position);
       
       if (result.success) {
         console.log('✅ Card placed successfully');
@@ -90,7 +118,7 @@ export function GamePlay() {
       const song = gameLogic.getRandomAvailableSong();
       if (song) {
         console.log('🎵 Setting mystery card:', song.deezer_title);
-        await setCurrentSong(song);
+        await onSetCurrentSong(song);
       } else {
         console.warn('No available songs to set as mystery card');
         toast({
@@ -120,7 +148,7 @@ export function GamePlay() {
   const handlePlayAgain = () => {
     setShowVictoryScreen(false);
     setWinner(null);
-    // Reset game state - this would need proper implementation
+    onReplayGame();
   };
 
   if (!gameLogic) {

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -73,6 +74,52 @@ export class GameService {
       console.log('Current song updated successfully.');
     } catch (error) {
       console.error('Failed to set current song:', error);
+      throw error;
+    }
+  }
+
+  static async updatePlayerTimeline(playerId: string, timeline: Song[], score?: number): Promise<void> {
+    try {
+      const updateData: { timeline: Json; score?: number } = {
+        timeline: timeline as unknown as Json
+      };
+
+      if (score !== undefined) {
+        updateData.score = score;
+      }
+
+      const { error } = await supabase
+        .from('players')
+        .update(updateData)
+        .eq('id', playerId);
+
+      if (error) {
+        console.error('Failed to update player timeline:', error);
+        throw error;
+      }
+
+      console.log('Player timeline updated successfully');
+    } catch (error) {
+      console.error('Failed to update player timeline:', error);
+      throw error;
+    }
+  }
+
+  static async endGame(roomId: string, winnerId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ phase: 'finished' })
+        .eq('id', roomId);
+
+      if (error) {
+        console.error('Failed to end game:', error);
+        throw error;
+      }
+
+      console.log('Game ended successfully');
+    } catch (error) {
+      console.error('Failed to end game:', error);
       throw error;
     }
   }
