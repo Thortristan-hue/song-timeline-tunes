@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface FiendModePlayerViewProps {
   currentPlayer: Player;
-  currentSong: Song;
+  currentSong: Song | null;
   roomCode: string;
   isPlaying: boolean;
   onPlayPause: () => void;
@@ -53,7 +53,7 @@ export function FiendModePlayerView({
   };
 
   const handleSubmitGuess = async () => {
-    if (isSubmitting || hasSubmitted) return;
+    if (!currentSong || isSubmitting || hasSubmitted) return;
 
     setIsSubmitting(true);
     try {
@@ -76,8 +76,9 @@ export function FiendModePlayerView({
     return 'text-red-400';
   };
 
-  const actualYear = parseInt(currentSong.release_year);
-  const yearDifference = Math.abs(selectedYear - actualYear);
+  // Only calculate these if currentSong exists
+  const actualYear = currentSong ? parseInt(currentSong.release_year) : 0;
+  const yearDifference = currentSong ? Math.abs(selectedYear - actualYear) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
@@ -129,21 +130,31 @@ export function FiendModePlayerView({
 
           {/* Song Info */}
           <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 rounded-2xl p-4 mb-4">
-            <div className="text-center mb-3">
-              <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
-              <div className="text-[#a53b8b] font-semibold">{currentSong.deezer_artist}</div>
-            </div>
+            {currentSong ? (
+              <>
+                <div className="text-center mb-3">
+                  <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
+                  <div className="text-[#a53b8b] font-semibold">{currentSong.deezer_artist}</div>
+                </div>
 
-            {/* Play/Pause Button */}
-            <div className="flex justify-center mb-4">
-              <Button
-                onClick={onPlayPause}
-                size="lg"
-                className="bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] hover:from-[#4a4f5b] hover:to-[#a53b8b] text-white rounded-full w-16 h-16 p-0"
-              >
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-              </Button>
-            </div>
+                {/* Play/Pause Button */}
+                <div className="flex justify-center mb-4">
+                  <Button
+                    onClick={onPlayPause}
+                    size="lg"
+                    className="bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] hover:from-[#4a4f5b] hover:to-[#a53b8b] text-white rounded-full w-16 h-16 p-0"
+                    disabled={!currentSong.preview_url}
+                  >
+                    {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-lg text-white/70 mb-2">Loading next song...</div>
+                <div className="text-white/50 text-sm">Please wait while we prepare the next round</div>
+              </div>
+            )}
           </div>
 
           {/* Year Slider Interface */}
@@ -194,7 +205,7 @@ export function FiendModePlayerView({
                   </div>
 
                   {/* Accuracy Preview */}
-                  {selectedYear && (
+                  {selectedYear && currentSong && (
                     <div className="text-center text-sm text-[#d9e8dd]/80 mb-4">
                       {yearDifference === 0 ? 
                         "Perfect guess! 🎯" : 
@@ -206,7 +217,7 @@ export function FiendModePlayerView({
                   {/* Submit Button */}
                   <Button
                     onClick={handleSubmitGuess}
-                    disabled={isSubmitting}
+                    disabled={!currentSong || isSubmitting}
                     className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95"
                   >
                     <Target className="h-4 w-4 mr-2" />
