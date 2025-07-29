@@ -106,11 +106,11 @@ export function MysteryCard({
           touchAction: isInteractive ? 'none' : 'auto'
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/25 to-transparent rounded-lg animate-pulse-ultra-slow" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
         <div className="text-4xl mb-2 relative z-10 animate-bounce">🎵</div>
         <HelpCircle className="h-8 w-8 mb-2 relative z-10 opacity-70 animate-spin-slow" />
-        <div className="text-2xl font-black mb-1 relative z-10 animate-pulse-glow">?</div>
-        <div className="text-xs text-center px-2 opacity-90 relative z-10 animate-pulse">
+        <div className="text-2xl font-black mb-1 relative z-10 animate-pulse">?</div>
+        <div className="text-xs text-center px-2 opacity-90 relative z-10">
           {!song.preview_url ? "No Preview" : "Mystery Song"}
         </div>
       </Card>
@@ -136,17 +136,17 @@ export function MysteryCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/25 to-transparent rounded-lg animate-glow-gentle" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-lg" />
       <Music className="h-6 w-6 mb-2 opacity-80 relative z-10 animate-wiggle" />
       <div className="text-center relative z-10 px-2">
-        <div className="text-lg font-black mb-1 animate-pulse-glow">
+        <div className="text-lg font-black mb-1 animate-bounce">
           {song.release_year}
         </div>
-        <div className="text-xs opacity-90 leading-tight animate-pulse">
+        <div className="text-xs opacity-90 leading-tight">
           {song.deezer_title?.slice(0, 12)}
           {song.deezer_title && song.deezer_title.length > 12 ? '...' : ''}
         </div>
-        <div className="text-xs opacity-75 mt-1 leading-tight animate-pulse">
+        <div className="text-xs opacity-75 mt-1 leading-tight">
           {song.deezer_artist?.slice(0, 10)}
           {song.deezer_artist && song.deezer_artist.length > 10 ? '...' : ''}
         </div>

@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, Check, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
-import { DynamicBackground } from '@/components/DynamicBackground';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -19,7 +18,6 @@ interface MobilePlayerGameViewProps {
   gameEnded: boolean;
   onHighlightGap?: (gapIndex: number | null) => void;
   onViewportChange?: (viewportInfo: { startIndex: number; endIndex: number; totalCards: number } | null) => void;
-  refreshCurrentPlayerTimeline?: () => void;
 }
 
 export default function MobilePlayerGameView({
@@ -35,8 +33,7 @@ export default function MobilePlayerGameView({
   cardPlacementResult,
   gameEnded,
   onHighlightGap,
-  onViewportChange,
-  refreshCurrentPlayerTimeline
+  onViewportChange
 }: MobilePlayerGameViewProps) {
   // Core state management
   const [selectedPosition, setSelectedPosition] = useState<number>(0);
@@ -51,116 +48,19 @@ export default function MobilePlayerGameView({
   const [passcode, setPasscode] = useState('');
   const [debugMode, setDebugMode] = useState(false);
 
-  // Refs for performance optimization
+  // Refs for scrolling and performance optimization
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const audioCleanupRef = useRef<() => void>();
 
-  // COMPLETELY REWRITTEN TIMELINE LOGIC - Multi-source approach
-  const timelineData = useMemo(() => {
-    console.log('🔍 TIMELINE ANALYSIS: Starting comprehensive timeline analysis');
-    console.log('🔍 TIMELINE ANALYSIS: Current player object:', currentPlayer);
-    console.log('🔍 TIMELINE ANALYSIS: Player timeline property:', currentPlayer?.timeline);
-    console.log('🔍 TIMELINE ANALYSIS: Timeline type:', typeof currentPlayer?.timeline);
-    console.log('🔍 TIMELINE ANALYSIS: Timeline is array?', Array.isArray(currentPlayer?.timeline));
-    console.log('🔍 TIMELINE ANALYSIS: Timeline length:', currentPlayer?.timeline?.length);
+  // Get sorted timeline songs for placement
+  const timelineSongs = useMemo(() => {
+    return currentPlayer.timeline
+      .filter(song => song !== null)
+      .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+  }, [currentPlayer.timeline]);
 
-    // Multi-approach timeline extraction
-    let extractedTimeline: any[] = [];
-    
-    // Method 1: Direct access
-    if (currentPlayer?.timeline && Array.isArray(currentPlayer.timeline)) {
-      extractedTimeline = currentPlayer.timeline;
-      console.log('🔍 METHOD 1: Direct access succeeded, got', extractedTimeline.length, 'items');
-    }
-    
-    // Method 2: Property access with type checking
-    if (extractedTimeline.length === 0 && currentPlayer) {
-      const timelineProperty = (currentPlayer as any).timeline;
-      console.log('🔍 METHOD 2: Property access - timeline property:', timelineProperty);
-      if (Array.isArray(timelineProperty)) {
-        extractedTimeline = timelineProperty;
-        console.log('🔍 METHOD 2: Property access succeeded, got', extractedTimeline.length, 'items');
-      }
-    }
-    
-    // Method 3: String parsing (if timeline is stringified JSON)
-    if (extractedTimeline.length === 0 && currentPlayer?.timeline) {
-      try {
-        const parsedTimeline = typeof currentPlayer.timeline === 'string' 
-          ? JSON.parse(currentPlayer.timeline) 
-          : currentPlayer.timeline;
-        if (Array.isArray(parsedTimeline)) {
-          extractedTimeline = parsedTimeline;
-          console.log('🔍 METHOD 3: JSON parsing succeeded, got', extractedTimeline.length, 'items');
-        }
-      } catch (e) {
-        console.log('🔍 METHOD 3: JSON parsing failed:', e);
-      }
-    }
-
-    // ENHANCED: Aggressive song validation and processing
-    const validatedSongs = extractedTimeline
-      .filter((item, index) => {
-        console.log(`🔍 VALIDATION: Item ${index}:`, item);
-        
-        if (!item || typeof item !== 'object') {
-          console.log(`🔍 VALIDATION: Item ${index} failed - not an object`);
-          return false;
-        }
-        
-        const hasRequiredFields = Boolean(
-          (item.id || item.ID || item._id) &&
-          (item.deezer_title || item.title || item.name) &&
-          (item.deezer_artist || item.artist) &&
-          (item.release_year || item.year || item.releaseYear)
-        );
-        
-        console.log(`🔍 VALIDATION: Item ${index} has required fields:`, hasRequiredFields);
-        return hasRequiredFields;
-      })
-      .map((item, index) => {
-        // Normalize song structure
-        const normalizedSong = {
-          id: item.id || item.ID || item._id || `song-${index}`,
-          deezer_title: item.deezer_title || item.title || item.name || 'Unknown Title',
-          deezer_artist: item.deezer_artist || item.artist || 'Unknown Artist',
-          release_year: String(item.release_year || item.year || item.releaseYear || '2000'),
-          deezer_album: item.deezer_album || item.album || 'Unknown Album',
-          genre: item.genre || 'Unknown',
-          cardColor: item.cardColor || '#3b82f6',
-          preview_url: item.preview_url || item.previewUrl || '',
-          deezer_url: item.deezer_url || item.deezerUrl || ''
-        };
-        
-        console.log(`🔍 NORMALIZATION: Song ${index}:`, normalizedSong);
-        return normalizedSong;
-      })
-      .sort((a, b) => {
-        const yearA = parseInt(a.release_year) || 0;
-        const yearB = parseInt(b.release_year) || 0;
-        return yearA - yearB;
-      });
-
-    console.log('🔍 FINAL TIMELINE: Processed songs:', validatedSongs);
-    console.log('🔍 FINAL TIMELINE: Total valid songs:', validatedSongs.length);
-    
-    const result = {
-      songs: validatedSongs,
-      totalPositions: validatedSongs.length + 1,
-      hasCards: validatedSongs.length > 0,
-      debugInfo: {
-        rawTimelineLength: extractedTimeline.length,
-        processedSongsLength: validatedSongs.length,
-        playerName: currentPlayer?.name,
-        playerId: currentPlayer?.id,
-        playerObject: currentPlayer
-      }
-    };
-    
-    console.log('🔍 FINAL RESULT: Timeline analysis complete:', result);
-    return result;
-  }, [currentPlayer, currentPlayer?.timeline, currentPlayer?.id, currentPlayer?.name]);
-
-  const { songs: timelineSongs, totalPositions, hasCards, debugInfo } = timelineData;
+  // Total positions available (before first, between each song, after last)
+  const totalPositions = timelineSongs.length + 1;
 
   // Handle debug menu clicks
   const handleDebugClick = () => {
@@ -281,7 +181,7 @@ export default function MobilePlayerGameView({
 
   // Get position description
   const getPositionDescription = (position: number) => {
-    if (!hasCards) return 'First card';
+    if (timelineSongs.length === 0) return 'First card';
     if (position === 0) return 'Before first song';
     if (position === timelineSongs.length) return 'After last song';
     
@@ -290,14 +190,48 @@ export default function MobilePlayerGameView({
     return `Between ${beforeSong.release_year} and ${afterSong.release_year}`;
   };
 
-  // Handle position navigation
+  // Center the selected position in the timeline view
+  const centerSelectedPosition = useCallback(() => {
+    if (!timelineScrollRef.current) return;
+    
+    const container = timelineScrollRef.current;
+    const containerWidth = container.clientWidth;
+    
+    // Calculate the position of the selected gap
+    const cardWidth = 144; // w-36 = 144px
+    const gapWidth = 40; // gap between cards
+    const selectedGapPosition = selectedPosition * (cardWidth + gapWidth);
+    
+    // Center the selected position
+    const scrollPosition = selectedGapPosition - containerWidth / 2;
+    
+    container.scrollTo({
+      left: Math.max(0, scrollPosition),
+      behavior: 'smooth'
+    });
+  }, [selectedPosition]);
+
+  // Handle position navigation with centering
   const navigatePosition = (direction: 'prev' | 'next') => {
+    let newPosition = selectedPosition;
+    
     if (direction === 'prev' && selectedPosition > 0) {
-      setSelectedPosition(selectedPosition - 1);
+      newPosition = selectedPosition - 1;
     } else if (direction === 'next' && selectedPosition < totalPositions - 1) {
-      setSelectedPosition(selectedPosition + 1);
+      newPosition = selectedPosition + 1;
+    }
+    
+    if (newPosition !== selectedPosition) {
+      setSelectedPosition(newPosition);
     }
   };
+
+  // Center view when position changes
+  useEffect(() => {
+    if (isMyTurn) {
+      centerSelectedPosition();
+    }
+  }, [selectedPosition, isMyTurn, centerSelectedPosition]);
 
   // Cleanup audio on unmount or turn change
   useEffect(() => {
@@ -320,14 +254,6 @@ export default function MobilePlayerGameView({
       onHighlightGap(selectedPosition);
     }
   }, [selectedPosition, isMyTurn, onHighlightGap]);
-
-  // Timeline refresh function
-  const handleTimelineRefresh = useCallback(() => {
-    console.log('🔄 REFRESH: Manually refreshing timeline data...');
-    if (refreshCurrentPlayerTimeline) {
-      refreshCurrentPlayerTimeline();
-    }
-  }, [refreshCurrentPlayerTimeline]);
 
   // Show result overlay
   if (cardPlacementResult) {
@@ -397,34 +323,16 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <>
-      {/* Dynamic background component */}
-      <DynamicBackground 
-        isPlaying={isPlaying} 
-        currentSong={currentSong}
-      />
-      
-      <div className="fixed inset-0 z-40">
+    <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
       {/* Safe area container */}
       <div className="h-full flex flex-col px-4 pt-safe-top pb-safe-bottom">
         
         {/* Header */}
         <div className="flex-shrink-0 py-4">
           <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
-                {currentPlayer.name}
-              </h1>
-              {refreshCurrentPlayerTimeline && (
-                <Button
-                  onClick={handleTimelineRefresh}
-                  className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-full p-2"
-                  size="sm"
-                >
-                  <RefreshCw className="w-4 h-4 text-white" />
-                </Button>
-              )}
-            </div>
+            <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
+              {currentPlayer.name}
+            </h1>
             <div className="inline-block bg-white/10 backdrop-blur-xl rounded-full px-4 py-2 border border-white/20">
               <span className="text-white/90 text-sm font-semibold">
                 {gameEnded ? 'Game Over' : 
@@ -434,108 +342,40 @@ export default function MobilePlayerGameView({
           </div>
         </div>
 
-        {/* Enhanced Universal Vinyl Player Section with Audio Visualization */}
-        <div className="flex-shrink-0 py-4">
-          <div className="flex justify-center">
-            <div className="relative">
-              {/* Outer glow ring that pulses with audio */}
-              <div className={cn(
-                "absolute -inset-2 rounded-full transition-all duration-300",
-                isPlaying 
-                  ? "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 animate-pulse" 
-                  : "bg-white/5"
-              )} />
-              
-              {/* Spectrum analyzer visualization rings */}
-              {isPlaying && (
-                <>
-                  <div className="absolute -inset-1 border border-blue-400/30 rounded-full animate-pulse" style={{animationDelay: '0s'}} />
-                  <div className="absolute -inset-2 border border-purple-400/20 rounded-full animate-pulse" style={{animationDelay: '0.5s'}} />
-                  <div className="absolute -inset-3 border border-pink-400/10 rounded-full animate-pulse" style={{animationDelay: '1s'}} />
-                </>
-              )}
-              
-              {/* Main vinyl record */}
-              <div className={cn(
-                "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 transition-all duration-500 relative overflow-hidden",
-                isPlaying 
-                  ? "animate-spin border-white/60 shadow-blue-500/20" 
-                  : "border-white/40 hover:border-white/60 hover:shadow-lg"
-              )}>
-                {/* Vinyl grooves */}
-                <div className="absolute inset-1 border border-white/10 rounded-full" />
-                <div className="absolute inset-2 border border-white/8 rounded-full" />
-                <div className="absolute inset-3 border border-white/6 rounded-full" />
-                <div className="absolute inset-4 border border-white/4 rounded-full" />
-                
-                {/* Center label with shimmer effect */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className={cn(
-                    "w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50 relative",
-                    isPlaying && "animate-pulse"
-                  )}>
-                    {isPlaying && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-full animate-ping" />
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Enhanced play/pause button */}
-              <Button
-                onClick={onPlayPause}
-                className={cn(
-                  "absolute inset-0 w-full h-full border-0 rounded-full transition-all duration-300 group",
-                  !currentSong?.preview_url 
-                    ? "bg-black/40 cursor-not-allowed" 
-                    : "bg-black/20 hover:bg-black/40 hover:scale-105"
-                )}
-                disabled={!currentSong?.preview_url}
-              >
+        {/* Vinyl Player Section */}
+        {isMyTurn && !gameEnded && (
+          <div className="flex-shrink-0 py-4">
+            <div className="flex justify-center">
+              <div className="relative">
                 <div className={cn(
-                  "text-white text-lg transition-all duration-300",
-                  isPlaying 
-                    ? "group-hover:scale-110" 
-                    : "group-hover:scale-125 drop-shadow-lg"
+                  "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                  isPlaying && "animate-spin"
                 )}>
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
+                  </div>
+                  
+                  <div className="absolute inset-1 border border-white/10 rounded-full" />
+                  <div className="absolute inset-2 border border-white/10 rounded-full" />
+                  <div className="absolute inset-3 border border-white/10 rounded-full" />
                 </div>
-              </Button>
-              
-              {/* Audio waveform preview (placeholder) */}
-              {isPlaying && (
-                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex items-end space-x-1">
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-gradient-to-t from-blue-400 to-purple-400 rounded-full animate-pulse"
-                      style={{
-                        height: `${Math.random() * 12 + 4}px`,
-                        animationDelay: `${i * 0.1}s`,
-                        animationDuration: '0.8s'
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Enhanced status text with dynamic content */}
-          <div className="text-center mt-4">
-            <div className={cn(
-              "text-white/90 text-sm font-medium transition-all duration-300",
-              isPlaying && "animate-pulse"
-            )}>
-              {isMyTurn ? 'Mystery Song' : 'Universal Remote'}
-            </div>
-            {isPlaying && currentSong && (
-              <div className="text-white/60 text-xs mt-1 animate-fade-in">
-                ♪ Now Playing ♪
+                
+                <Button
+                  onClick={onPlayPause}
+                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                  disabled={!currentSong?.preview_url}
+                >
+                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  </div>
+                </Button>
               </div>
-            )}
+            </div>
+            <div className="text-center mt-2">
+              <div className="text-white/80 text-sm font-medium">Mystery Song</div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Content area */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -555,177 +395,108 @@ export default function MobilePlayerGameView({
                     Wait for your turn
                   </div>
                 </div>
-                
-                {/* Timeline display for waiting players */}
-                <div className="mt-8 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25">
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <div className="text-white text-lg font-semibold">Your Timeline</div>
-                    {refreshCurrentPlayerTimeline && (
-                      <Button
-                        onClick={handleTimelineRefresh}
-                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-full p-1"
-                        size="sm"
-                      >
-                        <RefreshCw className="w-3 h-3 text-white" />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {hasCards ? (
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {timelineSongs.map((song, index) => {
-                        const cardColor = getCardColor(song);
-                        return (
-                          <div
-                            key={`${song.id}-${index}`}
-                            className="w-24 h-24 rounded-xl border border-white/20 flex-shrink-0 shadow-lg relative"
-                            style={{ 
-                              backgroundColor: cardColor.backgroundColor,
-                              backgroundImage: cardColor.backgroundImage
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl" />
-                            <div className="p-2 h-full flex flex-col items-center justify-between text-white relative z-10">
-                              <div className="text-xs font-medium text-center leading-tight text-white overflow-hidden">
-                                {truncateText(song.deezer_artist, 10)}
-                              </div>
-                              <div className="text-lg font-black text-white">
-                                {song.release_year}
-                              </div>
-                              <div className="text-xs text-center italic text-white leading-tight opacity-90 overflow-hidden">
-                                {truncateText(song.deezer_title, 10)}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center text-white/60 py-8">
-                      <div className="text-sm mb-2">No cards in your timeline yet</div>
-                      <div className="text-xs opacity-80">Cards will appear here as you play</div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           )}
 
-          {/* Game interface - Your Turn */}
+          {/* Game interface */}
           {isMyTurn && !gameEnded && (
             <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
               <div className="text-center mb-4">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <div className="text-white text-lg font-semibold">Your Timeline</div>
-                  {refreshCurrentPlayerTimeline && (
-                    <Button
-                      onClick={handleTimelineRefresh}
-                      className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-full p-1"
-                      size="sm"
-                    >
-                      <RefreshCw className="w-3 h-3 text-white" />
-                    </Button>
-                  )}
-                </div>
+                <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
                 <div className="text-white/80 text-sm">
                   {getPositionDescription(selectedPosition)}
                 </div>
               </div>
 
-              {/* Timeline display */}
+              {/* Timeline display with horizontal scroll and centered selection */}
               <div className="flex-1 min-h-0">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 flex items-center justify-center overflow-x-auto pb-4">
-                    {!hasCards ? (
-                      <div className="text-center text-white/60">
-                        <div className="text-lg mb-2">No cards yet</div>
-                        <div className="text-sm mb-4">Place your first card!</div>
-                        
-                        {/* Position selector for first card */}
-                        <div className="flex justify-center">
+                {timelineSongs.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-white/60">
+                      <div className="text-lg mb-2">No cards yet</div>
+                      <div className="text-sm">Place your first card!</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col">
+                    {/* Timeline cards with smooth scrolling */}
+                    <div className="flex-1 flex items-center justify-center">
+                      <div 
+                        ref={timelineScrollRef}
+                        className="w-full overflow-x-auto pb-4 scroll-smooth"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
+                        <div className="flex items-center gap-2 min-w-max px-4 justify-start">
+                          {/* Position indicator before first card */}
                           <div 
                             className={cn(
-                              "w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
-                              "bg-green-400 border-green-400 text-white"
+                              "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                              selectedPosition === 0 
+                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                : "border-white/40 text-white/60 hover:border-white/60"
                             )}
                             onClick={() => setSelectedPosition(0)}
                           >
-                            <Check className="w-6 h-6" />
+                            {selectedPosition === 0 ? <Check className="w-5 h-5" /> : '+'}
                           </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 min-w-max px-4">
-                        {/* Position before first card */}
-                        <div 
-                          className={cn(
-                            "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
-                            selectedPosition === 0 
-                              ? "bg-green-400 border-green-400 text-white" 
-                              : "border-white/40 text-white/60 hover:border-white/60"
-                          )}
-                          onClick={() => setSelectedPosition(0)}
-                        >
-                          {selectedPosition === 0 ? <Check className="w-4 h-4" /> : '+'}
-                        </div>
 
-                        {timelineSongs.map((song, index) => {
-                          const cardColor = getCardColor(song);
-                          return (
-                            <React.Fragment key={`${song.id}-${index}`}>
-                              {/* Song card */}
-                              <div
-                                className={cn(
-                                  "w-32 h-32 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
-                                )}
-                                style={{ 
-                                  backgroundColor: cardColor.backgroundColor,
-                                  backgroundImage: cardColor.backgroundImage
-                                }}
-                                onClick={() => song.preview_url && handleSongPreview(song)}
-                              >
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
-                                
-                                <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
-                                  <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
-                                    <div className="break-words">
-                                      {truncateText(song.deezer_artist, 15)}
+                          {timelineSongs.map((song, index) => {
+                            const cardColor = getCardColor(song);
+                            return (
+                              <React.Fragment key={song.id}>
+                                {/* Song card */}
+                                <div
+                                  className={cn(
+                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                  )}
+                                  style={{ 
+                                    backgroundColor: cardColor.backgroundColor,
+                                    backgroundImage: cardColor.backgroundImage
+                                  }}
+                                  onClick={() => song.preview_url && handleSongPreview(song)}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                                  
+                                  <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                                    <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_artist, 15)}
+                                      </div>
                                     </div>
-                                  </div>
-                                  
-                                  <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
-                                    {song.release_year}
-                                  </div>
-                                  
-                                  <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
-                                    <div className="break-words">
-                                      {truncateText(song.deezer_title, 15)}
+                                    
+                                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
+                                      {song.release_year}
+                                    </div>
+                                    
+                                    <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_title, 15)}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                              
-                              {/* Position after card */}
-                              <div 
-                                className={cn(
-                                  "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
-                                  selectedPosition === index + 1 
-                                    ? "bg-green-400 border-green-400 text-white" 
-                                    : "border-white/40 text-white/60 hover:border-white/60"
-                                )}
-                                onClick={() => setSelectedPosition(index + 1)}
-                              >
-                                {selectedPosition === index + 1 ? <Check className="w-4 h-4" /> : '+'}
-                              </div>
-                            </React.Fragment>
-                          );
-                        })}
+                                
+                                {/* Position indicator after card */}
+                                <div 
+                                  className={cn(
+                                    "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                                    selectedPosition === index + 1 
+                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                      : "border-white/40 text-white/60 hover:border-white/60"
+                                  )}
+                                  onClick={() => setSelectedPosition(index + 1)}
+                                >
+                                  {selectedPosition === index + 1 ? <Check className="w-5 h-5" /> : '+'}
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Position navigation */}
-                  {hasCards && (
+                    {/* Position navigation */}
                     <div className="flex items-center justify-between pt-3 border-t border-white/20">
                       <Button
                         onClick={() => navigatePosition('prev')}
@@ -747,8 +518,8 @@ export default function MobilePlayerGameView({
                         <ChevronRight className="w-5 h-5 text-white" />
                       </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -796,26 +567,12 @@ export default function MobilePlayerGameView({
           >
             {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
           </div>
-          {debugMode && (
+          {debugMode && currentSong && (
             <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
-              <div className="font-semibold mb-1">Timeline Debug:</div>
-              <div>Has Cards: {hasCards ? 'Yes' : 'No'}</div>
-              <div>Songs Count: {timelineSongs.length}</div>
-              <div>Total Positions: {totalPositions}</div>
-              <div>Raw Timeline Length: {debugInfo.rawTimelineLength}</div>
-              <div>Player: {debugInfo.playerName}</div>
-              <div>Player ID: {debugInfo.playerId}</div>
-              <div>My Turn: {isMyTurn ? 'Yes' : 'No'}</div>
-              <div>Game Phase: {gameEnded ? 'Ended' : 'Playing'}</div>
-              {currentSong && (
-                <>
-                  <div>Current Song: {currentSong.deezer_title}</div>
-                  <div>Release Year: {currentSong.release_year}</div>
-                </>
-              )}
-              <div className="mt-2 text-xs opacity-80">
-                Timeline Object: {JSON.stringify(debugInfo.playerObject?.timeline).substring(0, 100)}...
-              </div>
+              <div className="font-semibold mb-1">Song Debug Info:</div>
+              <div>Title: {currentSong.deezer_title}</div>
+              <div>Artist: {currentSong.deezer_artist}</div>
+              <div>Release Year: {currentSong.release_year}</div>
             </div>
           )}
         </div>
@@ -853,9 +610,8 @@ export default function MobilePlayerGameView({
               </Button>
             </div>
           </div>
-         </div>
-       )}
-       </div>
-     </>
-   );
- }
+        </div>
+      )}
+    </div>
+  );
+}

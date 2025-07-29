@@ -1,4 +1,3 @@
-
 // src/lib/SoundEffects.ts
 type SoundName = 
   | 'button-click' 
@@ -37,7 +36,7 @@ export class SoundEffects {
       this.initialized = true;
       console.log('🎵 Audio system initialized');
       
-      // Preload essential sounds with better error handling
+      // Preload essential sounds
       this.preloadSounds();
     } catch (error) {
       console.warn('Audio system initialization failed, using fallback sounds:', error);
@@ -56,18 +55,13 @@ export class SoundEffects {
       'game-victory': '/sounds/victory.mp3'
     };
 
-    const loadPromises = Object.entries(soundManifest).map(async ([name, url]) => {
-      try {
-        await this.loadSound(name as SoundName, url);
-        console.log(`✅ Loaded sound: ${name}`);
-      } catch (error) {
-        console.warn(`⚠️ Failed to load sound "${name}":`, error);
-      }
-    });
-
     try {
-      await Promise.allSettled(loadPromises);
-      console.log('🎵 Audio preloading completed');
+      await Promise.all(
+        Object.entries(soundManifest).map(([name, url]) => 
+          this.loadSound(name as SoundName, url)
+        )
+      );
+      console.log('🎵 Audio files loaded successfully');
     } catch (error) {
       console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
     }
@@ -80,44 +74,21 @@ export class SoundEffects {
     }
 
     try {
-      // Use fetch with proper headers and error handling
       const response = await fetch(url, { 
-        method: 'GET',
-        headers: {
-          'Accept': 'audio/mpeg, audio/wav, audio/*',
-        },
         credentials: 'omit',
         cache: 'force-cache'
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      // Check content type
-      const contentType = response.headers.get('content-type');
-      if (contentType && !contentType.startsWith('audio/')) {
-        console.warn(`Unexpected content type for ${name}: ${contentType}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const arrayBuffer = await response.arrayBuffer();
-      
-      // Validate buffer is not empty
-      if (arrayBuffer.byteLength === 0) {
-        throw new Error('Empty audio buffer received');
-      }
-
-      // Resume audio context if suspended (required for mobile browsers)
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       this.sounds.set(name, audioBuffer);
-      
     } catch (error) {
-      console.warn(`Could not load audio file "${name}":`, error);
-      // Don't throw - allow fallback sounds to be used
+      console.warn(`Could not load audio file "${name}", fallback sound will be used`);
+      throw error;
     }
   }
 
@@ -194,11 +165,6 @@ export class SoundEffects {
     if (!this.audioContext) return;
 
     try {
-      // Resume context if needed
-      if (this.audioContext.state === 'suspended') {
-        await this.audioContext.resume();
-      }
-
       const oscillator = this.audioContext.createOscillator();
       const gain = this.audioContext.createGain();
       
