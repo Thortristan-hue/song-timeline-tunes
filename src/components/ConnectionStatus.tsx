@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,14 @@ interface ConnectionStatusProps {
 export function ConnectionStatus({ connectionStatus, onReconnect }: ConnectionStatusProps) {
   const { isConnected, isReconnecting, lastError, retryCount } = connectionStatus;
 
-  // Don't show anything if connected
-  if (isConnected) {
+  // Only show connection issues if we're in a critical state
+  // Don't show during normal operation or minor hiccups
+  if (isConnected || (!lastError && !isReconnecting)) {
+    return null;
+  }
+
+  // Don't show connection status for "no configs" scenario
+  if (lastError === 'No subscription configs provided') {
     return null;
   }
 
@@ -33,7 +40,7 @@ export function ConnectionStatus({ connectionStatus, onReconnect }: ConnectionSt
               </span>
             ) : (
               <span>
-                Connection lost. {lastError && `Error: ${lastError}`}
+                Connection lost. {lastError && lastError !== 'Channel error' && `Error: ${lastError}`}
               </span>
             )}
           </AlertDescription>

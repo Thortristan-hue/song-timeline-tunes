@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -72,8 +73,14 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     try {
       cleanup();
       
+      // FIX: Don't return early if no configs - let connection status reflect this
       if (configs.length === 0) {
-        console.warn('📡 No subscription configs provided');
+        console.log('📡 No subscription configs provided, setting as connected (no subscriptions needed)');
+        setConnectionStatus({
+          isConnected: true,
+          isReconnecting: false,
+          retryCount: 0
+        });
         return;
       }
 
@@ -139,16 +146,15 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
             }
           }
         }
-      }, 30000); // Check every 30 seconds (less aggressive)
+      }, 30000); // Check every 30 seconds
 
       // Cleanup health check when subscription changes
       return () => clearInterval(healthCheck);
       
     } catch (error) {
       console.error('❌ Failed to setup subscription:', error);
-      handleConnectionError(error, 'setup');
+      handleConnectionError(error as Error, 'setup');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configs, cleanup, handleConnectionError]);
 
   const scheduleReconnect = useCallback(() => {
@@ -178,7 +184,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     }
 
     retryCountRef.current++;
-    const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 3)); // Shorter exponential backoff
+    const delay = baseDelay * Math.pow(2, Math.min(retryCountRef.current - 1, 3));
     
     console.log(`📡 Scheduling reconnect attempt ${retryCountRef.current}/${maxRetries} in ${delay}ms`);
     
@@ -223,10 +229,7 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
   // Initial connection and reconnection on config changes
   useEffect(() => {
-    if (configs.length > 0) {
-      connect();
-    }
-
+    connect();
     return cleanup;
   }, [connect, cleanup, configs.length]);
 
