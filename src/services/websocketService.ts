@@ -2,7 +2,7 @@
 import { Song, Player, GameRoom } from '@/types/game';
 
 export interface GameStateMessage {
-  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET';
+  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM';
   roomId: string;
   data: any;
   timestamp: number;

@@ -15,7 +15,7 @@ export function useWebSocketGameSync(
   roomId: string | null,
   onRoomUpdate?: (room: Partial<GameRoom>) => void,
   onPlayerUpdate?: (players: Player[]) => void,
-  onGameStart?: () => void,
+  onGameStart?: (data: any) => void,
   onCardPlaced?: (data: any) => void,
   onSongSet?: (song: Song) => void
 ) {
