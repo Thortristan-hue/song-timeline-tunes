@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -82,24 +81,23 @@ function Index() {
     }
   }, [gamePhase]);
 
-  // Enhanced room phase listener with better error handling
+  // FIXED: Simplified room phase transition logic - no longer dependent on gameInitialized
   useEffect(() => {
-    // Only transition to playing when both room phase is playing AND game is initialized
-    if (room?.phase === 'playing' && gameInitialized && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase and game initialized - starting game');
+    // Transition to playing when room phase changes to playing, regardless of gameInitialized status
+    if (room?.phase === 'playing' && gamePhase !== 'playing') {
+      console.log('🎮 Room transitioned to playing phase - starting game immediately');
       console.log('🎮 Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         isHost,
-        playersCount: players.length,
-        gameInitialized 
+        playersCount: players.length
       });
       
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, gameInitialized]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
 
   // Check for winner
   useEffect(() => {
@@ -203,8 +201,8 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
-  // Improved loading state - only show loading when actually loading and game not initialized
-  if (isLoading && !gameInitialized) {
+  // FIXED: Simplified loading state - only show when actually loading during critical operations
+  if (isLoading && gamePhase === 'hostLobby' && !room) {
     return (
       <GameErrorBoundary>
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
@@ -216,8 +214,8 @@ function Index() {
             <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-6 mx-auto border border-white/20">
               <div className="text-3xl animate-spin">🎵</div>
             </div>
-            <div className="text-2xl font-semibold mb-2">Setting things up...</div>
-            <div className="text-white/60 max-w-md mx-auto">Getting your music game experience ready</div>
+            <div className="text-2xl font-semibold mb-2">Creating room...</div>
+            <div className="text-white/60 max-w-md mx-auto">Setting up your game session</div>
           </div>
         </div>
       </GameErrorBoundary>
