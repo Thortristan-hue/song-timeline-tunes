@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import { getDefaultCharacter } from '@/constants/characters';
@@ -67,7 +68,7 @@ export class GameService {
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
       timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : [],
-      character: dbPlayer.character || getDefaultCharacter().id // Added default character
+      character: dbPlayer.character || getDefaultCharacter().id
     };
   }
 
@@ -104,14 +105,15 @@ export class GameService {
       }
 
       // 2. Validate the card placement
-      const currentTimeline = Array.isArray(player.timeline) ? player.timeline : [];
+      const currentTimeline = Array.isArray(player.timeline) ? (player.timeline as Song[]) : [];
+      const songAsAny = song as any;
       const correctPlacement =
         currentTimeline.length === 0 || // First card is always correct
-        (position === 0 && song.release_year <= currentTimeline[0].release_year) ||
-        (position === currentTimeline.length && song.release_year >= currentTimeline[currentTimeline.length - 1].release_year) ||
+        (position === 0 && parseInt(songAsAny.release_year) <= parseInt((currentTimeline[0] as any).release_year)) ||
+        (position === currentTimeline.length && parseInt(songAsAny.release_year) >= parseInt((currentTimeline[currentTimeline.length - 1] as any).release_year)) ||
         (position > 0 && position < currentTimeline.length &&
-          song.release_year >= currentTimeline[position - 1].release_year &&
-          song.release_year <= currentTimeline[position].release_year);
+          parseInt(songAsAny.release_year) >= parseInt((currentTimeline[position - 1] as any).release_year) &&
+          parseInt(songAsAny.release_year) <= parseInt((currentTimeline[position] as any).release_year));
 
       // 3. Update player's timeline
       const newTimeline = [...currentTimeline];
@@ -199,6 +201,105 @@ export class GameService {
       console.log('Current song set successfully');
     } catch (error) {
       console.error('Failed to set current song:', error);
+      throw error;
+    }
+  }
+
+  static async updatePlayerTimeline(playerId: string, timeline: Song[], score?: number): Promise<void> {
+    try {
+      const updateData: any = {
+        timeline: timeline as unknown as Json
+      };
+
+      if (score !== undefined) {
+        updateData.score = score;
+      }
+
+      const { error } = await supabase
+        .from('players')
+        .update(updateData)
+        .eq('id', playerId);
+
+      if (error) {
+        console.error('Error updating player timeline:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Failed to update player timeline:', error);
+      throw error;
+    }
+  }
+
+  static async updatePlayerScore(roomId: string, playerId: string, score: number): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ score })
+        .eq('id', playerId)
+        .eq('room_id', roomId);
+
+      if (error) {
+        console.error('Error updating player score:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Failed to update player score:', error);
+      throw error;
+    }
+  }
+
+  static async endGame(roomId: string, winnerId?: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ 
+          phase: 'finished' as any,
+          winner_id: winnerId || null
+        })
+        .eq('id', roomId);
+
+      if (error) {
+        console.error('Error ending game:', error);
+        throw error;
+      }
+
+      console.log('Game ended successfully');
+    } catch (error) {
+      console.error('Failed to end game:', error);
+      throw error;
+    }
+  }
+
+  static async resetGameForReplay(roomId: string): Promise<void> {
+    try {
+      // Reset room to lobby phase
+      const { error: roomError } = await supabase
+        .from('game_rooms')
+        .update({
+          phase: 'lobby' as any,
+          current_turn: 0,
+          current_song: null,
+          current_player_id: null,
+          winner_id: null
+        })
+        .eq('id', roomId);
+
+      if (roomError) throw roomError;
+
+      // Reset all players' timelines and scores
+      const { error: playersError } = await supabase
+        .from('players')
+        .update({
+          timeline: [] as unknown as Json,
+          score: 0
+        })
+        .eq('room_id', roomId);
+
+      if (playersError) throw playersError;
+
+      console.log('Game reset for replay');
+    } catch (error) {
+      console.error('Failed to reset game:', error);
       throw error;
     }
   }
