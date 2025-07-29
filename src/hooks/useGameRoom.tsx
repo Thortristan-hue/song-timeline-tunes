@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 import { useRealtimeSubscription, SubscriptionConfig } from '@/hooks/useRealtimeSubscription';
+import { getDefaultCharacter } from '@/constants/characters';
 import type { Json } from '@/integrations/supabase/types';
 
 interface DatabasePlayer {
@@ -79,7 +81,7 @@ export function useGameRoom() {
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
       timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as unknown as Song[] : [],
-      character: dbPlayer.character
+      character: dbPlayer.character || getDefaultCharacter().id // Added default character
     };
   }, []);
 
@@ -297,7 +299,8 @@ export function useGameRoom() {
         color: '#FF6B6B',
         timelineColor: '#FF8E8E',
         score: 0,
-        timeline: []
+        timeline: [],
+        character: getDefaultCharacter().id // Added default character
       };
 
       setCurrentPlayer(hostPlayer);

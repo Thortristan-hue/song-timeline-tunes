@@ -27,6 +27,7 @@ const mockPlayers: Player[] = [
     color: '#4CC9F0',
     timelineColor: '#4CC9F0',
     score: 85,
+    character: 'char_alice',
     timeline: [
       {
         id: 'song-1',
@@ -54,6 +55,7 @@ const mockPlayers: Player[] = [
     color: '#a53b8b',
     timelineColor: '#a53b8b',
     score: 72,
+    character: 'char_bob',
     timeline: [
       {
         id: 'song-3',
@@ -72,6 +74,7 @@ const mockPlayers: Player[] = [
     color: '#107793',
     timelineColor: '#107793',
     score: 91,
+    character: 'char_charlie',
     timeline: [
       {
         id: 'song-4',
