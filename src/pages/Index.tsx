@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
@@ -7,6 +8,7 @@ import { GamePlay } from '@/components/GamePlay';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -27,7 +29,10 @@ function Index() {
     isLoading,
     error,
     connectionStatus,
+    wsState,
+    gameInitialized,
     forceReconnect,
+    wsReconnect,
     createRoom,
     joinRoom,
     updatePlayer,
@@ -48,7 +53,9 @@ function Index() {
     isHost,
     playersCount: players.length,
     currentPlayer: currentPlayer?.name,
-    autoJoinCode
+    autoJoinCode,
+    gameInitialized,
+    isLoading
   });
 
   // Enhanced auto-join from URL parameters (QR code)
@@ -71,28 +78,28 @@ function Index() {
         window.history.replaceState({}, document.title, newUrl);
       } else {
         console.error('❌ Invalid lobby code format:', cleanCode);
-        // Show error toast for invalid format
-        // Note: toast would need to be available here, but keeping it simple for now
       }
     }
   }, [gamePhase]);
 
   // Enhanced room phase listener with better error handling
   useEffect(() => {
-    if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      console.log('🎮 Room transitioned to playing phase - starting game');
+    // Only transition to playing when both room phase is playing AND game is initialized
+    if (room?.phase === 'playing' && gameInitialized && gamePhase !== 'playing') {
+      console.log('🎮 Room transitioned to playing phase and game initialized - starting game');
       console.log('🎮 Room data:', { 
         phase: room.phase, 
         id: room.id, 
         hostId: room.host_id,
         isHost,
-        playersCount: players.length 
+        playersCount: players.length,
+        gameInitialized 
       });
       
       setGamePhase('playing');
       soundEffects.playGameStart();
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length]);
+  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, gameInitialized]);
 
   // Check for winner
   useEffect(() => {
@@ -196,8 +203,8 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
-  // Modern loading state
-  if (isLoading && gamePhase !== 'menu') {
+  // Improved loading state - only show loading when actually loading and game not initialized
+  if (isLoading && !gameInitialized) {
     return (
       <GameErrorBoundary>
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black relative overflow-hidden flex items-center justify-center">
@@ -221,6 +228,20 @@ function Index() {
     <ErrorBoundary>
       <GameErrorBoundary>
         <div className="min-h-screen">
+          {/* Connection status indicator */}
+          <ConnectionStatus 
+            connectionStatus={{
+              isConnected: connectionStatus.isConnected && wsState.isConnected,
+              isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
+              lastError: connectionStatus.lastError || wsState.lastError,
+              retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
+            }}
+            onReconnect={() => {
+              forceReconnect();
+              wsReconnect();
+            }}
+          />
+
           {gamePhase === 'menu' && (
             <MainMenu
               onCreateRoom={() => setGamePhase('hostLobby')}
@@ -271,8 +292,16 @@ function Index() {
               onPlaceCard={handlePlaceCard}
               onSetCurrentSong={setCurrentSong}
               customSongs={customSongs}
-              connectionStatus={connectionStatus}
-              onReconnect={forceReconnect}
+              connectionStatus={{
+                isConnected: connectionStatus.isConnected && wsState.isConnected,
+                isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
+                lastError: connectionStatus.lastError || wsState.lastError,
+                retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
+              }}
+              onReconnect={() => {
+                forceReconnect();
+                wsReconnect();
+              }}
               onReplayGame={handlePlayAgain}
             />
           )}
