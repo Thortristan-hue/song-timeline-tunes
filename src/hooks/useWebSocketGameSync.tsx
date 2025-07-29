@@ -17,7 +17,8 @@ export function useWebSocketGameSync(
   onPlayerUpdate?: (players: Player[]) => void,
   onGameStart?: (data: any) => void,
   onCardPlaced?: (data: any) => void,
-  onSongSet?: (song: Song) => void
+  onSongSet?: (song: Song) => void,
+  onGameStarted?: (data: any) => void
 ) {
   const { toast } = useToast();
   const [syncState, setSyncState] = useState<WebSocketGameSyncState>({
@@ -109,6 +110,11 @@ export function useWebSocketGameSync(
       onCardPlaced?.(data);
     };
 
+    const handleGameStarted = (data: any) => {
+      console.log('🎮 WebSocket GAME_STARTED received:', data);
+      onGameStarted?.(data);
+    };
+
     const handleSongSet = (data: any) => {
       console.log('🎵 WebSocket song set received:', data);
       onSongSet?.(data);
@@ -120,6 +126,7 @@ export function useWebSocketGameSync(
     websocketService.on('GAME_START', handleGameStart);
     websocketService.on('CARD_PLACED', handleCardPlaced);
     websocketService.on('SONG_SET', handleSongSet);
+    websocketService.on('GAME_STARTED', handleGameStarted);
 
     return () => {
       // Cleanup listeners
@@ -128,8 +135,9 @@ export function useWebSocketGameSync(
       websocketService.off('GAME_START', handleGameStart);
       websocketService.off('CARD_PLACED', handleCardPlaced);
       websocketService.off('SONG_SET', handleSongSet);
+      websocketService.off('GAME_STARTED', handleGameStarted);
     };
-  }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet]);
+  }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
 
   // FIXED: Broadcast functions now check if connection is ready before sending
   const broadcastRoomUpdate = useCallback((roomData: Partial<GameRoom>) => {
@@ -202,6 +210,20 @@ export function useWebSocketGameSync(
     });
   }, [roomId, isConnectionReady]);
 
+  const sendHostSetSongs = useCallback((songList: Song[], hostId: string) => {
+    if (!roomId || !isConnectionReady) {
+      console.warn('⚠️ Cannot send HOST_SET_SONGS - connection not ready:', { roomId, isConnectionReady });
+      return;
+    }
+    
+    console.log('📤 Sending HOST_SET_SONGS:', songList.length, 'songs');
+    websocketService.sendHostSetSongs(roomId, songList, hostId);
+  }, [roomId, isConnectionReady]);
+
+  const setHostStatus = useCallback((isHost: boolean) => {
+    websocketService.setHostStatus(isHost);
+  }, []);
+
   const forceReconnect = useCallback(() => {
     if (roomId) {
       setSyncState(prev => ({ ...prev, reconnectAttempts: 0 }));
@@ -220,6 +242,8 @@ export function useWebSocketGameSync(
     broadcastGameStart,
     broadcastCardPlaced,
     broadcastSongSet,
+    sendHostSetSongs,
+    setHostStatus,
     forceReconnect
   };
 }

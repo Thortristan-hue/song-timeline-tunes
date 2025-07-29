@@ -63,6 +63,8 @@ export function useGameRoom() {
     broadcastGameStart,
     broadcastCardPlaced,
     broadcastSongSet,
+    sendHostSetSongs,
+    setHostStatus,
     forceReconnect: wsReconnect
   } = useWebSocketGameSync(
     room?.id || null,
@@ -87,6 +89,16 @@ export function useGameRoom() {
     (song) => {
       console.log('🎵 WebSocket song set:', song);
       setRoom(prev => prev ? { ...prev, current_song: song } : null);
+    },
+    (data) => {
+      console.log('🎮 WebSocket GAME_STARTED received:', data);
+      // Handle synchronized game start with songs
+      if (data.room) {
+        setRoom(prev => prev ? { ...prev, ...data.room } : null);
+        setGameInitialized(true);
+        setIsLoading(false);
+        console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
+      }
     }
   );
 
@@ -359,6 +371,7 @@ export function useGameRoom() {
 
       setCurrentPlayer(hostPlayer);
       setIsHost(true);
+      setHostStatus(true); // Set WebSocket host status
       isInitialFetch.current = true;
       return data.lobby_code;
     } catch (error) {
@@ -476,56 +489,69 @@ export function useGameRoom() {
     if (!room || !isHost) return false;
 
     try {
-      console.log('🎯 Starting game with songs array length:', availableSongs?.length || 0);
+      console.log('🎯 Starting game - fetching songs if not provided...');
       setIsLoading(true);
       setGameInitialized(false);
       
-      // CRITICAL FIX: Store songs in database before starting game
-      if (availableSongs && availableSongs.length > 0) {
-        console.log('📦 Storing songs in database before starting game...');
+      let songsToUse = availableSongs;
+      
+      // If no songs provided, fetch them from the playlist service
+      if (!songsToUse || songsToUse.length === 0) {
+        console.log('🎵 No songs provided, fetching from playlist service...');
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        songsToUse = await defaultPlaylistService.loadOptimizedGameSongs(20);
         
-        // First update the room with songs
+        if (songsToUse.length === 0) {
+          throw new Error('No songs with valid previews found after trying multiple songs');
+        }
+
+        if (songsToUse.length < 8) {
+          throw new Error(`Only ${songsToUse.length} songs with valid audio previews found. Need at least 8 songs for game start.`);
+        }
+
+        console.log(`🎯 RESILIENT RESULT: ${songsToUse.length} songs with previews after processing`);
+      }
+      
+      // NEW FLOW: Send songs to "server" via WebSocket first
+      if (songsToUse && songsToUse.length > 0) {
+        console.log('📦 HOST: Sending songs to server via WebSocket...');
+        
+        // Send HOST_SET_SONGS event - this will trigger server simulation
+        sendHostSetSongs(songsToUse, hostSessionId.current || '');
+        
+        // The server simulation will store songs and broadcast GAME_STARTED
+        // All clients (including host) will receive GAME_STARTED and update their state
+        console.log('✅ HOST_SET_SONGS sent, waiting for server response...');
+        
+        // Store songs in database as backup/persistence
         const { error: songsError } = await supabase
           .from('game_rooms')
           .update({ 
-            songs: availableSongs as unknown as Json
+            songs: songsToUse as unknown as Json,
+            phase: 'playing'
           })
           .eq('id', room.id);
 
         if (songsError) {
-          console.error('❌ Failed to store songs:', songsError);
-          throw songsError;
+          console.error('❌ Failed to store songs in database:', songsError);
+          // Continue anyway since WebSocket sync is primary
         }
-
-        console.log('✅ Songs stored in database successfully');
         
-        // Then initialize game with starting cards
-        await GameService.initializeGameWithStartingCards(room.id, availableSongs);
+        // Initialize starting cards in database
+        await GameService.initializeGameWithStartingCards(room.id, songsToUse);
       } else {
-        console.log('⚠️ No songs provided, starting game without song initialization');
-        // Fallback: just set phase to playing
-        const { error } = await supabase
-          .from('game_rooms')
-          .update({ 
-            phase: 'playing',
-            current_turn: 0
-          })
-          .eq('id', room.id);
-
-        if (error) throw error;
+        console.log('⚠️ No songs available, cannot start game');
+        throw new Error('No songs available for game start');
       }
       
-      // Broadcast game start via WebSocket
-      broadcastGameStart();
-      
-      console.log('✅ Game started successfully');
+      console.log('✅ Game start process initiated');
       return true;
     } catch (error) {
       console.error('❌ Failed to start game:', error);
       setIsLoading(false);
-      return false;
+      throw error; // Re-throw to let caller handle the error
     }
-  }, [room, isHost, broadcastGameStart]);
+  }, [room, isHost, sendHostSetSongs, hostSessionId]);
 
   const placeCard = useCallback(async (song: Song, position: number, availableSongs: Song[] = []): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {
@@ -774,6 +800,8 @@ export function useGameRoom() {
     placeCard,
     setCurrentSong,
     assignStartingCards,
-    kickPlayer
+    kickPlayer,
+    sendHostSetSongs,
+    setHostStatus
   };
 }
