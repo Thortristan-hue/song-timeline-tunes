@@ -6,13 +6,26 @@ import { ArrowLeft, User, Palette } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
-const PLAYER_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
+// Import character assets
+import char1 from '@/assets/char_player1.png';
+import char2 from '@/assets/char_player2.png';
+import char3 from '@/assets/char_player3.png';
+import char4 from '@/assets/char_player4.png';
+import char5 from '@/assets/char_player5.png';
+import char6 from '@/assets/char_player6.png';
+
+const PLAYER_CHARACTERS = [
+  { id: 'player1', name: 'Player 1', image: char1 },
+  { id: 'player2', name: 'Player 2', image: char2 },
+  { id: 'player3', name: 'Player 3', image: char3 },
+  { id: 'player4', name: 'Player 4', image: char4 },
+  { id: 'player5', name: 'Player 5', image: char5 },
+  { id: 'player6', name: 'Player 6', image: char6 }
 ];
 
 interface MobilePlayerSetupProps {
   lobbyCode: string;
-  onPlayerSetup: (name: string, color: string) => Promise<boolean>;
+  onPlayerSetup: (name: string, character: string) => Promise<boolean>;
   onBackToCodeEntry: () => void;
   isLoading?: boolean;
 }
@@ -24,7 +37,7 @@ export function MobilePlayerSetup({
   isLoading = false 
 }: MobilePlayerSetupProps) {
   const [playerName, setPlayerName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(PLAYER_COLORS[0]);
+  const [selectedCharacter, setSelectedCharacter] = useState(PLAYER_CHARACTERS[0].id);
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
   const { toast } = useToast();
@@ -48,10 +61,10 @@ export function MobilePlayerSetup({
       return;
     }
 
-    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'color:', selectedColor);
+    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'character:', selectedCharacter);
     
     try {
-      const success = await onPlayerSetup(playerName.trim(), selectedColor);
+      const success = await onPlayerSetup(playerName.trim(), selectedCharacter);
       if (success) {
         soundEffects.playPlayerJoin();
       } else {
@@ -86,7 +99,7 @@ export function MobilePlayerSetup({
             Set Up Your Profile
           </h1>
           <p className="text-[#d9e8dd] text-lg mb-2">
-            Choose your name and color
+            Choose your name and character
           </p>
           <div className="inline-flex items-center px-3 py-1 bg-white/10 rounded-full">
             <span className="text-[#4CC9F0] font-mono font-bold text-sm">Room: {lobbyCode}</span>
@@ -112,26 +125,31 @@ export function MobilePlayerSetup({
             />
           </div>
 
-          {/* Color Selection */}
+          {/* Character Selection */}
           <div className="space-y-2">
             <Label className="text-white font-medium flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              Choose Your Color
+              <User className="w-4 h-4" />
+              Choose Your Character
             </Label>
-            <div className="grid grid-cols-4 gap-3">
-              {PLAYER_COLORS.map((color) => (
+            <div className="grid grid-cols-3 gap-3">
+              {PLAYER_CHARACTERS.map((character) => (
                 <button
-                  key={color}
+                  key={character.id}
                   type="button"
-                  onClick={() => setSelectedColor(color)}
-                  className={`w-12 h-12 rounded-xl border-2 transition-all duration-200 ${
-                    selectedColor === color
+                  onClick={() => setSelectedCharacter(character.id)}
+                  className={`w-16 h-16 rounded-xl border-2 transition-all duration-200 overflow-hidden ${
+                    selectedCharacter === character.id
                       ? 'border-white shadow-lg scale-110'
                       : 'border-white/20 hover:border-white/40 hover:scale-105'
                   }`}
-                  style={{ backgroundColor: color }}
                   disabled={isLoading}
-                />
+                >
+                  <img 
+                    src={character.image} 
+                    alt={character.name}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
               ))}
             </div>
           </div>

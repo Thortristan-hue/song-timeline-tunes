@@ -7,6 +7,14 @@ import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTi
 import { Button } from '@/components/ui/button';
 import { getArtistColor, truncateText } from '@/lib/utils';
 
+// Import assets
+import assRythmy from '@/assets/ass_rythmy.png';
+import assRoomcode from '@/assets/ass_roomcode.png';
+import assSpeaker from '@/assets/ass_speaker.png';
+import assCassBg from '@/assets/ass_cass_bg.png';
+import buttonBlue from '@/assets/button_blue.png';
+import buttonOrange from '@/assets/button_orange.png';
+
 // Enhanced Host Feedback Component for clear visual feedback visible only to host
 function HostFeedbackOverlay({ 
   show, 
@@ -99,73 +107,17 @@ function HostFeedbackOverlay({
   );
 }
 
-// Enhanced Host Background Component with graffiti-inspired effects
+// Enhanced Host Background Component with color gradient
 export function HostGameBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Graffiti-inspired background */}
+      {/* Main gradient background with #494252 as primary color */}
       <div
         className="fixed inset-0 w-full h-full"
         style={{
-          backgroundImage: "url('/timeliner_bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          zIndex: 1,
-          filter: 'contrast(1.2) brightness(0.8)'
+          background: 'linear-gradient(135deg, #494252 0%, #2d2a35 25%, #1f1c24 50%, #2d2a35 75%, #494252 100%)',
+          zIndex: 1
         }}
-      />
-
-      {/* Chaotic overlay mimicking spray paint drips */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-br from-black/80 via-gray-800/60 to-black/70"
-        style={{
-          zIndex: 2,
-          mixBlendMode: 'overlay'
-        }}
-      />
-
-      {/* Abstract graffiti effects */}
-      <div 
-        className="absolute top-20 left-20 w-96 h-96 bg-gray-500/10 rounded-full blur-3xl animate-pulse" 
-        style={{
-          zIndex: 3,
-          mixBlendMode: 'overlay'
-        }}
-      />
-      <div 
-        className="absolute bottom-32 right-32 w-80 h-80 bg-gray-300/5 rounded-full blur-3xl animate-pulse" 
-        style={{
-          zIndex: 3,
-          animationDelay: '2s',
-          mixBlendMode: 'overlay'
-        }} 
-      />
-      <div 
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gray-600/4 rounded-full blur-3xl"
-        style={{
-          zIndex: 3,
-          mixBlendMode: 'overlay'
-        }}
-      />
-
-      {/* Graffiti drips and ambient chaos */}
-      <div 
-        className="absolute top-10 right-10 w-32 h-32 bg-gray-400/5 rounded-full blur-2xl animate-ping" 
-        style={{
-          zIndex: 4,
-          animationDuration: '4s',
-          mixBlendMode: 'overlay'
-        }} 
-      />
-      <div 
-        className="absolute bottom-10 left-10 w-40 h-40 bg-gray-700/5 rounded-full blur-2xl animate-ping" 
-        style={{
-          zIndex: 4,
-          animationDuration: '6s',
-          animationDelay: '1s',
-          mixBlendMode: 'overlay'
-        }} 
       />
     </div>
   );
@@ -177,30 +129,29 @@ function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCoun
   return (
     <div className="absolute top-4 left-4 right-4 z-40">
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 relative overflow-hidden">
+        {/* Top left: ass_rythmy.png */}
+        <div className="flex items-center">
+          <div className="w-24 h-24 relative overflow-hidden">
             <img 
-              src="/Vinyl_rythm.png" 
+              src={assRythmy} 
               alt="Rythmy Logo" 
               className="w-full h-full object-contain drop-shadow-lg"
             />
           </div>
-          <div>
-            <div className="text-white font-black text-2xl tracking-tight drop-shadow-lg">Rythmy</div>
-            <div className="text-white/80 text-sm font-semibold bg-black/60 backdrop-blur-xl rounded-full px-3 py-1 border border-white/15">Host Display</div>
-          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-white" />
-              <div className="text-white font-black text-xl">{safePlayersCount}</div>
+        {/* Top right: ass_roomcode.png with room code overlay */}
+        <div className="relative">
+          <img 
+            src={assRoomcode} 
+            alt="Room Code Background" 
+            className="w-32 h-16 object-contain drop-shadow-lg"
+          />
+          {/* Room code overlay */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-white font-mono text-xl font-black tracking-wider drop-shadow-lg">
+              {safeRoomCode}
             </div>
-          </div>
-
-          <div className="bg-black/50 backdrop-blur-2xl px-6 py-3 rounded-2xl border-2 border-white/15 shadow-xl">
-            <div className="text-white font-mono text-xl font-black tracking-wider">{safeRoomCode}</div>
           </div>
         </div>
       </div>
@@ -208,7 +159,7 @@ function HostHeader({ roomCode, playersCount }: { roomCode?: string; playersCoun
   );
 }
 
-function RecordPlayerSection({
+function CassettePlayerSection({
   currentSong,
   mysteryCardRevealed,
   isPlaying,
@@ -221,35 +172,82 @@ function RecordPlayerSection({
   onPlayPause: () => void;
   cardPlacementResult: { correct: boolean; song: Song } | null;
 }) {
+  const [playClicked, setPlayClicked] = useState(false);
+  const [pauseClicked, setPauseClicked] = useState(false);
+  const [stopClicked, setStopClicked] = useState(false);
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      setPauseClicked(true);
+      setTimeout(() => setPauseClicked(false), 300);
+    } else {
+      setPlayClicked(true);
+      setTimeout(() => setPlayClicked(false), 300);
+    }
+    onPlayPause();
+  };
+
+  const handleStop = () => {
+    setStopClicked(true);
+    setTimeout(() => setStopClicked(false), 300);
+    // Stop functionality would be implemented here
+  };
+
   return (
     <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
       <div className="relative">
-        <div className="text-center space-y-8 max-w-sm">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-400/15 to-red-500/20 rounded-full blur-2xl animate-pulse scale-150"></div>
-            <div className={`relative w-40 h-40 mx-auto transition-all duration-500 ${
-              isPlaying ? 'animate-spin' : 'hover:scale-110'
-            }`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-red-500/30 rounded-full blur-xl"></div>
-              
-              <Button
-                onClick={onPlayPause}
-                className="relative w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group p-0"
-                disabled={!currentSong?.preview_url}
-              >
-                <img 
-                  src="/Vinyl2_rythm.png" 
-                  alt="Play/Pause Mystery Song" 
-                  className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-white text-4xl group-hover:scale-125 transition-transform duration-300 drop-shadow-lg">
-                    {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
-                  </div>
-                </div>
-              </Button>
-            </div>
+        {/* Center top: ass_cass_bg.png */}
+        <div className="relative">
+          <img 
+            src={assCassBg} 
+            alt="Cassette Player Background" 
+            className="w-80 h-48 object-contain drop-shadow-2xl"
+          />
+          
+          {/* Play, Pause, Stop button controls overlayed on cassette */}
+          <div className="absolute inset-0 flex items-center justify-center gap-4">
+            {/* Play Button */}
+            <button
+              onClick={handlePlayPause}
+              disabled={!currentSong?.preview_url || isPlaying}
+              className={`transition-all duration-300 ${playClicked ? 'transform rotate-180' : ''}`}
+            >
+              <img 
+                src={buttonBlue} 
+                alt="Play" 
+                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
+              />
+            </button>
+            
+            {/* Pause Button */}
+            <button
+              onClick={handlePlayPause}
+              disabled={!currentSong?.preview_url || !isPlaying}
+              className={`transition-all duration-300 ${pauseClicked ? 'transform rotate-180' : ''}`}
+            >
+              <img 
+                src={buttonOrange} 
+                alt="Pause" 
+                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
+              />
+            </button>
+            
+            {/* Stop Button */}
+            <button
+              onClick={handleStop}
+              disabled={!currentSong?.preview_url}
+              className={`transition-all duration-300 ${stopClicked ? 'transform rotate-180' : ''}`}
+            >
+              <img 
+                src={buttonBlue} 
+                alt="Stop" 
+                className="w-12 h-12 object-contain hover:scale-110 transition-all duration-200"
+              />
+            </button>
           </div>
+        </div>
+        
+        <div className="text-center mt-4">
           <div className="text-white/90 text-lg font-semibold bg-white/10 backdrop-blur-xl rounded-2xl px-6 py-3 border border-white/20 shadow-lg">
             Mystery Song Playing
           </div>
@@ -737,13 +735,31 @@ export function HostGameView({
     <div className="min-h-screen relative overflow-hidden">
       <HostGameBackground />
       <HostHeader roomCode={safeRoomCode} playersCount={safePlayers.length} />
-      <RecordPlayerSection 
+      <CassettePlayerSection 
         currentSong={currentSong}
         mysteryCardRevealed={safeMysteryCardRevealed}
         isPlaying={safeIsPlaying}
         onPlayPause={safeOnPlayPause}
         cardPlacementResult={cardPlacementResult}
       />
+      
+      {/* Bottom left speaker */}
+      <div className="absolute bottom-6 left-6 z-10">
+        <img 
+          src={assSpeaker} 
+          alt="Left Speaker" 
+          className="w-24 h-24 object-contain drop-shadow-lg"
+        />
+      </div>
+      
+      {/* Bottom right speaker */}
+      <div className="absolute bottom-6 right-6 z-10">
+        <img 
+          src={assSpeaker} 
+          alt="Right Speaker" 
+          className="w-24 h-24 object-contain drop-shadow-lg"
+        />
+      </div>
       
       {/* Host Feedback Overlay */}
       <HostFeedbackOverlay 
@@ -764,7 +780,7 @@ export function HostGameView({
         </div>
       </div>
 
-      <div className="absolute bottom-6 left-6 right-6 z-10">
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
         <CassettePlayerDisplay 
           players={safePlayers} 
           currentPlayerId={safeCurrentTurnPlayer.id}
