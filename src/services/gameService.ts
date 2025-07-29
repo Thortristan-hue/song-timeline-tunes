@@ -187,7 +187,7 @@ export class GameService {
           timelineColor: playerData.timeline_color,
           score: newScore,
           timeline: newTimeline,
-          character: playerData.character || getDefaultCharacter().id
+          character: (playerData as any).character || getDefaultCharacter().id
         };
         gameEnded = true;
 
