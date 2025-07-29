@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 // Mystery Card for Players
 interface PlayerMysteryCardProps {
-  currentSong: Song | null;
+  currentSong: Song;
   mysteryCardRevealed: boolean;
   isPlaying: boolean;
   onPlayPause: () => void;
@@ -39,7 +39,7 @@ export function PlayerMysteryCard({
             isRevealed={mysteryCardRevealed}
             isInteractive={true}
             className="w-48 h-60"
-            onDragStart={() => currentSong && onDragStart(currentSong)}
+            onDragStart={() => onDragStart(currentSong)}
             onDragEnd={onDragEnd}
           />
         </div>

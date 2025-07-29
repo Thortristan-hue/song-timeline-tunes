@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -73,7 +72,7 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Phase synchronization from room data - FIX: Set phase to 'playing' when room phase changes
+  // Phase synchronization from room data
   useEffect(() => {
     if (roomData) {
       setGameState(prev => ({
@@ -82,18 +81,13 @@ export function useClassicGameLogic(
         currentTurnIndex: roomData.current_turn || 0,
         phase: roomData.phase === 'playing' ? 'playing' : prev.phase
       }));
-
-      // CRITICAL FIX: Mark game as initialized when room enters playing phase
-      if (roomData.phase === 'playing') {
-        console.log('🎯 Classic Mode: Room phase changed to playing, marking as initialized');
-      }
     }
   }, [roomData?.current_song, roomData?.phase, roomData?.current_turn, roomData]);
 
   // Initialize game with optimized song loading
   const initializeGame = useCallback(async () => {
     if (gameState.playlistInitialized) {
-      console.log('🎵 Classic Mode: Playlist already initialized, setting to ready');
+      console.log('🎵 Classic Mode: Playlist already initialized');
       setGameState(prev => ({ ...prev, phase: 'ready' }));
       return;
     }
@@ -121,11 +115,8 @@ export function useClassicGameLogic(
         usedSongs: [],
         currentTurnIndex: 0,
         timeLeft: 30,
-        playlistInitialized: true,
-        backgroundLoadingComplete: true
+        playlistInitialized: true
       }));
-
-      console.log('✅ Classic Mode: Initialization complete');
 
     } catch (error) {
       console.error('❌ Classic Mode initialization failed:', error);

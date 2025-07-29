@@ -551,14 +551,12 @@ export function GamePlay({
     );
   }
 
-  // Check if game is ready - different requirements for different game modes
+  // Check if game is ready
   const gameReady = 
     room?.phase === 'playing' &&
     activePlayers.length > 0 &&
-    currentTurnPlayer &&
-    // For classic mode, we need currentMysteryCard to be set
-    // For fiend/sprint modes, the game can continue without currentMysteryCard (graceful degradation)
-    (gamemode !== 'classic' || currentMysteryCard);
+    currentMysteryCard &&
+    currentTurnPlayer;
 
   if (!gameReady) {
     return (

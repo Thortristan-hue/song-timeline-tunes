@@ -14,7 +14,7 @@ import assCassBg from '@/assets/ass_cass_bg.png';
 
 interface FiendModeHostViewProps {
   players: Player[];
-  currentSong: Song | null;
+  currentSong: Song;
   roundNumber: number;
   totalRounds: number;
   roomCode: string;
@@ -136,22 +136,13 @@ export function FiendModeHostView({
             </div>
 
             <div className="bg-white/10 border border-white/20 rounded-2xl p-6 mb-6">
-              {currentSong ? (
-                <>
-                  <div className="text-2xl font-bold text-white mb-2">{currentSong.deezer_title}</div>
-                  <div className="text-xl text-white/80 font-semibold">{currentSong.deezer_artist}</div>
-                  
-                  {allPlayersSubmitted && (
-                    <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-xl p-4">
-                      <div className="text-green-400 text-sm font-bold mb-1">ACTUAL YEAR</div>
-                      <div className="text-3xl font-bold text-white">{currentSong.release_year}</div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-xl text-white/70 mb-2">Loading next song...</div>
-                  <div className="text-white/50 text-sm">Please wait while we prepare the next round</div>
+              <div className="text-2xl font-bold text-white mb-2">{currentSong.deezer_title}</div>
+              <div className="text-xl text-white/80 font-semibold">{currentSong.deezer_artist}</div>
+              
+              {allPlayersSubmitted && (
+                <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-xl p-4">
+                  <div className="text-green-400 text-sm font-bold mb-1">ACTUAL YEAR</div>
+                  <div className="text-3xl font-bold text-white">{currentSong.release_year}</div>
                 </div>
               )}
             </div>

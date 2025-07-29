@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface SprintModePlayerViewProps {
   currentPlayer: Player;
-  currentSong: Song | null;
+  currentSong: Song;
   roomCode: string;
   isPlaying: boolean;
   onPlayPause: () => void;
@@ -63,7 +63,7 @@ export function SprintModePlayerView({
   }, [lastResult]);
 
   const handlePlaceCard = async () => {
-    if (!currentSong || isSubmitting || isInTimeout) return;
+    if (isSubmitting || isInTimeout) return;
 
     setIsSubmitting(true);
     try {
@@ -169,31 +169,21 @@ export function SprintModePlayerView({
 
           {/* Song Info */}
           <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 rounded-2xl p-4 mb-4">
-            {currentSong ? (
-              <>
-                <div className="text-center mb-3">
-                  <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
-                  <div className="text-[#107793] font-semibold">{currentSong.deezer_artist}</div>
-                </div>
+            <div className="text-center mb-3">
+              <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
+              <div className="text-[#107793] font-semibold">{currentSong.deezer_artist}</div>
+            </div>
 
-                {/* Play/Pause Button */}
-                <div className="flex justify-center mb-4">
-                  <Button
-                    onClick={onPlayPause}
-                    size="lg"
-                    className="bg-gradient-to-r from-[#107793] to-[#4CC9F0] hover:from-[#4CC9F0] hover:to-[#107793] text-white rounded-full w-16 h-16 p-0"
-                    disabled={!currentSong.preview_url}
-                  >
-                    {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-lg text-white/70 mb-2">Loading next song...</div>
-                <div className="text-white/50 text-sm">Please wait while we prepare the next round</div>
-              </div>
-            )}
+            {/* Play/Pause Button */}
+            <div className="flex justify-center mb-4">
+              <Button
+                onClick={onPlayPause}
+                size="lg"
+                className="bg-gradient-to-r from-[#107793] to-[#4CC9F0] hover:from-[#4CC9F0] hover:to-[#107793] text-white rounded-full w-16 h-16 p-0"
+              >
+                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+              </Button>
+            </div>
           </div>
 
           {/* Timeline Position Selector */}
@@ -253,7 +243,7 @@ export function SprintModePlayerView({
                 {/* Submit Button */}
                 <Button
                   onClick={handlePlaceCard}
-                  disabled={!currentSong || isSubmitting}
+                  disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-[#107793] to-[#4CC9F0] text-white font-bold py-3 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95"
                 >
                   <Target className="h-4 w-4 mr-2" />

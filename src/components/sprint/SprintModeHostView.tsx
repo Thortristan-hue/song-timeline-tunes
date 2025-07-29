@@ -14,7 +14,7 @@ import assCassBg from '@/assets/ass_cass_bg.png';
 
 interface SprintModeHostViewProps {
   players: Player[];
-  currentSong: Song | null;
+  currentSong: Song;
   targetCards: number;
   roomCode: string;
   timeLeft?: number;
