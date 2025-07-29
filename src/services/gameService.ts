@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -82,7 +83,7 @@ export class GameService {
     song: Song, 
     position: number,
     availableSongs: Song[] = []
-  ): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player }> {
+  ): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; error?: string }> {
     try {
       console.log('🎯 GameService: Processing card placement and turn advancement');
       
@@ -95,7 +96,7 @@ export class GameService {
 
       if (playerError || !player) {
         console.error('❌ Failed to get player data:', playerError);
-        return { success: false };
+        return { success: false, error: 'Failed to get player data' };
       }
 
       // Update player's timeline
@@ -124,7 +125,7 @@ export class GameService {
 
       if (updateError) {
         console.error('❌ Failed to update player timeline:', updateError);
-        return { success: false };
+        return { success: false, error: 'Failed to update player timeline' };
       }
 
       // Check for winner (10 cards in timeline)
@@ -165,7 +166,7 @@ export class GameService {
 
       if (roomError || !room) {
         console.error('❌ Failed to get room data:', roomError);
-        return { success: false };
+        return { success: false, error: 'Failed to get room data' };
       }
 
       // Advance to next mystery card
@@ -205,7 +206,7 @@ export class GameService {
 
       if (roomUpdateError) {
         console.error('❌ Failed to update room with next song:', roomUpdateError);
-        return { success: false };
+        return { success: false, error: 'Failed to update room with next song' };
       }
 
       console.log('✅ Card placed and turn advanced successfully');
@@ -213,7 +214,7 @@ export class GameService {
 
     } catch (error) {
       console.error('❌ Failed to place card and advance turn:', error);
-      return { success: false };
+      return { success: false, error: 'Failed to place card and advance turn' };
     }
   }
 
@@ -252,6 +253,118 @@ export class GameService {
       console.log('✅ Current song updated successfully');
     } catch (error) {
       console.error('❌ Failed to set current song:', error);
+      throw error;
+    }
+  }
+
+  static async updatePlayerTimeline(playerId: string, timeline: Song[], score?: number): Promise<void> {
+    try {
+      console.log('🎯 Updating player timeline:', playerId, 'with', timeline.length, 'songs');
+      
+      const updateData: any = {
+        timeline: timeline as unknown as Json
+      };
+      
+      if (score !== undefined) {
+        updateData.score = score;
+      }
+      
+      const { error } = await supabase
+        .from('players')
+        .update(updateData)
+        .eq('id', playerId);
+
+      if (error) {
+        console.error('❌ Failed to update player timeline:', error);
+        throw error;
+      }
+
+      console.log('✅ Player timeline updated successfully');
+    } catch (error) {
+      console.error('❌ Failed to update player timeline:', error);
+      throw error;
+    }
+  }
+
+  static async updatePlayerScore(playerId: string, score: number): Promise<void> {
+    try {
+      console.log('🎯 Updating player score:', playerId, 'to', score);
+      
+      const { error } = await supabase
+        .from('players')
+        .update({ score })
+        .eq('id', playerId);
+
+      if (error) {
+        console.error('❌ Failed to update player score:', error);
+        throw error;
+      }
+
+      console.log('✅ Player score updated successfully');
+    } catch (error) {
+      console.error('❌ Failed to update player score:', error);
+      throw error;
+    }
+  }
+
+  static async endGame(roomId: string, winnerId?: string): Promise<void> {
+    try {
+      console.log('🏁 Ending game for room:', roomId, 'winner:', winnerId || 'none');
+      
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ phase: 'finished' })
+        .eq('id', roomId);
+
+      if (error) {
+        console.error('❌ Failed to end game:', error);
+        throw error;
+      }
+
+      console.log('✅ Game ended successfully');
+    } catch (error) {
+      console.error('❌ Failed to end game:', error);
+      throw error;
+    }
+  }
+
+  static async resetGameForReplay(roomId: string): Promise<void> {
+    try {
+      console.log('🔄 Resetting game for replay:', roomId);
+      
+      // Reset room to lobby phase
+      const { error: roomError } = await supabase
+        .from('game_rooms')
+        .update({ 
+          phase: 'lobby',
+          current_turn: 0,
+          current_song: null,
+          current_player_id: null
+        })
+        .eq('id', roomId);
+
+      if (roomError) {
+        console.error('❌ Failed to reset room:', roomError);
+        throw roomError;
+      }
+
+      // Reset all players' timelines and scores
+      const { error: playersError } = await supabase
+        .from('players')
+        .update({ 
+          timeline: [] as unknown as Json,
+          score: 0
+        })
+        .eq('room_id', roomId);
+
+      if (playersError) {
+        console.error('❌ Failed to reset players:', playersError);
+        throw playersError;
+      }
+
+      console.log('✅ Game reset for replay successfully');
+    } catch (error) {
+      console.error('❌ Failed to reset game for replay:', error);
       throw error;
     }
   }
