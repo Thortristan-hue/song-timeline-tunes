@@ -634,12 +634,19 @@ export function useGameRoom() {
     if (!room || !isHost) return;
 
     try {
+      // Validate song object exists and has required properties
+      if (!song || !song.deezer_title) {
+        console.warn('⚠️ Invalid song object provided to setCurrentSong, skipping:', song);
+        return;
+      }
+
       console.log('🎵 Host setting synchronized mystery card:', song.deezer_title);
       await GameService.setCurrentSong(room.id, song);
       // Broadcast song set via WebSocket
       broadcastSongSet(song);
     } catch (error) {
       console.error('Failed to set current song:', error);
+      // Continue gracefully - don't let song setting errors break the game
     }
   }, [room, isHost]);
 
@@ -862,12 +869,19 @@ export function useGameRoom() {
       if (!room || !isHost) return;
 
       try {
+        // Validate song object exists and has required properties
+        if (!song || !song.deezer_title) {
+          console.warn('⚠️ Invalid song object provided to setCurrentSong, skipping:', song);
+          return;
+        }
+
         console.log('🎵 Host setting synchronized mystery card:', song.deezer_title);
         await GameService.setCurrentSong(room.id, song);
         // Broadcast song set via WebSocket
         broadcastSongSet(song);
       } catch (error) {
         console.error('Failed to set current song:', error);
+        // Continue gracefully - don't let song setting errors break the game
       }
     },
     assignStartingCards: async (availableSongs: Song[]): Promise<void> => {
