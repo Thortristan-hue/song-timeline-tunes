@@ -4,38 +4,59 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { Player, GameMode } from '@/types/game';
+import { Player, GameMode, GameRoom, Song } from '@/types/game';
 import { PlayerCharacterDisplay } from '@/components/PlayerCharacterDisplay';
 import { Music, Users, Trophy, Clock, Target } from 'lucide-react';
 
 interface HostLobbyProps {
-  roomCode: string;
+  room: GameRoom | null;
+  lobbyCode: string;
   players: Player[];
-  onStartGame: () => void;
-  gameMode: GameMode;
-  onChangeGameMode: (mode: GameMode) => void;
-  gameModeSettings: any;
-  onUpdateGameModeSettings: (settings: any) => void;
+  onStartGame: () => Promise<void>;
+  onBackToMenu: () => void;
+  setCustomSongs: React.Dispatch<React.SetStateAction<Song[]>>;
+  isLoading: boolean;
+  createRoom: () => Promise<boolean>;
+  onKickPlayer: (playerId: string) => Promise<boolean>;
+  updateRoomGamemode: (gamemode: GameMode, gamemodeSettings: any) => Promise<boolean>;
 }
 
 export function HostLobby({ 
-  roomCode, 
+  room,
+  lobbyCode, 
   players, 
   onStartGame, 
-  gameMode, 
-  onChangeGameMode,
-  gameModeSettings,
-  onUpdateGameModeSettings 
+  onBackToMenu,
+  setCustomSongs,
+  isLoading,
+  createRoom,
+  onKickPlayer,
+  updateRoomGamemode
 }: HostLobbyProps) {
   const [isStarting, setIsStarting] = useState(false);
-  const joinUrl = `${window.location.origin}?join=${roomCode}`;
+  const joinUrl = `${window.location.origin}?join=${lobbyCode}`;
   
+  const gameMode = room?.gamemode || 'classic';
+  const gameModeSettings = room?.gamemode_settings || {};
+
   const handleStartGame = async () => {
     setIsStarting(true);
     try {
       await onStartGame();
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const handleChangeGameMode = async (mode: GameMode) => {
+    if (updateRoomGamemode) {
+      await updateRoomGamemode(mode, gameModeSettings);
+    }
+  };
+
+  const handleUpdateGameModeSettings = async (settings: any) => {
+    if (updateRoomGamemode) {
+      await updateRoomGamemode(gameMode, settings);
     }
   };
 
@@ -67,6 +88,40 @@ export function HostLobby({
 
   const currentModeInfo = getGameModeInfo(gameMode);
 
+  // Auto-create room if we don't have one yet
+  useEffect(() => {
+    if (!room && !isLoading) {
+      console.log('🏠 Auto-creating room...');
+      createRoom();
+    }
+  }, [room, isLoading, createRoom]);
+
+  // Show loading while creating room
+  if (!room && isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-2xl font-semibold mb-2">Creating room...</div>
+          <div className="text-white/60">Setting up your game lobby</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if room creation failed
+  if (!room && !isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="text-2xl font-semibold mb-4">Failed to create room</div>
+          <Button onClick={onBackToMenu} variant="outline">
+            Back to Menu
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 p-4">
       <div className="max-w-6xl mx-auto">
@@ -96,7 +151,7 @@ export function HostLobby({
                         ? 'border-blue-500 bg-blue-50' 
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
-                    onClick={() => onChangeGameMode(mode)}
+                    onClick={() => handleChangeGameMode(mode)}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       {info.icon}
@@ -115,7 +170,7 @@ export function HostLobby({
                   </label>
                   <select
                     value={gameModeSettings.rounds || 5}
-                    onChange={(e) => onUpdateGameModeSettings({ 
+                    onChange={(e) => handleUpdateGameModeSettings({ 
                       ...gameModeSettings, 
                       rounds: parseInt(e.target.value) 
                     })}
@@ -136,7 +191,7 @@ export function HostLobby({
                   </label>
                   <select
                     value={gameModeSettings.targetCards || 8}
-                    onChange={(e) => onUpdateGameModeSettings({ 
+                    onChange={(e) => handleUpdateGameModeSettings({ 
                       ...gameModeSettings, 
                       targetCards: parseInt(e.target.value) 
                     })}
@@ -172,8 +227,16 @@ export function HostLobby({
                       key={player.id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
-                      <PlayerCharacterDisplay player={player} size="medium" />
-                      <Badge variant="secondary">Ready</Badge>
+                      <PlayerCharacterDisplay player={player} size="small" showName={true} />
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Ready</Badge>
+                        <button
+                          onClick={() => onKickPlayer(player.id)}
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -189,7 +252,7 @@ export function HostLobby({
             <CardContent className="space-y-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600 mb-2">
-                  {roomCode}
+                  {lobbyCode}
                 </div>
                 <p className="text-sm text-gray-600 mb-4">
                   Room Code
@@ -217,7 +280,12 @@ export function HostLobby({
             <p className="text-white/60 text-sm mt-2">
               At least 1 player must join to start the game
             </p>
-          )}
+            )}
+          <div className="mt-4">
+            <Button onClick={onBackToMenu} variant="outline" className="text-white border-white/30 hover:bg-white/10">
+              Back to Menu
+            </Button>
+          </div>
         </div>
       </div>
     </div>
