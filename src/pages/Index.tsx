@@ -181,15 +181,13 @@ function Index() {
     soundEffects.playButtonClick();
   };
 
-  const handleKickPlayer = async (playerId: string): Promise<boolean> => {
+  const handleKickPlayer = async (playerId: string) => {
     if (kickPlayer) {
       const success = await kickPlayer(playerId);
       if (success) {
         soundEffects.playButtonClick();
-        return true;
       }
     }
-    return false;
   };
 
   const handlePlayAgain = () => {

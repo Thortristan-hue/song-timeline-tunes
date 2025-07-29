@@ -92,28 +92,19 @@ export function useFiendGameLogic(
       }
 
       if (optimizedSongs.length < gameState.totalRounds) {
-        console.warn(`⚠️ Only ${optimizedSongs.length} songs available for ${gameState.totalRounds} rounds, adjusting...`);
+        throw new Error(`Not enough songs for ${gameState.totalRounds} rounds`);
       }
 
       console.log(`🎯 Fiend Mode: Ready with ${optimizedSongs.length} songs for ${gameState.totalRounds} rounds`);
 
-      // Set the first song when initializing
-      const firstSong = optimizedSongs[0];
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
         availableSongs: optimizedSongs,
         currentRound: 1,
-        currentSong: firstSong,
         timeLeft: 30,
-        playlistInitialized: true,
-        totalRounds: Math.min(prev.totalRounds, optimizedSongs.length) // Adjust rounds to available songs
+        playlistInitialized: true
       }));
-
-      // Set the first song in the room
-      if (onSetCurrentSong && firstSong) {
-        await onSetCurrentSong(firstSong);
-      }
 
     } catch (error) {
       console.error('❌ Fiend Mode initialization failed:', error);
@@ -126,7 +117,7 @@ export function useFiendGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, gameState.playlistInitialized, gameState.totalRounds, onSetCurrentSong]);
+  }, [toast, gameState.playlistInitialized, gameState.totalRounds]);
 
   // Submit year guess
   const submitGuess = useCallback(async (year: number, playerId: string): Promise<{ success: boolean; accuracy?: number; points?: number }> => {
@@ -196,29 +187,9 @@ export function useFiendGameLogic(
         return;
       }
 
-      // Get next song - fix the indexing issue and add bounds checking
-      const nextSongIndex = nextRoundNumber - 1;
+      // Get next song
+      const nextSong = gameState.availableSongs[nextRoundNumber - 1];
       
-      if (nextSongIndex >= gameState.availableSongs.length) {
-        console.error('❌ No next song available for round', nextRoundNumber, 'available songs:', gameState.availableSongs.length);
-        
-        // End game early if we run out of songs
-        const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
-        const winner = sortedPlayers[0];
-        
-        setGameState(prev => ({
-          ...prev,
-          phase: 'finished',
-          winner
-        }));
-        
-        await GameService.endGame(roomId, winner?.id);
-        return;
-      }
-      
-      const nextSong = gameState.availableSongs[nextSongIndex];
-      console.log(`🎵 Advancing to round ${nextRoundNumber} with song:`, nextSong.deezer_title);
-
       // Update game state
       setGameState(prev => ({
         ...prev,

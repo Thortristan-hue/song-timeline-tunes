@@ -23,18 +23,9 @@ export default defineConfig(({ mode }) => ({
       "Cross-Origin-Embedder-Policy": "require-corp",
     },
   },
-  // Configure proper MIME types for audio files
-  assetsInclude: ['**/*.mp3', '**/*.wav', '**/*.ogg'],
   build: {
     rollupOptions: {
       output: {
-        // Ensure audio files are properly handled
-        assetFileNames: (assetInfo) => {
-          if (assetInfo.name && /\.(mp3|wav|ogg)$/i.test(assetInfo.name)) {
-            return 'sounds/[name].[ext]';
-          }
-          return 'assets/[name]-[hash].[ext]';
-        },
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: [

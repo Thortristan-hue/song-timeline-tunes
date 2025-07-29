@@ -137,17 +137,7 @@ export default function MobilePlayerGameView({
         setPlayingPreviewId(song.id);
         audio.play().catch(err => {
           console.error('Audio play failed:', err);
-          // ENHANCED: More specific error handling for better debugging
-          if (err.name === 'NotAllowedError') {
-            console.warn('🎵 Preview audio blocked by browser policy - preview unavailable but game continues');
-            setError('Preview blocked by browser - try clicking to enable audio');
-          } else if (err.name === 'NotSupportedError') {
-            console.warn('🎵 Preview audio format not supported or MIME type issue - preview unavailable but game continues');
-            setError('Preview format not supported');
-          } else {
-            console.warn('🎵 Preview audio error - preview unavailable but game continues:', err.message);
-            setError('Failed to play preview');
-          }
+          setError('Failed to play preview');
           cleanupAudio();
         });
       };
@@ -155,25 +145,8 @@ export default function MobilePlayerGameView({
         setPlayingPreviewId(null);
         setPreviewAudio(null);
       };
-      audio.onerror = (e) => {
-        const target = e.target as HTMLAudioElement;
-        const error = target.error;
-        console.error('❌ Preview audio load error:', {
-          code: error?.code,
-          message: error?.message,
-          src: target.src
-        });
-        // ENHANCED: Better error messages based on error type
-        if (error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-          console.warn('🎵 Preview audio source not supported or MIME type issue - preview unavailable but game continues');
-          setError('Preview format not supported');
-        } else if (error?.code === MediaError.MEDIA_ERR_NETWORK) {
-          console.warn('🎵 Preview audio network error - preview unavailable but game continues');
-          setError('Network error loading preview');
-        } else {
-          console.warn('🎵 Preview audio load failed - preview unavailable but game continues');
-          setError('Failed to load preview');
-        }
+      audio.onerror = () => {
+        setError('Failed to load preview');
         cleanupAudio();
       };
 

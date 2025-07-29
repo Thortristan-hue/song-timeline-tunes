@@ -1,103 +1,207 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GAME_CHARACTERS, Character } from '@/constants/characters';
-import { Player } from '@/types/game';
+import { ArrowLeft, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { GAME_CHARACTERS, getDefaultCharacter } from '@/constants/characters';
 
 interface MobilePlayerSetupProps {
-  onUpdatePlayer: (updates: Partial<Player>) => Promise<boolean>;
-  currentPlayer: Player;
+  lobbyCode: string;
+  onPlayerSetup: (name: string, character: string) => Promise<boolean>;
+  onBackToCodeEntry: () => void;
+  isLoading?: boolean;
 }
 
-export function MobilePlayerSetup({ onUpdatePlayer, currentPlayer }: MobilePlayerSetupProps) {
-  const [name, setName] = useState(currentPlayer.name);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character>(
-    GAME_CHARACTERS.find(char => char.id === currentPlayer.character) || GAME_CHARACTERS[0]
-  );
-  const [isUpdating, setIsUpdating] = useState(false);
+export function MobilePlayerSetup({ 
+  lobbyCode, 
+  onPlayerSetup, 
+  onBackToCodeEntry, 
+  isLoading = false 
+}: MobilePlayerSetupProps) {
+  const [playerName, setPlayerName] = useState('');
+  const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0); // Default to first character
+  const [error, setError] = useState('');
+  const soundEffects = useSoundEffects();
+  const { toast } = useToast();
 
-  const handleSave = async () => {
-    if (!name.trim()) return;
+  const selectedCharacter = GAME_CHARACTERS[selectedCharacterIndex];
 
-    setIsUpdating(true);
+  const handlePreviousCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === 0 ? GAME_CHARACTERS.length - 1 : prev - 1
+    );
+    soundEffects.playButtonClick();
+  };
+
+  const handleNextCharacter = () => {
+    setSelectedCharacterIndex(prev => 
+      prev === GAME_CHARACTERS.length - 1 ? 0 : prev + 1
+    );
+    soundEffects.playButtonClick();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!playerName.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
+    if (playerName.trim().length < 2) {
+      setError('Name must be at least 2 characters');
+      return;
+    }
+
+    if (playerName.trim().length > 20) {
+      setError('Name must be less than 20 characters');
+      return;
+    }
+
+    // Ensure we always have a character selected
+    if (!selectedCharacter) {
+      setError('Please select a character');
+      return;
+    }
+
+    console.log('🎮 Player setup: Joining with name:', playerName.trim(), 'character:', selectedCharacter.id);
+    
     try {
-      const success = await onUpdatePlayer({
-        name: name.trim(),
-        character: selectedCharacter.id
-      });
-      
+      const success = await onPlayerSetup(playerName.trim(), selectedCharacter.id);
       if (success) {
-        console.log('✅ Player setup saved successfully');
+        soundEffects.playPlayerJoin();
       } else {
-        console.error('❌ Failed to save player setup');
+        setError('Failed to join room. Please try again.');
       }
-    } catch (error) {
-      console.error('Error saving player setup:', error);
-    } finally {
-      setIsUpdating(false);
+    } catch (err) {
+      console.error('❌ Join room error:', err);
+      setError('Failed to join room. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-        <h2 className="text-2xl font-bold text-white text-center mb-6">Setup Your Profile</h2>
+    <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#107793]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute top-1/2 right-1/4 w-40 h-40 bg-[#a53b8b]/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-[#4a4f5b]/8 rounded-full blur-2xl animate-pulse" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 py-8">
         
-        <div className="space-y-6">
-          <div>
-            <Label htmlFor="player-name" className="text-white mb-2 block">Your Name</Label>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#107793] to-[#a53b8b] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <User className="w-10 h-10 text-white" />
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Set Up Your Profile
+          </h1>
+          <p className="text-[#d9e8dd] text-lg mb-2">
+            Choose your name and character
+          </p>
+          <div className="inline-flex items-center px-3 py-1 bg-white/10 rounded-full">
+            <span className="text-[#4CC9F0] font-mono font-bold text-sm">Room: {lobbyCode}</span>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6">
+          {/* Name Input */}
+          <div className="space-y-2">
+            <Label htmlFor="player-name" className="text-white font-medium">
+              Your Name
+            </Label>
             <Input
               id="player-name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Enter your name"
-              className="bg-white/20 border-white/30 text-white placeholder:text-white/70"
+              className="w-full h-12 px-4 bg-white/10 border-white/20 text-white placeholder-white/50 focus:ring-2 focus:ring-[#107793] focus:border-transparent"
               maxLength={20}
+              disabled={isLoading}
             />
           </div>
 
-          <div>
-            <Label className="text-white mb-4 block">Choose Your Character</Label>
-            <div className="grid grid-cols-3 gap-3 max-h-64 overflow-y-auto">
-              {GAME_CHARACTERS.map((character) => (
-                <button
-                  key={character.id}
-                  onClick={() => setSelectedCharacter(character)}
-                  className={`
-                    relative p-2 rounded-xl transition-all duration-200 
-                    ${selectedCharacter.id === character.id
-                      ? 'ring-2 ring-yellow-400 bg-white/20'
-                      : 'bg-white/10 hover:bg-white/15'
-                    }
-                  `}
-                >
-                  <img
-                    src={character.image}
-                    alt={character.name}
-                    className="w-full h-16 object-contain"
+          {/* Character Selection Carousel */}
+          <div className="space-y-4">
+            <Label className="text-white font-medium flex items-center gap-2">
+              <User className="w-4 h-4" />
+              Choose Your Character
+            </Label>
+            
+            <div className="flex items-center justify-center gap-4">
+              {/* Previous Button */}
+              <button
+                type="button"
+                onClick={handlePreviousCharacter}
+                className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              {/* Character Display */}
+              <div className="flex flex-col items-center">
+                <div className="w-24 h-24 rounded-2xl border-2 border-white shadow-lg overflow-hidden bg-white/5 backdrop-blur-sm">
+                  <img 
+                    src={selectedCharacter.image} 
+                    alt={selectedCharacter.name}
+                    className="w-full h-full object-cover"
                   />
-                  <p className="text-white text-xs mt-1 font-medium">{character.name}</p>
-                  {selectedCharacter.id === character.id && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <span className="text-black text-xs font-bold">✓</span>
-                    </div>
-                  )}
-                </button>
-              ))}
+                </div>
+                <p className="text-white text-sm font-medium mt-2">
+                  {selectedCharacter.name}
+                </p>
+                <p className="text-white/60 text-xs">
+                  {selectedCharacterIndex + 1} / {GAME_CHARACTERS.length}
+                </p>
+              </div>
+
+              {/* Next Button */}
+              <button
+                type="button"
+                onClick={handleNextCharacter}
+                className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-200 disabled:opacity-50"
+                disabled={isLoading}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
+          {error && (
+            <p className="text-red-400 text-sm">{error}</p>
+          )}
+
           <Button
-            onClick={handleSave}
-            disabled={!name.trim() || isUpdating}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            type="submit"
+            className="w-full h-14 bg-gradient-to-r from-[#107793] to-[#a53b8b] hover:from-[#a53b8b] hover:to-[#107793] text-white font-semibold text-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
+            disabled={isLoading || !playerName.trim() || !selectedCharacter}
           >
-            {isUpdating ? 'Saving...' : 'Save & Continue'}
+            {isLoading ? 'Joining...' : 'Join Game'}
           </Button>
-        </div>
+        </form>
+
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={onBackToCodeEntry}
+          className="mt-8 text-white/70 hover:text-white hover:bg-white/5 transition-all duration-300"
+          disabled={isLoading}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Change Code
+        </Button>
       </div>
     </div>
   );

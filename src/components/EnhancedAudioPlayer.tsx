@@ -79,14 +79,6 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           })
           .catch(error => {
             console.error('❌ Audio play failed:', error);
-            // CRITICAL: Never block game logic - always allow game to continue
-            if (error.name === 'NotAllowedError') {
-              console.warn('🎵 Audio blocked by browser policy - game continues normally');
-            } else if (error.name === 'NotSupportedError') {
-              console.warn('🎵 Audio format not supported or MIME type issue - game continues normally');
-            } else {
-              console.warn('🎵 Audio error occurred - game continues normally:', error.message);
-            }
             onPlayPause();
           });
       }

@@ -59,18 +59,16 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
           })
           .catch(error => {
             console.error('❌ Audio play failed:', error);
-            // CRITICAL: Never block game logic - reset playing state but allow game to continue
+            // Reset playing state if audio fails
             if (error.name === 'AbortError') {
-              console.log('🔄 Audio aborted, likely due to source change - game continues normally');
+              console.log('🔄 Audio aborted, likely due to source change');
             } else if (error.name === 'NotSupportedError') {
-              console.log('🔄 Audio format not supported or MIME type issue - game continues normally');
-            } else if (error.name === 'NotAllowedError') {
-              console.log('🔄 Audio blocked by browser policy - game continues normally');
+              console.log('🔄 Audio format not supported or URL expired');
+              onPlayPause(); // Reset state
             } else {
-              console.log('🔄 Audio error occurred - game continues normally:', error.message);
+              console.log('🔄 Other audio error, resetting state');
+              onPlayPause(); // Reset state
             }
-            // Reset state on any error but don't prevent game flow
-            onPlayPause(); // Reset state
           });
       }
     } else {
