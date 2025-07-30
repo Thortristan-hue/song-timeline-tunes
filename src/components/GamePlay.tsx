@@ -1,18 +1,13 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import { useGameRoom } from '@/hooks/useGameRoom';
-import { Timeline } from '@/components/Timeline';
-import { CardGrid } from '@/components/CardGrid';
-import { GameService } from '@/services/gameService';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Shuffle, CheckCircle, XCircle } from 'lucide-react';
 import { GameLogic } from '@/services/gameLogic';
+import { useToast } from '@/hooks/use-toast';
 import { Feedback } from '@/components/Feedback';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
-import { SongCard } from './SongCard';
+import { HostVisuals } from '@/components/HostVisuals';
+import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -50,7 +45,13 @@ export function GamePlay({
   const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean; song: Song | null }>({ show: false, correct: false, song: null });
   const [winner, setWinner] = useState<Player | null>(null);
   const [showVictoryScreen, setShowVictoryScreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
+  const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const { fire } = useConfettiStore();
+
+  // Find current turn player
+  const currentTurnPlayer = players.find(p => p.id === room.current_turn_player_id) || players[0];
 
   useEffect(() => {
     if (room && currentPlayer && players) {
@@ -85,13 +86,19 @@ export function GamePlay({
             song: song
           });
           
+          setCardPlacementResult({
+            correct: result.correct,
+            song: song
+          });
+          
           // Auto-hide feedback after delay
           setTimeout(() => {
             setFeedback({ show: false, correct: false, song: null });
-          }, 2000);
+            setCardPlacementResult(null);
+          }, 3000);
         }
         
-        // Check for game end - the result should now include these properties
+        // Check for game end
         if (result.gameEnded && result.winner) {
           console.log('🎉 Game ended with winner:', result.winner.name);
           setWinner(result.winner);
@@ -110,6 +117,10 @@ export function GamePlay({
     }
   };
 
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
   const handleSetMysteryCard = async () => {
     if (!isHost || !gameLogic) return;
 
@@ -119,6 +130,7 @@ export function GamePlay({
       if (song) {
         console.log('🎵 Setting mystery card:', song.deezer_title);
         await onSetCurrentSong(song);
+        setMysteryCardRevealed(true);
       } else {
         console.warn('No available songs to set as mystery card');
         toast({
@@ -141,7 +153,6 @@ export function GamePlay({
 
   const handleBackToMenu = () => {
     setShowVictoryScreen(false);
-    // Navigate back to menu - this would need proper routing implementation
     window.location.reload();
   };
 
@@ -155,59 +166,56 @@ export function GamePlay({
     return <div>Loading game...</div>;
   }
 
+  // Show victory screen
+  if (showVictoryScreen && winner) {
+    return (
+      <VictoryScreen 
+        winner={winner} 
+        players={players || []}
+        onPlayAgain={handlePlayAgain}
+        onBackToMenu={handleBackToMenu}
+      />
+    );
+  }
+
+  // Show feedback overlay
+  if (feedback.show) {
+    return <Feedback correct={feedback.correct} song={feedback.song} />;
+  }
+
+  // Host view - use HostVisuals component
+  if (isHost) {
+    return (
+      <HostVisuals
+        currentTurnPlayer={currentTurnPlayer}
+        currentSong={room.current_song}
+        roomCode={room.lobby_code}
+        players={players}
+        mysteryCardRevealed={mysteryCardRevealed}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        cardPlacementResult={cardPlacementResult}
+        transitioning={isProcessingMove}
+        highlightedGapIndex={null}
+        mobileViewport={null}
+      />
+    );
+  }
+
+  // Player view - use MobilePlayerGameView component
   return (
-    <div className="flex flex-col h-full">
-      {feedback.show && (
-        <Feedback correct={feedback.correct} song={feedback.song} />
-      )}
-
-      {showVictoryScreen && winner && (
-        <VictoryScreen 
-          winner={winner} 
-          players={players || []}
-          onPlayAgain={handlePlayAgain}
-          onBackToMenu={handleBackToMenu}
-        />
-      )}
-
-      <div className="flex justify-between items-center p-4">
-        <h2 className="text-xl font-bold">
-          Turn: {room?.current_turn}
-        </h2>
-        {isHost && (
-          <Button
-            onClick={handleSetMysteryCard}
-            disabled={isProcessingMove}
-            className="bg-blue-500 text-white rounded-md px-4 py-2 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          >
-            <Shuffle className="mr-2 h-4 w-4" />
-            Set Mystery Card
-          </Button>
-        )}
-      </div>
-
-      {room?.current_song && (
-        <div className="p-4">
-          <h3 className="text-lg font-semibold">Mystery Card</h3>
-          <SongCard song={room.current_song} />
-        </div>
-      )}
-
-      <div className="flex-grow">
-        <Timeline
-          songs={currentPlayer?.timeline || []}
-          onCardClick={handleCardPlacement}
-          isProcessingMove={isProcessingMove}
-        />
-      </div>
-
-      <div className="p-4">
-        <CardGrid
-          availableSongs={gameLogic.availableSongs}
-          onCardClick={handleCardPlacement}
-          isProcessingMove={isProcessingMove}
-        />
-      </div>
-    </div>
+    <MobilePlayerGameView
+      room={room}
+      currentPlayer={currentPlayer}
+      players={players}
+      currentTurnPlayer={currentTurnPlayer}
+      onPlaceCard={handleCardPlacement}
+      isProcessingMove={isProcessingMove}
+      mysteryCardRevealed={mysteryCardRevealed}
+      isPlaying={isPlaying}
+      onPlayPause={handlePlayPause}
+      connectionStatus={connectionStatus}
+      onReconnect={onReconnect}
+    />
   );
 }
