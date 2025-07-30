@@ -58,6 +58,8 @@ export function useClassicGameLogic(
         return !isHostLike;
       });
       
+      console.log('👥 CLASSIC MODE: Active players updated:', activePlayers.length);
+      
       setGameState(prev => ({
         ...prev,
         players: activePlayers
@@ -75,27 +77,29 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // CRITICAL FIX: Single comprehensive room data handler
+  // Enhanced room data handler with proper mystery card sync
   useEffect(() => {
     if (!roomData) return;
 
-    console.log('🎯 Classic Mode: Processing room data update:', {
+    console.log('🎯 CLASSIC MODE: Processing room update:', {
       currentSong: roomData.current_song?.deezer_title || 'none',
       songsCount: roomData.songs?.length || 0,
       phase: roomData.phase,
-      gameFullyInitialized: gameState.gameFullyInitialized
+      gameInitialized: gameState.gameFullyInitialized
     });
 
-    // Update basic room state
-    setGameState(prev => ({
-      ...prev,
-      currentSong: roomData.current_song || prev.currentSong,
-      currentTurnIndex: roomData.current_turn || 0
-    }));
+    // CRITICAL: Always sync current song from room data
+    if (roomData.current_song) {
+      console.log('🎵 CLASSIC MODE: Syncing mystery card from room:', roomData.current_song.deezer_title);
+      setGameState(prev => ({
+        ...prev,
+        currentSong: roomData.current_song
+      }));
+    }
 
-    // CRITICAL: Handle songs from room data and initialize game properly
+    // Handle songs initialization
     if (roomData.songs && roomData.songs.length > 0 && !gameState.gameFullyInitialized) {
-      console.log('🎵 Classic Mode: Initializing game with songs from room data:', roomData.songs.length);
+      console.log('🎵 CLASSIC MODE: Initializing with room songs:', roomData.songs.length);
       
       setGameState(prev => ({
         ...prev,
@@ -105,31 +109,29 @@ export function useClassicGameLogic(
         gameFullyInitialized: true,
         phase: roomData.phase === 'playing' ? 'playing' : 'ready'
       }));
-
-      // If we don't have a current song and we have available songs, set the first one
-      if (!roomData.current_song && roomData.songs.length > 0 && onSetCurrentSong) {
-        console.log('🎵 Classic Mode: Setting initial mystery card from available songs');
-        const firstSong = roomData.songs[0];
-        onSetCurrentSong(firstSong).catch(error => {
-          console.error('Failed to set initial mystery card:', error);
-        });
-      }
     } 
-    // If we already have songs and room phase changes to playing, update phase
+    // Update phase if already initialized
     else if (gameState.gameFullyInitialized && roomData.phase === 'playing') {
-      console.log('🎯 Classic Mode: Room phase changed to playing with existing game state');
+      console.log('🎯 CLASSIC MODE: Updating phase to playing');
       setGameState(prev => ({
         ...prev,
         phase: 'playing'
       }));
     }
-  }, [roomData, gameState.gameFullyInitialized, onSetCurrentSong]);
+
+    // Always sync turn index
+    setGameState(prev => ({
+      ...prev,
+      currentTurnIndex: roomData.current_turn || 0
+    }));
+
+  }, [roomData, gameState.gameFullyInitialized]);
 
   // Initialize game with optimized song loading (fallback for local song fetching)
   const initializeGame = useCallback(async () => {
     // If we already have songs from room data, don't fetch again
     if (roomData?.songs && roomData.songs.length > 0) {
-      console.log('🎵 Classic Mode: Using existing songs from room data, skipping fetch');
+      console.log('🎵 CLASSIC MODE: Using existing songs from room data, skipping fetch');
       setGameState(prev => ({
         ...prev,
         phase: 'ready',
@@ -142,7 +144,7 @@ export function useClassicGameLogic(
     }
 
     if (gameState.playlistInitialized) {
-      console.log('🎵 Classic Mode: Playlist already initialized, setting to ready');
+      console.log('🎵 CLASSIC MODE: Playlist already initialized, setting to ready');
       setGameState(prev => ({ ...prev, phase: 'ready' }));
       return;
     }
@@ -150,7 +152,7 @@ export function useClassicGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🎯 Classic Mode: Loading ${MAX_SONGS_PER_SESSION} songs`);
+      console.log(`🎯 CLASSIC MODE: Loading ${MAX_SONGS_PER_SESSION} songs`);
       const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
@@ -161,7 +163,7 @@ export function useClassicGameLogic(
         throw new Error(`Not enough songs with valid audio previews (${optimizedSongs.length}/8 minimum)`);
       }
 
-      console.log(`🎯 Classic Mode: Ready with ${optimizedSongs.length} songs`);
+      console.log(`🎯 CLASSIC MODE: Ready with ${optimizedSongs.length} songs`);
 
       setGameState(prev => ({
         ...prev,
@@ -175,10 +177,10 @@ export function useClassicGameLogic(
         gameFullyInitialized: true
       }));
 
-      console.log('✅ Classic Mode: Initialization complete');
+      console.log('✅ CLASSIC MODE: Initialization complete');
 
     } catch (error) {
-      console.error('❌ Classic Mode initialization failed:', error);
+      console.error('❌ CLASSIC MODE initialization failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to initialize classic mode';
       setGameState(prev => ({ 
         ...prev, 
@@ -207,7 +209,7 @@ export function useClassicGameLogic(
       return { success: false };
     }
 
-    console.log('🎯 Classic Mode: Attempting to place card with available songs:', gameState.availableSongs.length);
+    console.log('🎯 CLASSIC MODE: Attempting to place card with available songs:', gameState.availableSongs.length);
 
     try {
       const result = await GameService.placeCardAndAdvanceTurn(

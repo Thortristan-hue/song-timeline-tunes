@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -15,7 +14,7 @@ interface PlaceCardResult {
 export class GameService {
   static async initializeGameWithStartingCards(roomId: string, songs: Song[]): Promise<void> {
     try {
-      console.log('Initializing game with starting cards for room:', roomId);
+      console.log('🎯 GAME INIT: Starting initialization for room:', roomId, 'with', songs.length, 'songs');
 
       // Fetch all players in the room
       const { data: players, error: playersError } = await supabase
@@ -24,42 +23,72 @@ export class GameService {
         .eq('room_id', roomId);
 
       if (playersError) {
-        console.error('Error fetching players:', playersError);
+        console.error('❌ Error fetching players:', playersError);
         throw playersError;
       }
 
-      console.log('Players in room:', players);
+      console.log('👥 Players in room for initialization:', players.length);
 
-      // Assign a random starting card to each player
-      for (const player of players) {
-        if (Array.isArray(player.timeline) && player.timeline.length === 0) {
-          const randomSong = songs[Math.floor(Math.random() * songs.length)];
+      // Set the first song as the current mystery card
+      let mysteryCard: Song | null = null;
+      if (songs.length > 0) {
+        mysteryCard = songs[0];
+        console.log('🎵 Setting mystery card:', mysteryCard.deezer_title);
+        
+        // Update room with the mystery card
+        const { error: roomUpdateError } = await supabase
+          .from('game_rooms')
+          .update({ 
+            current_song: mysteryCard as unknown as Json,
+            songs: songs as unknown as Json 
+          })
+          .eq('id', roomId);
 
-          // Update player's timeline with the random song
-          const { error: updateError } = await supabase
-            .from('players')
-            .update({ timeline: [randomSong] as unknown as Json })
-            .eq('id', player.id);
-
-          if (updateError) {
-            console.error('Error updating player timeline:', updateError);
-          } else {
-            console.log(`Assigned starting card ${randomSong.deezer_title} to player ${player.name}`);
-          }
-        } else {
-          console.log(`Player ${player.name} already has a timeline, skipping...`);
+        if (roomUpdateError) {
+          console.error('❌ Failed to set mystery card:', roomUpdateError);
+          throw roomUpdateError;
         }
       }
 
-      console.log('Finished assigning starting cards to players.');
+      // Assign starting cards to players (skip the mystery card)
+      const startingCards = songs.slice(1); // Skip first song (mystery card)
+      
+      for (const player of players) {
+        if (Array.isArray(player.timeline) && player.timeline.length === 0) {
+          // Get a random starting card (not the mystery card)
+          const randomIndex = Math.floor(Math.random() * startingCards.length);
+          const randomSong = startingCards[randomIndex];
+
+          if (randomSong) {
+            console.log(`🎴 Assigning starting card "${randomSong.deezer_title}" to player ${player.name}`);
+
+            // Update player's timeline with the random song
+            const { error: updateError } = await supabase
+              .from('players')
+              .update({ timeline: [randomSong] as unknown as Json })
+              .eq('id', player.id);
+
+            if (updateError) {
+              console.error('❌ Error updating player timeline:', updateError);
+            } else {
+              console.log(`✅ Starting card assigned to ${player.name}`);
+            }
+          }
+        } else {
+          console.log(`⚠️ Player ${player.name} already has a timeline, skipping...`);
+        }
+      }
+
+      console.log('✅ GAME INIT: Finished assigning starting cards and mystery card');
     } catch (error) {
-      console.error('Failed to initialize game with starting cards:', error);
+      console.error('❌ GAME INIT: Failed to initialize game:', error);
+      throw error;
     }
   }
 
   static async setCurrentSong(roomId: string, song: Song): Promise<void> {
     try {
-      console.log('Setting current song for room:', roomId, 'to', song.deezer_title);
+      console.log('🎵 Setting current song for room:', roomId, 'to', song.deezer_title);
 
       const { error } = await supabase
         .from('game_rooms')
@@ -67,13 +96,13 @@ export class GameService {
         .eq('id', roomId);
 
       if (error) {
-        console.error('Failed to set current song:', error);
+        console.error('❌ Failed to set current song:', error);
         throw error;
       }
 
-      console.log('Current song updated successfully.');
+      console.log('✅ Current song updated successfully.');
     } catch (error) {
-      console.error('Failed to set current song:', error);
+      console.error('❌ Failed to set current song:', error);
       throw error;
     }
   }
