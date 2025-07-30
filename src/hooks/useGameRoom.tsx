@@ -56,7 +56,7 @@ export function useGameRoom() {
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
   // Create stable callback for GAME_STARTED to avoid re-subscriptions
-  const handleGameStarted = useCallback((data: any) => {
+  const handleGameStarted = useCallback((data: { room?: any; timestamp?: number }) => {
     console.log('🎮 WebSocket GAME_STARTED received:', data);
     // Handle synchronized game start with songs
     if (data.room) {
