@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { GameLogic } from '@/services/gameLogic';
@@ -6,8 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Feedback } from '@/components/Feedback';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
-import { HostVisuals } from '@/components/HostVisuals';
-import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
+import { HostGameView } from '@/components/HostVisuals';
+import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -51,7 +50,7 @@ export function GamePlay({
   const { fire } = useConfettiStore();
 
   // Find current turn player
-  const currentTurnPlayer = players.find(p => p.id === room.current_turn_player_id) || players[0];
+  const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
 
   useEffect(() => {
     if (room && currentPlayer && players) {
@@ -183,10 +182,10 @@ export function GamePlay({
     return <Feedback correct={feedback.correct} song={feedback.song} />;
   }
 
-  // Host view - use HostVisuals component
+  // Host view - use HostGameView component
   if (isHost) {
     return (
-      <HostVisuals
+      <HostGameView
         currentTurnPlayer={currentTurnPlayer}
         currentSong={room.current_song}
         roomCode={room.lobby_code}
@@ -205,17 +204,17 @@ export function GamePlay({
   // Player view - use MobilePlayerGameView component
   return (
     <MobilePlayerGameView
-      room={room}
       currentPlayer={currentPlayer}
-      players={players}
       currentTurnPlayer={currentTurnPlayer}
-      onPlaceCard={handleCardPlacement}
-      isProcessingMove={isProcessingMove}
-      mysteryCardRevealed={mysteryCardRevealed}
+      currentSong={room.current_song}
+      roomCode={room.lobby_code}
+      isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
       isPlaying={isPlaying}
       onPlayPause={handlePlayPause}
-      connectionStatus={connectionStatus}
-      onReconnect={onReconnect}
+      onPlaceCard={handleCardPlacement}
+      mysteryCardRevealed={mysteryCardRevealed}
+      cardPlacementResult={cardPlacementResult}
+      gameEnded={room.phase === 'finished'}
     />
   );
 }
