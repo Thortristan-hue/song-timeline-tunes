@@ -149,7 +149,7 @@ export class WebSocketService {
   }
 
   private handleMessage(message: GameStateMessage) {
-    // Simulate server-side behavior for song synchronization
+    // ENHANCED: Handle HOST_SET_SONGS with proper game initialization
     if (message.type === 'HOST_SET_SONGS') {
       this.handleHostSetSongs(message);
       return;
@@ -167,7 +167,7 @@ export class WebSocketService {
     }
   }
 
-  private handleHostSetSongs(message: GameStateMessage) {
+  private async handleHostSetSongs(message: GameStateMessage) {
     console.log('🎯 HOST_SET_SONGS received:', message.data);
     
     // Verify this is from the host (in a real server, we'd check session/auth)
@@ -182,37 +182,54 @@ export class WebSocketService {
     this.roomSongs = songList || [];
     console.log(`📦 Server stored ${this.roomSongs.length} songs for room ${roomId}`);
 
-    // Broadcast GAME_STARTED to all clients (simulate server broadcast)
-    const gameStartedMessage: GameStateMessage = {
-      type: 'GAME_STARTED',
-      roomId: roomId,
-      data: {
-        room: {
-          id: roomId,
-          phase: 'playing',
-          songs: this.roomSongs,
-          // Include other room data that clients need
-        },
-        timestamp: Date.now()
-      },
-      timestamp: Date.now()
-    };
+    // ENHANCED: Simulate server-side game initialization
+    try {
+      console.log('🎮 Server initializing game with starting cards...');
+      
+      // Import GameService dynamically to avoid circular dependencies
+      const { GameService } = await import('./gameService');
+      
+      // Initialize the game with proper starting cards and mystery card
+      await GameService.initializeGameWithStartingCards(roomId, this.roomSongs);
+      
+      console.log('✅ Server-side game initialization complete');
+      
+      // Small delay to ensure database updates are committed
+      setTimeout(() => {
+        // Broadcast GAME_STARTED to all clients (simulate server broadcast)
+        const gameStartedMessage: GameStateMessage = {
+          type: 'GAME_STARTED',
+          roomId: roomId,
+          data: {
+            room: {
+              id: roomId,
+              phase: 'playing',
+              songs: this.roomSongs,
+              initialized: true
+            },
+            timestamp: Date.now()
+          },
+          timestamp: Date.now()
+        };
 
-    console.log('📤 Server broadcasting GAME_STARTED:', gameStartedMessage);
-    
-    // Simulate server broadcast by triggering listeners
-    setTimeout(() => {
-      const listeners = this.listeners.get('GAME_STARTED');
-      if (listeners) {
-        listeners.forEach(listener => {
-          try {
-            listener(gameStartedMessage.data);
-          } catch (error) {
-            console.error('❌ Error in GAME_STARTED listener:', error);
-          }
-        });
-      }
-    }, 100); // Small delay to simulate server processing
+        console.log('📤 Server broadcasting GAME_STARTED:', gameStartedMessage);
+        
+        // Trigger listeners for GAME_STARTED
+        const listeners = this.listeners.get('GAME_STARTED');
+        if (listeners) {
+          listeners.forEach(listener => {
+            try {
+              listener(gameStartedMessage.data);
+            } catch (error) {
+              console.error('❌ Error in GAME_STARTED listener:', error);
+            }
+          });
+        }
+      }, 500); // 500ms delay to ensure all DB operations complete
+      
+    } catch (error) {
+      console.error('❌ Server-side game initialization failed:', error);
+    }
   }
 
   setHostStatus(isHost: boolean) {

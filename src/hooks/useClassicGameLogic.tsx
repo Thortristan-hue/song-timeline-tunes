@@ -58,7 +58,7 @@ export function useClassicGameLogic(
         return !isHostLike;
       });
       
-      console.log('👥 CLASSIC MODE: Active players updated:', activePlayers.length);
+      console.log('👥 CLASSIC MODE: Active players updated:', activePlayers.length, activePlayers.map(p => ({ name: p.name, timeline: p.timeline.length })));
       
       setGameState(prev => ({
         ...prev,
@@ -77,7 +77,7 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // Enhanced room data handler with proper mystery card sync
+  // CRITICAL: Enhanced room data handler with proper state synchronization
   useEffect(() => {
     if (!roomData) return;
 
@@ -88,8 +88,8 @@ export function useClassicGameLogic(
       gameInitialized: gameState.gameFullyInitialized
     });
 
-    // CRITICAL: Always sync current song from room data
-    if (roomData.current_song) {
+    // CRITICAL: Always sync current song (mystery card) from room data
+    if (roomData.current_song && roomData.current_song.deezer_title) {
       console.log('🎵 CLASSIC MODE: Syncing mystery card from room:', roomData.current_song.deezer_title);
       setGameState(prev => ({
         ...prev,
@@ -97,7 +97,7 @@ export function useClassicGameLogic(
       }));
     }
 
-    // Handle songs initialization
+    // Handle initial game setup from room data
     if (roomData.songs && roomData.songs.length > 0 && !gameState.gameFullyInitialized) {
       console.log('🎵 CLASSIC MODE: Initializing with room songs:', roomData.songs.length);
       
@@ -109,21 +109,24 @@ export function useClassicGameLogic(
         gameFullyInitialized: true,
         phase: roomData.phase === 'playing' ? 'playing' : 'ready'
       }));
-    } 
-    // Update phase if already initialized
-    else if (gameState.gameFullyInitialized && roomData.phase === 'playing') {
-      console.log('🎯 CLASSIC MODE: Updating phase to playing');
+    }
+    // Update phase when room transitions to playing
+    else if (gameState.gameFullyInitialized || (roomData.phase === 'playing' && roomData.current_song)) {
+      console.log('🎯 CLASSIC MODE: Game ready - transitioning to playing phase');
       setGameState(prev => ({
         ...prev,
-        phase: 'playing'
+        phase: 'playing',
+        gameFullyInitialized: true
       }));
     }
 
     // Always sync turn index
-    setGameState(prev => ({
-      ...prev,
-      currentTurnIndex: roomData.current_turn || 0
-    }));
+    if (typeof roomData.current_turn === 'number') {
+      setGameState(prev => ({
+        ...prev,
+        currentTurnIndex: roomData.current_turn || 0
+      }));
+    }
 
   }, [roomData, gameState.gameFullyInitialized]);
 

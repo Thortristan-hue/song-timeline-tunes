@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -16,67 +17,84 @@ export class GameService {
     try {
       console.log('🎯 GAME INIT: Starting initialization for room:', roomId, 'with', songs.length, 'songs');
 
-      // Fetch all players in the room
+      if (songs.length < 2) {
+        throw new Error('Need at least 2 songs to initialize game');
+      }
+
+      // Fetch all non-host players in the room
       const { data: players, error: playersError } = await supabase
         .from('players')
         .select('*')
-        .eq('room_id', roomId);
+        .eq('room_id', roomId)
+        .eq('is_host', false);
 
       if (playersError) {
         console.error('❌ Error fetching players:', playersError);
         throw playersError;
       }
 
-      console.log('👥 Players in room for initialization:', players.length);
+      console.log('👥 Non-host players in room for initialization:', players.length);
 
-      // Set the first song as the current mystery card
-      let mysteryCard: Song | null = null;
-      if (songs.length > 0) {
-        mysteryCard = songs[0];
-        console.log('🎵 Setting mystery card:', mysteryCard.deezer_title);
-        
-        // Update room with the mystery card
-        const { error: roomUpdateError } = await supabase
-          .from('game_rooms')
-          .update({ 
-            current_song: mysteryCard as unknown as Json,
-            songs: songs as unknown as Json 
-          })
-          .eq('id', roomId);
-
-        if (roomUpdateError) {
-          console.error('❌ Failed to set mystery card:', roomUpdateError);
-          throw roomUpdateError;
-        }
+      if (players.length === 0) {
+        throw new Error('No players found to start the game');
       }
 
-      // Assign starting cards to players (skip the mystery card)
-      const startingCards = songs.slice(1); // Skip first song (mystery card)
+      // Create a copy of songs to work with
+      let availableSongs = [...songs];
       
+      // Pick and remove mystery card from available songs
+      const mysteryCardIndex = Math.floor(Math.random() * availableSongs.length);
+      const mysteryCard = availableSongs.splice(mysteryCardIndex, 1)[0];
+      
+      console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
+
+      // CRITICAL: Update room with mystery card AND set phase to playing AND store all songs
+      const { error: roomUpdateError } = await supabase
+        .from('game_rooms')
+        .update({ 
+          current_song: mysteryCard as unknown as Json,
+          songs: songs as unknown as Json,
+          phase: 'playing',
+          current_turn: 0,
+          current_song_index: 0
+        })
+        .eq('id', roomId);
+
+      if (roomUpdateError) {
+        console.error('❌ Failed to update room:', roomUpdateError);
+        throw roomUpdateError;
+      }
+
+      console.log('✅ Room updated with mystery card and playing phase');
+
+      // Assign starting cards to each player
       for (const player of players) {
-        if (Array.isArray(player.timeline) && player.timeline.length === 0) {
-          // Get a random starting card (not the mystery card)
-          const randomIndex = Math.floor(Math.random() * startingCards.length);
-          const randomSong = startingCards[randomIndex];
-
-          if (randomSong) {
-            console.log(`🎴 Assigning starting card "${randomSong.deezer_title}" to player ${player.name}`);
-
-            // Update player's timeline with the random song
-            const { error: updateError } = await supabase
-              .from('players')
-              .update({ timeline: [randomSong] as unknown as Json })
-              .eq('id', player.id);
-
-            if (updateError) {
-              console.error('❌ Error updating player timeline:', updateError);
-            } else {
-              console.log(`✅ Starting card assigned to ${player.name}`);
-            }
-          }
-        } else {
-          console.log(`⚠️ Player ${player.name} already has a timeline, skipping...`);
+        if (availableSongs.length === 0) {
+          console.warn('⚠️ Ran out of songs to assign as starting cards');
+          break;
         }
+
+        // Pick a random starting card for this player
+        const startingCardIndex = Math.floor(Math.random() * availableSongs.length);
+        const startingCard = availableSongs.splice(startingCardIndex, 1)[0];
+
+        console.log(`🎴 Assigning starting card "${startingCard.deezer_title}" to player ${player.name}`);
+
+        // Update player's timeline with the starting card
+        const { error: updateError } = await supabase
+          .from('players')
+          .update({ 
+            timeline: [startingCard] as unknown as Json,
+            score: 0 // Ensure score is reset
+          })
+          .eq('id', player.id);
+
+        if (updateError) {
+          console.error('❌ Error updating player timeline:', updateError);
+          throw updateError;
+        }
+
+        console.log(`✅ Starting card assigned to ${player.name}`);
       }
 
       console.log('✅ GAME INIT: Finished assigning starting cards and mystery card');
