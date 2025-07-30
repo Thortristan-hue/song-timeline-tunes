@@ -1,15 +1,9 @@
 
 import { useEffect, useCallback, useState } from 'react';
-import { websocketService, GameStateMessage } from '@/services/websocketService';
+import { reliableWebSocketService } from '@/services/reliableWebSocketService';
+import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
-
-interface WebSocketGameSyncState {
-  isConnected: boolean;
-  isConnecting: boolean;
-  reconnectAttempts: number;
-  lastError: string | null;
-}
 
 export function useWebSocketGameSync(
   roomId: string | null,
@@ -21,214 +15,166 @@ export function useWebSocketGameSync(
   onGameStarted?: (data: any) => void
 ) {
   const { toast } = useToast();
-  const [syncState, setSyncState] = useState<WebSocketGameSyncState>({
-    isConnected: false,
-    isConnecting: false,
-    reconnectAttempts: 0,
-    lastError: null
-  });
+  const [syncState, setSyncState] = useState<ConnectionState>(connectionManager.getState());
 
-  // FIXED: Track connection ready state separately from connecting state
-  const [isConnectionReady, setIsConnectionReady] = useState(false);
+  // Subscribe to connection state changes
+  useEffect(() => {
+    const unsubscribe = connectionManager.subscribe((state) => {
+      setSyncState(state);
+      
+      if (state.lastError && state.reconnectAttempts === 1) {
+        toast({
+          title: "Connection Issue",
+          description: "Reconnecting to game server...",
+          variant: "destructive",
+        });
+      }
+    });
 
-  // Connect to WebSocket when room ID is available
+    return unsubscribe;
+  }, [toast]);
+
+  // Connect when room ID is available
   useEffect(() => {
     if (!roomId) {
-      setSyncState(prev => ({ ...prev, isConnected: false }));
-      setIsConnectionReady(false);
+      reliableWebSocketService.disconnect();
       return;
     }
 
     const connectToRoom = async () => {
       try {
-        setSyncState(prev => ({ ...prev, isConnecting: true, lastError: null }));
-        setIsConnectionReady(false);
-        
-        await websocketService.connect(roomId);
-        
-        const status = websocketService.getConnectionStatus();
-        setSyncState(prev => ({ 
-          ...prev, 
-          isConnected: status.isConnected,
-          isConnecting: false,
-          reconnectAttempts: status.reconnectAttempts
-        }));
-
-        // FIXED: Wait for connection to be fully ready before allowing message sending
-        if (status.isConnected) {
-          // Add a small delay to ensure the connection is fully established
-          setTimeout(() => {
-            setIsConnectionReady(true);
-            console.log('🔗 WebSocket connection ready for message sending');
-          }, 100);
-        }
-
+        await reliableWebSocketService.connect(roomId);
+        console.log('🔗 WebSocket sync established for room:', roomId);
       } catch (error) {
-        console.error('❌ Failed to connect to WebSocket:', error);
-        setSyncState(prev => ({ 
-          ...prev, 
-          isConnecting: false,
-          lastError: error instanceof Error ? error.message : 'Connection failed'
-        }));
-        setIsConnectionReady(false);
-        
-        toast({
-          title: "Connection Issue",
-          description: "Having trouble connecting to the game server. Retrying...",
-          variant: "destructive",
-        });
+        console.error('❌ Failed to establish WebSocket sync:', error);
       }
     };
 
     connectToRoom();
 
     return () => {
-      websocketService.disconnect();
-      setIsConnectionReady(false);
+      reliableWebSocketService.disconnect();
     };
-  }, [roomId, toast]);
+  }, [roomId]);
 
   // Set up event listeners
   useEffect(() => {
-    const handleRoomUpdate = (data: any) => {
-      console.log('🔄 WebSocket room update received:', data);
-      onRoomUpdate?.(data);
+    const handlers = {
+      ROOM_UPDATE: (data: any) => {
+        console.log('🔄 Room update received:', data);
+        onRoomUpdate?.(data);
+      },
+      PLAYER_UPDATE: (data: any) => {
+        console.log('👥 Player update received:', data);
+        onPlayerUpdate?.(data);
+      },
+      GAME_START: (data: any) => {
+        console.log('🎮 Game start received:', data);
+        onGameStart?.(data);
+      },
+      CARD_PLACED: (data: any) => {
+        console.log('🃏 Card placed received:', data);
+        onCardPlaced?.(data);
+      },
+      SONG_SET: (data: any) => {
+        console.log('🎵 Song set received:', data);
+        onSongSet?.(data);
+      },
+      GAME_STARTED: (data: any) => {
+        console.log('🎮 GAME_STARTED received:', data);
+        onGameStarted?.(data);
+      }
     };
 
-    const handlePlayerUpdate = (data: any) => {
-      console.log('👥 WebSocket player update received:', data);
-      onPlayerUpdate?.(data);
-    };
-
-    const handleGameStart = (data: any) => {
-      console.log('🎮 WebSocket game start received:', data);
-      onGameStart?.(data);
-    };
-
-    const handleCardPlaced = (data: any) => {
-      console.log('🃏 WebSocket card placed received:', data);
-      onCardPlaced?.(data);
-    };
-
-    const handleGameStarted = (data: any) => {
-      console.log('🎮 WebSocket GAME_STARTED received:', data);
-      onGameStarted?.(data);
-    };
-
-    const handleSongSet = (data: any) => {
-      console.log('🎵 WebSocket song set received:', data);
-      onSongSet?.(data);
-    };
-
-    // Register listeners
-    websocketService.on('ROOM_UPDATE', handleRoomUpdate);
-    websocketService.on('PLAYER_UPDATE', handlePlayerUpdate);
-    websocketService.on('GAME_START', handleGameStart);
-    websocketService.on('CARD_PLACED', handleCardPlaced);
-    websocketService.on('SONG_SET', handleSongSet);
-    websocketService.on('GAME_STARTED', handleGameStarted);
+    // Register all handlers
+    Object.entries(handlers).forEach(([event, handler]) => {
+      reliableWebSocketService.on(event, handler);
+    });
 
     return () => {
-      // Cleanup listeners
-      websocketService.off('ROOM_UPDATE', handleRoomUpdate);
-      websocketService.off('PLAYER_UPDATE', handlePlayerUpdate);
-      websocketService.off('GAME_START', handleGameStart);
-      websocketService.off('CARD_PLACED', handleCardPlaced);
-      websocketService.off('SONG_SET', handleSongSet);
-      websocketService.off('GAME_STARTED', handleGameStarted);
+      // Cleanup all handlers
+      Object.entries(handlers).forEach(([event, handler]) => {
+        reliableWebSocketService.off(event, handler);
+      });
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
 
-  // FIXED: Remove client-side room update broadcasting - make it a no-op
-  const broadcastRoomUpdate = useCallback((roomData: Partial<GameRoom>) => {
-    console.log('⚠️ Client-side room updates disabled - only server should send authoritative updates');
-    // No-op: Clients should not broadcast authoritative room state changes
-  }, []);
-
   const broadcastPlayerUpdate = useCallback((players: Player[]) => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot broadcast player update - connection not ready:', { roomId, isConnectionReady });
+    if (!roomId || !syncState.isReady) {
+      console.warn('⚠️ Cannot broadcast player update - not ready');
       return;
     }
     
-    console.log('📤 Broadcasting player update:', players);
-    websocketService.sendMessage({
+    reliableWebSocketService.sendMessage({
       type: 'PLAYER_UPDATE',
       roomId,
       data: players
     });
-  }, [roomId, isConnectionReady]);
+  }, [roomId, syncState.isReady]);
 
   const broadcastGameStart = useCallback(() => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot broadcast game start - connection not ready:', { roomId, isConnectionReady });
+    if (!roomId || !syncState.isReady) {
+      console.warn('⚠️ Cannot broadcast game start - not ready');
       return;
     }
     
-    console.log('📤 Broadcasting game start');
-    websocketService.sendMessage({
+    reliableWebSocketService.sendMessage({
       type: 'GAME_START',
       roomId,
       data: { timestamp: Date.now() }
     });
-  }, [roomId, isConnectionReady]);
+  }, [roomId, syncState.isReady]);
 
   const broadcastCardPlaced = useCallback((cardData: any) => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot broadcast card placed - connection not ready:', { roomId, isConnectionReady });
+    if (!roomId || !syncState.isReady) {
+      console.warn('⚠️ Cannot broadcast card placed - not ready');
       return;
     }
     
-    console.log('📤 Broadcasting card placed:', cardData);
-    websocketService.sendMessage({
+    reliableWebSocketService.sendMessage({
       type: 'CARD_PLACED',
       roomId,
       data: cardData
     });
-  }, [roomId, isConnectionReady]);
+  }, [roomId, syncState.isReady]);
 
   const broadcastSongSet = useCallback((song: Song) => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot broadcast song set - connection not ready:', { roomId, isConnectionReady });
+    if (!roomId || !syncState.isReady) {
+      console.warn('⚠️ Cannot broadcast song set - not ready');
       return;
     }
     
-    console.log('📤 Broadcasting song set:', song);
-    websocketService.sendMessage({
+    reliableWebSocketService.sendMessage({
       type: 'SONG_SET',
       roomId,
       data: song
     });
-  }, [roomId, isConnectionReady]);
+  }, [roomId, syncState.isReady]);
 
   const sendHostSetSongs = useCallback((songList: Song[], hostId: string) => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot send HOST_SET_SONGS - connection not ready:', { roomId, isConnectionReady });
+    if (!roomId || !syncState.isReady) {
+      console.warn('⚠️ Cannot send HOST_SET_SONGS - not ready');
       return;
     }
     
-    console.log('📤 Sending HOST_SET_SONGS:', songList.length, 'songs');
-    websocketService.sendHostSetSongs(roomId, songList, hostId);
-  }, [roomId, isConnectionReady]);
+    console.log('📦 Sending HOST_SET_SONGS with', songList.length, 'songs');
+    reliableWebSocketService.sendHostSetSongs(roomId, songList, hostId);
+  }, [roomId, syncState.isReady]);
 
   const setHostStatus = useCallback((isHost: boolean) => {
-    websocketService.setHostStatus(isHost);
+    reliableWebSocketService.setHostStatus(isHost);
   }, []);
 
   const forceReconnect = useCallback(() => {
     if (roomId) {
-      setSyncState(prev => ({ ...prev, reconnectAttempts: 0 }));
-      setIsConnectionReady(false);
-      websocketService.connect(roomId);
+      connectionManager.resetRetries();
+      reliableWebSocketService.connect(roomId);
     }
   }, [roomId]);
 
   return {
-    syncState: {
-      ...syncState,
-      isReady: isConnectionReady
-    },
-    broadcastRoomUpdate,
+    syncState,
+    broadcastRoomUpdate: () => {}, // Disabled - server should handle authoritative updates
     broadcastPlayerUpdate,
     broadcastGameStart,
     broadcastCardPlaced,
