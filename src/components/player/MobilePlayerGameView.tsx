@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
-import { MysterySongControls } from '@/components/MysterySongControls';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -37,9 +36,11 @@ export default function MobilePlayerGameView({
   onViewportChange
 }: MobilePlayerGameViewProps) {
   // Core state management
-  const [selectedGapIndex, setSelectedGapIndex] = useState<number>(0);
+  const [selectedPosition, setSelectedPosition] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+  const [playingPreviewId, setPlayingPreviewId] = useState<string | null>(null);
 
   // Debug menu state (Easter egg)
   const [debugClickCount, setDebugClickCount] = useState(0);
@@ -47,8 +48,9 @@ export default function MobilePlayerGameView({
   const [passcode, setPasscode] = useState('');
   const [debugMode, setDebugMode] = useState(false);
 
-  // Refs for scrolling
+  // Refs for scrolling and performance optimization
   const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const audioCleanupRef = useRef<() => void>();
 
   // Get sorted timeline songs for placement
   const timelineSongs = useMemo(() => {
@@ -56,6 +58,9 @@ export default function MobilePlayerGameView({
       .filter(song => song !== null)
       .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
   }, [currentPlayer.timeline]);
+
+  // Total positions available (before first, between each song, after last)
+  const totalPositions = timelineSongs.length + 1;
 
   // Handle debug menu clicks
   const handleDebugClick = () => {
@@ -91,49 +96,69 @@ export default function MobilePlayerGameView({
     return getArtistColor(song.deezer_artist);
   };
 
-  // Handle play/pause/stop for mystery song
-  const handlePlay = () => {
-    if (currentSong?.preview_url) {
-      onPlayPause();
+  // Audio cleanup utility
+  const cleanupAudio = useCallback(() => {
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio.currentTime = 0;
+      setPreviewAudio(null);
+      setPlayingPreviewId(null);
     }
-  };
+  }, [previewAudio]);
 
-  const handlePause = () => {
-    onPlayPause();
-  };
+  // Store cleanup function in ref for useEffect cleanup
+  useEffect(() => {
+    audioCleanupRef.current = cleanupAudio;
+  }, [cleanupAudio]);
 
-  const handleStop = () => {
-    // Stop and reset audio
-    onPlayPause();
-  };
+  // Handle song preview with error handling
+  const handleSongPreview = useCallback(async (song: Song) => {
+    try {
+      setError(null);
+      
+      if (playingPreviewId === song.id) {
+        cleanupAudio();
+        return;
+      }
 
-  // Get gap description for selected gap
-  const getGapDescription = (gapIndex: number) => {
-    if (timelineSongs.length === 0) return 'First card';
-    if (gapIndex === 0) return 'Before first song';
-    if (gapIndex === timelineSongs.length) return 'After last song';
-    
-    const beforeSong = timelineSongs[gapIndex - 1];
-    const afterSong = timelineSongs[gapIndex];
-    return `${beforeSong.release_year} - ${afterSong.release_year}`;
-  };
+      cleanupAudio();
 
-  // Get years for the gap display
-  const getGapYears = (gapIndex: number) => {
-    if (timelineSongs.length === 0) return 'First card';
-    if (gapIndex === 0 && timelineSongs.length > 0) return `Before ${timelineSongs[0].release_year}`;
-    if (gapIndex === timelineSongs.length && timelineSongs.length > 0) return `After ${timelineSongs[timelineSongs.length - 1].release_year}`;
-    
-    if (gapIndex > 0 && gapIndex < timelineSongs.length) {
-      const beforeSong = timelineSongs[gapIndex - 1];
-      const afterSong = timelineSongs[gapIndex];
-      return `${beforeSong.release_year} - ${afterSong.release_year}`;
+      if (!song.preview_url) {
+        setError('Preview not available for this song');
+        return;
+      }
+
+      const audio = new Audio(song.preview_url);
+      audio.volume = 0.7;
+      
+      audio.onloadstart = () => setError(null);
+      audio.oncanplay = () => {
+        setPreviewAudio(audio);
+        setPlayingPreviewId(song.id);
+        audio.play().catch(err => {
+          console.error('Audio play failed:', err);
+          setError('Failed to play preview');
+          cleanupAudio();
+        });
+      };
+      audio.onended = () => {
+        setPlayingPreviewId(null);
+        setPreviewAudio(null);
+      };
+      audio.onerror = () => {
+        setError('Failed to load preview');
+        cleanupAudio();
+      };
+
+      audio.load();
+    } catch (err) {
+      console.error('Preview error:', err);
+      setError('Failed to play preview');
+      cleanupAudio();
     }
-    
-    return 'Select gap';
-  };
+  }, [playingPreviewId, cleanupAudio]);
 
-  // Handle card placement
+  // Handle card placement with error handling
   const handlePlaceCard = async () => {
     if (isSubmitting || !isMyTurn || gameEnded) return;
 
@@ -141,14 +166,7 @@ export default function MobilePlayerGameView({
       setIsSubmitting(true);
       setError(null);
 
-      // Find the year placed after based on selected gap
-      let yearPlacedAfter = null;
-      if (selectedGapIndex > 0 && timelineSongs.length > 0) {
-        const beforeCard = timelineSongs[selectedGapIndex - 1];
-        yearPlacedAfter = beforeCard.release_year;
-      }
-
-      const result = await onPlaceCard(currentSong, selectedGapIndex);
+      const result = await onPlaceCard(currentSong, selectedPosition);
       
       if (!result.success) {
         setError('Failed to place card. Please try again.');
@@ -161,23 +179,81 @@ export default function MobilePlayerGameView({
     }
   };
 
-  // Navigation handlers
-  const navigateLeft = () => {
-    if (selectedGapIndex > 0) {
-      setSelectedGapIndex(selectedGapIndex - 1);
+  // Get position description
+  const getPositionDescription = (position: number) => {
+    if (timelineSongs.length === 0) return 'First card';
+    if (position === 0) return 'Before first song';
+    if (position === timelineSongs.length) return 'After last song';
+    
+    const beforeSong = timelineSongs[position - 1];
+    const afterSong = timelineSongs[position];
+    return `Between ${beforeSong.release_year} and ${afterSong.release_year}`;
+  };
+
+  // Center the selected position in the timeline view
+  const centerSelectedPosition = useCallback(() => {
+    if (!timelineScrollRef.current) return;
+    
+    const container = timelineScrollRef.current;
+    const containerWidth = container.clientWidth;
+    
+    // Calculate the position of the selected gap
+    const cardWidth = 144; // w-36 = 144px
+    const gapWidth = 40; // gap between cards
+    const selectedGapPosition = selectedPosition * (cardWidth + gapWidth);
+    
+    // Center the selected position
+    const scrollPosition = selectedGapPosition - containerWidth / 2;
+    
+    container.scrollTo({
+      left: Math.max(0, scrollPosition),
+      behavior: 'smooth'
+    });
+  }, [selectedPosition]);
+
+  // Handle position navigation with centering
+  const navigatePosition = (direction: 'prev' | 'next') => {
+    let newPosition = selectedPosition;
+    
+    if (direction === 'prev' && selectedPosition > 0) {
+      newPosition = selectedPosition - 1;
+    } else if (direction === 'next' && selectedPosition < totalPositions - 1) {
+      newPosition = selectedPosition + 1;
+    }
+    
+    if (newPosition !== selectedPosition) {
+      setSelectedPosition(newPosition);
     }
   };
 
-  const navigateRight = () => {
-    if (selectedGapIndex < timelineSongs.length) {
-      setSelectedGapIndex(selectedGapIndex + 1);
+  // Center view when position changes
+  useEffect(() => {
+    if (isMyTurn) {
+      centerSelectedPosition();
     }
-  };
+  }, [selectedPosition, isMyTurn, centerSelectedPosition]);
 
-  // Get character image path
-  const getCharacterImagePath = (character: string) => {
-    return `/src/assets/char_${character}.png`;
-  };
+  // Cleanup audio on unmount or turn change
+  useEffect(() => {
+    return () => {
+      audioCleanupRef.current?.();
+    };
+  }, []);
+
+  // Reset position when turn changes
+  useEffect(() => {
+    if (isMyTurn && !gameEnded) {
+      setSelectedPosition(Math.floor(totalPositions / 2));
+      setError(null);
+    }
+  }, [isMyTurn, gameEnded, totalPositions]);
+
+  // Sync highlighted gap with host when position changes
+  useEffect(() => {
+    if (isMyTurn && onHighlightGap) {
+      onHighlightGap(selectedPosition);
+    }
+  }, [selectedPosition, isMyTurn, onHighlightGap]);
 
   // Show result overlay
   if (cardPlacementResult) {
@@ -247,184 +323,268 @@ export default function MobilePlayerGameView({
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Player Name (Top) */}
-      <div className="text-center py-4 text-2xl font-bold">
-        {currentPlayer.name}
-        {!isMyTurn && !gameEnded && (
-          <div className="text-sm text-gray-400 mt-1">
-            Waiting for {currentTurnPlayer.name}
+    <div className="fixed inset-0 z-40 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+      {/* Safe area container */}
+      <div className="h-full flex flex-col px-4 pt-safe-top pb-safe-bottom">
+        
+        {/* Header */}
+        <div className="flex-shrink-0 py-4">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100">
+              {currentPlayer.name}
+            </h1>
+            <div className="inline-block bg-white/10 backdrop-blur-xl rounded-full px-4 py-2 border border-white/20">
+              <span className="text-white/90 text-sm font-semibold">
+                {gameEnded ? 'Game Over' : 
+                 isMyTurn ? 'Your Turn' : `${currentTurnPlayer.name}'s Turn`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Vinyl Player Section */}
+        {isMyTurn && !gameEnded && (
+          <div className="flex-shrink-0 py-4">
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className={cn(
+                  "w-20 h-20 bg-gradient-to-br from-gray-900 via-gray-800 to-black rounded-full shadow-2xl border-2 border-white/40 transition-all duration-500",
+                  isPlaying && "animate-spin"
+                )}>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-5 h-5 bg-gradient-to-br from-red-600 to-red-800 rounded-full border-2 border-white/50" />
+                  </div>
+                  
+                  <div className="absolute inset-1 border border-white/10 rounded-full" />
+                  <div className="absolute inset-2 border border-white/10 rounded-full" />
+                  <div className="absolute inset-3 border border-white/10 rounded-full" />
+                </div>
+                
+                <Button
+                  onClick={onPlayPause}
+                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                  disabled={!currentSong?.preview_url}
+                >
+                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  </div>
+                </Button>
+              </div>
+            </div>
+            <div className="text-center mt-2">
+              <div className="text-white/80 text-sm font-medium">Mystery Song</div>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Playback Controls (Below Name) */}
-      {isMyTurn && !gameEnded && (
-        <MysterySongControls
-          isPlaying={isPlaying}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onStop={handleStop}
-          disabled={!currentSong?.preview_url}
-        />
-      )}
-
-      {/* Timeline Element (Center) */}
-      <div className="flex-grow overflow-hidden relative">
-        {isMyTurn && !gameEnded ? (
-          <>
-            {/* Gap Text */}
-            <div className="text-center p-2 text-lg font-semibold">
-              {getGapYears(selectedGapIndex)}
+        {/* Content area */}
+        <div className="flex-1 flex flex-col min-h-0">
+          
+          {/* Waiting screen */}
+          {!isMyTurn && !gameEnded && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
+                  <Music className="w-10 h-10 text-white/90 animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-white">
+                    {currentTurnPlayer.name} is playing
+                  </div>
+                  <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
+                    Wait for your turn
+                  </div>
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Card Container with Yellow Line */}
-            <div className="relative h-full">
-              {/* Yellow Line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-yellow-400 -translate-x-1/2 z-10"></div>
+          {/* Game interface */}
+          {isMyTurn && !gameEnded && (
+            <div className="flex-1 bg-white/10 backdrop-blur-2xl rounded-3xl p-4 border border-white/25 flex flex-col min-h-0">
+              <div className="text-center mb-4">
+                <div className="text-white text-lg font-semibold mb-1">Your Timeline</div>
+                <div className="text-white/80 text-sm">
+                  {getPositionDescription(selectedPosition)}
+                </div>
+              </div>
 
-              {/* Timeline Cards */}
-              <div 
-                ref={timelineScrollRef}
-                className="flex items-center overflow-x-auto p-4 snap-x snap-mandatory h-full"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
+              {/* Timeline display with horizontal scroll and centered selection */}
+              <div className="flex-1 min-h-0">
                 {timelineSongs.length === 0 ? (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <div className="text-center text-gray-400">
-                      <div className="text-xl mb-2">No cards yet</div>
-                      <div className="text-sm">This will be your first card!</div>
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-white/60">
+                      <div className="text-lg mb-2">No cards yet</div>
+                      <div className="text-sm">Place your first card!</div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4 min-w-full justify-center snap-start">
-                    {timelineSongs.map((song, index) => (
-                      <div
-                        key={song.id}
-                        className="w-32 h-40 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex-shrink-0 flex flex-col items-center justify-center text-white shadow-lg snap-center"
-                        style={{ 
-                          backgroundColor: getCardColor(song).backgroundColor,
-                          backgroundImage: getCardColor(song).backgroundImage
-                        }}
+                  <div className="h-full flex flex-col">
+                    {/* Timeline cards with smooth scrolling */}
+                    <div className="flex-1 flex items-center justify-center">
+                      <div 
+                        ref={timelineScrollRef}
+                        className="w-full overflow-x-auto pb-4 scroll-smooth"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                       >
-                        <div className="text-xs text-center mb-2 px-2">
-                          {truncateText(song.deezer_artist, 12)}
-                        </div>
-                        <div className="text-2xl font-bold mb-2">
-                          {song.release_year}
-                        </div>
-                        <div className="text-xs text-center px-2">
-                          {truncateText(song.deezer_title, 12)}
+                        <div className="flex items-center gap-2 min-w-max px-4 justify-start">
+                          {/* Position indicator before first card */}
+                          <div 
+                            className={cn(
+                              "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                              selectedPosition === 0 
+                                ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                : "border-white/40 text-white/60 hover:border-white/60"
+                            )}
+                            onClick={() => setSelectedPosition(0)}
+                          >
+                            {selectedPosition === 0 ? <Check className="w-5 h-5" /> : '+'}
+                          </div>
+
+                          {timelineSongs.map((song, index) => {
+                            const cardColor = getCardColor(song);
+                            return (
+                              <React.Fragment key={song.id}>
+                                {/* Song card */}
+                                <div
+                                  className={cn(
+                                    "w-36 h-36 rounded-2xl border border-white/20 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-lg relative flex-shrink-0"
+                                  )}
+                                  style={{ 
+                                    backgroundColor: cardColor.backgroundColor,
+                                    backgroundImage: cardColor.backgroundImage
+                                  }}
+                                  onClick={() => song.preview_url && handleSongPreview(song)}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                                  
+                                  <div className="p-3 h-full flex flex-col items-center justify-between text-white relative z-10">
+                                    <div className="text-xs font-medium text-center leading-tight max-w-full text-white overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_artist, 15)}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
+                                      {song.release_year}
+                                    </div>
+                                    
+                                    <div className="text-xs text-center italic text-white leading-tight max-w-full opacity-90 overflow-hidden">
+                                      <div className="break-words">
+                                        {truncateText(song.deezer_title, 15)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Position indicator after card */}
+                                <div 
+                                  className={cn(
+                                    "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0",
+                                    selectedPosition === index + 1 
+                                      ? "bg-green-400 border-green-400 text-white scale-125 animate-pulse" 
+                                      : "border-white/40 text-white/60 hover:border-white/60"
+                                  )}
+                                  onClick={() => setSelectedPosition(index + 1)}
+                                >
+                                  {selectedPosition === index + 1 ? <Check className="w-5 h-5" /> : '+'}
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Position navigation */}
+                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                      <Button
+                        onClick={() => navigatePosition('prev')}
+                        disabled={selectedPosition === 0}
+                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-5 h-5 text-white" />
+                      </Button>
+                      
+                      <div className="text-white/80 text-xs text-center">
+                        Position {selectedPosition + 1} of {totalPositions}
+                      </div>
+                      
+                      <Button
+                        onClick={() => navigatePosition('next')}
+                        disabled={selectedPosition === totalPositions - 1}
+                        className="bg-white/10 hover:bg-white/20 border border-white/30 rounded-xl px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="w-5 h-5 text-white" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              {gameEnded ? (
-                <div className="space-y-4">
-                  <div className="text-3xl">🎉</div>
-                  <div className="text-xl">Game Over!</div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                    <Music className="w-8 h-8" />
-                  </div>
-                  <div className="text-xl">Waiting for your turn...</div>
-                </div>
-              )}
+          )}
+        </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="flex-shrink-0 mx-4 mb-4">
+            <div className="bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl text-center">
+              {error}
             </div>
           </div>
         )}
-      </div>
 
-      {/* Action Buttons (Below Timeline) */}
-      {isMyTurn && !gameEnded && (
-        <div className="flex justify-around items-center p-4">
-          <Button
-            onClick={navigateLeft}
-            disabled={selectedGapIndex === 0}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Navigate Left
-          </Button>
-
-          <Button
-            onClick={handlePlaceCard}
-            disabled={isSubmitting}
-            className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-bold shadow-lg transform transition-transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
-          >
-            {isSubmitting ? 'PLACING...' : 'PLACE CARD'}
-          </Button>
-
-          <Button
-            onClick={navigateRight}
-            disabled={selectedGapIndex >= timelineSongs.length}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-          >
-            Navigate Right
-            <ChevronRight className="w-5 h-5" />
-          </Button>
-        </div>
-      )}
-
-      {/* Footer Elements (Bottom) */}
-      <div className="flex justify-between items-end p-4">
-        {/* Rythmy Logo (Left) */}
-        <div 
-          className="text-lg font-bold cursor-pointer text-blue-400 hover:text-blue-300"
-          onClick={handleDebugClick}
-        >
-          {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
-        </div>
-
-        {/* Player Character (Right) */}
-        <div className="w-24 h-auto">
-          <img 
-            src={getCharacterImagePath(currentPlayer.character)} 
-            alt={`${currentPlayer.name}'s character`}
-            className="w-full h-auto"
-            onError={(e) => {
-              // Fallback if image doesn't load
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mx-4 mb-4">
-          <div className="bg-red-500 text-white px-4 py-2 rounded-lg text-center">
-            {error}
+        {/* Action button */}
+        {isMyTurn && !gameEnded && (
+          <div className="flex-shrink-0 pt-4">
+            <Button
+              onClick={handlePlaceCard}
+              disabled={isSubmitting}
+              className={cn(
+                "w-full h-14 text-white font-black text-lg rounded-2xl border-0 shadow-2xl transition-all duration-300",
+                isSubmitting ? 
+                "bg-gray-600 cursor-not-allowed" :
+                "bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 hover:scale-105 active:scale-95"
+              )}
+            >
+              {isSubmitting ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>PLACING...</span>
+                </div>
+              ) : (
+                'PLACE CARD'
+              )}
+            </Button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Debug Info */}
-      {debugMode && currentSong && (
-        <div className="mx-4 mb-4 bg-black/50 rounded-lg p-3 text-xs">
-          <div className="font-semibold mb-1">Song Debug Info:</div>
-          <div>Title: {currentSong.deezer_title}</div>
-          <div>Artist: {currentSong.deezer_artist}</div>
-          <div>Release Year: {currentSong.release_year}</div>
+        {/* Footer with Debug Menu */}
+        <div className="flex-shrink-0 py-2 text-center">
+          <div 
+            className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 cursor-pointer"
+            onClick={handleDebugClick}
+          >
+            {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
+          </div>
+          {debugMode && currentSong && (
+            <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
+              <div className="font-semibold mb-1">Song Debug Info:</div>
+              <div>Title: {currentSong.deezer_title}</div>
+              <div>Artist: {currentSong.deezer_artist}</div>
+              <div>Release Year: {currentSong.release_year}</div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Passcode Dialog */}
       {showPasscodeDialog && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/15 backdrop-blur-2xl rounded-2xl p-6 border border-white/20 max-w-sm w-full">
             <div className="text-center mb-4">
               <div className="text-white text-lg font-semibold mb-2">🔐 Debug Access</div>
-              <div className="text-gray-300 text-sm">Enter the secret passcode:</div>
+              <div className="text-white/70 text-sm">Enter the secret passcode:</div>
             </div>
             <input
               type="password"
@@ -432,19 +592,19 @@ export default function MobilePlayerGameView({
               onChange={(e) => setPasscode(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handlePasscodeSubmit()}
               placeholder="Enter passcode"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 mb-4"
+              className="w-full bg-white/10 border border-white/30 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:border-white/50 mb-4"
               autoFocus
             />
             <div className="flex gap-3">
               <Button
                 onClick={() => {setShowPasscodeDialog(false); setPasscode(''); setDebugClickCount(0);}}
-                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white"
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/30 rounded-xl"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handlePasscodeSubmit}
-                className="flex-1 bg-green-600 hover:bg-green-500 text-white"
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white border-0 rounded-xl"
               >
                 Enter
               </Button>
