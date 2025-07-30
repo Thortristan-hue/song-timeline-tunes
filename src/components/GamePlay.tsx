@@ -65,8 +65,10 @@ export function GamePlay({
     }
   }, [winner, fire]);
 
-  const handleCardPlacement = async (song: Song, position: number) => {
-    if (!currentPlayer || !room || gameLogic?.isGameOver) return;
+  const handleCardPlacement = async (song: Song, position: number): Promise<{ success: boolean; }> => {
+    if (!currentPlayer || !room || gameLogic?.isGameOver) {
+      return { success: false };
+    }
 
     setIsProcessingMove(true);
     
@@ -103,7 +105,11 @@ export function GamePlay({
           setWinner(result.winner);
           setShowVictoryScreen(true);
         }
+        
+        return { success: true };
       }
+      
+      return { success: false };
     } catch (error) {
       console.error('❌ Card placement failed:', error);
       toast({
@@ -111,6 +117,7 @@ export function GamePlay({
         description: "Please try again",
         variant: "destructive",
       });
+      return { success: false };
     } finally {
       setIsProcessingMove(false);
     }
