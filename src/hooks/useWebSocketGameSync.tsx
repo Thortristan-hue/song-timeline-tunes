@@ -31,7 +31,9 @@ export function useWebSocketGameSync(
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, [toast]);
 
   // Connect when room ID is available

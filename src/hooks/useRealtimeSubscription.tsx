@@ -47,7 +47,9 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, [toast]);
 
   // Set up realtime subscriptions
