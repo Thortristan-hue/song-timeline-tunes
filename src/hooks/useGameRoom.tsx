@@ -52,82 +52,6 @@ export function useGameRoom() {
   const lastFetchTime = useRef<number>(0);
   const isInitialFetch = useRef<boolean>(true);
 
-  // Setup realtime subscription with retry logic
-  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
-
-  // Create stable callback for GAME_STARTED to avoid re-subscriptions
-  const handleGameStarted = useCallback((data: { room?: any; timestamp?: number }) => {
-    console.log('🎮 WebSocket GAME_STARTED received:', data);
-    // Handle synchronized game start with songs
-    if (data.room) {
-      setRoom(prev => prev ? { ...prev, ...data.room } : null);
-      setGameInitialized(true);
-      setIsLoading(false);
-      console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
-      
-      // CRITICAL FIX: Force refresh player data to show timeline cards after game starts
-      if (data.room.id) {
-        console.log('🔄 Force refreshing player data after game start...');
-        fetchPlayers(data.room.id, true);
-      }
-    }
-  }, [fetchPlayers]);
-
-  // Setup WebSocket sync
-  const {
-    syncState: wsState,
-    broadcastPlayerUpdate,
-    broadcastGameStart,
-    broadcastCardPlaced,
-    broadcastSongSet,
-    sendHostSetSongs,
-    setHostStatus,
-    forceReconnect: wsReconnect
-  } = useWebSocketGameSync(
-    room?.id || null,
-    (roomData) => {
-      console.log('🔄 WebSocket room update:', roomData);
-      setRoom(prev => prev ? { ...prev, ...roomData } : null);
-    },
-    (playersData) => {
-      console.log('👥 WebSocket players update:', playersData);
-      if (Array.isArray(playersData)) {
-        setPlayers(playersData);
-      }
-    },
-    () => {
-      console.log('🎮 WebSocket game start signal received');
-      // Game start will be handled by room phase changes
-    },
-    (cardData) => {
-      console.log('🃏 WebSocket card placed:', cardData);
-      // Handle card placement updates
-    },
-    (song) => {
-      console.log('🎵 WebSocket song set:', song);
-      setRoom(prev => prev ? { ...prev, current_song: song } : null);
-    },
-    handleGameStarted
-  );
-
-  // Generate session ID
-  const generateSessionId = () => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
-  // Generate lobby code with word + digit format (e.g., 'APPLE3', 'TRACK7')
-  const generateLobbyCode = () => {
-    const words = [
-      'APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE',
-      'STAGE', 'TEMPO', 'CHORD', 'BANDS', 'REMIX', 'VINYL', 'RADIO', 'SONGS', 'ALBUM', 'DISCO',
-      'BLUES', 'SWING', 'FORTE', 'SHARP', 'MINOR', 'MAJOR', 'SCALE', 'NOTES', 'LYRIC', 'VERSE',
-      'CHOIR', 'ORGAN', 'FLUTE', 'CELLO', 'TENOR', 'OPERA'
-    ];
-    const randomWord = words[Math.floor(Math.random() * words.length)];
-    const randomDigit = Math.floor(Math.random() * 10);
-    return `${randomWord}${randomDigit}`;
-  };
-
   // Convert database player to frontend player
   const convertPlayer = useCallback((dbPlayer: DatabasePlayer): Player => {
     return {
@@ -211,7 +135,83 @@ export function useGameRoom() {
       console.error('❌ Failed to fetch players:', error);
       // Don't clear players on error to prevent unwanted kicks
     }
-  }, [convertPlayer, isHost, players, broadcastPlayerUpdate]);
+  }, [convertPlayer, isHost, players]);
+
+  // Setup realtime subscription with retry logic
+  const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
+
+  // Create stable callback for GAME_STARTED to avoid re-subscriptions
+  const handleGameStarted = useCallback((data: { room?: any; timestamp?: number }) => {
+    console.log('🎮 WebSocket GAME_STARTED received:', data);
+    // Handle synchronized game start with songs
+    if (data.room) {
+      setRoom(prev => prev ? { ...prev, ...data.room } : null);
+      setGameInitialized(true);
+      setIsLoading(false);
+      console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
+      
+      // CRITICAL FIX: Force refresh player data to show timeline cards after game starts
+      if (data.room.id) {
+        console.log('🔄 Force refreshing player data after game start...');
+        fetchPlayers(data.room.id, true);
+      }
+    }
+  }, [fetchPlayers]);
+
+  // Setup WebSocket sync
+  const {
+    syncState: wsState,
+    broadcastPlayerUpdate,
+    broadcastGameStart,
+    broadcastCardPlaced,
+    broadcastSongSet,
+    sendHostSetSongs,
+    setHostStatus,
+    forceReconnect: wsReconnect
+  } = useWebSocketGameSync(
+    room?.id || null,
+    (roomData) => {
+      console.log('🔄 WebSocket room update:', roomData);
+      setRoom(prev => prev ? { ...prev, ...roomData } : null);
+    },
+    (playersData) => {
+      console.log('👥 WebSocket players update:', playersData);
+      if (Array.isArray(playersData)) {
+        setPlayers(playersData);
+      }
+    },
+    () => {
+      console.log('🎮 WebSocket game start signal received');
+      // Game start will be handled by room phase changes
+    },
+    (cardData) => {
+      console.log('🃏 WebSocket card placed:', cardData);
+      // Handle card placement updates
+    },
+    (song) => {
+      console.log('🎵 WebSocket song set:', song);
+      setRoom(prev => prev ? { ...prev, current_song: song } : null);
+    },
+    handleGameStarted
+  );
+
+  // Generate session ID
+  const generateSessionId = () => {
+    return Math.random().toString(36).substring(2, 15);
+  };
+
+  // Generate lobby code with word + digit format (e.g., 'APPLE3', 'TRACK7')
+  const generateLobbyCode = () => {
+    const words = [
+      'APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE',
+      'STAGE', 'TEMPO', 'CHORD', 'BANDS', 'REMIX', 'VINYL', 'RADIO', 'SONGS', 'ALBUM', 'DISCO',
+      'BLUES', 'SWING', 'FORTE', 'SHARP', 'MINOR', 'MAJOR', 'SCALE', 'NOTES', 'LYRIC', 'VERSE',
+      'CHOIR', 'ORGAN', 'FLUTE', 'CELLO', 'TENOR', 'OPERA'
+    ];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomDigit = Math.floor(Math.random() * 10);
+    return `${randomWord}${randomDigit}`;
+  };
 
   // Setup subscription configurations when room is available - STABILIZED
   useEffect(() => {
@@ -302,7 +302,7 @@ export function useGameRoom() {
       console.log('🔄 Initial player fetch for room:', room.id);
       fetchPlayers(room.id, true);
     }
-  }, [room?.id, gameInitialized]);
+  }, [room?.id, gameInitialized, fetchPlayers]);
 
   const createRoom = useCallback(async (hostName: string, gamemode: GameMode = 'classic', gamemodeSettings: GameModeSettings = {}): Promise<string | null> => {
     try {
