@@ -44,15 +44,19 @@ export class SoundEffects {
   }
 
   private async preloadSounds(): Promise<void> {
+    // Use Supabase Storage URLs for audio files
+    const SUPABASE_PROJECT_REF = 'vtymwospadqqbbgjqdqt';
+    const SUPABASE_STORAGE_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/assets`;
+    
     const soundManifest: Record<SoundName, string> = {
-      'button-click': '/sounds/button-click.mp3',
-      'success': '/sounds/correct.mp3',
-      'error': '/sounds/incorrect.mp3',
-      'game-start': '/sounds/game-start.mp3',
-      'card-place': '/sounds/card-place.mp3',
-      'card-success': '/sounds/correct.mp3',
-      'card-error': '/sounds/incorrect.mp3',
-      'game-victory': '/sounds/victory.mp3'
+      'button-click': `${SUPABASE_STORAGE_URL}/sounds/button-click.mp3`,
+      'success': `${SUPABASE_STORAGE_URL}/sounds/correct.mp3`,
+      'error': `${SUPABASE_STORAGE_URL}/sounds/incorrect.mp3`,
+      'game-start': `${SUPABASE_STORAGE_URL}/sounds/game-start.mp3`,
+      'card-place': `${SUPABASE_STORAGE_URL}/sounds/card-place.mp3`,
+      'card-success': `${SUPABASE_STORAGE_URL}/sounds/correct.mp3`,
+      'card-error': `${SUPABASE_STORAGE_URL}/sounds/incorrect.mp3`,
+      'game-victory': `${SUPABASE_STORAGE_URL}/sounds/victory.mp3`
     };
 
     try {
@@ -61,9 +65,9 @@ export class SoundEffects {
           this.loadSound(name as SoundName, url)
         )
       );
-      console.log('🎵 Audio files loaded successfully');
+      console.log('🎵 Audio files loaded successfully from Supabase Storage');
     } catch (error) {
-      console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
+      console.warn('Some audio files could not be loaded from Supabase Storage, fallback sounds will be used:', error);
     }
   }
 
