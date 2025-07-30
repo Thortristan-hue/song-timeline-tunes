@@ -55,10 +55,27 @@ export function useGameRoom() {
   // Setup realtime subscription with retry logic
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
+  // Create stable callback for GAME_STARTED to avoid re-subscriptions
+  const handleGameStarted = useCallback((data: any) => {
+    console.log('🎮 WebSocket GAME_STARTED received:', data);
+    // Handle synchronized game start with songs
+    if (data.room) {
+      setRoom(prev => prev ? { ...prev, ...data.room } : null);
+      setGameInitialized(true);
+      setIsLoading(false);
+      console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
+      
+      // CRITICAL FIX: Force refresh player data to show timeline cards after game starts
+      if (data.room.id) {
+        console.log('🔄 Force refreshing player data after game start...');
+        fetchPlayers(data.room.id, true);
+      }
+    }
+  }, [fetchPlayers]);
+
   // Setup WebSocket sync
   const {
     syncState: wsState,
-    broadcastRoomUpdate,
     broadcastPlayerUpdate,
     broadcastGameStart,
     broadcastCardPlaced,
@@ -90,16 +107,7 @@ export function useGameRoom() {
       console.log('🎵 WebSocket song set:', song);
       setRoom(prev => prev ? { ...prev, current_song: song } : null);
     },
-    (data) => {
-      console.log('🎮 WebSocket GAME_STARTED received:', data);
-      // Handle synchronized game start with songs
-      if (data.room) {
-        setRoom(prev => prev ? { ...prev, ...data.room } : null);
-        setGameInitialized(true);
-        setIsLoading(false);
-        console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
-      }
-    }
+    handleGameStarted
   );
 
   // Generate session ID
@@ -253,8 +261,7 @@ export function useGameRoom() {
               current_player_id: roomData.current_player_id ?? prevRoom.current_player_id
             };
 
-            // Broadcast room update via WebSocket
-            broadcastRoomUpdate(updatedRoom);
+            // REMOVED: Client-side room update broadcasting - only server should send authoritative updates
             
             return updatedRoom;
           });
@@ -295,7 +302,7 @@ export function useGameRoom() {
       console.log('🔄 Initial player fetch for room:', room.id);
       fetchPlayers(room.id, true);
     }
-  }, [room?.id, broadcastRoomUpdate, gameInitialized]);
+  }, [room?.id, gameInitialized]);
 
   const createRoom = useCallback(async (hostName: string, gamemode: GameMode = 'classic', gamemodeSettings: GameModeSettings = {}): Promise<string | null> => {
     try {
@@ -523,12 +530,11 @@ export function useGameRoom() {
         // All clients (including host) will receive GAME_STARTED and update their state
         console.log('✅ HOST_SET_SONGS sent, waiting for server response...');
         
-        // Store songs in database as backup/persistence
+        // Store songs in database as backup/persistence (but don't change phase here)
         const { error: songsError } = await supabase
           .from('game_rooms')
           .update({ 
-            songs: songsToUse as unknown as Json,
-            phase: 'playing'
+            songs: songsToUse as unknown as Json
           })
           .eq('id', room.id);
 
@@ -537,8 +543,8 @@ export function useGameRoom() {
           // Continue anyway since WebSocket sync is primary
         }
         
-        // Initialize starting cards in database
-        await GameService.initializeGameWithStartingCards(room.id, songsToUse);
+        // REMOVED: Client-side game initialization - let WebSocket server handle it
+        // The server will call GameService.initializeGameWithStartingCards and set phase to 'playing'
       } else {
         console.log('⚠️ No songs available, cannot start game');
         throw new Error('No songs available for game start');
