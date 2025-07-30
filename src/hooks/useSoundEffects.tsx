@@ -1,18 +1,27 @@
 
 import { useCallback } from 'react';
 
+// Supabase configuration for audio assets
+const SUPABASE_PROJECT_REF = 'vtymwospadqqbbgjqdqt';
+const SUPABASE_STORAGE_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/assets`;
+
 export function useSoundEffects() {
-  // Enhanced sound effect system with better error handling and fallbacks
+  // Enhanced sound effect system with Supabase Storage and fallbacks
   const playAudioFile = useCallback(async (filename: string, volume: number = 0.3) => {
     try {
-      // Try multiple potential paths for audio files
-      const possiblePaths = [
+      // Primary: Try Supabase Storage URL with correct content-type
+      const supabaseUrl = `${SUPABASE_STORAGE_URL}/sounds/${filename}`;
+      
+      // Fallback: Local paths for development
+      const fallbackPaths = [
         `/sounds/${filename}`,
         `./sounds/${filename}`,
         `../sounds/${filename}`
       ];
       
-      for (const path of possiblePaths) {
+      const allPaths = [supabaseUrl, ...fallbackPaths];
+      
+      for (const path of allPaths) {
         try {
           const audio = new Audio(path);
           audio.volume = volume;
@@ -20,21 +29,37 @@ export function useSoundEffects() {
           
           // Wait for the audio to be loadable
           await new Promise((resolve, reject) => {
-            audio.addEventListener('canplaythrough', resolve, { once: true });
-            audio.addEventListener('error', reject, { once: true });
+            const timeout = setTimeout(() => {
+              reject(new Error('Audio load timeout'));
+            }, 5000); // 5 second timeout
+            
+            audio.addEventListener('canplaythrough', () => {
+              clearTimeout(timeout);
+              resolve(null);
+            }, { once: true });
+            
+            audio.addEventListener('error', (e) => {
+              clearTimeout(timeout);
+              reject(e);
+            }, { once: true });
+            
             audio.load();
           });
           
           await audio.play();
+          console.log(`🎵 Successfully played audio from: ${path}`);
           return true;
         } catch (pathError) {
+          console.log(`⚠️ Failed to load audio from ${path}:`, pathError);
           // Silently try next path
           continue;
         }
       }
       
+      console.log(`❌ Failed to load audio file: ${filename} from all sources`);
       return false;
     } catch (error) {
+      console.log(`❌ Audio playback error for ${filename}:`, error);
       // Audio file not available, fallback will be used
       return false;
     }

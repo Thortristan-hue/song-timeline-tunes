@@ -139,20 +139,11 @@ export function useWebSocketGameSync(
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
 
-  // FIXED: Broadcast functions now check if connection is ready before sending
+  // FIXED: Remove client-side room update broadcasting - make it a no-op
   const broadcastRoomUpdate = useCallback((roomData: Partial<GameRoom>) => {
-    if (!roomId || !isConnectionReady) {
-      console.warn('⚠️ Cannot broadcast room update - connection not ready:', { roomId, isConnectionReady });
-      return;
-    }
-    
-    console.log('📤 Broadcasting room update:', roomData);
-    websocketService.sendMessage({
-      type: 'ROOM_UPDATE',
-      roomId,
-      data: roomData
-    });
-  }, [roomId, isConnectionReady]);
+    console.log('⚠️ Client-side room updates disabled - only server should send authoritative updates');
+    // No-op: Clients should not broadcast authoritative room state changes
+  }, []);
 
   const broadcastPlayerUpdate = useCallback((players: Player[]) => {
     if (!roomId || !isConnectionReady) {
