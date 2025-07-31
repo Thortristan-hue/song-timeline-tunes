@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ export function HostLobby({
   const soundEffects = useSoundEffects();
   const [copied, setCopied] = useState(false);
   const [roomCreated, setRoomCreated] = useState(!!lobbyCode);
+  const [creationAttempted, setCreationAttempted] = useState(false);
   
   // Gamemode state
   const [selectedGamemode, setSelectedGamemode] = useState<GameMode>(room?.gamemode || 'classic');
@@ -54,6 +55,7 @@ export function HostLobby({
 
   const handleCreateRoom = useCallback(async () => {
     console.log('🏠 Creating room...');
+    setCreationAttempted(true);
     const success = await createRoom();
     if (success) {
       setRoomCreated(true);
@@ -64,11 +66,25 @@ export function HostLobby({
     }
   }, [createRoom, soundEffects]);
 
+  // Memoize QR code URL to prevent unnecessary regeneration
+  const gameUrl = useMemo(() => {
+    if (!lobbyCode) return '';
+    return `${window.location.origin}?join=${lobbyCode}`;
+  }, [lobbyCode]);
+
+  // Log QR URL generation only when it changes
   useEffect(() => {
-    if (!roomCreated && !isLoading) {
+    if (gameUrl) {
+      console.log('[HostLobby] Generated QR code URL:', gameUrl);
+    }
+  }, [gameUrl]);
+
+  // Fixed: Prevent retry loop when room creation fails
+  useEffect(() => {
+    if (!roomCreated && !isLoading && !creationAttempted) {
       handleCreateRoom();
     }
-  }, [roomCreated, isLoading, handleCreateRoom]);
+  }, [roomCreated, isLoading, creationAttempted, handleCreateRoom]);
 
   const copyToClipboard = async () => {
     try {
@@ -223,9 +239,6 @@ export function HostLobby({
       </div>
     );
   }
-
-  const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
-  console.log('[HostLobby] Generated QR code URL:', gameUrl);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">

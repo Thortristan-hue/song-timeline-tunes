@@ -141,22 +141,96 @@ export function useGameRoom() {
   const { connectionStatus, forceReconnect } = useRealtimeSubscription(subscriptionConfigs);
 
   // Create stable callback for GAME_STARTED to avoid re-subscriptions
-  const handleGameStarted = useCallback((data: { room?: any; timestamp?: number }) => {
-    console.log('🎮 WebSocket GAME_STARTED received:', data);
-    // Handle synchronized game start with songs
-    if (data.room) {
-      setRoom(prev => prev ? { ...prev, ...data.room } : null);
-      setGameInitialized(true);
-      setIsLoading(false);
-      console.log('✅ Game synchronized via WebSocket with', data.room.songs?.length || 0, 'songs');
-      
-      // CRITICAL FIX: Force refresh player data to show timeline cards after game starts
-      if (data.room.id) {
-        console.log('🔄 Force refreshing player data after game start...');
-        fetchPlayers(data.room.id, true);
-      }
+  const handleGameStarted = useCallback((data: { room?: { id?: string; phase?: string; songs?: Song[]; [key: string]: any }; timestamp?: number }) => {
+    console.log('🎮 WebSocket GAME_STARTED received - inspecting payload:', {
+      hasRoom: !!data.room,
+      roomId: data.room?.id,
+      roomPhase: data.room?.phase,
+      songsCount: data.room?.songs?.length || 0,
+      timestamp: data.timestamp,
+      currentRoomId: room?.id,
+      isHost,
+      connectionStatus: connectionStatus.isConnected
+    });
+    
+    // GUARD: Only apply transition if we have valid room data
+    if (!data.room || !data.room.id) {
+      console.warn('⚠️ GAME_STARTED: Invalid or missing room data - ignoring transition');
+      return;
     }
-  }, [fetchPlayers]);
+
+    // GUARD: Only apply transition if this is for our current room
+    if (room && data.room.id !== room.id) {
+      console.warn('⚠️ GAME_STARTED: Room ID mismatch - ignoring stale transition', {
+        receivedRoomId: data.room.id,
+        currentRoomId: room.id
+      });
+      return;
+    }
+
+    // GUARD: Ensure backend confirms room is in started/in-progress phase
+    if (data.room.phase !== 'playing') {
+      console.warn('⚠️ GAME_STARTED: Backend room phase is not "playing" - blocking transition', {
+        backendPhase: data.room.phase,
+        expected: 'playing'
+      });
+      return;
+    }
+
+    // GUARD: For non-hosts, ensure we have a realtime connection
+    if (!isHost && !connectionStatus.isConnected) {
+      console.warn('⚠️ GAME_STARTED: Non-host without realtime connection - blocking transition to prevent desynced state', {
+        isHost,
+        realtimeConnected: connectionStatus.isConnected
+      });
+      return;
+    }
+
+    console.log('✅ GAME_STARTED: All guards passed - applying room transition to playing phase');
+    
+    // Merge room state intelligently to prevent stale overwrites
+    setRoom(prev => {
+      if (!prev) {
+        console.log('🎮 GAME_STARTED: Creating new room from WebSocket data');
+        return {
+          id: data.room!.id,
+          lobby_code: data.room!.lobby_code || '',
+          host_id: data.room!.host_id || '',
+          host_name: data.room!.host_name || '',
+          phase: 'playing' as const,
+          gamemode: data.room!.gamemode || 'classic',
+          gamemode_settings: data.room!.gamemode_settings || {},
+          songs: data.room!.songs || [],
+          created_at: data.room!.created_at || new Date().toISOString(),
+          updated_at: data.room!.updated_at || new Date().toISOString(),
+          current_turn: data.room!.current_turn,
+          current_song: data.room!.current_song || null,
+          current_player_id: data.room!.current_player_id
+        };
+      }
+
+      console.log('🎮 GAME_STARTED: Merging room state - preserving local data where possible');
+      return {
+        ...prev,
+        phase: 'playing' as const, // Force phase transition
+        songs: data.room!.songs || prev.songs, // Update songs if provided
+        current_turn: data.room!.current_turn ?? prev.current_turn,
+        current_song: data.room!.current_song ?? prev.current_song,
+        current_player_id: data.room!.current_player_id ?? prev.current_player_id,
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    setGameInitialized(true);
+    setIsLoading(false);
+    console.log('✅ Game synchronized via WebSocket - phase set to playing with', data.room.songs?.length || 0, 'songs');
+    
+    // CRITICAL FIX: Force refresh player data to show timeline cards after game starts
+    if (data.room.id) {
+      console.log('🔄 Force refreshing player data after game start...');
+      fetchPlayers(data.room.id, true);
+    }
+  }, [fetchPlayers, room, isHost, connectionStatus.isConnected]);
 
   // Setup WebSocket sync
   const {
@@ -493,10 +567,30 @@ export function useGameRoom() {
   }, [convertPlayer]);
 
   const startGame = useCallback(async (availableSongs?: Song[]): Promise<boolean> => {
-    if (!room || !isHost) return false;
+    if (!room || !isHost) {
+      console.warn('⚠️ Cannot start game:', { hasRoom: !!room, isHost });
+      return false;
+    }
 
     try {
-      console.log('🎯 Starting game - fetching songs if not provided...');
+      console.log('🎯 Host starting game - checking prerequisites...', {
+        roomId: room.id,
+        roomPhase: room.phase,
+        isHost,
+        wsReady: wsState.isReady,
+        wsConnected: wsState.isConnected,
+        players: players.length
+      });
+
+      // GUARD: Ensure WebSocket is ready before proceeding
+      if (!wsState.isReady || !wsState.isConnected) {
+        console.warn('⚠️ WebSocket not ready - cannot start game reliably', {
+          isReady: wsState.isReady,
+          isConnected: wsState.isConnected
+        });
+        throw new Error('Connection not ready. Please wait and try again.');
+      }
+
       setIsLoading(true);
       setGameInitialized(false);
       
@@ -521,7 +615,11 @@ export function useGameRoom() {
       
       // NEW FLOW: Send songs to "server" via WebSocket first
       if (songsToUse && songsToUse.length > 0) {
-        console.log('📦 HOST: Sending songs to server via WebSocket...');
+        console.log('📦 HOST: Sending songs to server via WebSocket...', {
+          songCount: songsToUse.length,
+          hostSessionId: hostSessionId.current,
+          wsReady: wsState.isReady
+        });
         
         // Send HOST_SET_SONGS event - this will trigger server simulation
         sendHostSetSongs(songsToUse, hostSessionId.current || '');
@@ -541,6 +639,8 @@ export function useGameRoom() {
         if (songsError) {
           console.error('❌ Failed to store songs in database:', songsError);
           // Continue anyway since WebSocket sync is primary
+        } else {
+          console.log('✅ Songs stored in database as backup');
         }
         
         // REMOVED: Client-side game initialization - let WebSocket server handle it
@@ -550,14 +650,14 @@ export function useGameRoom() {
         throw new Error('No songs available for game start');
       }
       
-      console.log('✅ Game start process initiated');
+      console.log('✅ Game start process initiated successfully');
       return true;
     } catch (error) {
       console.error('❌ Failed to start game:', error);
       setIsLoading(false);
       throw error; // Re-throw to let caller handle the error
     }
-  }, [room, isHost, sendHostSetSongs, hostSessionId]);
+  }, [room, isHost, sendHostSetSongs, hostSessionId, wsState, players]);
 
   const placeCard = useCallback(async (song: Song, position: number, availableSongs: Song[] = []): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {
