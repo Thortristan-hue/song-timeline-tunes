@@ -55,18 +55,18 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Audio playback started successfully');
+            console.log('[AudioPlayer] Audio playback started successfully');
           })
           .catch(error => {
-            console.error('❌ Audio play failed:', error);
+            console.error('[AudioPlayer] Audio play failed:', error);
             // Reset playing state if audio fails
             if (error.name === 'AbortError') {
-              console.log('🔄 Audio aborted, likely due to source change');
+              console.log('[AudioPlayer] Audio aborted, likely due to source change');
             } else if (error.name === 'NotSupportedError') {
-              console.log('🔄 Audio format not supported or URL expired');
+              console.log('[AudioPlayer] Audio format not supported or URL expired');
               onPlayPause(); // Reset state
             } else {
-              console.log('🔄 Other audio error, resetting state');
+              console.log('[AudioPlayer] Audio error occurred, resetting playback state');
               onPlayPause(); // Reset state
             }
           });
@@ -82,14 +82,14 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     if (!audio) return;
 
     const handleEnded = () => {
-      console.log('🎵 Audio ended naturally');
+      console.log('[AudioPlayer] Audio playback ended naturally');
       onPlayPause(); // This will set isPlaying to false
     };
 
     const handleError = (e: Event) => {
       const target = e.target as HTMLAudioElement;
       const error = target.error;
-      console.error('❌ Audio error occurred:', {
+      console.error('[AudioPlayer] Audio error occurred:', {
         code: error?.code,
         message: error?.message,
         src: target.src
@@ -103,7 +103,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     };
 
     const handleCanPlay = () => {
-      console.log('✅ Audio can play - ready for playback');
+      console.log('[AudioPlayer] Audio ready for playback');
     };
 
     audio.addEventListener('ended', handleEnded);
@@ -128,7 +128,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     audio.pause();
     audio.currentTime = 0;
     if (src && src !== audio.src) {
-      console.log('🔄 Setting new audio source:', src);
+      console.log('[AudioPlayer] Setting new audio source:', src);
       audio.src = src;
       audio.load();
     }

@@ -26,7 +26,7 @@ export function QRCodeGenerator({
   // Extract lobby code from URL for display
   const lobbyCode = isUrl ? new URLSearchParams(new URL(value).search).get('join') || value : value;
   
-  console.log('🔗 QR Code generated for URL:', joinUrl);
+  console.log('[QRCodeGenerator] QR Code generated for URL:', joinUrl);
   
   return (
     <div className={`text-center space-y-3 ${className}`}>

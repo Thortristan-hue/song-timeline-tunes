@@ -9,7 +9,9 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { HostAudioController } from '@/components/HostAudioController';
 import { useGameRoom } from '@/hooks/useGameRoom';
+import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 
@@ -46,17 +48,24 @@ function Index() {
     kickPlayer
   } = useGameRoom();
 
+  // Enhanced realtime game state management
+  const { gameState, updateGameState, updatePlayerData } = useRealtimeGameState(
+    room?.id || null,
+    currentPlayer?.id || null
+  );
+
   // Enhanced debugging for phase transitions
-  console.log('📱 Index render - Phase transition debug:', {
+  console.log('[GameState] Index render - Phase transition debug:', {
     gamePhase,
-    roomPhase: room?.phase,
-    isHost,
-    playersCount: players.length,
-    currentPlayer: currentPlayer?.name,
+    roomPhase: gameState.room?.phase || room?.phase,
+    isHost: gameState.isHost || isHost,
+    playersCount: gameState.players.length || players.length,
+    currentPlayer: gameState.currentPlayer?.name || currentPlayer?.name,
     autoJoinCode,
     gameInitialized,
     isLoading,
-    wsReady: wsState.isReady
+    wsReady: wsState.isReady,
+    realtimeConnected: gameState.isConnected
   });
 
   // Enhanced auto-join from URL parameters (QR code)
@@ -85,42 +94,48 @@ function Index() {
 
   // FIXED: Improved room phase transition logic with proper game start validation
   useEffect(() => {
+    // Use realtime game state as primary source of truth
+    const currentRoom = gameState.room || room;
+    const currentPlayers = gameState.players.length > 0 ? gameState.players : players;
+    const currentIsHost = gameState.isHost || isHost;
+    
     // Only transition to playing when:
     // 1. Room phase is actually 'playing' 
     // 2. We're not already in playing phase
     // 3. For non-hosts: ensure we have a valid connection to receive the transition
-    if (room?.phase === 'playing' && gamePhase !== 'playing') {
-      // FIXED: Add validation to ensure this is a legitimate game start
-      const shouldTransition = isHost || (wsState.isReady && players.length > 0);
+    if (currentRoom?.phase === 'playing' && gamePhase !== 'playing') {
+      // Add validation to ensure this is a legitimate game start
+      const shouldTransition = currentIsHost || (gameState.isConnected && currentPlayers.length > 0);
       
       if (shouldTransition) {
-        console.log('🎮 Valid room transition to playing phase - starting game');
-        console.log('🎮 Room data:', { 
-          phase: room.phase, 
-          id: room.id, 
-          hostId: room.host_id,
-          isHost,
-          playersCount: players.length,
-          wsReady: wsState.isReady
+        console.log('[GameState] Valid room transition to playing phase - starting game');
+        console.log('[GameState] Room data:', { 
+          phase: currentRoom.phase, 
+          id: currentRoom.id, 
+          hostId: currentRoom.host_id,
+          isHost: currentIsHost,
+          playersCount: currentPlayers.length,
+          realtimeConnected: gameState.isConnected
         });
         
         setGamePhase('playing');
         soundEffects.playGameStart();
       } else {
-        console.warn('⚠️ Ignoring premature room phase transition - connection not ready or no players');
+        console.warn('[GameState] Ignoring premature room phase transition - connection not ready or no players');
       }
     }
-  }, [room?.phase, room?.host_id, room?.id, gamePhase, soundEffects, isHost, players.length, wsState.isReady]);
+  }, [gameState.room?.phase, gameState.room?.host_id, gameState.room?.id, gamePhase, soundEffects, gameState.isHost, gameState.players.length, gameState.isConnected, room?.phase, room?.host_id, room?.id, isHost, players.length, wsState.isReady]);
 
-  // Check for winner
+  // Check for winner using realtime game state
   useEffect(() => {
-    const winningPlayer = players.find(player => player.score >= 10);
+    const currentPlayers = gameState.players.length > 0 ? gameState.players : players;
+    const winningPlayer = currentPlayers.find(player => player.score >= 10);
     if (winningPlayer && !winner) {
       setWinner(winningPlayer);
       setGamePhase('finished');
       soundEffects.playGameStart(); // Victory sound
     }
-  }, [players, winner, soundEffects]);
+  }, [gameState.players, players, winner, soundEffects]);
 
   const handleCreateRoom = async (): Promise<boolean> => {
     try {
@@ -262,9 +277,9 @@ function Index() {
 
           {gamePhase === 'hostLobby' && (
             <HostLobby
-              room={room}
-              lobbyCode={room?.lobby_code || ''}
-              players={players}
+              room={gameState.room || room}
+              lobbyCode={(gameState.room || room)?.lobby_code || ''}
+              players={gameState.players.length > 0 ? gameState.players : players}
               onStartGame={handleStartGame}
               onBackToMenu={handleBackToMenu}
               setCustomSongs={setCustomSongs}
@@ -286,35 +301,43 @@ function Index() {
 
           {gamePhase === 'mobileLobby' && (
             <MobilePlayerLobby
-              room={room}
-              players={players}
-              currentPlayer={currentPlayer}
+              room={gameState.room || room}
+              players={gameState.players.length > 0 ? gameState.players : players}
+              currentPlayer={gameState.currentPlayer || currentPlayer}
               onBackToMenu={handleBackToMenu}
               onUpdatePlayer={handleUpdatePlayer}
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
-            <GamePlay
-              room={room}
-              players={players}
-              currentPlayer={currentPlayer}
-              isHost={isHost}
-              onPlaceCard={handlePlaceCard}
-              onSetCurrentSong={setCurrentSong}
-              customSongs={customSongs}
-              connectionStatus={{
-                isConnected: connectionStatus.isConnected && wsState.isConnected,
-                isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
-                lastError: connectionStatus.lastError || wsState.lastError,
-                retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
-              }}
-              onReconnect={() => {
-                forceReconnect();
-                wsReconnect();
-              }}
-              onReplayGame={handlePlayAgain}
-            />
+          {gamePhase === 'playing' && (gameState.room || room) && (gameState.currentPlayer || currentPlayer) && (
+            <>
+              {/* Host audio controller - only for host */}
+              <HostAudioController 
+                roomId={(gameState.room || room)!.id} 
+                isHost={gameState.isHost || isHost} 
+              />
+              
+              <GamePlay
+                room={gameState.room || room}
+                players={gameState.players.length > 0 ? gameState.players : players}
+                currentPlayer={gameState.currentPlayer || currentPlayer}
+                isHost={gameState.isHost || isHost}
+                onPlaceCard={handlePlaceCard}
+                onSetCurrentSong={setCurrentSong}
+                customSongs={customSongs}
+                connectionStatus={{
+                  isConnected: (gameState.isConnected && connectionStatus.isConnected) && wsState.isConnected,
+                  isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
+                  lastError: gameState.error || connectionStatus.lastError || wsState.lastError,
+                  retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
+                }}
+                onReconnect={() => {
+                  forceReconnect();
+                  wsReconnect();
+                }}
+                onReplayGame={handlePlayAgain}
+              />
+            </>
           )}
 
           {gamePhase === 'finished' && winner && (
