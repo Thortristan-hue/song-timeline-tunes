@@ -246,29 +246,59 @@ export class ReliableWebSocketService {
   }
 
   private async handleHostSetSongs(message: GameStateMessage) {
-    console.log('🎯 HOST_SET_SONGS received:', message.data);
+    console.log('🎯 HOST_SET_SONGS received - processing game initialization:', {
+      roomId: message.roomId,
+      songCount: message.data?.songList?.length || 0,
+      hostId: message.data?.hostId,
+      timestamp: message.timestamp
+    });
     
     try {
       const { GameService } = await import('./gameService');
-      await GameService.initializeGameWithStartingCards(message.roomId, message.data.songList);
       
-      // Broadcast game started
+      console.log('🎮 Calling GameService.initializeGameWithStartingCards...');
+      await GameService.initializeGameWithStartingCards(message.roomId, message.data.songList);
+      console.log('✅ Game initialization completed successfully');
+      
+      // Broadcast game started with proper room data
       setTimeout(() => {
+        console.log('📡 Broadcasting GAME_STARTED event to all clients...');
+        
+        const gameStartedData = {
+          room: { 
+            id: message.roomId, 
+            phase: 'playing', 
+            initialized: true,
+            songs: message.data.songList || [],
+            host_id: message.data.hostId,
+            updated_at: new Date().toISOString()
+          },
+          timestamp: Date.now()
+        };
+        
+        console.log('📡 GAME_STARTED payload:', gameStartedData);
+        
         const listeners = this.listeners.get('GAME_STARTED');
-        if (listeners) {
-          listeners.forEach(listener => {
+        if (listeners && listeners.size > 0) {
+          console.log(`📡 Notifying ${listeners.size} GAME_STARTED listeners...`);
+          listeners.forEach((listener, index) => {
             try {
-              listener({
-                room: { id: message.roomId, phase: 'playing', initialized: true }
-              });
+              listener(gameStartedData);
+              console.log(`✅ GAME_STARTED listener ${index + 1} notified successfully`);
             } catch (error) {
-              console.error('❌ Error in GAME_STARTED listener:', error);
+              console.error(`❌ Error in GAME_STARTED listener ${index + 1}:`, error);
             }
           });
+        } else {
+          console.warn('⚠️ No GAME_STARTED listeners registered - event will not be processed');
         }
       }, 1000);
     } catch (error) {
-      console.error('❌ Failed to handle HOST_SET_SONGS:', error);
+      console.error('❌ Failed to handle HOST_SET_SONGS - game start blocked:', {
+        error: error instanceof Error ? error.message : String(error),
+        roomId: message.roomId,
+        songCount: message.data?.songList?.length || 0
+      });
     }
   }
 
