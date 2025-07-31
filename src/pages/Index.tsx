@@ -14,6 +14,7 @@ import { useGameRoom } from '@/hooks/useGameRoom';
 import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { HostMusicController } from '@/components/HostMusicController';
 
 function Index() {
   const soundEffects = useSoundEffects();
@@ -55,7 +56,7 @@ function Index() {
   );
 
   // Enhanced debugging for phase transitions
-  console.log('[GameState] Index render - Phase transition debug:', {
+  console.log('[GameState] Phase transition debug:', {
     gamePhase,
     roomPhase: gameState.room?.phase || room?.phase,
     isHost: gameState.isHost || isHost,
@@ -75,7 +76,7 @@ function Index() {
     
     if (joinCode && gamePhase === 'menu') {
       const cleanCode = joinCode.trim().toUpperCase();
-      console.log('🔗 Auto-joining from URL parameter:', cleanCode);
+      console.log('[GameState] Auto-joining from URL parameter:', cleanCode);
       
       // Validate the lobby code format (5 letters + 1 digit)
       const lobbyCodeRegex = /^[A-Z]{5}[0-9]$/;
@@ -87,7 +88,7 @@ function Index() {
         const newUrl = window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
       } else {
-        console.error('❌ Invalid lobby code format:', cleanCode);
+        console.error('[GameState] Invalid lobby code format:', cleanCode);
       }
     }
   }, [gamePhase]);
@@ -154,7 +155,7 @@ function Index() {
 
   const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
     try {
-      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
+      console.log('[GameState] Attempting to join room with lobby code:', lobbyCode);
       const success = await joinRoom(lobbyCode, name);
       if (success) {
         setPlayerName(name);
@@ -171,7 +172,7 @@ function Index() {
 
   const handleStartGame = async () => {
     try {
-      console.log('🎮 Host starting game...');
+      console.log('[GameState] Host starting game...');
       await startGame();
       // Note: Phase transition will be handled by the room phase listener
       soundEffects.playGameStart();
@@ -313,6 +314,12 @@ function Index() {
             <>
               {/* Host audio controller - only for host */}
               <HostAudioController 
+                roomId={(gameState.room || room)!.id} 
+                isHost={gameState.isHost || isHost} 
+              />
+              
+              {/* Host music controller - only for host */}
+              <HostMusicController 
                 roomId={(gameState.room || room)!.id} 
                 isHost={gameState.isHost || isHost} 
               />
