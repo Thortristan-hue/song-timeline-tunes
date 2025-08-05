@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { useWebSocketGameSync } from './useWebSocketGameSync';
-import { Song, Player, GameRoom, GamePhase } from '@/types/game';
+import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { Json } from '@/integrations/supabase/types';
 
@@ -36,8 +36,8 @@ interface UseGameRoomResult {
   updateRoomGamemode: (gamemode: string, settings: any) => Promise<boolean>;
   startGame: () => Promise<void>;
   leaveRoom: () => void;
-  placeCard: (song: Song, position: number) => Promise<boolean>;
-  setCurrentSong: (song: Song | null) => Promise<boolean>;
+  placeCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; }>;
+  setCurrentSong: (song: Song | null) => Promise<void>;
   assignStartingCards: (songs: Song[]) => Promise<void>;
   kickPlayer: (playerId: string) => Promise<boolean>;
 }
@@ -52,7 +52,7 @@ export function useGameRoom(): UseGameRoomResult {
   const [connectionStatus, setConnectionStatus] = useState({
     isConnected: false,
     isReconnecting: false,
-    lastError: null,
+    lastError: null as string | null,
     retryCount: 0
   });
 
@@ -72,6 +72,53 @@ export function useGameRoom(): UseGameRoomResult {
       localStorage.setItem('playerSessionId', newPlayerSessionId);
     }
   }, []);
+
+  // Helper function to generate a unique session ID
+  const generateSessionId = () => {
+    return Math.random().toString(36).substring(2, 15);
+  };
+
+  // Function to handle room updates from realtime subscription
+  const handleRoomUpdate = (updatedRoom: any) => {
+    const roomData: GameRoom = {
+      id: updatedRoom.id,
+      lobby_code: updatedRoom.lobby_code,
+      host_id: updatedRoom.host_id,
+      host_name: updatedRoom.host_name || '',
+      phase: (updatedRoom.phase === 'lobby' || updatedRoom.phase === 'playing' || updatedRoom.phase === 'finished') 
+        ? updatedRoom.phase as GamePhase 
+        : 'lobby',
+      gamemode: (updatedRoom.gamemode as GameMode) || 'classic',
+      gamemode_settings: (updatedRoom.gamemode_settings as GameModeSettings) || {},
+      songs: Array.isArray(updatedRoom.songs) ? updatedRoom.songs as Song[] : [],
+      created_at: updatedRoom.created_at,
+      updated_at: updatedRoom.updated_at,
+      current_turn: updatedRoom.current_turn || 0,
+      current_song: updatedRoom.current_song as Song || null,
+      current_player_id: updatedRoom.current_player_id || null
+    };
+    setRoom(roomData);
+  };
+
+  // Function to handle players updates from realtime subscription
+  const handlePlayersUpdate = (updatedPlayers: Player[]) => {
+    setPlayers(updatedPlayers);
+  };
+
+  const handleCardPlaced = (cardData: any) => {
+    // Handle card placed logic
+    console.log('Card placed:', cardData);
+  };
+
+  const handleSongSet = (song: Song) => {
+    // Handle song set logic
+    console.log('Song set:', song);
+  };
+
+  const handleGameStarted = (data: any) => {
+    // Handle game started logic
+    console.log('Game started:', data);
+  };
 
   // Realtime subscription setup
   const { connectionStatus: realtimeStatus, forceReconnect } = useRealtimeSubscription([
@@ -122,53 +169,13 @@ export function useGameRoom(): UseGameRoomResult {
 
   // Update connection status
   useEffect(() => {
-    setConnectionStatus(realtimeStatus);
+    setConnectionStatus({
+      isConnected: realtimeStatus.isConnected,
+      isReconnecting: realtimeStatus.isReconnecting,
+      lastError: realtimeStatus.lastError || null,
+      retryCount: realtimeStatus.retryCount
+    });
   }, [realtimeStatus]);
-
-  // Helper function to generate a unique session ID
-  const generateSessionId = () => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
-  // Function to handle room updates from realtime subscription
-  const handleRoomUpdate = (updatedRoom: any) => {
-    const roomData: GameRoom = {
-      id: updatedRoom.id,
-      lobby_code: updatedRoom.lobby_code,
-      host_id: updatedRoom.host_id,
-      host_name: updatedRoom.host_name || '',
-      phase: updatedRoom.phase as GamePhase,
-      gamemode: updatedRoom.gamemode || 'classic',
-      gamemode_settings: updatedRoom.gamemode_settings || {},
-      songs: Array.isArray(updatedRoom.songs) ? updatedRoom.songs : [],
-      created_at: updatedRoom.created_at,
-      updated_at: updatedRoom.updated_at,
-      current_turn: updatedRoom.current_turn || 0,
-      current_song: updatedRoom.current_song || null,
-      current_player_id: updatedRoom.current_player_id || null
-    };
-    setRoom(roomData);
-  };
-
-  // Function to handle players updates from realtime subscription
-  const handlePlayersUpdate = (updatedPlayers: Player[]) => {
-    setPlayers(updatedPlayers);
-  };
-
-  const handleCardPlaced = (cardData: any) => {
-    // Handle card placed logic
-    console.log('Card placed:', cardData);
-  };
-
-  const handleSongSet = (song: Song) => {
-    // Handle song set logic
-    console.log('Song set:', song);
-  };
-
-  const handleGameStarted = (data: any) => {
-    // Handle game started logic
-    console.log('Game started:', data);
-  };
 
   // Function to create a new game room
   const createRoom = async (hostName: string): Promise<string | null> => {
@@ -205,14 +212,16 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name || '',
-        phase: data.phase as GamePhase,
-        gamemode: data.gamemode || 'classic',
-        gamemode_settings: data.gamemode_settings || {},
-        songs: Array.isArray(data.songs) ? data.songs : [],
+        phase: (data.phase === 'lobby' || data.phase === 'playing' || data.phase === 'finished') 
+          ? data.phase as GamePhase 
+          : 'lobby',
+        gamemode: (data.gamemode as GameMode) || 'classic',
+        gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
+        songs: Array.isArray(data.songs) ? data.songs as Song[] : [],
         created_at: data.created_at,
         updated_at: data.updated_at,
         current_turn: data.current_turn || 0,
-        current_song: data.current_song || null,
+        current_song: data.current_song as Song || null,
         current_player_id: data.current_player_id || null
       };
       setRoom(roomData);
@@ -277,10 +286,16 @@ export function useGameRoom(): UseGameRoomResult {
         return false;
       }
 
-      // Insert the new player into the database
+      // Insert the new player into the database with required fields
       const { data: playerData, error: playerError } = await supabase
         .from('players')
-        .insert([{ room_id: roomId, name: playerName, player_session_id: playerSessionId.current }])
+        .insert([{ 
+          room_id: roomId, 
+          name: playerName, 
+          player_session_id: playerSessionId.current,
+          color: '#007AFF',
+          timeline_color: '#007AFF'
+        }])
         .select()
         .single();
 
@@ -320,14 +335,16 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name || '',
-        phase: roomData.phase as GamePhase,
-        gamemode: roomData.gamemode || 'classic',
-        gamemode_settings: roomData.gamemode_settings || {},
-        songs: Array.isArray(roomData.songs) ? roomData.songs : [],
+        phase: (roomData.phase === 'lobby' || roomData.phase === 'playing' || roomData.phase === 'finished') 
+          ? roomData.phase as GamePhase 
+          : 'lobby',
+        gamemode: (roomData.gamemode as GameMode) || 'classic',
+        gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
+        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : [],
         created_at: roomData.created_at,
         updated_at: roomData.updated_at,
         current_turn: roomData.current_turn || 0,
-        current_song: roomData.current_song || null,
+        current_song: roomData.current_song as Song || null,
         current_player_id: roomData.current_player_id || null
       };
       setRoom(roomDataWithType);
@@ -345,7 +362,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to update player data
   const updatePlayer = async (updates: Partial<Player>): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -392,7 +408,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to update room songs
   const updateRoomSongs = async (songs: Song[]): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -428,7 +443,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to update room gamemode
   const updateRoomGamemode = async (gamemode: string, settings: any): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -437,7 +451,7 @@ export function useGameRoom(): UseGameRoomResult {
       // Update the room in the database
       const { error } = await supabase
         .from('game_rooms')
-        .update({ gamemode: gamemode, gamemode_settings: settings })
+        .update({ gamemode: gamemode as GameMode, gamemode_settings: settings })
         .eq('id', room?.id);
 
       if (error) {
@@ -449,7 +463,7 @@ export function useGameRoom(): UseGameRoomResult {
       // Update the local state
       setRoom((prevRoom: GameRoom | null) => {
         if (prevRoom) {
-          return { ...prevRoom, gamemode: gamemode, gamemode_settings: settings };
+          return { ...prevRoom, gamemode: gamemode as GameMode, gamemode_settings: settings };
         }
         return prevRoom;
       });
@@ -491,8 +505,8 @@ export function useGameRoom(): UseGameRoomResult {
       let songsToUse = songsWithPreviews;
       if (songsToUse.length === 0) {
         console.log('🎵 No custom songs, loading default playlist...');
-        const { getDefaultPlaylist } = await import('@/services/defaultPlaylistService');
-        const defaultSongs = await getDefaultPlaylist();
+        const { loadDefaultPlaylist } = await import('@/services/defaultPlaylistService');
+        const defaultSongs = await loadDefaultPlaylist();
         songsToUse = defaultSongs.slice(0, 20);
         console.log(`🎯 Loaded ${songsToUse.length} songs from default playlist`);
       }
@@ -538,27 +552,21 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to leave the game room
   const leaveRoom = () => {
-    // Clear the local state
     setRoom(null);
     setPlayers([]);
     setCurrentPlayer(null);
     setIsHost(false);
     setError(null);
     setGameInitialized(false);
-
-    // Remove player session ID from local storage
     localStorage.removeItem('playerSessionId');
   };
 
-  // Function to place a card
-  const placeCard = async (song: Song, position: number): Promise<boolean> => {
+  const placeCard = async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; }> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Update the player's timeline in the database
       const { error } = await supabase
         .from('players')
         .update({ timeline: { [position]: song } as any })
@@ -568,10 +576,9 @@ export function useGameRoom(): UseGameRoomResult {
       if (error) {
         console.error('Failed to place card:', error);
         setError('Failed to place card');
-        return false;
+        return { success: false };
       }
 
-      // Update the local state
       setCurrentPlayer((prevPlayer: Player | null) => {
         if (prevPlayer) {
           const newTimeline = { ...prevPlayer.timeline, [position]: song };
@@ -580,23 +587,21 @@ export function useGameRoom(): UseGameRoomResult {
         return prevPlayer;
       });
 
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('Failed to place card:', err);
       setError('Failed to place card');
-      return false;
+      return { success: false };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to set the current song
-  const setCurrentSong = async (song: Song | null): Promise<boolean> => {
+  const setCurrentSong = async (song: Song | null): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Update the room in the database
       const { error } = await supabase
         .from('game_rooms')
         .update({ current_song: song as any })
@@ -605,34 +610,28 @@ export function useGameRoom(): UseGameRoomResult {
       if (error) {
         console.error('Failed to set current song:', error);
         setError('Failed to set current song');
-        return false;
+        return;
       }
 
-      // Update the local state
       setRoom((prevRoom: GameRoom | null) => {
         if (prevRoom) {
           return { ...prevRoom, current_song: song };
         }
         return prevRoom;
       });
-
-      return true;
     } catch (err) {
       console.error('Failed to set current song:', err);
       setError('Failed to set current song');
-      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to assign starting cards to each player
   const assignStartingCards = async (songs: Song[]): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get all players in the room
       const { data: players, error: playersError } = await supabase
         .from('players')
         .select('*')
@@ -644,11 +643,9 @@ export function useGameRoom(): UseGameRoomResult {
         return;
       }
 
-      // Assign a random card to each player
       for (const player of players) {
         const randomCard = songs[Math.floor(Math.random() * songs.length)];
 
-        // Update the player's timeline in the database
         const { error } = await supabase
           .from('players')
           .update({ timeline: { 0: randomCard } as any })
@@ -661,7 +658,6 @@ export function useGameRoom(): UseGameRoomResult {
         }
       }
 
-      // Fetch players
       await fetchPlayers();
     } catch (err) {
       console.error('Failed to assign starting cards:', err);
@@ -671,13 +667,11 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to kick a player from the room
   const kickPlayer = async (playerId: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Delete the player from the database
       const { error } = await supabase
         .from('players')
         .delete()
@@ -689,9 +683,7 @@ export function useGameRoom(): UseGameRoomResult {
         return false;
       }
 
-      // Fetch players
       await fetchPlayers();
-
       return true;
     } catch (err) {
       console.error('Failed to kick player:', err);
@@ -702,7 +694,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Helper function to generate a unique lobby code
   const generateLobbyCode = () => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let code = '';
@@ -713,13 +704,11 @@ export function useGameRoom(): UseGameRoomResult {
     return code;
   };
 
-  // Function to fetch players
   const fetchPlayers = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get all players in the room
       const { data: playersData, error: playersError } = await supabase
         .from('players')
         .select('*')
@@ -732,7 +721,6 @@ export function useGameRoom(): UseGameRoomResult {
         return;
       }
 
-      // Set the players
       const playersWithType: Player[] = playersData.map(player => ({
         id: player.id,
         name: player.name,
@@ -744,11 +732,9 @@ export function useGameRoom(): UseGameRoomResult {
       }));
       setPlayers(playersWithType);
 
-      // Set the current player
       const currentPlayerWithType = playersWithType.find(player => (player as any).player_session_id === playerSessionId.current) || null;
       setCurrentPlayer(currentPlayerWithType);
 
-      // Set the host
       const isHostWithType = playersData.some(player => (player as any).player_session_id === hostSessionId.current && player.is_host);
       setIsHost(isHostWithType);
       setHostStatus(isHostWithType);
