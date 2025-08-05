@@ -22,7 +22,7 @@ export function HostAudioController({ roomId, isHost }: HostAudioControllerProps
 
     // Subscribe to audio control events
     const channel = supabase
-      .channel(`room-${roomId}`)
+      .channel(`room-audio-${roomId}`)
       .on('broadcast', { event: 'audio-control' }, (payload) => {
         console.log('[HostAudioController] Received audio control event:', payload);
         handleAudioControl(payload.payload);

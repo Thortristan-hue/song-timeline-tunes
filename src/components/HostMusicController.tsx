@@ -27,7 +27,7 @@ export function HostMusicController({ roomId, isHost }: HostMusicControllerProps
 
     // Subscribe to music control events
     const channel = supabase
-      .channel(`room-${roomId}`)
+      .channel(`room-music-${roomId}`)
       .on('broadcast', { event: 'music-control' }, (payload) => {
         console.log('[HostMusicController] Received music control event:', payload);
         handleMusicControl(payload.payload);
