@@ -91,7 +91,7 @@ export function useGameRoom(): UseGameRoomResult {
   };
 
   // Helper function to safely convert GamePhase for database
-  const safeGamePhase = (phase: GamePhase): 'lobby' | 'playing' | 'finished' => {
+  const safeGamePhase = (phase: string): 'lobby' | 'playing' | 'finished' => {
     if (phase === 'playing' || phase === 'finished') return phase;
     return 'lobby'; // Default fallback for menu, hostLobby, mobileJoin, mobileLobby phases
   };
@@ -114,13 +114,13 @@ export function useGameRoom(): UseGameRoomResult {
   };
 
   // Function to handle room updates from realtime subscription
-  const handleRoomUpdate = (updatedRoom: any) => {
+  const handleRoomUpdate = useCallback((updatedRoom: any) => {
     const roomData: GameRoom = {
       id: updatedRoom.id,
       lobby_code: updatedRoom.lobby_code,
       host_id: updatedRoom.host_id,
       host_name: updatedRoom.host_name || '',
-      phase: safeGamePhase(updatedRoom.phase),
+      phase: safeGamePhase(updatedRoom.phase) as GamePhase,
       gamemode: (updatedRoom.gamemode as GameMode) || 'classic',
       gamemode_settings: (updatedRoom.gamemode_settings as GameModeSettings) || {},
       songs: jsonArrayToSongs(updatedRoom.songs),
@@ -131,27 +131,27 @@ export function useGameRoom(): UseGameRoomResult {
       current_player_id: updatedRoom.current_player_id || null
     };
     setRoom(roomData);
-  };
+  }, []);
 
   // Function to handle players updates from realtime subscription
-  const handlePlayersUpdate = (updatedPlayers: Player[]) => {
+  const handlePlayersUpdate = useCallback((updatedPlayers: Player[]) => {
     setPlayers(updatedPlayers);
-  };
+  }, []);
 
-  const handleCardPlaced = (cardData: any) => {
+  const handleCardPlaced = useCallback((cardData: any) => {
     // Handle card placed logic
     console.log('Card placed:', cardData);
-  };
+  }, []);
 
-  const handleSongSet = (song: Song) => {
+  const handleSongSet = useCallback((song: Song) => {
     // Handle song set logic
     console.log('Song set:', song);
-  };
+  }, []);
 
-  const handleGameStarted = (data: any) => {
+  const handleGameStarted = useCallback((data: any) => {
     // Handle game started logic
     console.log('Game started:', data);
-  };
+  }, []);
 
   // Realtime subscription setup
   const { connectionStatus: realtimeStatus, forceReconnect } = useRealtimeSubscription([
@@ -245,7 +245,7 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name || '',
-        phase: safeGamePhase(data.phase),
+        phase: safeGamePhase(data.phase) as GamePhase,
         gamemode: (data.gamemode as GameMode) || 'classic',
         gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
         songs: jsonArrayToSongs(data.songs),
@@ -270,7 +270,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  // Function to join an existing game room
   const joinRoom = async (lobbyCode: string, playerName: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
@@ -366,7 +365,7 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name || '',
-        phase: safeGamePhase(roomData.phase),
+        phase: safeGamePhase(roomData.phase) as GamePhase,
         gamemode: (roomData.gamemode as GameMode) || 'classic',
         gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
         songs: jsonArrayToSongs(roomData.songs),

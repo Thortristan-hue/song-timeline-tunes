@@ -1,3 +1,4 @@
+
 import defaultPlaylistData from '@/data/defaultPlaylist.json';
 import { Song } from '@/types/game';
 
@@ -26,9 +27,20 @@ export async function loadDefaultPlaylist(): Promise<Song[]> {
   }
 }
 
+// Helper function to filter valid songs
+export function filterValidSongs(songs: Song[]): Song[] {
+  return songs.filter(song => 
+    song && 
+    song.deezer_title && 
+    song.deezer_artist && 
+    song.release_year
+  );
+}
+
 // Enhanced service with optimized loading
 export const defaultPlaylistService = {
   loadDefaultPlaylist,
+  filterValidSongs,
   
   async loadOptimizedGameSongs(maxSongs: number): Promise<Song[]> {
     try {
