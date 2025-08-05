@@ -6,6 +6,9 @@ import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { Json } from '@/integrations/supabase/types';
 
+// Database phase type (narrower than GamePhase)
+type DatabasePhase = 'lobby' | 'playing' | 'finished';
+
 interface UseGameRoomResult {
   room: GameRoom | null;
   players: Player[];
@@ -91,9 +94,14 @@ export function useGameRoom(): UseGameRoomResult {
   };
 
   // Helper function to safely convert GamePhase for database
-  const safeGamePhase = (phase: string): 'lobby' | 'playing' | 'finished' => {
+  const safeGamePhase = (phase: string): DatabasePhase => {
     if (phase === 'playing' || phase === 'finished') return phase;
     return 'lobby'; // Default fallback for menu, hostLobby, mobileJoin, mobileLobby phases
+  };
+
+  // Helper function to convert database phase to GamePhase for display
+  const toGamePhase = (dbPhase: DatabasePhase): GamePhase => {
+    return dbPhase as GamePhase; // Safe cast since DatabasePhase is subset of GamePhase
   };
 
   // Fetch player session ID from local storage
@@ -120,7 +128,7 @@ export function useGameRoom(): UseGameRoomResult {
       lobby_code: updatedRoom.lobby_code,
       host_id: updatedRoom.host_id,
       host_name: updatedRoom.host_name || '',
-      phase: safeGamePhase(updatedRoom.phase) as GamePhase,
+      phase: toGamePhase(safeGamePhase(updatedRoom.phase)),
       gamemode: (updatedRoom.gamemode as GameMode) || 'classic',
       gamemode_settings: (updatedRoom.gamemode_settings as GameModeSettings) || {},
       songs: jsonArrayToSongs(updatedRoom.songs),
@@ -245,7 +253,7 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name || '',
-        phase: safeGamePhase(data.phase) as GamePhase,
+        phase: toGamePhase(safeGamePhase(data.phase)),
         gamemode: (data.gamemode as GameMode) || 'classic',
         gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
         songs: jsonArrayToSongs(data.songs),
@@ -365,7 +373,7 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name || '',
-        phase: safeGamePhase(roomData.phase) as GamePhase,
+        phase: toGamePhase(safeGamePhase(roomData.phase)),
         gamemode: (roomData.gamemode as GameMode) || 'classic',
         gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
         songs: jsonArrayToSongs(roomData.songs),
