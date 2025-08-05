@@ -66,11 +66,20 @@ export class ConnectionManager {
   }
 
   setError(error: string) {
-    this.updateState({
-      lastError: error,
-      isConnected: false,
-      isReady: false
-    });
+    // Only set certain errors that should display to users
+    const ignoredErrors = [
+      'WebSocket error occurred',
+      'Connection timeout', 
+      'Network offline'
+    ];
+    
+    if (!ignoredErrors.includes(error)) {
+      this.updateState({
+        lastError: error,
+        isConnected: false,
+        isReady: false
+      });
+    }
   }
 }
 

@@ -613,38 +613,32 @@ export function useGameRoom() {
         console.log(`🎯 RESILIENT RESULT: ${songsToUse.length} songs with previews after processing`);
       }
       
-      // NEW FLOW: Send songs to "server" via WebSocket first
+      // Use database-driven game initialization
       if (songsToUse && songsToUse.length > 0) {
-        console.log('📦 HOST: Sending songs to server via WebSocket...', {
-          songCount: songsToUse.length,
-          hostSessionId: hostSessionId.current,
-          wsReady: wsState.isReady
-        });
+        console.log('[GameState] Initializing game with database updates...');
         
-        // Send HOST_SET_SONGS event - this will trigger server simulation
-        sendHostSetSongs(songsToUse, hostSessionId.current || '');
+        // Use database as source of truth - initialize via GameService
+        const { GameService } = await import('@/services/gameService');
         
-        // The server simulation will store songs and broadcast GAME_STARTED
-        // All clients (including host) will receive GAME_STARTED and update their state
-        console.log('✅ HOST_SET_SONGS sent, waiting for server response...');
+        // Initialize the game with songs and set phase to playing
+        await GameService.initializeGameWithStartingCards(room.id, songsToUse);
         
-        // Store songs in database as backup/persistence (but don't change phase here)
-        const { error: songsError } = await supabase
+        // Update room phase to playing in database - this will trigger realtime updates
+        const { error: phaseError } = await supabase
           .from('game_rooms')
           .update({ 
-            songs: songsToUse as unknown as Json
+            phase: 'playing',
+            songs: songsToUse as unknown as Json,
+            updated_at: new Date().toISOString()
           })
           .eq('id', room.id);
 
-        if (songsError) {
-          console.error('❌ Failed to store songs in database:', songsError);
-          // Continue anyway since WebSocket sync is primary
-        } else {
-          console.log('✅ Songs stored in database as backup');
+        if (phaseError) {
+          console.error('[GameState] Failed to update room phase:', phaseError);
+          throw new Error('Failed to start game - database update failed');
         }
         
-        // REMOVED: Client-side game initialization - let WebSocket server handle it
-        // The server will call GameService.initializeGameWithStartingCards and set phase to 'playing'
+        console.log('[GameState] Game initialization completed - realtime will propagate changes');
       } else {
         console.log('⚠️ No songs available, cannot start game');
         throw new Error('No songs available for game start');

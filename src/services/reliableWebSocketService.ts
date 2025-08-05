@@ -280,14 +280,16 @@ export class ReliableWebSocketService {
         
         const listeners = this.listeners.get('GAME_STARTED');
         if (listeners && listeners.size > 0) {
-          console.log(`📡 Notifying ${listeners.size} GAME_STARTED listeners...`);
-          listeners.forEach((listener, index) => {
+          console.log(`[WebSocket] Notifying ${listeners.size} GAME_STARTED listeners`);
+          let listenerIndex = 0;
+          listeners.forEach((listener) => {
             try {
               listener(gameStartedData);
-              console.log(`✅ GAME_STARTED listener ${index + 1} notified successfully`);
+              console.log(`[WebSocket] GAME_STARTED listener ${listenerIndex + 1} notified successfully`);
             } catch (error) {
-              console.error(`❌ Error in GAME_STARTED listener ${index + 1}:`, error);
+              console.error(`[WebSocket] Error in GAME_STARTED listener ${listenerIndex + 1}:`, error);
             }
+            listenerIndex++;
           });
         } else {
           console.warn('⚠️ No GAME_STARTED listeners registered - event will not be processed');
