@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { GameRoom, Player, Song } from '@/types/game';
+import { GameRoom, Player, Song, GamePhase, DatabasePhase } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface RealtimeGameState {
@@ -12,6 +13,20 @@ export interface RealtimeGameState {
   isConnected: boolean;
   error: string | null;
 }
+
+// Helper function to convert database phase to GamePhase
+const toGamePhase = (dbPhase: DatabasePhase): GamePhase => {
+  switch (dbPhase) {
+    case 'lobby':
+      return 'hostLobby'; // Default to hostLobby, can be refined based on context
+    case 'playing':
+      return 'playing';
+    case 'finished':
+      return 'finished';
+    default:
+      return 'hostLobby';
+  }
+};
 
 export function useRealtimeGameState(roomId: string | null, currentPlayerId: string | null) {
   const { toast } = useToast();
@@ -149,12 +164,15 @@ export function useRealtimeGameState(roomId: string | null, currentPlayerId: str
   };
 
   const updateGameRoom = (roomData: any) => {
+    const dbPhase = roomData.phase as DatabasePhase;
+    const gamePhase = toGamePhase(dbPhase);
+    
     const updatedRoom: GameRoom = {
       id: roomData.id,
       lobby_code: roomData.lobby_code,
       host_id: roomData.host_id,
       host_name: roomData.host_name || '',
-      phase: roomData.phase as 'lobby' | 'playing' | 'finished',
+      phase: gamePhase, // Convert to GamePhase
       gamemode: roomData.gamemode || 'classic',
       gamemode_settings: roomData.gamemode_settings || {},
       songs: Array.isArray(roomData.songs) ? roomData.songs : [],

@@ -22,7 +22,7 @@ export default function MobilePlayerLobby({
     lobby_code: 'DEMO123', 
     host_id: 'demo-host',
     host_name: 'Demo Host',
-    phase: 'lobby',
+    phase: 'mobileLobby',
     songs: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -37,7 +37,7 @@ export default function MobilePlayerLobby({
     timelineColor: getDefaultCharacter().color,
     score: 0,
     timeline: [],
-    character: getDefaultCharacter().id // Always have a default character
+    character: getDefaultCharacter().id
   },
   onBackToMenu = () => {},
   onUpdatePlayer = async () => {}
