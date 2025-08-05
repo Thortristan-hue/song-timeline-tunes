@@ -4,6 +4,7 @@ import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
+import { getActualPlayers, hasMinimumPlayers, getNextPlayer } from '@/utils/playerUtils';
 
 interface ClassicGameLogicState {
   phase: 'loading' | 'ready' | 'playing' | 'finished';

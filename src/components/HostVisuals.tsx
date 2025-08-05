@@ -4,6 +4,9 @@ import { Song, Player } from '@/types/game';
 import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@/constants/characters';
+import { audioEngine } from '@/utils/audioEngine';
+import { Button } from '@/components/ui/button';
+import { Play, Pause } from 'lucide-react';
 
 interface HostGameViewProps {
   currentTurnPlayer: Player | null;
@@ -34,6 +37,7 @@ export function HostGameView({
 }: HostGameViewProps) {
   const [recordPlayerRef, setRecordPlayerRef] = useState<HTMLDivElement | null>(null);
   const [isCardRevealed, setIsCardRevealed] = useState(false);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   
   useEffect(() => {
     setIsCardRevealed(mysteryCardRevealed);
@@ -41,6 +45,25 @@ export function HostGameView({
 
   const handleRecordClick = () => {
     onPlayPause();
+  };
+
+  const handlePreviewClick = () => {
+    if (!currentSong?.preview_url) {
+      console.warn('[HostVisuals] No preview URL available');
+      return;
+    }
+
+    if (isPreviewPlaying) {
+      audioEngine.stopPreview();
+      setIsPreviewPlaying(false);
+    } else {
+      audioEngine.playPreview(currentSong.preview_url);
+      setIsPreviewPlaying(true);
+      // Auto-stop after 30 seconds (typical preview length)
+      setTimeout(() => {
+        setIsPreviewPlaying(false);
+      }, 30000);
+    }
   };
 
   return (
@@ -146,12 +169,34 @@ export function HostGameView({
         )}
 
         {/* Mystery Card */}
-        <div className="mb-8">
+        <div className="mb-8 flex flex-col items-center space-y-4">
           <RecordMysteryCard
             song={currentSong}
             isRevealed={isCardRevealed}
             isDestroyed={cardPlacementResult?.correct === false}
           />
+          
+          {/* Preview Button for Mystery Song */}
+          {currentSong?.preview_url && (
+            <Button
+              onClick={handlePreviewClick}
+              className={`px-6 py-2 rounded-full text-white shadow-lg hover:scale-105 transition-all duration-300 flex items-center space-x-2 interactive-button hover-glow ${
+                isPreviewPlaying 
+                  ? 'bg-gradient-to-br from-orange-500 to-orange-600' 
+                  : 'bg-gradient-to-br from-blue-500 to-blue-600'
+              }`}
+              title="Preview Mystery Song"
+            >
+              {isPreviewPlaying ? (
+                <Pause className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              <span className="text-sm font-semibold">
+                {isPreviewPlaying ? 'Stop Preview' : 'Play Preview'}
+              </span>
+            </Button>
+          )}
         </div>
 
         {/* Player Characters Display */}

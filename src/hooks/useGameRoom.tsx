@@ -262,8 +262,8 @@ export function useGameRoom(): UseGameRoomResult {
       };
       setRoom(roomData);
 
-      // Insert the host player into the database
-      await joinRoom(lobbyCode, hostName);
+      // DON'T add host as a player - they are only the facilitator
+      // The host should not be in the players table
 
       return lobbyCode;
     } catch (err) {
@@ -763,7 +763,14 @@ export function useGameRoom(): UseGameRoomResult {
         timeline: Array.isArray(player.timeline) ? player.timeline as unknown as Song[] : [],
         character: (player as any).character || 'char_dave'
       }));
-      setPlayers(playersWithType);
+      
+      // Filter out host from players list to prevent them from being in the turn rotation
+      // Check both player_session_id and is_host flag from database
+      const actualPlayers = playersWithType.filter((player, index) => {
+        const originalPlayer = playersData[index];
+        return originalPlayer?.player_session_id !== hostSessionId.current && !originalPlayer?.is_host;
+      });
+      setPlayers(actualPlayers);
 
       const currentPlayerWithType = playersWithType.find(player => (player as any).player_session_id === playerSessionId.current) || null;
       setCurrentPlayer(currentPlayerWithType);
