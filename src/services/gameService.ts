@@ -39,6 +39,10 @@ export class GameService {
         throw new Error('No players found to start the game');
       }
 
+      // CRITICAL: Set the first player as the current player for turn management
+      const firstPlayer = players[0];
+      console.log('🎯 Setting first player for turn:', firstPlayer.name);
+
       // Create a copy of songs to work with
       let availableSongs = [...songs];
       
@@ -48,7 +52,7 @@ export class GameService {
       
       console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
 
-      // CRITICAL: Update room with mystery card AND set phase to playing AND store all songs
+      // CRITICAL: Update room with mystery card AND set phase to playing AND set current player
       const { error: roomUpdateError } = await supabase
         .from('game_rooms')
         .update({ 
@@ -56,7 +60,8 @@ export class GameService {
           songs: songs as unknown as Json,
           phase: 'playing',
           current_turn: 0,
-          current_song_index: 0
+          current_song_index: 0,
+          current_player_id: firstPlayer.id
         })
         .eq('id', roomId);
 

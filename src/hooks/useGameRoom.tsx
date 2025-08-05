@@ -738,6 +738,12 @@ export function useGameRoom(): UseGameRoomResult {
   };
 
   const fetchPlayers = async () => {
+    // CRITICAL: Guard clause to prevent database call with undefined room ID
+    if (!room?.id) {
+      console.warn('⚠️ fetchPlayers called without valid room ID, skipping');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -745,7 +751,7 @@ export function useGameRoom(): UseGameRoomResult {
       const { data: playersData, error: playersError } = await supabase
         .from('players')
         .select('*')
-        .eq('room_id', room?.id)
+        .eq('room_id', room.id)
         .order('joined_at', { ascending: true });
 
       if (playersError) {
