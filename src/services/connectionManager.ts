@@ -66,16 +66,29 @@ export class ConnectionManager {
   }
 
   setError(error: string) {
-    // Only set certain errors that should display to users
+    // Expanded list of errors to ignore for better UX
     const ignoredErrors = [
       'WebSocket error occurred',
       'Connection timeout', 
-      'Network offline'
+      'Network offline',
+      'Connection failed',
+      'Failed to send message',
+      'Subscription timeout',
+      'Realtime connection failed',
+      'No subscription configs provided',
+      'Max reconnection attempts reached'
     ];
     
-    if (!ignoredErrors.includes(error)) {
+    // Don't show connection errors that are just technical noise
+    if (!ignoredErrors.some(ignored => error.includes(ignored))) {
       this.updateState({
         lastError: error,
+        isConnected: false,
+        isReady: false
+      });
+    } else {
+      // Still update connection state but don't show error to user
+      this.updateState({
         isConnected: false,
         isReady: false
       });
