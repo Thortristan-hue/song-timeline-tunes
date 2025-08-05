@@ -26,5 +26,27 @@ export async function loadDefaultPlaylist(): Promise<Song[]> {
   }
 }
 
+// Enhanced service with optimized loading
+export const defaultPlaylistService = {
+  loadDefaultPlaylist,
+  
+  async loadOptimizedGameSongs(maxSongs: number): Promise<Song[]> {
+    try {
+      const allSongs = await loadDefaultPlaylist();
+      
+      // Filter songs with valid preview URLs
+      const songsWithPreviews = allSongs.filter(song => 
+        song.preview_url && song.preview_url.trim() !== ''
+      );
+      
+      // Return up to maxSongs songs
+      return songsWithPreviews.slice(0, maxSongs);
+    } catch (error) {
+      console.error('❌ Failed to load optimized songs:', error);
+      return [];
+    }
+  }
+};
+
 // Keep the old export for backward compatibility
 export const getDefaultPlaylist = loadDefaultPlaylist;

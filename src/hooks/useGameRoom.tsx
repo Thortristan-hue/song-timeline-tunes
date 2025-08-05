@@ -61,6 +61,41 @@ export function useGameRoom(): UseGameRoomResult {
   const hostSessionId = useRef<string>('');
   const [gameInitialized, setGameInitialized] = useState(false);
 
+  // Helper function to safely convert Json to Song
+  const jsonToSong = (json: Json): Song | null => {
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+    
+    const obj = json as Record<string, any>;
+    if (!obj.deezer_title) return null;
+    
+    return {
+      id: obj.id || `song-${Math.random().toString(36).substr(2, 9)}`,
+      deezer_title: obj.deezer_title || 'Unknown Title',
+      deezer_artist: obj.deezer_artist || 'Unknown Artist',
+      deezer_album: obj.deezer_album || 'Unknown Album',
+      release_year: obj.release_year || '2000',
+      genre: obj.genre || 'Unknown',
+      cardColor: obj.cardColor || '#007AFF',
+      preview_url: obj.preview_url || '',
+      deezer_url: obj.deezer_url || ''
+    };
+  };
+
+  // Helper function to safely convert Json array to Song array
+  const jsonArrayToSongs = (jsonArray: Json): Song[] => {
+    if (!Array.isArray(jsonArray)) return [];
+    
+    return jsonArray
+      .map(item => jsonToSong(item))
+      .filter((song): song is Song => song !== null);
+  };
+
+  // Helper function to safely convert GamePhase for database
+  const safeGamePhase = (phase: GamePhase): 'lobby' | 'playing' | 'finished' => {
+    if (phase === 'playing' || phase === 'finished') return phase;
+    return 'lobby'; // Default fallback for menu, hostLobby, mobileJoin, mobileLobby phases
+  };
+
   // Fetch player session ID from local storage
   useEffect(() => {
     const storedPlayerSessionId = localStorage.getItem('playerSessionId');
@@ -85,16 +120,14 @@ export function useGameRoom(): UseGameRoomResult {
       lobby_code: updatedRoom.lobby_code,
       host_id: updatedRoom.host_id,
       host_name: updatedRoom.host_name || '',
-      phase: (updatedRoom.phase === 'lobby' || updatedRoom.phase === 'playing' || updatedRoom.phase === 'finished') 
-        ? updatedRoom.phase as GamePhase 
-        : 'lobby',
+      phase: safeGamePhase(updatedRoom.phase),
       gamemode: (updatedRoom.gamemode as GameMode) || 'classic',
       gamemode_settings: (updatedRoom.gamemode_settings as GameModeSettings) || {},
-      songs: Array.isArray(updatedRoom.songs) ? updatedRoom.songs as Song[] : [],
+      songs: jsonArrayToSongs(updatedRoom.songs),
       created_at: updatedRoom.created_at,
       updated_at: updatedRoom.updated_at,
       current_turn: updatedRoom.current_turn || 0,
-      current_song: updatedRoom.current_song as Song || null,
+      current_song: jsonToSong(updatedRoom.current_song),
       current_player_id: updatedRoom.current_player_id || null
     };
     setRoom(roomData);
@@ -212,16 +245,14 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name || '',
-        phase: (data.phase === 'lobby' || data.phase === 'playing' || data.phase === 'finished') 
-          ? data.phase as GamePhase 
-          : 'lobby',
+        phase: safeGamePhase(data.phase),
         gamemode: (data.gamemode as GameMode) || 'classic',
         gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
-        songs: Array.isArray(data.songs) ? data.songs as Song[] : [],
+        songs: jsonArrayToSongs(data.songs),
         created_at: data.created_at,
         updated_at: data.updated_at,
         current_turn: data.current_turn || 0,
-        current_song: data.current_song as Song || null,
+        current_song: jsonToSong(data.current_song),
         current_player_id: data.current_player_id || null
       };
       setRoom(roomData);
@@ -335,16 +366,14 @@ export function useGameRoom(): UseGameRoomResult {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name || '',
-        phase: (roomData.phase === 'lobby' || roomData.phase === 'playing' || roomData.phase === 'finished') 
-          ? roomData.phase as GamePhase 
-          : 'lobby',
+        phase: safeGamePhase(roomData.phase),
         gamemode: (roomData.gamemode as GameMode) || 'classic',
         gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
-        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : [],
+        songs: jsonArrayToSongs(roomData.songs),
         created_at: roomData.created_at,
         updated_at: roomData.updated_at,
         current_turn: roomData.current_turn || 0,
-        current_song: roomData.current_song as Song || null,
+        current_song: jsonToSong(roomData.current_song),
         current_player_id: roomData.current_player_id || null
       };
       setRoom(roomDataWithType);
