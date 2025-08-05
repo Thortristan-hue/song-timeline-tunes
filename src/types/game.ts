@@ -3,6 +3,9 @@ export type GamePhase = 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'p
 
 export type GameMode = 'classic' | 'fiend' | 'sprint';
 
+// Database phase type (what's actually stored in the database)
+export type DatabasePhase = 'lobby' | 'playing' | 'finished';
+
 export interface GameModeSettings {
   // Fiend Mode settings
   rounds?: number;
@@ -60,7 +63,7 @@ export interface GameRoom {
   lobby_code: string;
   host_id: string;
   host_name: string;
-  phase: 'lobby' | 'playing' | 'finished';
+  phase: GamePhase; // This should use GamePhase for the UI state
   gamemode: GameMode;
   gamemode_settings: GameModeSettings;
   songs: Song[];

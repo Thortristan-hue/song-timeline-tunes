@@ -2,12 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeSubscription } from './useRealtimeSubscription';
 import { useWebSocketGameSync } from './useWebSocketGameSync';
-import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
+import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings, DatabasePhase } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { Json } from '@/integrations/supabase/types';
-
-// Database phase type (narrower than GamePhase)
-type DatabasePhase = 'lobby' | 'playing' | 'finished';
 
 interface UseGameRoomResult {
   room: GameRoom | null;
