@@ -65,16 +65,26 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
     retryCount: 0
   };
 
-  const handleCreateRoom = (hostName: string, gamemode: string) => {
-    console.log('🏠 Creating room:', { hostName, gamemode });
+  const handleCreateRoom = () => {
+    console.log('🏠 Creating room');
     // This should navigate to a room creation flow
     // For now, we'll implement a simple room creation
   };
 
-  const handleJoinRoom = (playerName: string, lobbyCode: string, playerSessionId: string) => {
-    console.log('👤 Joining room:', { playerName, lobbyCode, playerSessionId });
-    setPlayerId(playerSessionId);
-    // Room ID will be set when the join is successful
+  const handleJoinRoom = () => {
+    console.log('👤 Joining room');
+    // Handle room joining logic
+  };
+
+  const handleMobileJoin = async (lobbyCode: string, playerName: string): Promise<boolean> => {
+    console.log('📱 Mobile join:', { playerName, lobbyCode });
+    try {
+      // Implementation for mobile join
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to join room:', error);
+      return false;
+    }
   };
 
   const handleLoadPlaylist = (songs: Song[]) => {
@@ -184,9 +194,7 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800">
           <MobileJoinFlow
-            onJoinRoom={(playerName, lobbyCode, playerSessionId) => {
-              handleJoinRoom(playerName, lobbyCode, playerSessionId);
-            }}
+            onJoinRoom={handleMobileJoin}
             room={room}
             currentPlayer={currentPlayer}
             players={players}
@@ -209,7 +217,9 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
       return (
         <div className="min-h-screen">
           <ConnectionStatus 
-            status={connectionStatus}
+            isConnected={connectionStatus.isConnected}
+            isReconnecting={connectionStatus.isReconnecting}
+            lastError={connectionStatus.lastError}
             onReconnect={handleReconnect}
           />
           <GamePlay

@@ -139,12 +139,12 @@ export function HostLobby({ room, players, onLoadPlaylist, customSongs }: HostLo
           {/* QR Code */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-center">Join Game</h2>
-            <QRCodeGenerator lobbyCode={room.lobby_code} />
+            <QRCodeGenerator value={room.lobby_code} />
           </Card>
 
           {/* Playlist Loader */}
           <Card className="p-6">
-            <PlaylistLoader onPlaylistLoad={onLoadPlaylist} />
+            <PlaylistLoader onPlaylistLoaded={onLoadPlaylist} />
           </Card>
 
           {/* Game Start */}
