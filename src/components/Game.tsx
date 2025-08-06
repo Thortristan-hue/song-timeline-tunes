@@ -208,9 +208,11 @@ export function Game() {
       case 'mobileLobby':
         return (
           <MobilePlayerLobby
+            room={room}
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
+            onBackToMenu={handleBackToMenu}
           />
         );
 
