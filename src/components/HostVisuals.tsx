@@ -14,7 +14,28 @@ import { getCharacterById } from '@/constants/characters';
 import logoImage from '@/assets/ass_rythmy.png';
 import playImage from '@/assets/ass_play.png';
 import pauseImage from '@/assets/ass_pause.png';
-import cassetteImage from '@/assets/cassette-purple.png';
+
+// Import all cassette colors for randomization
+import cassettePurple from '@/assets/cassette-purple.png';
+import cassetteBlue from '@/assets/cassette-blue.png';
+import cassetteGreen from '@/assets/cassette-green.png';
+import cassettePink from '@/assets/cassette-pink.png';
+import cassetteYellow from '@/assets/cassette-yellow.png';
+import cassetteOrange from '@/assets/cassette-orange.png';
+import cassetteLightblue from '@/assets/cassette-lightblue.png';
+import cassetteRed from '@/assets/cassetee-red.png';
+
+// Cassette colors array for randomization
+const CASSETTE_COLORS = [
+  cassettePurple,
+  cassetteBlue,
+  cassetteGreen,
+  cassettePink,
+  cassetteYellow,
+  cassetteOrange,
+  cassetteLightblue,
+  cassetteRed,
+];
 
 interface HostVisualsProps {
   room: {
@@ -33,6 +54,19 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   console.log("Rendering Host Screen 0.2.2");
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
+  
+  // Generate a random cassette color for the current mystery card
+  const cassetteImage = React.useMemo(() => {
+    if (!mysteryCard) return CASSETTE_COLORS[0];
+    // Use the song ID or title to ensure consistent color per song
+    const songId = mysteryCard.id || mysteryCard.deezer_title || 'default';
+    const hash = songId.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const index = Math.abs(hash) % CASSETTE_COLORS.length;
+    return CASSETTE_COLORS[index];
+  }, [mysteryCard]);
   
   // Enhanced debugging and player filtering
   const actualPlayers = React.useMemo(() => {
@@ -114,6 +148,19 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
       setIsPlayingPreview(false);
     }
   };
+
+  // Cleanup audio when mystery card changes or component unmounts
+  useEffect(() => {
+    return () => {
+      audioEngine.stopPreview();
+      setIsPlayingPreview(false);
+    };
+  }, [mysteryCard]);
+
+  // Reset playing state when mystery card changes
+  useEffect(() => {
+    setIsPlayingPreview(false);
+  }, [mysteryCard?.id]);
 
   // Handle room not loaded - use new layout structure
   if (!room) {
@@ -356,11 +403,12 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
                       key={player.id} 
                       className="flex flex-col items-center p-3 rounded-lg bg-white/20"
                     >
+                      <span className="text-gray-800 text-sm font-medium mb-2">{player.name}</span>
                       {character ? (
                         <img 
                           src={character.image} 
                           alt={character.name}
-                          className="w-16 h-16 rounded-full object-cover"
+                          className="w-16 h-16 object-contain"
                         />
                       ) : (
                         <div 
@@ -370,8 +418,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
                           {player.name.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-gray-800 text-sm font-medium mt-2">{player.name}</span>
-                      <span className="text-gray-600 text-xs">Setting up...</span>
+                      <span className="text-gray-600 text-xs mt-2">Setting up...</span>
                     </div>
                   );
                 })}
@@ -407,14 +454,10 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
 
         {/* Top-Center: Mystery Card Cassette and Play/Pause Controls */}
         <div className="flex flex-col items-center gap-4">
-          {/* Mystery Card Cassette */}
+          {/* Mystery Card Cassette - NO song title or artist shown */}
           {mysteryCard && (
             <div className="flex flex-col items-center">
               <img src={cassetteImage} alt="Mystery Cassette" className="h-16 w-auto" />
-              <div className="text-center mt-2">
-                <div className="text-sm font-medium text-gray-800">Mystery Song</div>
-                <div className="text-xs text-gray-600">Listen and guess!</div>
-              </div>
             </div>
           )}
           
@@ -448,15 +491,6 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         style={{ gridArea: 'main' }}
         className="flex flex-col items-center justify-center p-8"
       >
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2 text-gray-800">
-            {currentPlayer ? `${currentPlayer.name}'s Turn` : 'Setting Up Turn...'}
-          </h1>
-          <p className="text-xl text-gray-600">
-            {currentPlayer ? 'Place the mystery song in the timeline' : 'Preparing game...'}
-          </p>
-        </div>
-
         {/* Current Player Timeline - Centered */}
         {currentPlayer && (
           <div className="flex-1 flex items-center justify-center w-full">
@@ -488,11 +522,15 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
                       : 'bg-white/20'
                   }`}
                 >
+                  {/* Player name above avatar */}
+                  <span className="text-gray-800 text-sm font-medium mb-2">{player.name}</span>
+                  
+                  {/* Full character avatar (uncropped) */}
                   {character ? (
                     <img 
                       src={character.image} 
                       alt={character.name}
-                      className="w-16 h-16 rounded-full object-cover"
+                      className="w-16 h-16 object-contain"
                     />
                   ) : (
                     <div 
@@ -502,8 +540,9 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
                       {player.name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <span className="text-gray-800 text-sm font-medium mt-2">{player.name}</span>
-                  <span className="text-gray-600 text-xs">Score: {player.score || 0}</span>
+                  
+                  {/* Score below avatar */}
+                  <span className="text-gray-600 text-xs mt-2">Score: {player.score || 0}</span>
                   {currentPlayer?.id === player.id && (
                     <div className="text-yellow-600 text-xs mt-1 font-bold">Current Turn</div>
                   )}
