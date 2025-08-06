@@ -65,7 +65,7 @@ export class GameService {
       console.log('🎯 Setting first player for turn:', firstPlayer.name);
 
       // Create a copy of valid songs to work with
-      let availableSongs = [...validSongs];
+      const availableSongs = [...validSongs];
       
       // Pick and remove mystery card from available songs
       const mysteryCardIndex = Math.floor(Math.random() * availableSongs.length);
@@ -218,6 +218,18 @@ export class GameService {
     try {
       console.log('🃏 GameService: Placing card and advancing turn', { roomId, playerId, song: song.deezer_title, position });
 
+      // Get current room data to understand turn state
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('❌ Failed to get room data:', roomError);
+        return { success: false, error: 'Room not found' };
+      }
+
       // Get current player data
       const { data: playerData, error: playerError } = await supabase
         .from('players')
@@ -228,6 +240,19 @@ export class GameService {
       if (playerError || !playerData) {
         console.error('❌ Failed to get player data:', playerError);
         return { success: false, error: 'Player not found' };
+      }
+
+      // Get all non-host players to determine turn order
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('id', { ascending: true });
+
+      if (playersError || !allPlayers || allPlayers.length === 0) {
+        console.error('❌ Failed to get players for turn rotation:', playersError);
+        return { success: false, error: 'No players found' };
       }
 
       // Update player timeline
@@ -243,7 +268,7 @@ export class GameService {
       // Simple correctness check (you can implement more complex logic here)
       const isCorrect = Math.random() > 0.3; // 70% chance of being correct for demo
 
-      // Update player data
+      // Update player data with new timeline and score
       const newScore = playerData.score + (isCorrect ? 1 : 0);
       const { error: updateError } = await supabase
         .from('players')
@@ -280,21 +305,111 @@ export class GameService {
           .from('game_rooms')
           .update({ phase: 'finished' })
           .eq('id', roomId);
+
+        console.log('✅ Game ended with winner:', winner.name);
+        return { 
+          success: true, 
+          correct: isCorrect, 
+          gameEnded, 
+          winner: winner 
+        };
       }
 
-      // Advance turn (simple implementation)
+      // CRITICAL FIX: Implement proper turn rotation
+      // Find current player index in the turn order
+      const currentPlayerIndex = allPlayers.findIndex(p => p.id === playerId);
+      if (currentPlayerIndex === -1) {
+        console.error('❌ Current player not found in players list');
+        return { success: false, error: 'Current player not found' };
+      }
+
+      // Calculate next player index (with wraparound)
+      const nextPlayerIndex = (currentPlayerIndex + 1) % allPlayers.length;
+      const nextPlayer = allPlayers[nextPlayerIndex];
+
+      console.log('🔄 Turn rotation:', {
+        currentPlayer: playerData.name,
+        currentPlayerIndex,
+        nextPlayer: nextPlayer.name,
+        nextPlayerIndex,
+        totalPlayers: allPlayers.length
+      });
+
+      // CRITICAL FIX: Generate new card for the CURRENT player (who just played)
+      // Remove the song they just placed from available songs to prevent duplicates
+      const availableForNewCard = (roomData.songs as Song[] || availableSongs).filter(
+        availableSong => availableSong.deezer_title !== song.deezer_title
+      );
+
+      let newCardForCurrentPlayer: Song | null = null;
+      if (availableForNewCard.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableForNewCard.length);
+        newCardForCurrentPlayer = availableForNewCard[randomIndex];
+        
+        console.log('🎴 Generating new card for current player:', {
+          player: playerData.name,
+          newCard: newCardForCurrentPlayer.deezer_title,
+          availableCards: availableForNewCard.length
+        });
+
+        // Update the current player with their new card (replacing their hand)
+        const { error: newCardError } = await supabase
+          .from('players')
+          .update({
+            current_song: newCardForCurrentPlayer as unknown as Json
+          })
+          .eq('id', playerId);
+
+        if (newCardError) {
+          console.warn('⚠️ Failed to assign new card to current player:', newCardError);
+        }
+      }
+
+      // Set new mystery card for the next player if available
+      let newMysteryCard: Song | null = null;
+      if (availableForNewCard.length > 1) {
+        // Pick a different song than the one given to current player
+        const mysteryCardCandidates = availableForNewCard.filter(
+          s => !newCardForCurrentPlayer || s.deezer_title !== newCardForCurrentPlayer.deezer_title
+        );
+        
+        if (mysteryCardCandidates.length > 0) {
+          const mysteryIndex = Math.floor(Math.random() * mysteryCardCandidates.length);
+          newMysteryCard = mysteryCardCandidates[mysteryIndex];
+        }
+      }
+
+      // Update room with next player turn and new mystery card
+      const roomUpdates: {
+        current_player_id: string;
+        current_turn: number;
+        current_song?: Json;
+      } = {
+        current_player_id: nextPlayer.id,
+        current_turn: (roomData.current_turn || 0) + 1
+      };
+
+      if (newMysteryCard) {
+        roomUpdates.current_song = newMysteryCard as unknown as Json;
+        console.log('🎵 New mystery card for next turn:', newMysteryCard.deezer_title);
+      }
+
       const { error: turnError } = await supabase
         .from('game_rooms')
-        .update({ 
-          current_turn: (playerData.room_id ? 1 : 0) + 1 // Simple turn advancement
-        })
+        .update(roomUpdates)
         .eq('id', roomId);
 
       if (turnError) {
-        console.warn('⚠️ Failed to advance turn:', turnError);
+        console.error('❌ Failed to advance turn:', turnError);
+        return { success: false, error: 'Failed to advance turn' };
       }
 
-      console.log('✅ Card placed successfully', { isCorrect, newScore, gameEnded, winner: winner?.name });
+      console.log('✅ Card placed and turn advanced successfully', { 
+        isCorrect, 
+        newScore, 
+        nextPlayer: nextPlayer.name,
+        newMysteryCard: newMysteryCard?.deezer_title || 'None'
+      });
 
       return { 
         success: true, 
