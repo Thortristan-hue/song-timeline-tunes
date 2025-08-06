@@ -152,7 +152,11 @@ export function HostLobby({ room, players, onLoadPlaylist, customSongs }: HostLo
 
           {/* Playlist Loader */}
           <Card className="p-6">
-            <PlaylistLoader onPlaylistLoaded={handlePlaylistLoaded} />
+            <PlaylistLoader 
+              onPlaylistLoaded={handlePlaylistLoaded}
+              setCustomSongs={onLoadPlaylist}
+              isDarkMode={false}
+            />
           </Card>
 
           {/* Game Start */}
