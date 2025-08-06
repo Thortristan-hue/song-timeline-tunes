@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { GameRoom, Player, Song } from '@/types/game';
 import { GameService } from '@/services/gameService';
@@ -27,7 +28,6 @@ export function useFiendGameLogic(
     setIsPlacing(true);
 
     try {
-      // Use the correct method signature with only 4 parameters
       const result = await GameService.placeCard(
         room.id,
         currentPlayer.id,

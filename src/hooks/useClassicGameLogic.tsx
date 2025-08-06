@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 
@@ -24,12 +25,11 @@ export function useClassicGameLogic(
 
     try {
       const { GameService } = await import('@/services/gameService');
-      const result = await GameService.placeCardAndAdvanceTurn(
+      const result = await GameService.placeCard(
         room.id,
         currentPlayer.id,
         song,
-        position,
-        customSongs
+        position
       );
 
       return result;

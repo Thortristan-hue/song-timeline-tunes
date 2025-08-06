@@ -175,10 +175,7 @@ export function Game() {
       case 'menu':
         return (
           <MainMenu 
-            onCreateRoom={() => {
-              // Show a prompt for host name - for now use default
-              handleCreateRoom('Host');
-            }}
+            onCreateRoom={handleCreateRoom}
             onJoinRoom={handleGoToMobileJoin}
           />
         );
@@ -210,7 +207,6 @@ export function Game() {
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
-            onLeaveRoom={handleLeaveRoom}
             gamemode={room?.gamemode || 'classic'}
             gamemodeSettings={room?.gamemode_settings || {}}
           />
@@ -250,9 +246,7 @@ export function Game() {
       default:
         return (
           <MainMenu 
-            onCreateRoom={() => {
-              handleCreateRoom('Host');
-            }}
+            onCreateRoom={handleCreateRoom}
             onJoinRoom={handleGoToMobileJoin}
           />
         );

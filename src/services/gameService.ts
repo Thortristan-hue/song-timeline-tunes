@@ -100,6 +100,66 @@ export class GameService {
     }
   }
 
+  static async placeCardAndAdvanceTurn(roomId: string, playerId: string, song: Song, position: number): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; }> {
+    try {
+      const result = await this.placeCard(roomId, playerId, song, position);
+      
+      if (result.success && result.correct) {
+        // Advance to next turn if card placement was successful and correct
+        await this.advanceTurn(roomId);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error in placeCardAndAdvanceTurn:', error);
+      return { success: false };
+    }
+  }
+
+  static async advanceTurn(roomId: string): Promise<void> {
+    try {
+      const room = await this.getRoomDetails(roomId);
+      if (!room) return;
+
+      const { data: players } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('joined_at');
+
+      if (players && players.length > 0) {
+        const currentTurnIndex = room.current_turn || 0;
+        const nextTurnIndex = (currentTurnIndex + 1) % players.length;
+        const nextPlayerId = players[nextTurnIndex]?.id;
+
+        await supabase
+          .from('game_rooms')
+          .update({
+            current_turn: nextTurnIndex,
+            current_player_id: nextPlayerId
+          })
+          .eq('id', roomId);
+      }
+    } catch (error) {
+      console.error('Error advancing turn:', error);
+    }
+  }
+
+  static async endGame(roomId: string): Promise<void> {
+    try {
+      await supabase
+        .from('game_rooms')
+        .update({
+          phase: 'finished',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', roomId);
+    } catch (error) {
+      console.error('Error ending game:', error);
+      throw error;
+    }
+  }
+
   static async isCardPlacementCorrect(roomId: string, playerId: string, song: Song, position: number): Promise<boolean> {
     try {
       // Fetch the game room details
@@ -254,7 +314,7 @@ export class GameService {
       for (const player of players) {
         if (player.score !== undefined && player.score > highestScore) {
           highestScore = player.score;
-          winner = player as Player;
+          winner = this.convertDbPlayerToPlayer(player);
         }
       }
 
@@ -286,12 +346,74 @@ export class GameService {
 
       if (!data) return null;
 
-      return data as Player;
+      return this.convertDbPlayerToPlayer(data);
     } catch (error) {
       console.error('Error in getPlayer:', error);
       return null;
     }
   }
+
+  // Helper function to safely convert database player to Player type
+  private static convertDbPlayerToPlayer(dbPlayer: any): Player {
+    return {
+      id: dbPlayer.id,
+      name: dbPlayer.name,
+      color: dbPlayer.color || '#007AFF',
+      timelineColor: dbPlayer.timeline_color || '#007AFF',
+      score: dbPlayer.score || 0,
+      timeline: this.jsonArrayToSongs(dbPlayer.timeline),
+      character: dbPlayer.character || 'char_dave'
+    };
+  }
+
+  // Helper function to safely convert Json to Song
+  private static jsonToSong = (json: Json): Song | null => {
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+    
+    const obj = json as Record<string, any>;
+    if (!obj.deezer_title) return null;
+    
+    return {
+      id: obj.id || `song-${Math.random().toString(36).substr(2, 9)}`,
+      deezer_title: obj.deezer_title || 'Unknown Title',
+      deezer_artist: obj.deezer_artist || 'Unknown Artist',
+      deezer_album: obj.deezer_album || 'Unknown Album',
+      release_year: obj.release_year || '2000',
+      genre: obj.genre || 'Unknown',
+      cardColor: obj.cardColor || '#007AFF',
+      preview_url: obj.preview_url || '',
+      deezer_url: obj.deezer_url || ''
+    };
+  };
+
+  // Helper function to safely convert Json array to Song array
+  private static jsonArrayToSongs = (jsonArray: Json): Song[] => {
+    if (!Array.isArray(jsonArray)) return [];
+    
+    return jsonArray
+      .map(item => this.jsonToSong(item))
+      .filter((song): song is Song => song !== null);
+  };
+
+  // Helper function to safely convert database phase to GamePhase
+  private static toGamePhase = (phase: string): GamePhase => {
+    const validPhases: GamePhase[] = ['menu', 'hostLobby', 'mobileJoin', 'mobileLobby', 'lobby', 'playing', 'finished'];
+    return validPhases.includes(phase as GamePhase) ? (phase as GamePhase) : 'lobby';
+  };
+
+  // Helper function to safely convert to GameMode
+  private static toGameMode = (mode: string): GameMode => {
+    const validModes: GameMode[] = ['classic', 'sprint', 'fiend'];
+    return validModes.includes(mode as GameMode) ? (mode as GameMode) : 'classic';
+  };
+
+  // Helper function to safely convert Json to GameModeSettings
+  private static toGameModeSettings = (settings: Json): GameModeSettings => {
+    if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+      return settings as GameModeSettings;
+    }
+    return {};
+  };
 
   static async getRoomDetails(roomId: string): Promise<GameRoom | null> {
     try {
@@ -308,39 +430,19 @@ export class GameService {
 
       if (!data) return null;
 
-      // Helper function to safely convert database phase to GamePhase
-      const toGamePhase = (phase: string): GamePhase => {
-        const validPhases: GamePhase[] = ['menu', 'hostLobby', 'mobileJoin', 'mobileLobby', 'lobby', 'playing', 'finished'];
-        return validPhases.includes(phase as GamePhase) ? (phase as GamePhase) : 'menu';
-      };
-
-      // Helper function to safely convert to GameMode
-      const toGameMode = (mode: string): GameMode => {
-        const validModes: GameMode[] = ['classic', 'sprint', 'fiend'];
-        return validModes.includes(mode as GameMode) ? (mode as GameMode) : 'classic';
-      };
-
-      // Helper function to safely convert Json to GameModeSettings
-      const toGameModeSettings = (settings: Json): GameModeSettings => {
-        if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
-          return settings as GameModeSettings;
-        }
-        return {};
-      };
-
       return {
         id: data.id,
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name || '',
-        phase: toGamePhase(data.phase),
-        gamemode: toGameMode(data.gamemode),
-        gamemode_settings: toGameModeSettings(data.gamemode_settings),
-        songs: Array.isArray(data.songs) ? data.songs as Song[] : [],
+        phase: this.toGamePhase(data.phase),
+        gamemode: this.toGameMode(data.gamemode),
+        gamemode_settings: this.toGameModeSettings(data.gamemode_settings),
+        songs: this.jsonArrayToSongs(data.songs),
         created_at: data.created_at,
         updated_at: data.updated_at,
         current_turn: data.current_turn || 0,
-        current_song: data.current_song ? data.current_song as Song : null,
+        current_song: this.jsonToSong(data.current_song),
         current_player_id: data.current_player_id || null
       };
     } catch (error) {
