@@ -8,6 +8,7 @@ import { HostLobby } from './HostLobby';
 import { MobileJoinFlow } from './MobileJoinFlow';
 import { GamePlay } from './GamePlay';
 import { ConnectionStatus } from './ConnectionStatus';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GameProps {
   initialRoomId?: string;
@@ -64,15 +65,93 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
     retryCount: 0
   };
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
     console.log('🏠 Creating room');
-    // This should navigate to a room creation flow
-    // For now, we'll implement a simple room creation
+    
+    try {
+      // Generate a unique lobby code
+      const lobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      // Create the room in the database
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .insert({
+          lobby_code: lobbyCode,
+          host_name: 'Host', // Default host name
+          phase: 'lobby',
+          gamemode: 'classic',
+          songs: []
+        })
+        .select()
+        .single();
+
+      if (roomError) {
+        console.error('❌ Failed to create room:', roomError);
+        toast({
+          title: "Failed to Create Room",
+          description: "Could not create a new room. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate a unique player session ID for the host
+      const hostSessionId = crypto.randomUUID();
+
+      // Create the host player entry
+      const { data: hostPlayer, error: hostError } = await supabase
+        .from('players')
+        .insert({
+          room_id: roomData.id,
+          player_session_id: hostSessionId,
+          name: 'Host',
+          color: '#007AFF',
+          timeline_color: '#007AFF',
+          is_host: true,
+          score: 0,
+          timeline: []
+        })
+        .select()
+        .single();
+
+      if (hostError) {
+        console.error('❌ Failed to create host player:', hostError);
+        toast({
+          title: "Failed to Create Host",
+          description: "Could not set up the host player. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('✅ Room created successfully:', {
+        roomId: roomData.id,
+        lobbyCode: roomData.lobby_code,
+        hostPlayerId: hostPlayer.id
+      });
+
+      // Set the room and player IDs to trigger the realtime subscription
+      setRoomId(roomData.id);
+      setPlayerId(hostSessionId);
+
+      toast({
+        title: "Room Created!",
+        description: `Room created with code: ${lobbyCode}`,
+      });
+
+    } catch (error) {
+      console.error('❌ Unexpected error creating room:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while creating the room.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleJoinRoom = () => {
     console.log('👤 Joining room');
-    // Handle room joining logic
+    // Handle room joining logic - for now just log
   };
 
   const handleMobileJoin = async (lobbyCode: string, playerName: string): Promise<boolean> => {
@@ -165,6 +244,7 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         </div>
       );
 
+    case 'lobby':
     case 'hostLobby':
       if (!room || !isHost) {
         return (
