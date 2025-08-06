@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -176,9 +175,8 @@ export function Game() {
         return (
           <MainMenu 
             onCreateRoom={() => {
-              // Show a simple prompt for host name
-              const hostName = prompt('Enter your name as host:') || 'Host';
-              handleCreateRoom(hostName);
+              // Host doesn't need a name since they're not a player
+              handleCreateRoom('');
             }}
             onJoinRoom={handleGoToMobileJoin}
           />
@@ -251,8 +249,8 @@ export function Game() {
         return (
           <MainMenu 
             onCreateRoom={() => {
-              const hostName = prompt('Enter your name as host:') || 'Host';
-              handleCreateRoom(hostName);
+              // Host doesn't need a name since they're not a player
+              handleCreateRoom('');
             }}
             onJoinRoom={handleGoToMobileJoin}
           />
