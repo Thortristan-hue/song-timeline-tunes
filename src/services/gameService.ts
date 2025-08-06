@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
 import { Json } from '@/integrations/supabase/types';
@@ -274,7 +275,7 @@ export class GameService {
           continue;
         }
 
-        const timeline = player.timeline as (Song | null)[];
+        const timeline = this.jsonArrayToSongs(player.timeline);
         if (timeline.length < 5 || timeline.some(card => card === null)) {
           console.log(`Game not ended. Player ${player.id} has an incomplete timeline.`);
           return false;
@@ -397,8 +398,8 @@ export class GameService {
 
   // Helper function to safely convert database phase to GamePhase
   private static toGamePhase = (phase: string): GamePhase => {
-    const validPhases: GamePhase[] = ['menu', 'hostLobby', 'mobileJoin', 'mobileLobby', 'lobby', 'playing', 'finished'];
-    return validPhases.includes(phase as GamePhase) ? (phase as GamePhase) : 'lobby';
+    const validPhases: GamePhase[] = ['menu', 'hostLobby', 'mobileJoin', 'mobileLobby', 'playing', 'finished'];
+    return validPhases.includes(phase as GamePhase) ? (phase as GamePhase) : 'menu';
   };
 
   // Helper function to safely convert to GameMode

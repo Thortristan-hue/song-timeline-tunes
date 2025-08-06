@@ -175,7 +175,11 @@ export function Game() {
       case 'menu':
         return (
           <MainMenu 
-            onCreateRoom={handleCreateRoom}
+            onCreateRoom={() => {
+              // Show a simple prompt for host name
+              const hostName = prompt('Enter your name as host:') || 'Host';
+              handleCreateRoom(hostName);
+            }}
             onJoinRoom={handleGoToMobileJoin}
           />
         );
@@ -207,8 +211,6 @@ export function Game() {
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
-            gamemode={room?.gamemode || 'classic'}
-            gamemodeSettings={room?.gamemode_settings || {}}
           />
         );
 
@@ -246,7 +248,10 @@ export function Game() {
       default:
         return (
           <MainMenu 
-            onCreateRoom={handleCreateRoom}
+            onCreateRoom={() => {
+              const hostName = prompt('Enter your name as host:') || 'Host';
+              handleCreateRoom(hostName);
+            }}
             onJoinRoom={handleGoToMobileJoin}
           />
         );
