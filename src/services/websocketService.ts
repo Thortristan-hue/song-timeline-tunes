@@ -1,316 +1,316 @@
+import { GameService } from './gameService';
 import { Song, Player, GameRoom } from '@/types/game';
 
-export interface GameStateMessage {
-  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM' | 'HOST_SET_SONGS' | 'GAME_STARTED';
-  roomId: string;
+export interface WebSocketMessage {
+  type: string;
   data: any;
   timestamp: number;
+  roomId?: string;
+}
+
+export interface WebSocketCallbacks {
+  onRoomUpdate?: (room: GameRoom) => void;
+  onPlayersUpdate?: (players: Player[]) => void;
+  onGameStart?: (data: any) => void;
+  onCardPlaced?: (data: any) => void;
+  onSongSet?: (song: Song) => void;
+  onGameStarted?: (data: any) => void;
+  onError?: (error: Error) => void;
+  onConnectionChange?: (connected: boolean) => void;
 }
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
+  private roomId: string | null = null;
+  private callbacks: WebSocketCallbacks = {};
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
   private isConnecting = false;
-  private roomId: string | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private messageQueue: WebSocketMessage[] = [];
   private isHost = false;
-  private roomSongs: Song[] = [];
 
-  constructor() {
-    this.setupEventListeners();
+  constructor(roomId: string, callbacks: WebSocketCallbacks) {
+    this.roomId = roomId;
+    this.callbacks = callbacks;
+    this.connect();
   }
 
-  private setupEventListeners() {
-    // Handle page visibility changes
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && this.roomId && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
-        console.log('🔄 Page became visible, reconnecting WebSocket...');
-        this.connect(this.roomId);
-      }
-    });
-
-    // Handle online/offline events
-    window.addEventListener('online', () => {
-      if (this.roomId && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
-        console.log('🌐 Network back online, reconnecting...');
-        this.connect(this.roomId);
-      }
-    });
-  }
-
-  connect(roomId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.isConnecting) {
-        console.log('⚠️ Already connecting, skipping duplicate connection attempt');
-        return;
-      }
-
-      this.roomId = roomId;
-      this.isConnecting = true;
-
-      // Close existing connection
-      if (this.ws) {
-        this.ws.close();
-      }
-
-      console.log('🔗 Connecting to WebSocket for room:', roomId);
-
-      try {
-        // Use a simple WebSocket echo server for now - in production this would be your game server
-        this.ws = new WebSocket('wss://echo.websocket.org/');
-
-        this.ws.onopen = () => {
-          console.log('✅ WebSocket connected successfully');
-          this.isConnecting = false;
-          this.reconnectAttempts = 0;
-          
-          // Join the room
-          this.sendMessage({
-            type: 'JOIN_ROOM',
-            roomId,
-            data: { timestamp: Date.now() },
-            timestamp: Date.now()
-          });
-          
-          resolve();
-        };
-
-        this.ws.onmessage = (event) => {
-          try {
-            // Handle both string and object data from echo server
-            let messageData;
-            if (typeof event.data === 'string') {
-              try {
-                messageData = JSON.parse(event.data);
-              } catch (parseError) {
-                console.log('📨 WebSocket received non-JSON message, ignoring:', event.data);
-                return;
-              }
-            } else {
-              messageData = event.data;
-            }
-
-            // Validate message structure
-            if (!messageData || typeof messageData !== 'object' || !messageData.type) {
-              console.log('📨 WebSocket received invalid message structure, ignoring');
-              return;
-            }
-
-            const message: GameStateMessage = messageData;
-            console.log('📨 Received WebSocket message:', message);
-            this.handleMessage(message);
-          } catch (error) {
-            console.log('📨 WebSocket message processing skipped due to format:', error);
-            // Don't throw errors for message parsing issues - just log and continue
-          }
-        };
-
-        this.ws.onclose = (event) => {
-          console.log('🔌 WebSocket connection closed:', event.code, event.reason);
-          this.isConnecting = false;
-          
-          if (event.code !== 1000 && this.roomId) { // Not a normal closure
-            this.attemptReconnect();
-          }
-        };
-
-        this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-          this.isConnecting = false;
-          reject(error);
-        };
-
-      } catch (error) {
-        console.error('❌ Failed to create WebSocket connection:', error);
-        this.isConnecting = false;
-        reject(error);
-      }
-    });
-  }
-
-  private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('❌ Max reconnection attempts reached');
+  private connect(): void {
+    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    this.isConnecting = true;
     
-    console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms`);
+    try {
+      const wsUrl = this.getWebSocketUrl();
+      console.log('[WebSocket] Connecting to:', wsUrl);
+      
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = this.handleOpen.bind(this);
+      this.ws.onmessage = this.handleMessage.bind(this);
+      this.ws.onclose = this.handleClose.bind(this);
+      this.ws.onerror = this.handleError.bind(this);
+      
+    } catch (error) {
+      console.error('[WebSocket] Connection error:', error);
+      this.isConnecting = false;
+      this.scheduleReconnect();
+    }
+  }
+
+  private getWebSocketUrl(): string {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return `${protocol}//${host}/ws/game/${this.roomId}`;
+  }
+
+  private handleOpen(): void {
+    console.log('[WebSocket] Connected successfully');
+    this.isConnecting = false;
+    this.reconnectAttempts = 0;
+    
+    // Start heartbeat
+    this.startHeartbeat();
+    
+    // Send queued messages
+    this.flushMessageQueue();
+    
+    // Notify connection change
+    if (this.callbacks.onConnectionChange) {
+      this.callbacks.onConnectionChange(true);
+    }
+    
+    // Join room
+    this.send({
+      type: 'joinRoom',
+      data: { roomId: this.roomId, isHost: this.isHost },
+      timestamp: Date.now()
+    });
+  }
+
+  private async handleMessage(event: MessageEvent): Promise<void> {
+    try {
+      const message: WebSocketMessage = JSON.parse(event.data);
+      console.log('[WebSocket] Message received:', message);
+      
+      const { type, data } = message;
+      
+      switch (type) {
+        case 'roomUpdate':
+          if (this.callbacks.onRoomUpdate) {
+            this.callbacks.onRoomUpdate(data);
+          }
+          break;
+          
+        case 'playersUpdate':
+          if (this.callbacks.onPlayersUpdate) {
+            this.callbacks.onPlayersUpdate(data);
+          }
+          break;
+          
+        case 'cardPlaced':
+          if (this.callbacks.onCardPlaced) {
+            this.callbacks.onCardPlaced(data);
+          }
+          break;
+          
+        case 'songSet':
+          if (this.callbacks.onSongSet) {
+            this.callbacks.onSongSet(data);
+          }
+          break;
+          
+        case 'gameStart':
+          console.log('[WebSocket] Game start received:', data);
+          if (this.callbacks.onGameStart) {
+            this.callbacks.onGameStart(data);
+          }
+          
+          // Initialize game if we have songs
+          if (data.songs && data.songs.length > 0) {
+            try {
+              await GameService.initializeGameWithStartingCards(this.roomId!, data.songs);
+            } catch (error) {
+              console.error('[WebSocket] Failed to initialize game:', error);
+            }
+          }
+          break;
+          
+        case 'gameStarted':
+          if (this.callbacks.onGameStarted) {
+            this.callbacks.onGameStarted(data);
+          }
+          break;
+          
+        case 'pong':
+          // Heartbeat response - connection is alive
+          break;
+          
+        case 'error':
+          console.error('[WebSocket] Server error:', data);
+          if (this.callbacks.onError) {
+            this.callbacks.onError(new Error(data.message || 'WebSocket server error'));
+          }
+          break;
+          
+        default:
+          console.warn('[WebSocket] Unknown message type:', type);
+      }
+      
+    } catch (error) {
+      console.error('[WebSocket] Error parsing message:', error);
+      if (this.callbacks.onError) {
+        this.callbacks.onError(error as Error);
+      }
+    }
+  }
+
+  private handleClose(event: CloseEvent): void {
+    console.log('[WebSocket] Connection closed:', event.code, event.reason);
+    this.isConnecting = false;
+    
+    // Stop heartbeat
+    this.stopHeartbeat();
+    
+    // Notify connection change
+    if (this.callbacks.onConnectionChange) {
+      this.callbacks.onConnectionChange(false);
+    }
+    
+    // Attempt to reconnect if not a clean close
+    if (event.code !== 1000) {
+      this.scheduleReconnect();
+    }
+  }
+
+  private handleError(error: Event): void {
+    console.error('[WebSocket] Connection error:', error);
+    this.isConnecting = false;
+    
+    if (this.callbacks.onError) {
+      this.callbacks.onError(new Error('WebSocket connection error'));
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[WebSocket] Max reconnection attempts reached');
+      if (this.callbacks.onError) {
+        this.callbacks.onError(new Error('Max reconnection attempts reached'));
+      }
+      return;
+    }
+    
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+    console.log(`[WebSocket] Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
     
     setTimeout(() => {
-      if (this.roomId) {
-        this.connect(this.roomId);
-      }
+      this.reconnectAttempts++;
+      this.connect();
     }, delay);
   }
 
-  private handleMessage(message: GameStateMessage) {
-    // ENHANCED: Handle HOST_SET_SONGS with proper game initialization
-    if (message.type === 'HOST_SET_SONGS') {
-      this.handleHostSetSongs(message);
-      return;
-    }
-
-    const listeners = this.listeners.get(message.type);
-    if (listeners) {
-      listeners.forEach(listener => {
-        try {
-          listener(message.data);
-        } catch (error) {
-          console.error('❌ Error in WebSocket message listener:', error);
-        }
-      });
-    }
-  }
-
-  private async handleHostSetSongs(message: GameStateMessage) {
-    console.log('🎯 HOST_SET_SONGS received:', message.data);
-    
-    // Verify this is from the host (in a real server, we'd check session/auth)
-    const { roomId, songList, hostId } = message.data;
-    
-    if (roomId !== this.roomId) {
-      console.warn('⚠️ Ignoring HOST_SET_SONGS for different room');
-      return;
-    }
-
-    // Store the songs (simulate server state)
-    this.roomSongs = songList || [];
-    console.log(`📦 Server stored ${this.roomSongs.length} songs for room ${roomId}`);
-
-    // ENHANCED: Simulate server-side game initialization
-    try {
-      console.log('🎮 Server initializing game with starting cards...');
-      
-      // Import GameService dynamically to avoid circular dependencies
-      const { GameService } = await import('./gameService');
-      
-      // Initialize the game with proper starting cards and mystery card
-      await GameService.initializeGameWithStartingCards(roomId, this.roomSongs);
-      
-      console.log('✅ Server-side game initialization complete');
-      
-      // Small delay to ensure database updates are committed
-      setTimeout(() => {
-        // Broadcast GAME_STARTED to all clients (simulate server broadcast)
-        const gameStartedMessage: GameStateMessage = {
-          type: 'GAME_STARTED',
-          roomId: roomId,
-          data: {
-            room: {
-              id: roomId,
-              phase: 'playing',
-              songs: this.roomSongs,
-              initialized: true
-            },
-            timestamp: Date.now()
-          },
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.send({
+          type: 'ping',
+          data: {},
           timestamp: Date.now()
-        };
+        });
+      }
+    }, 30000); // Send ping every 30 seconds
+  }
 
-        console.log('📤 Server broadcasting GAME_STARTED:', gameStartedMessage);
-        
-        // Trigger listeners for GAME_STARTED
-        const listeners = this.listeners.get('GAME_STARTED');
-        if (listeners) {
-          listeners.forEach(listener => {
-            try {
-              listener(gameStartedMessage.data);
-            } catch (error) {
-              console.error('❌ Error in GAME_STARTED listener:', error);
-            }
-          });
-        }
-      }, 500); // 500ms delay to ensure all DB operations complete
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  private flushMessageQueue(): void {
+    while (this.messageQueue.length > 0) {
+      const message = this.messageQueue.shift();
+      if (message) {
+        this.sendImmediate(message);
+      }
+    }
+  }
+
+  private sendImmediate(message: WebSocketMessage): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('[WebSocket] Error sending message:', error);
+      }
+    }
+  }
+
+  public send(message: WebSocketMessage): void {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.sendImmediate(message);
+    } else {
+      // Queue message for later
+      this.messageQueue.push(message);
       
-    } catch (error) {
-      console.error('❌ Server-side game initialization failed:', error);
+      // Try to connect if not already connecting
+      if (!this.isConnecting && (!this.ws || this.ws.readyState === WebSocket.CLOSED)) {
+        this.connect();
+      }
     }
   }
 
-  setHostStatus(isHost: boolean) {
+  public setHostStatus(isHost: boolean): void {
     this.isHost = isHost;
-    console.log('🏠 Host status set:', isHost);
   }
 
-  sendHostSetSongs(roomId: string, songList: Song[], hostId: string) {
-    if (!this.isHost) {
-      console.warn('⚠️ Only host can send HOST_SET_SONGS');
-      return;
+  public forceReconnect(): void {
+    console.log('[WebSocket] Force reconnecting...');
+    this.reconnectAttempts = 0;
+    
+    if (this.ws) {
+      this.ws.close();
     }
-
-    const message: GameStateMessage = {
-      type: 'HOST_SET_SONGS',
-      roomId: roomId,
-      data: {
-        roomId,
-        songList,
-        hostId
-      },
-      timestamp: Date.now()
-    };
-
-    console.log('📤 Host sending HOST_SET_SONGS:', message);
-    this.sendMessage(message);
+    
+    setTimeout(() => {
+      this.connect();
+    }, 100);
   }
 
-  sendMessage(message: Partial<GameStateMessage>) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.warn('⚠️ WebSocket not connected, cannot send message:', message);
-      return;
-    }
-
-    const fullMessage: GameStateMessage = {
-      type: message.type || 'ROOM_UPDATE',
-      roomId: message.roomId || this.roomId || '',
-      data: message.data || {},
-      timestamp: Date.now()
-    };
-
-    console.log('📤 Sending WebSocket message:', fullMessage);
-    this.ws.send(JSON.stringify(fullMessage));
-  }
-
-  on(eventType: string, listener: (data: any) => void) {
-    if (!this.listeners.has(eventType)) {
-      this.listeners.set(eventType, new Set());
-    }
-    this.listeners.get(eventType)!.add(listener);
-  }
-
-  off(eventType: string, listener: (data: any) => void) {
-    const listeners = this.listeners.get(eventType);
-    if (listeners) {
-      listeners.delete(listener);
-    }
-  }
-
-  disconnect() {
-    console.log('🔌 Disconnecting WebSocket');
-    this.roomId = null;
+  public disconnect(): void {
+    console.log('[WebSocket] Disconnecting...');
+    
+    this.stopHeartbeat();
     
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
     }
     
-    this.listeners.clear();
+    this.messageQueue = [];
     this.reconnectAttempts = 0;
     this.isConnecting = false;
   }
 
-  getConnectionStatus() {
+  public isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  public getConnectionState(): {
+    isConnected: boolean;
+    isConnecting: boolean;
+    reconnectAttempts: number;
+  } {
     return {
-      isConnected: this.ws?.readyState === WebSocket.OPEN,
+      isConnected: this.isConnected(),
       isConnecting: this.isConnecting,
       reconnectAttempts: this.reconnectAttempts
     };
   }
 }
-
-// Singleton instance
-export const websocketService = new WebSocketService();

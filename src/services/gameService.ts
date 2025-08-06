@@ -1,8 +1,39 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Song, Player, GameRoom } from '@/types/game';
+import { Song, Player, GameRoom, GameMode, GameModeSettings, GamePhase } from '@/types/game';
 import { DeezerAudioService } from './DeezerAudioService';
+import { Json } from '@/integrations/supabase/types';
 
 export class GameService {
+  // Helper function to safely convert Json to Song
+  private static jsonToSong = (json: Json): Song | null => {
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+    
+    const obj = json as Record<string, any>;
+    if (!obj.deezer_title) return null;
+    
+    return {
+      id: obj.id || `song-${Math.random().toString(36).substr(2, 9)}`,
+      deezer_title: obj.deezer_title || 'Unknown Title',
+      deezer_artist: obj.deezer_artist || 'Unknown Artist',
+      deezer_album: obj.deezer_album || 'Unknown Album',
+      release_year: obj.release_year || '2000',
+      genre: obj.genre || 'Unknown',
+      cardColor: obj.cardColor || '#007AFF',
+      preview_url: obj.preview_url || '',
+      deezer_url: obj.deezer_url || ''
+    };
+  };
+
+  // Helper function to safely convert Json array to Song array
+  private static jsonArrayToSongs = (jsonArray: Json): Song[] => {
+    if (!Array.isArray(jsonArray)) return [];
+    
+    return jsonArray
+      .map(item => GameService.jsonToSong(item))
+      .filter((song): song is Song => song !== null);
+  };
+
   static async createRoom(
     hostId: string,
     hostName: string,
@@ -20,9 +51,9 @@ export class GameService {
             host_id: hostId,
             host_name: hostName,
             lobby_code: lobbyCode,
-            phase: 'waiting',
-            gamemode: gamemode,
-            gamemode_settings: gamemodeSettings,
+            phase: 'lobby',
+            gamemode: gamemode as GameMode,
+            gamemode_settings: gamemodeSettings as Json,
           },
         ])
         .select()
@@ -38,13 +69,11 @@ export class GameService {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name,
-        phase: data.phase as any,
-        gamemode: data.gamemode,
-        gamemode_settings: data.gamemode_settings,
-        songs: Array.isArray(data.songs) ? data.songs as Song[] : [],
-        current_song: data.current_song as Song | null,
-        current_song_index: data.current_song_index || 0,
-        current_player_id: data.current_player_id,
+        phase: data.phase as GamePhase,
+        gamemode: data.gamemode as GameMode,
+        gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
+        songs: GameService.jsonArrayToSongs(data.songs),
+        current_song: GameService.jsonToSong(data.current_song),
         current_turn: data.current_turn || 1,
         created_at: data.created_at,
         updated_at: data.updated_at
@@ -94,6 +123,7 @@ export class GameService {
             name: name,
             character: character,
             color: color,
+            timeline_color: color,
             player_session_id: playerSessionId
           },
         ])
@@ -107,17 +137,12 @@ export class GameService {
 
       const player: Player = {
         id: data.id,
-        room_id: data.room_id,
         name: data.name,
         character: data.character,
         color: data.color,
         score: data.score || 0,
-        timeline: Array.isArray(data.timeline) ? data.timeline as Song[] : [],
-        timeline_color: data.timeline_color,
-        is_host: data.is_host || false,
-        player_session_id: data.player_session_id,
-        joined_at: data.joined_at,
-        last_active: data.last_active
+        timeline: GameService.jsonArrayToSongs(data.timeline),
+        timelineColor: data.timeline_color
       };
 
       console.log('[GameService] Player added successfully:', player);
@@ -167,6 +192,96 @@ export class GameService {
       return { success: true };
     } catch (error) {
       console.error('[GameService] Exception starting game:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async initializeGameWithStartingCards(roomId: string, songs: Song[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Initializing game with starting cards:', roomId);
+
+      // Get first song as mystery card
+      const mysteryCard = songs[0];
+      
+      // Update room to playing phase with mystery card
+      const { error: roomError } = await supabase
+        .from('game_rooms')
+        .update({ 
+          phase: 'playing',
+          current_song: mysteryCard as unknown as Json,
+          songs: songs as unknown as Json
+        })
+        .eq('id', roomId);
+
+      if (roomError) {
+        console.error('[GameService] Error updating room for game start:', roomError);
+        return { success: false, error: roomError.message };
+      }
+
+      console.log('[GameService] Game initialized successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception initializing game:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async placeCardAndAdvanceTurn(
+    roomId: string,
+    playerId: string,
+    song: Song,
+    position: number,
+    availableSongs: Song[]
+  ): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; error?: string }> {
+    try {
+      console.log('[GameService] Placing card and advancing turn:', { roomId, playerId, song: song.deezer_title, position });
+
+      const result = await this.placeCard(roomId, playerId, song, position);
+      
+      if (!result.success) {
+        return result;
+      }
+
+      // If game ended, don't set next song
+      if (result.gameEnded) {
+        return result;
+      }
+
+      // Set next mystery card
+      if (availableSongs.length > 0) {
+        const nextSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+        await this.updateRoomCurrentSong(roomId, nextSong);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[GameService] Exception placing card and advancing turn:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async setCurrentSong(roomId: string, song: Song): Promise<{ success: boolean; error?: string }> {
+    return this.updateRoomCurrentSong(roomId, song);
+  }
+
+  static async endGame(roomId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Ending game in room:', roomId);
+
+      const { error } = await supabase
+        .from('game_rooms')
+        .update({ phase: 'finished' })
+        .eq('id', roomId);
+
+      if (error) {
+        console.error('[GameService] Error ending game:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('[GameService] Game ended successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception ending game:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -307,7 +422,7 @@ export class GameService {
       const { error } = await supabase
         .from('players')
         .update({ 
-          timeline: timeline as any // Convert to Json type
+          timeline: timeline as unknown as Json
         })
         .eq('id', playerId);
 
@@ -365,13 +480,11 @@ export class GameService {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name,
-        phase: roomData.phase as any,
-        gamemode: roomData.gamemode,
-        gamemode_settings: roomData.gamemode_settings,
-        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : [],
-        current_song: roomData.current_song as Song | null,
-        current_song_index: roomData.current_song_index || 0,
-        current_player_id: roomData.current_player_id,
+        phase: roomData.phase as GamePhase,
+        gamemode: roomData.gamemode as GameMode,
+        gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
+        songs: GameService.jsonArrayToSongs(roomData.songs),
+        current_song: GameService.jsonToSong(roomData.current_song),
         current_turn: roomData.current_turn || 1,
         created_at: roomData.created_at,
         updated_at: roomData.updated_at
@@ -379,17 +492,12 @@ export class GameService {
 
       const players: Player[] = playersData.map(player => ({
         id: player.id,
-        room_id: player.room_id,
         name: player.name,
         character: player.character,
         color: player.color,
         score: player.score || 0,
-        timeline: Array.isArray(player.timeline) ? player.timeline as Song[] : [],
-        timeline_color: player.timeline_color,
-        is_host: player.is_host || false,
-        player_session_id: player.player_session_id,
-        joined_at: player.joined_at,
-        last_active: player.last_active
+        timeline: GameService.jsonArrayToSongs(player.timeline),
+        timelineColor: player.timeline_color
       }));
 
       console.log('[GameService] Room and players fetched successfully:', {
@@ -435,7 +543,7 @@ export class GameService {
       
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song: songWithPreview as any })
+        .update({ current_song: songWithPreview as unknown as Json })
         .eq('id', roomId);
 
       if (error) {
@@ -462,9 +570,8 @@ export class GameService {
       const { error: roomError } = await supabase
         .from('game_rooms')
         .update({
-          phase: 'waiting',
+          phase: 'lobby',
           current_song: null,
-          current_song_index: 0,
           current_player_id: null,
           current_turn: 1
         })
@@ -512,7 +619,7 @@ export class GameService {
         return { songs: [], error: roomError.message };
       }
 
-      const songs = Array.isArray(roomData?.songs) ? roomData.songs as Song[] : [];
+      const songs = GameService.jsonArrayToSongs(roomData?.songs);
 
       console.log('[GameService] Songs fetched successfully:', { count: songs.length });
       return { songs, error: undefined };
@@ -544,7 +651,7 @@ export class GameService {
 
       const { error: updateError } = await supabase
         .from('game_rooms')
-        .update({ songs: updatedSongs as any })
+        .update({ songs: updatedSongs as unknown as Json })
         .eq('id', roomId);
 
       if (updateError) {
@@ -576,7 +683,7 @@ export class GameService {
 
       const { error: updateError } = await supabase
         .from('game_rooms')
-        .update({ songs: updatedSongs as any })
+        .update({ songs: updatedSongs as unknown as Json })
         .eq('id', roomId);
 
       if (updateError) {

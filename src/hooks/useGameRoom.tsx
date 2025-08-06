@@ -551,7 +551,6 @@ export function useGameRoom(): UseGameRoomResult {
       console.log('[GameState] Initializing game with songs:', songsToUse.length);
 
       // Initialize game logic
-      const { GameService } = await import('@/services/gameService');
       await GameService.initializeGameWithStartingCards(room.id, songsToUse);
 
       // Update room to playing phase - this will trigger realtime updates for all clients

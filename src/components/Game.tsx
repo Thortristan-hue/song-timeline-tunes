@@ -347,7 +347,7 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         </div>
       );
 
-    case 'hostLobby':
+    case 'lobby':
       if (!room || !isHost) {
         return (
           <div className="flex items-center justify-center min-h-screen">
