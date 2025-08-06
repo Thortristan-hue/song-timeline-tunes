@@ -166,14 +166,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   if (!room) {
     return (
       <div 
-        className="text-white relative overflow-hidden"
+        className="text-white relative overflow-hidden fixed inset-0"
         style={{
           width: '100vw',
           height: '100vh',
           backgroundColor: '#f0f0f0',
           display: 'grid',
           gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"'
+          gridTemplateAreas: '"header" "main" "footer"',
+          margin: 0,
+          padding: 0
         }}
       >
         {/* Top Bar */}
@@ -218,14 +220,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   if (room.phase === 'playing' && actualPlayers.length === 0) {
     return (
       <div 
-        className="text-white relative overflow-hidden"
+        className="text-white relative overflow-hidden fixed inset-0"
         style={{
           width: '100vw',
           height: '100vh',
           backgroundColor: '#f0f0f0',
           display: 'grid',
           gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"'
+          gridTemplateAreas: '"header" "main" "footer"',
+          margin: 0,
+          padding: 0
         }}
       >
         {/* Top Bar */}
@@ -279,14 +283,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   if (actualPlayers.length === 0) {
     return (
       <div 
-        className="text-white relative overflow-hidden"
+        className="text-white relative overflow-hidden fixed inset-0"
         style={{
           width: '100vw',
           height: '100vh',
           backgroundColor: '#f0f0f0',
           display: 'grid',
           gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"'
+          gridTemplateAreas: '"header" "main" "footer"',
+          margin: 0,
+          padding: 0
         }}
       >
         {/* Top Bar */}
@@ -340,14 +346,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   if (room.phase === 'playing' && !currentPlayer) {
     return (
       <div 
-        className="text-white relative overflow-hidden"
+        className="text-white relative overflow-hidden fixed inset-0"
         style={{
           width: '100vw',
           height: '100vh',
           backgroundColor: '#f0f0f0',
           display: 'grid',
           gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"'
+          gridTemplateAreas: '"header" "main" "footer"',
+          margin: 0,
+          padding: 0
         }}
       >
         {/* Top Bar */}
@@ -432,14 +440,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
 
   return (
     <div 
-      className="text-white relative overflow-hidden"
+      className="text-white relative overflow-hidden fixed inset-0"
       style={{
         width: '100vw',
         height: '100vh',
         backgroundColor: '#f0f0f0',
         display: 'grid',
         gridTemplateRows: 'auto 1fr auto',
-        gridTemplateAreas: '"header" "main" "footer"'
+        gridTemplateAreas: '"header" "main" "footer"',
+        margin: 0,
+        padding: 0
       }}
     >
       {/* Top Bar */}
@@ -466,14 +476,20 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
             {mysteryCard?.preview_url && (
               <button
                 onClick={handlePlayPreview}
-                className="transition-transform hover:scale-110"
+                className="transition-all duration-300 hover:scale-110 active:scale-95 p-2 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label={isPlayingPreview ? "Pause preview" : "Play preview"}
               >
                 <img 
                   src={isPlayingPreview ? pauseImage : playImage} 
                   alt={isPlayingPreview ? "Pause" : "Play"} 
-                  className="h-12 w-auto" 
+                  className="h-12 w-auto drop-shadow-lg" 
                 />
               </button>
+            )}
+            {mysteryCard && !mysteryCard.preview_url && (
+              <div className="flex items-center justify-center h-12 w-12 bg-gray-500/50 rounded-full">
+                <Music className="h-6 w-6 text-gray-400" />
+              </div>
             )}
           </div>
         </div>

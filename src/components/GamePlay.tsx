@@ -7,6 +7,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import { audioEngine } from '@/utils/audioEngine';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -77,6 +78,19 @@ export function GamePlay({
     }
   }, [winner, fire]);
 
+  // Cleanup audio when mystery card changes
+  useEffect(() => {
+    return () => {
+      audioEngine.stopPreview();
+      setIsPlaying(false);
+    };
+  }, [room?.current_song?.id]);
+
+  // Reset playing state when mystery card changes
+  useEffect(() => {
+    setIsPlaying(false);
+  }, [room?.current_song?.id]);
+
   const handleCardPlacement = async (song: Song, position: number): Promise<{ success: boolean; }> => {
     if (!currentPlayer || !room || gameLogic?.isGameOver) {
       return { success: false };
@@ -136,7 +150,45 @@ export function GamePlay({
   };
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newIsPlaying = !isPlaying;
+    
+    // Actually control audio playback using audio engine
+    if (room?.current_song?.preview_url) {
+      if (newIsPlaying) {
+        console.log('[GamePlay] Starting audio playback for player:', room.current_song.deezer_title);
+        try {
+          audioEngine.playPreview(room.current_song.preview_url);
+          setIsPlaying(true);
+          
+          // Auto-stop after 30 seconds
+          setTimeout(() => {
+            setIsPlaying(false);
+          }, 30000);
+        } catch (error) {
+          console.error('[GamePlay] Failed to start audio playback:', error);
+          toast({
+            title: "Audio playback failed",
+            description: "Unable to play song preview",
+            variant: "destructive",
+          });
+          setIsPlaying(false);
+        }
+      } else {
+        console.log('[GamePlay] Stopping audio playback for player');
+        audioEngine.stopPreview();
+        setIsPlaying(false);
+      }
+    } else {
+      console.warn('[GamePlay] No preview URL available for current song');
+      setIsPlaying(false);
+      if (newIsPlaying) {
+        toast({
+          title: "No preview available",
+          description: "This song doesn't have a preview",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleSetMysteryCard = async () => {

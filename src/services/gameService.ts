@@ -3,6 +3,43 @@ import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
 import { getDefaultCharacter } from '@/constants/characters';
 
+/**
+ * Validates that a timeline is in correct chronological order by release year
+ * @param timeline Array of songs to validate
+ * @returns true if timeline is in correct chronological order, false otherwise
+ */
+function validateTimelineOrder(timeline: Song[]): boolean {
+  if (timeline.length <= 1) {
+    return true; // Single song or empty timeline is always valid
+  }
+
+  for (let i = 0; i < timeline.length - 1; i++) {
+    const currentYear = parseInt(timeline[i].release_year);
+    const nextYear = parseInt(timeline[i + 1].release_year);
+    
+    // Check if years are valid numbers
+    if (isNaN(currentYear) || isNaN(nextYear)) {
+      console.warn('⚠️ Invalid release year found in timeline validation:', {
+        current: timeline[i].release_year,
+        next: timeline[i + 1].release_year
+      });
+      return false; // Invalid years are considered incorrect
+    }
+    
+    // Timeline should be in ascending chronological order
+    if (currentYear > nextYear) {
+      console.log('❌ Timeline order violation:', {
+        currentSong: `${timeline[i].deezer_title} (${currentYear})`,
+        nextSong: `${timeline[i + 1].deezer_title} (${nextYear})`,
+        position: i
+      });
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 interface PlaceCardResult {
   success: boolean;
   correct?: boolean;
@@ -257,23 +294,47 @@ export class GameService {
 
       // Update player timeline
       const currentTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as unknown as Song[] : [];
-      const newTimeline = [...currentTimeline];
+      const testTimeline = [...currentTimeline];
       
-      if (position >= newTimeline.length) {
-        newTimeline.push(song);
+      // Insert the card at the specified position
+      if (position >= testTimeline.length) {
+        testTimeline.push(song);
       } else {
-        newTimeline.splice(position, 0, song);
+        testTimeline.splice(position, 0, song);
       }
 
-      // Simple correctness check (you can implement more complex logic here)
-      const isCorrect = Math.random() > 0.3; // 70% chance of being correct for demo
+      // CRITICAL FIX: Proper timeline validation based on release years
+      const isCorrect = validateTimelineOrder(testTimeline);
+      
+      console.log('🔍 Timeline validation:', {
+        playerName: playerData.name,
+        songTitle: song.deezer_title,
+        songYear: song.release_year,
+        position,
+        timelineBefore: currentTimeline.map(s => `${s.deezer_title} (${s.release_year})`),
+        timelineAfter: testTimeline.map(s => `${s.deezer_title} (${s.release_year})`),
+        isCorrect
+      });
 
-      // Update player data with new timeline and score
-      const newScore = playerData.score + (isCorrect ? 1 : 0);
+      // If placement is incorrect, do NOT update the timeline - reject the placement
+      let finalTimeline = currentTimeline;
+      let newScore = playerData.score;
+      
+      if (isCorrect) {
+        // Only update timeline if placement is correct
+        finalTimeline = testTimeline;
+        newScore = playerData.score + 1;
+        console.log('✅ Correct placement - timeline updated');
+      } else {
+        // Incorrect placement - keep original timeline, no score increase
+        console.log('❌ Incorrect placement - timeline unchanged');
+      }
+
+      // Update player data
       const { error: updateError } = await supabase
         .from('players')
         .update({
-          timeline: newTimeline as unknown as Json,
+          timeline: finalTimeline as unknown as Json,
           score: newScore
         })
         .eq('id', playerId);
@@ -295,7 +356,7 @@ export class GameService {
           color: playerData.color,
           timelineColor: playerData.timeline_color,
           score: newScore,
-          timeline: newTimeline,
+          timeline: finalTimeline,
           character: (playerData as any).character || getDefaultCharacter().id
         };
         gameEnded = true;
