@@ -412,8 +412,8 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
             <div className="flex flex-col items-center">
               <img src={cassetteImage} alt="Mystery Cassette" className="h-16 w-auto" />
               <div className="text-center mt-2">
-                <div className="text-sm font-medium text-gray-800">{mysteryCard.deezer_title}</div>
-                <div className="text-xs text-gray-600">{mysteryCard.deezer_artist}</div>
+                <div className="text-sm font-medium text-gray-800">Mystery Song</div>
+                <div className="text-xs text-gray-600">Listen and guess!</div>
               </div>
             </div>
           )}
