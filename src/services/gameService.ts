@@ -43,6 +43,22 @@ export class GameService {
     }
   };
 
+  // Helper function to safely convert to GameMode
+  private static toGameMode = (mode: string): GameMode => {
+    if (mode === 'classic' || mode === 'fiend' || mode === 'sprint') {
+      return mode as GameMode;
+    }
+    return 'classic';
+  };
+
+  // Helper function to safely convert to GameModeSettings
+  private static toGameModeSettings = (settings: Json): GameModeSettings => {
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+      return {};
+    }
+    return settings as GameModeSettings;
+  };
+
   static async createRoom(
     hostId: string,
     hostName: string,
@@ -79,8 +95,8 @@ export class GameService {
         host_id: data.host_id,
         host_name: data.host_name,
         phase: GameService.toGamePhase(data.phase),
-        gamemode: data.gamemode as GameMode,
-        gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
+        gamemode: GameService.toGameMode(data.gamemode),
+        gamemode_settings: GameService.toGameModeSettings(data.gamemode_settings),
         songs: GameService.jsonArrayToSongs(data.songs),
         current_song: GameService.jsonToSong(data.current_song),
         current_turn: data.current_turn || 1,
@@ -488,8 +504,8 @@ export class GameService {
         host_id: roomData.host_id,
         host_name: roomData.host_name,
         phase: GameService.toGamePhase(roomData.phase),
-        gamemode: roomData.gamemode as GameMode,
-        gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
+        gamemode: GameService.toGameMode(roomData.gamemode),
+        gamemode_settings: GameService.toGameModeSettings(roomData.gamemode_settings),
         songs: GameService.jsonArrayToSongs(roomData.songs),
         current_song: GameService.jsonToSong(roomData.current_song),
         current_turn: roomData.current_turn || 1,

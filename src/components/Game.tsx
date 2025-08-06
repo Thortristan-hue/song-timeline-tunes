@@ -145,6 +145,18 @@ export function Game() {
     }));
   }, []);
 
+  // Handle player update with correct signature
+  const handleUpdatePlayer = useCallback(async (name: string, character: string) => {
+    if (!currentPlayer) return;
+    
+    const updates = {
+      name,
+      character
+    };
+    
+    await updatePlayer(updates);
+  }, [currentPlayer, updatePlayer]);
+
   // Update game state when room changes
   useEffect(() => {
     if (room) {
@@ -171,7 +183,6 @@ export function Game() {
         return (
           <HostLobby
             players={players}
-            songs={gameState.songs}
             onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
             onUpdateSongs={(songs: Song[]) => {
@@ -200,7 +211,7 @@ export function Game() {
             playerName={gameState.playerName || ''}
             players={players}
             currentPlayer={currentPlayer}
-            onUpdatePlayer={updatePlayer}
+            onUpdatePlayer={handleUpdatePlayer}
             onLeaveRoom={handleLeaveRoom}
             gamemode={room?.gamemode || 'classic'}
             gamemodeSettings={room?.gamemode_settings || {}}
@@ -216,7 +227,6 @@ export function Game() {
             isHost={isHost}
             onPlaceCard={handlePlaceCard}
             customSongs={gameState.songs}
-            gameLogic={gameLogic}
           />
         );
 
