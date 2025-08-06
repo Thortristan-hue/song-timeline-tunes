@@ -28,6 +28,19 @@ const toGamePhase = (dbPhase: DatabasePhase): GamePhase => {
   }
 };
 
+// Helper function to safely convert database player to Player type
+const convertDatabasePlayer = (dbPlayer: any): Player => {
+  return {
+    id: dbPlayer.id,
+    name: dbPlayer.name || 'Unknown Player',
+    color: dbPlayer.color || '#007AFF',
+    timelineColor: dbPlayer.timeline_color || '#007AFF',
+    score: dbPlayer.score || 0,
+    timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
+    character: dbPlayer.character || 'char_dave'
+  };
+};
+
 export function useRealtimeGameState(roomId: string | null, currentPlayerId: string | null) {
   const { toast } = useToast();
   const [gameState, setGameState] = useState<RealtimeGameState>({
@@ -137,25 +150,41 @@ export function useRealtimeGameState(roomId: string | null, currentPlayerId: str
       if (playersError) throw playersError;
 
       if (playersData) {
-        const convertedPlayers: Player[] = playersData.map(p => ({
-          id: p.id,
-          name: p.name,
-          color: p.color,
-          timelineColor: p.timeline_color,
-          score: p.score || 0,
-          timeline: Array.isArray(p.timeline) ? p.timeline as unknown as Song[] : [],
-          character: (p as any).character || 'char_dave'
-        }));
+        console.log('[RealtimeGameState] Raw players data:', playersData);
+        
+        const convertedPlayers: Player[] = playersData.map(convertDatabasePlayer);
+        console.log('[RealtimeGameState] Converted players:', convertedPlayers);
+
+        // Filter out host players - they should not be in the game rotation
+        const actualPlayers = convertedPlayers.filter(player => {
+          const originalPlayer = playersData.find(p => p.id === player.id);
+          return !originalPlayer?.is_host;
+        });
+
+        console.log('[RealtimeGameState] Actual players (non-host):', actualPlayers);
 
         const currentPlayer = currentPlayerId 
-          ? convertedPlayers.find(p => (p as any).player_session_id === currentPlayerId) || null
+          ? convertedPlayers.find(p => {
+              const originalPlayer = playersData.find(orig => orig.id === p.id);
+              return originalPlayer?.player_session_id === currentPlayerId;
+            }) || null
           : null;
+
+        const isHost = playersData.some(p => p.player_session_id === currentPlayerId && p.is_host);
+
+        console.log('[RealtimeGameState] Player analysis:', {
+          totalPlayers: convertedPlayers.length,
+          actualPlayers: actualPlayers.length,
+          currentPlayerId,
+          isHost,
+          currentPlayer: currentPlayer?.name
+        });
 
         setGameState(prev => ({ 
           ...prev, 
-          players: convertedPlayers,
+          players: actualPlayers, // Only non-host players
           currentPlayer,
-          isHost: playersData.some(p => (p as any).player_session_id === currentPlayerId && p.is_host)
+          isHost
         }));
       }
     } catch (error) {
@@ -185,6 +214,12 @@ export function useRealtimeGameState(roomId: string | null, currentPlayerId: str
 
     // Extract mystery card from current_song
     const mysteryCard = updatedRoom.current_song || null;
+
+    console.log('[RealtimeGameState] Room updated:', {
+      phase: updatedRoom.phase,
+      currentPlayerId: updatedRoom.current_player_id,
+      mysteryCard: mysteryCard?.deezer_title
+    });
 
     setGameState(prev => ({ 
       ...prev, 

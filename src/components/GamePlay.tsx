@@ -49,6 +49,18 @@ export function GamePlay({
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const { fire } = useConfettiStore();
 
+  // Enhanced debugging for GamePlay
+  useEffect(() => {
+    console.log('[GamePlay] State debug:', {
+      isHost,
+      roomPhase: room?.phase,
+      playersCount: players?.length || 0,
+      currentPlayerName: currentPlayer?.name,
+      mysteryCard: room?.current_song?.deezer_title,
+      roomId: room?.id
+    });
+  }, [room, players, currentPlayer, isHost]);
+
   // Find current turn player
   const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
 
@@ -169,7 +181,14 @@ export function GamePlay({
   };
 
   if (!gameLogic) {
-    return <div>Loading game...</div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mb-4"></div>
+          <div>Loading game...</div>
+        </div>
+      </div>
+    );
   }
 
   // Show victory screen
@@ -191,11 +210,17 @@ export function GamePlay({
 
   // Host view - use HostVisuals component
   if (isHost) {
+    console.log('[GamePlay] Rendering HostVisuals with:', {
+      room: room ? { id: room.id, phase: room.phase, lobby_code: room.lobby_code } : null,
+      playersCount: players?.length || 0,
+      mysteryCard: room?.current_song?.deezer_title || 'None'
+    });
+    
     return (
       <HostVisuals
         room={room}
-        players={players}
-        mysteryCard={room.current_song}
+        players={players || []}
+        mysteryCard={room?.current_song || null}
         isHost={isHost}
       />
     );

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause } from 'lucide-react';
+import { Music, Play, Pause, AlertTriangle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
 import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
@@ -20,30 +20,57 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   
-  // Get actual players (excluding host)
-  const actualPlayers = getActualPlayers(players, room?.host_id);
+  // Enhanced debugging and player filtering
+  const actualPlayers = React.useMemo(() => {
+    console.log('[HostVisuals] Input players:', players);
+    console.log('[HostVisuals] Room host_id:', room?.host_id);
+    
+    const filtered = getActualPlayers(players, room?.host_id);
+    console.log('[HostVisuals] Filtered actual players:', filtered);
+    
+    return filtered;
+  }, [players, room?.host_id]);
   
   // Find current player using the utility function
-  const currentPlayer = findCurrentPlayer(actualPlayers, room?.current_player_id, currentTurnIndex);
+  const currentPlayer = React.useMemo(() => {
+    const player = findCurrentPlayer(actualPlayers, room?.current_player_id, currentTurnIndex);
+    console.log('[HostVisuals] Current player calculation:', {
+      actualPlayersCount: actualPlayers.length,
+      currentPlayerId: room?.current_player_id,
+      currentTurnIndex,
+      foundPlayer: player?.name || 'None'
+    });
+    return player;
+  }, [actualPlayers, room?.current_player_id, currentTurnIndex]);
 
-  // Debug logging
+  // Comprehensive debug logging
   useEffect(() => {
-    console.log('HostVisuals Debug:', {
-      totalPlayers: players.length,
+    console.log('[HostVisuals] Complete state debug:', {
+      isHost,
+      roomPhase: room?.phase,
+      roomLobbyCode: room?.lobby_code,
+      totalInputPlayers: players.length,
       actualPlayersCount: actualPlayers.length,
       currentPlayerId: room?.current_player_id,
       currentTurnIndex,
       currentPlayerFound: !!currentPlayer,
       currentPlayerName: currentPlayer?.name,
-      roomPhase: room?.phase
+      mysteryCard: mysteryCard?.deezer_title,
+      roomData: room ? {
+        id: room.id,
+        phase: room.phase,
+        current_player_id: room.current_player_id,
+        current_turn: room.current_turn
+      } : 'No room data'
     });
-  }, [players.length, actualPlayers.length, room?.current_player_id, currentTurnIndex, currentPlayer]);
+  }, [players.length, actualPlayers.length, room, currentTurnIndex, currentPlayer, isHost, mysteryCard]);
 
   // Update current turn index when room's current_player_id changes
   useEffect(() => {
     if (room?.current_player_id && actualPlayers.length > 0) {
       const playerIndex = actualPlayers.findIndex(p => p.id === room.current_player_id);
       if (playerIndex >= 0) {
+        console.log('[HostVisuals] Updating turn index from', currentTurnIndex, 'to', playerIndex);
         setCurrentTurnIndex(playerIndex);
       }
     }
@@ -51,7 +78,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
 
   const handlePlayPreview = async () => {
     if (!mysteryCard?.preview_url) {
-      console.warn('No preview URL available for mystery card');
+      console.warn('[HostVisuals] No preview URL available for mystery card');
       return;
     }
 
@@ -69,12 +96,39 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         }, 30000);
       }
     } catch (error) {
-      console.error('Error playing preview:', error);
+      console.error('[HostVisuals] Error playing preview:', error);
       setIsPlayingPreview(false);
     }
   };
 
-  // Show loading state if no players
+  // Handle room not loaded
+  if (!room) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+        <AlertTriangle className="h-16 w-16 mb-4 text-yellow-400" />
+        <h2 className="text-2xl font-bold mb-2">Room Not Found</h2>
+        <p className="text-lg opacity-75">Unable to load room data.</p>
+      </div>
+    );
+  }
+
+  // Show loading state if we're in playing phase but have no players
+  if (room.phase === 'playing' && actualPlayers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+        <Music className="h-16 w-16 mb-4 animate-pulse" />
+        <h2 className="text-2xl font-bold mb-2">Loading Players...</h2>
+        <p className="text-lg opacity-75">Synchronizing player data...</p>
+        <div className="mt-4 text-sm opacity-60">
+          <p>Room: {room.lobby_code}</p>
+          <p>Phase: {room.phase}</p>
+          <p>Total Input Players: {players.length}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show waiting state if no players joined yet
   if (actualPlayers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
@@ -82,24 +136,26 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         <h2 className="text-2xl font-bold mb-2">Waiting for Players...</h2>
         <p className="text-lg opacity-75">The game will start once players join the lobby.</p>
         <div className="mt-4 text-sm opacity-60">
-          <p>Room: {room?.lobby_code}</p>
-          <p>Phase: {room?.phase}</p>
-          <p>Total Players: {players.length}</p>
+          <p>Room: {room.lobby_code}</p>
+          <p>Phase: {room.phase}</p>
+          <p>Host ID: {room.host_id}</p>
         </div>
       </div>
     );
   }
 
   // Show game setup state if no current player determined yet
-  if (!currentPlayer) {
+  if (room.phase === 'playing' && !currentPlayer) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
         <Music className="h-16 w-16 mb-4 animate-spin" />
-        <h2 className="text-2xl font-bold mb-2">Preparing Game...</h2>
-        <p className="text-lg opacity-75">Setting up player turns...</p>
-        <div className="mt-4 text-sm opacity-60">
+        <h2 className="text-2xl font-bold mb-2">Setting Up Game...</h2>
+        <p className="text-lg opacity-75">Determining player turns...</p>
+        <div className="mt-4 text-sm opacity-60 space-y-1">
           <p>Players Ready: {actualPlayers.length}</p>
-          <p>Current Player ID: {room?.current_player_id || 'Not set'}</p>
+          <p>Current Player ID: {room.current_player_id || 'Not set'}</p>
+          <p>Current Turn Index: {currentTurnIndex}</p>
+          <p>Available Players: {actualPlayers.map(p => p.name).join(', ')}</p>
         </div>
       </div>
     );
@@ -146,22 +202,24 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
       <div className="flex-1 flex flex-col justify-center px-8">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold mb-2">
-            {currentPlayer.name}'s Turn
+            {currentPlayer ? `${currentPlayer.name}'s Turn` : 'Setting Up Turn...'}
           </h1>
           <p className="text-xl opacity-75">
-            Place the mystery song in the timeline
+            {currentPlayer ? 'Place the mystery song in the timeline' : 'Preparing game...'}
           </p>
         </div>
 
         {/* Current Player Timeline */}
-        <div className="flex-1 flex items-center justify-center">
-          <HostCurrentPlayerTimeline 
-            currentTurnPlayer={currentPlayer}
-            cardPlacementResult={null}
-            highlightedGapIndex={null}
-            isTransitioning={false}
-          />
-        </div>
+        {currentPlayer && (
+          <div className="flex-1 flex items-center justify-center">
+            <HostCurrentPlayerTimeline 
+              currentTurnPlayer={currentPlayer}
+              cardPlacementResult={null}
+              highlightedGapIndex={null}
+              isTransitioning={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* All Players Overview */}
