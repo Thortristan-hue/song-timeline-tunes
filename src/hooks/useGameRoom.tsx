@@ -5,6 +5,7 @@ import { useWebSocketGameSync } from './useWebSocketGameSync';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings, DatabasePhase } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { Json } from '@/integrations/supabase/types';
+import { GameService } from '@/services/gameService';
 
 interface UseGameRoomResult {
   room: GameRoom | null;
@@ -215,7 +216,79 @@ export function useGameRoom(): UseGameRoomResult {
     });
   }, [realtimeStatus]);
 
-  // Function to create a new game room
+  const startGame = async (): Promise<void> => {
+    if (!room || !isHost) {
+      console.warn('Cannot start game: no room or not host');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      console.log('[GameState] Host starting game - using database-only approach...');
+
+      // Get songs with previews
+      const songsWithPreviews: Song[] = [];
+      const roomSongs = Array.isArray(room.songs) ? room.songs : [];
+
+      if (roomSongs.length > 0) {
+        for (const song of roomSongs) {
+          if (song && typeof song === 'object') {
+            songsWithPreviews.push(song as Song);
+          }
+        }
+      }
+
+      // Fallback to default playlist if needed
+      let songsToUse = songsWithPreviews;
+      if (songsToUse.length === 0) {
+        console.log('🎵 No custom songs, loading default playlist...');
+        const { loadDefaultPlaylist } = await import('@/services/defaultPlaylistService');
+        const defaultSongs = await loadDefaultPlaylist();
+        songsToUse = defaultSongs.slice(0, 20);
+        console.log(`🎯 Loaded ${songsToUse.length} songs from default playlist`);
+      }
+
+      if (songsToUse.length === 0) {
+        throw new Error('No songs available for game start');
+      }
+
+      console.log('[GameState] Initializing game with songs:', songsToUse.length);
+
+      // Initialize game logic
+      await GameService.initializeGameWithStartingCards(room.id, songsToUse);
+
+      // Update room to playing phase - this will trigger realtime updates for all clients
+      const { error: phaseError } = await supabase
+        .from('game_rooms')
+        .update({ 
+          phase: 'playing',
+          songs: songsToUse as unknown as Json,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', room.id);
+
+      if (phaseError) {
+        console.error('[GameState] Failed to update room phase:', phaseError);
+        throw new Error('Failed to start game - database update failed');
+      }
+
+      console.log('[GameState] Game started successfully - all clients will receive update via realtime');
+      setGameInitialized(true);
+
+    } catch (error) {
+      console.error('Failed to start game:', error);
+      toast({
+        title: "Failed to Start Game",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const createRoom = async (hostName: string): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
@@ -262,9 +335,6 @@ export function useGameRoom(): UseGameRoomResult {
       };
       setRoom(roomData);
 
-      // DON'T add host as a player - they are only the facilitator
-      // The host should not be in the players table
-
       return lobbyCode;
     } catch (err) {
       console.error('Failed to create room:', err);
@@ -273,6 +343,13 @@ export function useGameRoom(): UseGameRoomResult {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const generateLobbyCode = () => {
+    const words = ['APPLE', 'TRACK', 'MUSIC', 'DANCE', 'PARTY', 'SOUND', 'BEATS', 'PIANO', 'DRUMS', 'VOICE'];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomDigit = Math.floor(Math.random() * 10);
+    return randomWord + randomDigit;
   };
 
   const joinRoom = async (lobbyCode: string, playerName: string): Promise<boolean> => {
@@ -511,79 +588,6 @@ export function useGameRoom(): UseGameRoomResult {
     }
   };
 
-  const startGame = async (): Promise<void> => {
-    if (!room || !isHost) {
-      console.warn('Cannot start game: no room or not host');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      console.log('[GameState] Host starting game - using database-only approach...');
-
-      // Get songs with previews
-      const songsWithPreviews: Song[] = [];
-      const roomSongs = Array.isArray(room.songs) ? room.songs : [];
-
-      if (roomSongs.length > 0) {
-        for (const song of roomSongs) {
-          if (song && typeof song === 'object') {
-            songsWithPreviews.push(song as Song);
-          }
-        }
-      }
-
-      // Fallback to default playlist if needed
-      let songsToUse = songsWithPreviews;
-      if (songsToUse.length === 0) {
-        console.log('🎵 No custom songs, loading default playlist...');
-        const { loadDefaultPlaylist } = await import('@/services/defaultPlaylistService');
-        const defaultSongs = await loadDefaultPlaylist();
-        songsToUse = defaultSongs.slice(0, 20);
-        console.log(`🎯 Loaded ${songsToUse.length} songs from default playlist`);
-      }
-
-      if (songsToUse.length === 0) {
-        throw new Error('No songs available for game start');
-      }
-
-      console.log('[GameState] Initializing game with songs:', songsToUse.length);
-
-      // Initialize game logic
-      await GameService.initializeGameWithStartingCards(room.id, songsToUse);
-
-      // Update room to playing phase - this will trigger realtime updates for all clients
-      const { error: phaseError } = await supabase
-        .from('game_rooms')
-        .update({ 
-          phase: 'playing',
-          songs: songsToUse as unknown as Json,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', room.id);
-
-      if (phaseError) {
-        console.error('[GameState] Failed to update room phase:', phaseError);
-        throw new Error('Failed to start game - database update failed');
-      }
-
-      console.log('[GameState] Game started successfully - all clients will receive update via realtime');
-      setGameInitialized(true);
-
-    } catch (error) {
-      console.error('Failed to start game:', error);
-      toast({
-        title: "Failed to Start Game",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const leaveRoom = () => {
     setRoom(null);
     setPlayers([]);
@@ -724,16 +728,6 @@ export function useGameRoom(): UseGameRoomResult {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateLobbyCode = () => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let code = '';
-    for (let i = 0; i < 5; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    code += Math.floor(Math.random() * 10);
-    return code;
   };
 
   const fetchPlayers = async () => {

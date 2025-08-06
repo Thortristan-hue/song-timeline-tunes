@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GameMode, GameModeSettings, GamePhase } from '@/types/game';
 import { DeezerAudioService } from './DeezerAudioService';

@@ -1,6 +1,5 @@
-
 import { useEffect, useCallback, useState } from 'react';
-import { reliableWebSocketService } from '@/services/reliableWebSocketService';
+import { ReliableWebSocket } from '@/services/reliableWebSocketService';
 import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
@@ -39,13 +38,13 @@ export function useWebSocketGameSync(
   // Connect when room ID is available
   useEffect(() => {
     if (!roomId) {
-      reliableWebSocketService.disconnect();
+      connectionManager.disconnect();
       return;
     }
 
     const connectToRoom = async () => {
       try {
-        await reliableWebSocketService.connect(roomId);
+        await connectionManager.connect(roomId);
         console.log('🔗 WebSocket sync established for room:', roomId);
       } catch (error) {
         console.error('❌ Failed to establish WebSocket sync:', error);
@@ -55,7 +54,7 @@ export function useWebSocketGameSync(
     connectToRoom();
 
     return () => {
-      reliableWebSocketService.disconnect();
+      connectionManager.disconnect();
     };
   }, [roomId]);
 
@@ -90,13 +89,13 @@ export function useWebSocketGameSync(
 
     // Register all handlers
     Object.entries(handlers).forEach(([event, handler]) => {
-      reliableWebSocketService.on(event, handler);
+      connectionManager.on(event, handler);
     });
 
     return () => {
       // Cleanup all handlers
       Object.entries(handlers).forEach(([event, handler]) => {
-        reliableWebSocketService.off(event, handler);
+        connectionManager.off(event, handler);
       });
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
@@ -107,7 +106,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    reliableWebSocketService.sendMessage({
+    connectionManager.sendMessage({
       type: 'PLAYER_UPDATE',
       roomId,
       data: players
@@ -120,7 +119,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    reliableWebSocketService.sendMessage({
+    connectionManager.sendMessage({
       type: 'GAME_START',
       roomId,
       data: { timestamp: Date.now() }
@@ -133,7 +132,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    reliableWebSocketService.sendMessage({
+    connectionManager.sendMessage({
       type: 'CARD_PLACED',
       roomId,
       data: cardData
@@ -146,7 +145,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    reliableWebSocketService.sendMessage({
+    connectionManager.sendMessage({
       type: 'SONG_SET',
       roomId,
       data: song
@@ -160,17 +159,17 @@ export function useWebSocketGameSync(
     }
     
     console.log('📦 Sending HOST_SET_SONGS with', songList.length, 'songs');
-    reliableWebSocketService.sendHostSetSongs(roomId, songList, hostId);
+    connectionManager.sendHostSetSongs(roomId, songList, hostId);
   }, [roomId, syncState.isReady]);
 
   const setHostStatus = useCallback((isHost: boolean) => {
-    reliableWebSocketService.setHostStatus(isHost);
+    connectionManager.setHostStatus(isHost);
   }, []);
 
   const forceReconnect = useCallback(() => {
     if (roomId) {
       connectionManager.resetRetries();
-      reliableWebSocketService.connect(roomId);
+      connectionManager.connect(roomId);
     }
   }, [roomId]);
 

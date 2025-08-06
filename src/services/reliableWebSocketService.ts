@@ -1,3 +1,4 @@
+
 import { GameService } from './gameService';
 
 interface WebSocketMessage {
@@ -146,7 +147,7 @@ export class ReliableWebSocket {
     return this.isConnected;
   }
 
-  private handleMessage(data: WebSocketMessage): void {
+  private async handleMessage(data: WebSocketMessage): Promise<void> {
     //console.log('[ReliableWebSocket] Received message:', data);
 
     if (data.type === 'roomUpdate') {
