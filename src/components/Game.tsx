@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { GameService } from '@/services/gameService';
@@ -195,9 +194,7 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800">
           <MobileJoinFlow
             onJoinRoom={handleMobileJoin}
-            room={room}
-            currentPlayer={currentPlayer}
-            players={players}
+            onBackToMenu={handleJoinRoom}
           />
         </div>
       );
@@ -217,9 +214,7 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
       return (
         <div className="min-h-screen">
           <ConnectionStatus 
-            isConnected={connectionStatus.isConnected}
-            isReconnecting={connectionStatus.isReconnecting}
-            lastError={connectionStatus.lastError}
+            connectionStatus={connectionStatus}
             onReconnect={handleReconnect}
           />
           <GamePlay

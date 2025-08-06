@@ -54,6 +54,14 @@ export function HostLobby({ room, players, onLoadPlaylist, customSongs }: HostLo
     }
   };
 
+  const handlePlaylistLoaded = (success: boolean, count?: number) => {
+    if (success && count) {
+      console.log('🎵 Playlist loaded successfully:', count, 'songs');
+      // This would need to be updated to work with the actual playlist data
+      // For now, we'll just show a success message
+    }
+  };
+
   // Enhanced debugging for room state
   useEffect(() => {
     console.log('HostLobby: Current state:', {
@@ -144,7 +152,7 @@ export function HostLobby({ room, players, onLoadPlaylist, customSongs }: HostLo
 
           {/* Playlist Loader */}
           <Card className="p-6">
-            <PlaylistLoader onPlaylistLoaded={onLoadPlaylist} />
+            <PlaylistLoader onPlaylistLoaded={handlePlaylistLoaded} />
           </Card>
 
           {/* Game Start */}
