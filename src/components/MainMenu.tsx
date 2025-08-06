@@ -335,7 +335,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                 </div>
                 
                 <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">4</div>
+                  <div className="w-8 h-8 bg-[#7209B7] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">4</div>
                   <div>
                     <h4 className="text-white font-semibold mb-1">Win the Game</h4>
                     <p className="text-[#d9e8dd] text-sm">First player to build a complete timeline with 10 songs wins!</p>
