@@ -44,10 +44,11 @@ export function Game() {
     placeCard,
     setCurrentSong,
     assignStartingCards,
-    kickPlayer
+    kickPlayer,
+    connectionStatus
   } = useGameRoom();
 
-  const gameLogic = useGameLogic(room, players, currentPlayer, isHost, gameState.songs);
+  const gameLogic = useGameLogic(room?.id || null, players, room, setCurrentSong);
   const { toast } = useToast();
 
   // Handle create room
@@ -183,7 +184,6 @@ export function Game() {
         return (
           <HostLobby
             players={players}
-            onStartGame={handleStartGame}
             onBackToMenu={handleBackToMenu}
             onUpdateSongs={(songs: Song[]) => {
               setGameState(prev => ({ ...prev, songs }));
@@ -207,7 +207,6 @@ export function Game() {
       case 'mobileLobby':
         return (
           <MobilePlayerLobby
-            lobbyCode={gameState.lobbyCode || ''}
             playerName={gameState.playerName || ''}
             players={players}
             currentPlayer={currentPlayer}
@@ -227,6 +226,10 @@ export function Game() {
             isHost={isHost}
             onPlaceCard={handlePlaceCard}
             customSongs={gameState.songs}
+            onSetCurrentSong={setCurrentSong}
+            connectionStatus={connectionStatus}
+            onReconnect={() => {}}
+            onReplayGame={() => {}}
           />
         );
 
@@ -239,7 +242,7 @@ export function Game() {
             onPlayAgain={() => {
               setGameState(prev => ({
                 ...prev,
-                phase: isHost ? 'hostLobby' as GamePhase : 'mobileLobby' as GamePhase
+                phase: isHost ? ('hostLobby' as GamePhase) : ('mobileLobby' as GamePhase)
               }));
             }}
           />
