@@ -17,9 +17,31 @@ export class GameService {
     try {
       console.log('🎯 GAME INIT: Starting initialization for room:', roomId, 'with', songs.length, 'songs');
 
+      // Robust validation of songs array
+      if (!songs || !Array.isArray(songs) || songs.length === 0) {
+        console.error('❌ CRITICAL: No songs provided to initialize game');
+        throw new Error('No songs available to start the game');
+      }
+
       if (songs.length < 2) {
+        console.error('❌ CRITICAL: Not enough songs to initialize game');
         throw new Error('Need at least 2 songs to initialize game');
       }
+
+      // Validate that songs have required properties
+      const validSongs = songs.filter(song => 
+        song && 
+        song.deezer_title && 
+        song.deezer_artist && 
+        song.release_year
+      );
+
+      if (validSongs.length < 2) {
+        console.error('❌ CRITICAL: Not enough valid songs to initialize game');
+        throw new Error('Not enough valid songs to initialize game');
+      }
+
+      console.log('✅ Using', validSongs.length, 'valid songs for game initialization');
 
       // Fetch all non-host players in the room
       const { data: players, error: playersError } = await supabase
@@ -43,12 +65,17 @@ export class GameService {
       const firstPlayer = players[0];
       console.log('🎯 Setting first player for turn:', firstPlayer.name);
 
-      // Create a copy of songs to work with
-      let availableSongs = [...songs];
+      // Create a copy of valid songs to work with
+      let availableSongs = [...validSongs];
       
       // Pick and remove mystery card from available songs
       const mysteryCardIndex = Math.floor(Math.random() * availableSongs.length);
       const mysteryCard = availableSongs.splice(mysteryCardIndex, 1)[0];
+      
+      if (!mysteryCard) {
+        console.error('❌ CRITICAL: Failed to select mystery card');
+        throw new Error('Failed to select mystery card');
+      }
       
       console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
 
@@ -57,7 +84,7 @@ export class GameService {
         .from('game_rooms')
         .update({ 
           current_song: mysteryCard as unknown as Json,
-          songs: songs as unknown as Json,
+          songs: validSongs as unknown as Json,
           phase: 'playing',
           current_turn: 0,
           current_song_index: 0,
@@ -82,6 +109,11 @@ export class GameService {
         // Pick a random starting card for this player
         const startingCardIndex = Math.floor(Math.random() * availableSongs.length);
         const startingCard = availableSongs.splice(startingCardIndex, 1)[0];
+
+        if (!startingCard) {
+          console.error(`❌ CRITICAL: Failed to get starting card for player ${player.name}`);
+          throw new Error(`Failed to get starting card for player ${player.name}`);
+        }
 
         console.log(`🎴 Assigning starting card "${startingCard.deezer_title}" to player ${player.name}`);
 

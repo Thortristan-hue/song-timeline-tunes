@@ -110,8 +110,8 @@ export function HostCurrentPlayerTimeline({
               }`}
             />
             
-            {currentTurnPlayer.timeline.map((song, index) => (
-              <React.Fragment key={`${song.deezer_title}-${index}`}>
+            {currentTurnPlayer.timeline.filter(song => song !== null && song !== undefined).map((song, index) => (
+              <React.Fragment key={`${song?.deezer_title || 'unknown'}-${index}`}>
                 {/* Song card with enhanced animations */}
                 <div
                   className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
