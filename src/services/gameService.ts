@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -80,12 +79,13 @@ export class GameService {
       console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
 
       // CRITICAL: Update room with mystery card AND set phase to playing AND set current player
+      // This is the authoritative state change that will trigger the UI update
       const { error: roomUpdateError } = await supabase
         .from('game_rooms')
         .update({ 
           current_song: mysteryCard as unknown as Json,
           songs: validSongs as unknown as Json,
-          phase: 'playing',
+          phase: 'playing', // This is the key - authoritative phase change
           current_turn: 0,
           current_song_index: 0,
           current_player_id: firstPlayer.id
