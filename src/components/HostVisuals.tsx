@@ -1,251 +1,166 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Song, Player } from '@/types/game';
-import { RecordMysteryCard } from '@/components/RecordMysteryCard';
-import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
-import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@/constants/characters';
-import { audioEngine } from '@/utils/audioEngine';
+import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Pause } from 'lucide-react';
+import { Music, Play, Pause } from 'lucide-react';
+import { Song, Player } from '@/types/game';
+import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
+import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
+import { AudioEngine } from '@/utils/audioEngine';
+import { getActualPlayers } from '@/utils/playerUtils';
 
-interface HostGameViewProps {
-  currentTurnPlayer: Player | null;
-  currentSong: Song | null;
-  roomCode: string;
+interface HostVisualsProps {
+  room: any;
   players: Player[];
-  mysteryCardRevealed: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => void;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-  transitioning: boolean;
-  highlightedGapIndex: number | null;
-  mobileViewport: { startIndex: number; endIndex: number; totalCards: number } | null;
+  mysteryCard: Song | null;
+  isHost: boolean;
 }
 
-export function HostGameView({
-  currentTurnPlayer,
-  currentSong,
-  roomCode,
-  players,
-  mysteryCardRevealed,
-  isPlaying,
-  onPlayPause,
-  cardPlacementResult,
-  transitioning,
-  highlightedGapIndex,
-  mobileViewport
-}: HostGameViewProps) {
-  const [recordPlayerRef, setRecordPlayerRef] = useState<HTMLDivElement | null>(null);
-  const [isCardRevealed, setIsCardRevealed] = useState(false);
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsProps) {
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   
-  useEffect(() => {
-    setIsCardRevealed(mysteryCardRevealed);
-  }, [mysteryCardRevealed]);
-
-  const handleRecordClick = () => {
-    onPlayPause();
+  // Get actual players (excluding host)
+  const actualPlayers = getActualPlayers(players, room?.host_id);
+  
+  // Determine current player - use room's current_player_id if available, otherwise use index
+  const getCurrentPlayer = (): Player | null => {
+    if (actualPlayers.length === 0) return null;
+    
+    if (room?.current_player_id) {
+      const playerById = actualPlayers.find(p => p.id === room.current_player_id);
+      if (playerById) return playerById;
+    }
+    
+    // Fallback to index-based selection
+    const validIndex = Math.min(currentTurnIndex, actualPlayers.length - 1);
+    return actualPlayers[validIndex] || null;
   };
 
-  const handlePreviewClick = () => {
-    if (!currentSong?.preview_url) {
-      console.warn('[HostVisuals] No preview URL available');
+  const currentPlayer = getCurrentPlayer();
+
+  // Update current turn index when room's current_player_id changes
+  useEffect(() => {
+    if (room?.current_player_id && actualPlayers.length > 0) {
+      const playerIndex = actualPlayers.findIndex(p => p.id === room.current_player_id);
+      if (playerIndex >= 0) {
+        setCurrentTurnIndex(playerIndex);
+      }
+    }
+  }, [room?.current_player_id, actualPlayers]);
+
+  const handlePlayPreview = async () => {
+    if (!mysteryCard?.preview_url) {
+      console.warn('No preview URL available for mystery card');
       return;
     }
 
-    if (isPreviewPlaying) {
-      audioEngine.stopPreview();
-      setIsPreviewPlaying(false);
-    } else {
-      audioEngine.playPreview(currentSong.preview_url);
-      setIsPreviewPlaying(true);
-      // Auto-stop after 30 seconds (typical preview length)
-      setTimeout(() => {
-        setIsPreviewPlaying(false);
-      }, 30000);
+    try {
+      if (isPlayingPreview) {
+        AudioEngine.stopPreview();
+        setIsPlayingPreview(false);
+      } else {
+        AudioEngine.playPreview(mysteryCard.preview_url);
+        setIsPlayingPreview(true);
+        
+        // Auto-stop after 30 seconds
+        setTimeout(() => {
+          setIsPlayingPreview(false);
+        }, 30000);
+      }
+    } catch (error) {
+      console.error('Error playing preview:', error);
+      setIsPlayingPreview(false);
     }
   };
 
+  // Show loading state if no players or no current player
+  if (actualPlayers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+        <Music className="h-16 w-16 mb-4 animate-pulse" />
+        <h2 className="text-2xl font-bold mb-2">Waiting for Players...</h2>
+        <p className="text-lg opacity-75">The game will start once players join the lobby.</p>
+      </div>
+    );
+  }
+
+  if (!currentPlayer) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+        <Music className="h-16 w-16 mb-4 animate-spin" />
+        <h2 className="text-2xl font-bold mb-2">Initializing Game...</h2>
+        <p className="text-lg opacity-75">Setting up the first turn...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#494252] via-[#524555] to-[#403844] relative overflow-hidden">
-      {/* Top Left - RYTHMY Logo */}
-      <div className="absolute top-4 left-4 z-10">
-        <img 
-          src="/src/assets/ass_rythmy.png" 
-          alt="RYTHMY" 
-          className="h-12 w-auto"
-        />
-      </div>
-
-      {/* Top Right - Room Code */}
-      <div className="absolute top-4 right-4 z-10">
-        <div className="relative">
-          <img 
-            src="/src/assets/ass_roomcode.png" 
-            alt="Room Code Background" 
-            className="h-12 w-auto"
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white font-bold text-lg tracking-wider">
-              {roomCode}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Left Speaker */}
-      <div className="absolute bottom-4 left-4 z-10">
-        <img 
-          src="/src/assets/ass_speaker.png" 
-          alt="Speaker" 
-          className="h-16 w-auto opacity-80"
-        />
-      </div>
-
-      {/* Bottom Right Speaker */}
-      <div className="absolute bottom-4 right-4 z-10">
-        <img 
-          src="/src/assets/ass_speaker.png" 
-          alt="Speaker" 
-          className="h-16 w-auto opacity-80 scale-x-[-1]"
-        />
-      </div>
-
-      {/* Center Top - Control Panel */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="relative">
-          <img 
-            src="/src/assets/ass_cass_bg.png" 
-            alt="Control Panel Background" 
-            className="h-20 w-auto"
-          />
-          
-          {/* Control Buttons Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center space-x-4">
-            {/* Play/Pause Button */}
-            <button
-              onClick={handleRecordClick}
-              className="relative group transition-transform hover:scale-110"
-              disabled={!currentSong}
-            >
-              <img 
-                src={isPlaying ? "/src/assets/ass_pause.png" : "/src/assets/ass_play.png"}
-                alt={isPlaying ? "Pause" : "Play"}
-                className="h-8 w-8"
-              />
-            </button>
-            
-            {/* Stop Button */}
-            <button
-              onClick={() => {
-                if (isPlaying) {
-                  onPlayPause(); // This will stop/pause the audio
-                }
-              }}
-              className="relative group transition-transform hover:scale-110"
-              disabled={!isPlaying}
-            >
-              <img 
-                src="/src/assets/ass_stop.png"
-                alt="Stop"
-                className="h-8 w-8"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Current Turn Player Timeline */}
-        {currentTurnPlayer && (
-          <div className="w-full max-w-6xl mb-8">
-            <HostCurrentPlayerTimeline 
-              currentTurnPlayer={currentTurnPlayer}
-              highlightedGapIndex={highlightedGapIndex}
-              mobileViewport={mobileViewport}
-            />
-          </div>
-        )}
-
-        {/* Mystery Card */}
-        <div className="mb-8 flex flex-col items-center space-y-4">
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={isCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-          
-          {/* Preview Button for Mystery Song */}
-          {currentSong?.preview_url && (
-            <Button
-              onClick={handlePreviewClick}
-              className={`px-6 py-2 rounded-full text-white shadow-lg hover:scale-105 transition-all duration-300 flex items-center space-x-2 interactive-button hover-glow ${
-                isPreviewPlaying 
-                  ? 'bg-gradient-to-br from-orange-500 to-orange-600' 
-                  : 'bg-gradient-to-br from-blue-500 to-blue-600'
-              }`}
-              title="Preview Mystery Song"
-            >
-              {isPreviewPlaying ? (
-                <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              <span className="text-sm font-semibold">
-                {isPreviewPlaying ? 'Stop Preview' : 'Play Preview'}
-              </span>
-            </Button>
-          )}
-        </div>
-
-        {/* Player Characters Display */}
-        <div className="w-full max-w-6xl">
-          <div className="flex justify-center items-end space-x-6">
-            {players.map((player) => {
-              const isCurrentPlayer = currentTurnPlayer?.id === player.id;
-              const character = getCharacterByIdUtil(player.character || getDefaultCharacter().id);
+    <div className="flex flex-col h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white relative overflow-hidden">
+      {/* Mystery Card Display */}
+      {mysteryCard && (
+        <div className="absolute top-4 right-4 z-30">
+          <Card className="bg-black/20 backdrop-blur-sm border-white/20 p-4 min-w-64">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="text-center">
+                <h3 className="font-bold text-white text-lg">{mysteryCard.deezer_title}</h3>
+                <p className="text-white/80">{mysteryCard.deezer_artist}</p>
+                <p className="text-white/60 text-sm">{mysteryCard.release_year}</p>
+              </div>
               
-              return (
-                <div
-                  key={player.id}
-                  className={`relative transition-all duration-300 ${
-                    isCurrentPlayer 
-                      ? 'scale-110 z-10' 
-                      : 'scale-100 opacity-75'
-                  }`}
+              {mysteryCard.preview_url && (
+                <Button 
+                  onClick={handlePlayPreview}
+                  disabled={isPlayingPreview}
+                  className="w-full bg-green-600 hover:bg-green-700"
                 >
-                  <div className="flex flex-col items-center space-y-2">
-                    {/* Character Image */}
-                    <div className="relative">
-                      <img
-                        src={character?.image || getDefaultCharacter().image}
-                        alt={character?.name || getDefaultCharacter().name}
-                        className="h-20 w-20 rounded-full border-4"
-                        style={{ borderColor: player.color }}
-                      />
-                      {isCurrentPlayer && (
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">
-                          <span className="text-xs">🎵</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Player Info */}
-                    <div className="text-center">
-                      <div className="text-white font-semibold text-sm truncate max-w-20">
-                        {player.name}
-                      </div>
-                      <div className="text-white/70 text-xs">
-                        {player.timeline.length} cards
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  {isPlayingPreview ? (
+                    <>
+                      <Pause className="w-4 h-4 mr-2" />
+                      Playing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Play Preview
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </Card>
         </div>
+      )}
+
+      {/* Current Player Section */}
+      <div className="flex-1 flex flex-col justify-center px-8">
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold mb-2">
+            {currentPlayer.name}'s Turn
+          </h1>
+          <p className="text-xl opacity-75">
+            Place the mystery song in the timeline
+          </p>
+        </div>
+
+        {/* Current Player Timeline */}
+        <div className="flex-1 flex items-center justify-center">
+          <HostCurrentPlayerTimeline 
+            currentTurnPlayer={currentPlayer}
+            cardPlacementResult={null}
+            highlightedGapIndex={null}
+            isTransitioning={false}
+          />
+        </div>
+      </div>
+
+      {/* All Players Overview */}
+      <div className="h-48 border-t border-white/20 bg-black/10">
+        <HostAllPlayersOverview 
+          players={actualPlayers}
+          currentPlayerId={currentPlayer.id}
+          hostName={room?.host_name || 'Host'}
+        />
       </div>
     </div>
   );
