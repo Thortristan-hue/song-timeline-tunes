@@ -8,9 +8,22 @@ import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
 import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
 import { audioEngine } from '@/utils/audioEngine';
 import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
+import { getCharacterById } from '@/constants/characters';
+
+// Import required assets
+import logoImage from '@/assets/ass_rythmy.png';
+import playImage from '@/assets/ass_play.png';
+import pauseImage from '@/assets/ass_pause.png';
+import cassetteImage from '@/assets/cassette-purple.png';
 
 interface HostVisualsProps {
-  room: any;
+  room: {
+    id: string;
+    phase: string;
+    lobby_code: string;
+    current_player_id?: string;
+    host_id?: string;
+  };
   players: Player[];
   mysteryCard: Song | null;
   isHost: boolean;
@@ -104,8 +117,11 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   // Handle room not loaded
   if (!room) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
-        <AlertTriangle className="h-16 w-16 mb-4 text-yellow-400" />
+      <div 
+        className="flex flex-col items-center justify-center text-gray-800"
+        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+      >
+        <AlertTriangle className="h-16 w-16 mb-4 text-yellow-600" />
         <h2 className="text-2xl font-bold mb-2">Room Not Found</h2>
         <p className="text-lg opacity-75">Unable to load room data.</p>
       </div>
@@ -115,7 +131,10 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   // Show loading state if we're in playing phase but have no players
   if (room.phase === 'playing' && actualPlayers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+      <div 
+        className="flex flex-col items-center justify-center text-gray-800"
+        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+      >
         <Music className="h-16 w-16 mb-4 animate-pulse" />
         <h2 className="text-2xl font-bold mb-2">Loading Players...</h2>
         <p className="text-lg opacity-75">Synchronizing player data...</p>
@@ -131,7 +150,10 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   // Show waiting state if no players joined yet
   if (actualPlayers.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+      <div 
+        className="flex flex-col items-center justify-center text-gray-800"
+        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+      >
         <Music className="h-16 w-16 mb-4 animate-pulse" />
         <h2 className="text-2xl font-bold mb-2">Waiting for Players...</h2>
         <p className="text-lg opacity-75">The game will start once players join the lobby.</p>
@@ -147,7 +169,10 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   // Show game setup state if no current player determined yet
   if (room.phase === 'playing' && !currentPlayer) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
+      <div 
+        className="flex flex-col items-center justify-center text-gray-800"
+        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+      >
         <Music className="h-16 w-16 mb-4 animate-spin" />
         <h2 className="text-2xl font-bold mb-2">Setting Up Game...</h2>
         <p className="text-lg opacity-75">Determining player turns...</p>
@@ -162,56 +187,82 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white relative overflow-hidden">
-      {/* Mystery Card Display */}
-      {mysteryCard && (
-        <div className="absolute top-4 right-4 z-30">
-          <Card className="bg-black/20 backdrop-blur-sm border-white/20 p-4 min-w-64">
-            <div className="flex flex-col items-center space-y-3">
-              <div className="text-center">
-                <h3 className="font-bold text-white text-lg">{mysteryCard.deezer_title}</h3>
-                <p className="text-white/80">{mysteryCard.deezer_artist}</p>
-                <p className="text-white/60 text-sm">{mysteryCard.release_year}</p>
-              </div>
-              
-              {mysteryCard.preview_url && (
-                <Button 
-                  onClick={handlePlayPreview}
-                  disabled={isPlayingPreview}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  {isPlayingPreview ? (
-                    <>
-                      <Pause className="w-4 h-4 mr-2" />
-                      Playing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Play Preview
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </Card>
+    <div 
+      className="text-white relative overflow-hidden"
+      style={{
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: '#f0f0f0',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr auto',
+        gridTemplateAreas: '"header" "main" "footer"'
+      }}
+    >
+      {/* Top Bar */}
+      <div 
+        style={{ gridArea: 'header' }}
+        className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
+      >
+        {/* Top-Left: Logo */}
+        <div className="flex items-center">
+          <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
         </div>
-      )}
 
-      {/* Current Player Section */}
-      <div className="flex-1 flex flex-col justify-center px-8">
+        {/* Top-Center: Mystery Card Cassette and Play/Pause Controls */}
+        <div className="flex flex-col items-center gap-4">
+          {/* Mystery Card Cassette */}
+          {mysteryCard && (
+            <div className="flex flex-col items-center">
+              <img src={cassetteImage} alt="Mystery Cassette" className="h-16 w-auto" />
+              <div className="text-center mt-2">
+                <div className="text-sm font-medium text-gray-800">{mysteryCard.deezer_title}</div>
+                <div className="text-xs text-gray-600">{mysteryCard.deezer_artist}</div>
+              </div>
+            </div>
+          )}
+          
+          {/* Play/Pause Controls */}
+          <div className="flex items-center gap-4">
+            {mysteryCard?.preview_url && (
+              <button
+                onClick={handlePlayPreview}
+                className="transition-transform hover:scale-110"
+              >
+                <img 
+                  src={isPlayingPreview ? pauseImage : playImage} 
+                  alt={isPlayingPreview ? "Pause" : "Play"} 
+                  className="h-12 w-auto" 
+                />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Top-Right: Room Code */}
+        <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
+          <div className="text-purple-800 font-mono text-lg font-bold">
+            {room.lobby_code}
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Section: Song Timeline */}
+      <div 
+        style={{ gridArea: 'main' }}
+        className="flex flex-col items-center justify-center p-8"
+      >
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2">
+          <h1 className="text-4xl font-bold mb-2 text-gray-800">
             {currentPlayer ? `${currentPlayer.name}'s Turn` : 'Setting Up Turn...'}
           </h1>
-          <p className="text-xl opacity-75">
+          <p className="text-xl text-gray-600">
             {currentPlayer ? 'Place the mystery song in the timeline' : 'Preparing game...'}
           </p>
         </div>
 
-        {/* Current Player Timeline */}
+        {/* Current Player Timeline - Centered */}
         {currentPlayer && (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center w-full">
             <HostCurrentPlayerTimeline 
               currentTurnPlayer={currentPlayer}
               cardPlacementResult={null}
@@ -222,12 +273,48 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         )}
       </div>
 
-      {/* All Players Overview */}
-      <div className="h-48 border-t border-white/20 bg-black/10">
-        <HostAllPlayersOverview 
-          players={actualPlayers}
-          currentTurnPlayer={currentPlayer}
-        />
+      {/* Bottom Bar: Player Characters */}
+      <div 
+        style={{ gridArea: 'footer' }}
+        className="bg-white/10 backdrop-blur-sm border-t border-gray-300"
+      >
+        <div className="p-4">
+          <div className="flex justify-center items-center gap-6">
+            {actualPlayers.map(player => {
+              const character = getCharacterById(player.character || 'char_dave');
+              return (
+                <div 
+                  key={player.id} 
+                  className={`flex flex-col items-center p-3 rounded-lg transition-all ${
+                    currentPlayer?.id === player.id 
+                      ? 'bg-yellow-300/30 ring-2 ring-yellow-500' 
+                      : 'bg-white/20'
+                  }`}
+                >
+                  {character ? (
+                    <img 
+                      src={character.image} 
+                      alt={character.name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div 
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                      style={{ backgroundColor: player.color }}
+                    >
+                      {player.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-gray-800 text-sm font-medium mt-2">{player.name}</span>
+                  <span className="text-gray-600 text-xs">Score: {player.score || 0}</span>
+                  {currentPlayer?.id === player.id && (
+                    <div className="text-yellow-600 text-xs mt-1 font-bold">Current Turn</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
