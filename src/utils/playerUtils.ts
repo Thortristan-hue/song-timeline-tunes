@@ -47,3 +47,30 @@ export function findCurrentPlayer(players: Player[], currentPlayerId?: string, c
   const validIndex = Math.min(Math.max(currentTurnIndex, 0), players.length - 1);
   return players[validIndex] || players[0] || null;
 }
+
+export function hasMinimumPlayers(players: Player[], minPlayers: number = 2): boolean {
+  const actualPlayers = getActualPlayers(players);
+  return actualPlayers.length >= minPlayers;
+}
+
+export function getNextPlayer(players: Player[], currentPlayerId?: string): Player | null {
+  const actualPlayers = getActualPlayers(players);
+  
+  if (actualPlayers.length === 0) {
+    return null;
+  }
+  
+  if (!currentPlayerId) {
+    return actualPlayers[0] || null;
+  }
+  
+  const currentIndex = actualPlayers.findIndex(p => p.id === currentPlayerId);
+  
+  if (currentIndex === -1) {
+    return actualPlayers[0] || null;
+  }
+  
+  // Get next player (circular)
+  const nextIndex = (currentIndex + 1) % actualPlayers.length;
+  return actualPlayers[nextIndex] || null;
+}
