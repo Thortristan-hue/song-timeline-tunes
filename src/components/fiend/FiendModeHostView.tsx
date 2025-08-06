@@ -138,11 +138,13 @@ export function FiendModeHostView({
             <div className="bg-white/10 border border-white/20 rounded-2xl p-6 mb-6">
               {currentSong ? (
                 <>
-                  <div className="text-2xl font-bold text-white mb-2">{currentSong.deezer_title}</div>
-                  <div className="text-xl text-white/80 font-semibold">{currentSong.deezer_artist}</div>
+                  <div className="text-2xl font-bold text-white mb-2">Mystery Song</div>
+                  <div className="text-xl text-white/80 font-semibold">Listen and guess the year!</div>
                   
                   {allPlayersSubmitted && (
                     <div className="mt-4 bg-green-500/20 border border-green-500/50 rounded-xl p-4">
+                      <div className="text-green-400 text-sm font-bold mb-1">REVEALED: {currentSong.deezer_title}</div>
+                      <div className="text-green-400 text-sm font-bold mb-1">BY: {currentSong.deezer_artist}</div>
                       <div className="text-green-400 text-sm font-bold mb-1">ACTUAL YEAR</div>
                       <div className="text-3xl font-bold text-white">{currentSong.release_year}</div>
                     </div>
