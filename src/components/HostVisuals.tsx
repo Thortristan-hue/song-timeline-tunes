@@ -7,7 +7,7 @@ import { Song, Player } from '@/types/game';
 import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
 import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
 import { audioEngine } from '@/utils/audioEngine';
-import { getActualPlayers } from '@/utils/playerUtils';
+import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
 
 interface HostVisualsProps {
   room: any;
@@ -23,21 +23,21 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   // Get actual players (excluding host)
   const actualPlayers = getActualPlayers(players, room?.host_id);
   
-  // Determine current player - use room's current_player_id if available, otherwise use index
-  const getCurrentPlayer = (): Player | null => {
-    if (actualPlayers.length === 0) return null;
-    
-    if (room?.current_player_id) {
-      const playerById = actualPlayers.find(p => p.id === room.current_player_id);
-      if (playerById) return playerById;
-    }
-    
-    // Fallback to index-based selection
-    const validIndex = Math.min(currentTurnIndex, actualPlayers.length - 1);
-    return actualPlayers[validIndex] || null;
-  };
+  // Find current player using the utility function
+  const currentPlayer = findCurrentPlayer(actualPlayers, room?.current_player_id, currentTurnIndex);
 
-  const currentPlayer = getCurrentPlayer();
+  // Debug logging
+  useEffect(() => {
+    console.log('HostVisuals Debug:', {
+      totalPlayers: players.length,
+      actualPlayersCount: actualPlayers.length,
+      currentPlayerId: room?.current_player_id,
+      currentTurnIndex,
+      currentPlayerFound: !!currentPlayer,
+      currentPlayerName: currentPlayer?.name,
+      roomPhase: room?.phase
+    });
+  }, [players.length, actualPlayers.length, room?.current_player_id, currentTurnIndex, currentPlayer]);
 
   // Update current turn index when room's current_player_id changes
   useEffect(() => {
@@ -74,23 +74,33 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
     }
   };
 
-  // Show loading state if no players or no current player
+  // Show loading state if no players
   if (actualPlayers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
         <Music className="h-16 w-16 mb-4 animate-pulse" />
         <h2 className="text-2xl font-bold mb-2">Waiting for Players...</h2>
         <p className="text-lg opacity-75">The game will start once players join the lobby.</p>
+        <div className="mt-4 text-sm opacity-60">
+          <p>Room: {room?.lobby_code}</p>
+          <p>Phase: {room?.phase}</p>
+          <p>Total Players: {players.length}</p>
+        </div>
       </div>
     );
   }
 
+  // Show game setup state if no current player determined yet
   if (!currentPlayer) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800 text-white">
         <Music className="h-16 w-16 mb-4 animate-spin" />
-        <h2 className="text-2xl font-bold mb-2">Initializing Game...</h2>
-        <p className="text-lg opacity-75">Setting up the first turn...</p>
+        <h2 className="text-2xl font-bold mb-2">Preparing Game...</h2>
+        <p className="text-lg opacity-75">Setting up player turns...</p>
+        <div className="mt-4 text-sm opacity-60">
+          <p>Players Ready: {actualPlayers.length}</p>
+          <p>Current Player ID: {room?.current_player_id || 'Not set'}</p>
+        </div>
       </div>
     );
   }
