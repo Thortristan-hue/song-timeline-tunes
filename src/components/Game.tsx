@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { GameService } from '@/services/gameService';
@@ -14,6 +15,15 @@ interface GameProps {
   initialRoomId?: string;
   initialPlayerId?: string;
 }
+
+// List of 5-letter words for lobby codes
+const LOBBY_WORDS = [
+  'APPLE', 'BREAD', 'CHAIR', 'DANCE', 'EAGLE', 'FRUIT', 'GHOST', 'HOUSE', 'IMAGE', 'JUICE',
+  'KNIFE', 'LIGHT', 'MUSIC', 'NIGHT', 'OCEAN', 'PARTY', 'QUEEN', 'RADIO', 'SOUND', 'TOAST',
+  'UNCLE', 'VOICE', 'WATER', 'YOUTH', 'ZEBRA', 'BRAVE', 'CLOUD', 'DREAM', 'FIELD', 'GRAND',
+  'HAPPY', 'IVORY', 'JOLLY', 'KINGS', 'LEMON', 'MAGIC', 'NOVEL', 'ORBIT', 'PEACE', 'QUICK',
+  'ROYAL', 'SHINE', 'TIGER', 'ULTRA', 'VIVID', 'WORLD', 'XEROX', 'YOUTH', 'ZESTY'
+];
 
 export function Game({ initialRoomId, initialPlayerId }: GameProps) {
   const { toast } = useToast();
@@ -69,12 +79,20 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
     retryCount: 0
   };
 
+  const generateLobbyCode = (): string => {
+    // Pick a random 5-letter word
+    const randomWord = LOBBY_WORDS[Math.floor(Math.random() * LOBBY_WORDS.length)];
+    // Add a random digit (0-9)
+    const randomDigit = Math.floor(Math.random() * 10);
+    return `${randomWord}${randomDigit}`;
+  };
+
   const handleCreateRoom = async () => {
     console.log('🏠 Creating room');
     
     try {
-      // Generate a unique lobby code
-      const lobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      // Generate a lobby code in the correct format (5-letter word + digit)
+      const lobbyCode = generateLobbyCode();
       
       // Generate a unique player session ID for the host
       const hostSessionId = crypto.randomUUID();
