@@ -151,25 +151,43 @@ export function GamePlay({
 
   const handlePlayPause = () => {
     const newIsPlaying = !isPlaying;
-    setIsPlaying(newIsPlaying);
     
     // Actually control audio playback using audio engine
     if (room?.current_song?.preview_url) {
       if (newIsPlaying) {
         console.log('[GamePlay] Starting audio playback for player:', room.current_song.deezer_title);
-        audioEngine.playPreview(room.current_song.preview_url);
-        
-        // Auto-stop after 30 seconds
-        setTimeout(() => {
+        try {
+          audioEngine.playPreview(room.current_song.preview_url);
+          setIsPlaying(true);
+          
+          // Auto-stop after 30 seconds
+          setTimeout(() => {
+            setIsPlaying(false);
+          }, 30000);
+        } catch (error) {
+          console.error('[GamePlay] Failed to start audio playback:', error);
+          toast({
+            title: "Audio playback failed",
+            description: "Unable to play song preview",
+            variant: "destructive",
+          });
           setIsPlaying(false);
-        }, 30000);
+        }
       } else {
         console.log('[GamePlay] Stopping audio playback for player');
         audioEngine.stopPreview();
+        setIsPlaying(false);
       }
     } else {
       console.warn('[GamePlay] No preview URL available for current song');
       setIsPlaying(false);
+      if (newIsPlaying) {
+        toast({
+          title: "No preview available",
+          description: "This song doesn't have a preview",
+          variant: "destructive",
+        });
+      }
     }
   };
 

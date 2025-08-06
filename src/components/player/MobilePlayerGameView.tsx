@@ -362,17 +362,35 @@ export default function MobilePlayerGameView({
                 
                 <Button
                   onClick={onPlayPause}
-                  className="absolute inset-0 w-full h-full bg-black/20 hover:bg-black/40 border-0 rounded-full transition-all duration-300 group"
+                  className={cn(
+                    "absolute inset-0 w-full h-full border-0 rounded-full transition-all duration-300 group",
+                    currentSong?.preview_url 
+                      ? "bg-black/20 hover:bg-black/40 cursor-pointer" 
+                      : "bg-gray-600/50 cursor-not-allowed"
+                  )}
                   disabled={!currentSong?.preview_url}
                 >
-                  <div className="text-white text-lg group-hover:scale-125 transition-transform duration-300">
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  <div className={cn(
+                    "text-lg transition-transform duration-300",
+                    currentSong?.preview_url 
+                      ? "text-white group-hover:scale-125" 
+                      : "text-gray-400"
+                  )}>
+                    {!currentSong?.preview_url ? (
+                      <Music className="w-5 h-5" />
+                    ) : isPlaying ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5 ml-0.5" />
+                    )}
                   </div>
                 </Button>
               </div>
             </div>
             <div className="text-center mt-2">
-              <div className="text-white/80 text-sm font-medium">Mystery Song</div>
+              <div className="text-white/80 text-sm font-medium">
+                {!currentSong?.preview_url ? "No Preview Available" : "Mystery Song"}
+              </div>
             </div>
           </div>
         )}
