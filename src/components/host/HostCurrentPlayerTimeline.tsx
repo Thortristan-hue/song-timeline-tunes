@@ -1,191 +1,205 @@
-
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Music, Star, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { Player, Song } from '@/types/game';
-import { getArtistColor, truncateText } from '@/lib/utils';
+import { getCharacterById } from '@/constants/characters';
+import { audioEngine } from '@/utils/audioEngine';
+import { DeezerAudioService } from '@/services/DeezerAudioService';
 
+// Define the props for the component
 interface HostCurrentPlayerTimelineProps {
   currentTurnPlayer: Player;
-  previousTurnPlayer?: Player;
-  cardPlacementResult?: { correct: boolean; song: Song } | null;
-  highlightedGapIndex?: number | null;
-  mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
-  isTransitioning?: boolean;
+  cardPlacementResult: { correct: boolean; song: Song } | null;
+  highlightedGapIndex: number | null;
+  isTransitioning: boolean;
 }
 
 export function HostCurrentPlayerTimeline({ 
   currentTurnPlayer, 
-  previousTurnPlayer,
-  cardPlacementResult, 
+  cardPlacementResult,
   highlightedGapIndex,
-  mobileViewport,
-  isTransitioning = false
+  isTransitioning
 }: HostCurrentPlayerTimelineProps) {
-  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
-  const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
-  const [visibleCards, setVisibleCards] = useState<number[]>([]);
-  const [newlyPlacedCardIndex, setNewlyPlacedCardIndex] = useState<number | null>(null);
-  const [cardsShifting, setCardsShifting] = useState<boolean>(false);
+  const [playingCardId, setPlayingCardId] = useState<string | null>(null);
+  const [cardPreviewUrls, setCardPreviewUrls] = useState<Record<string, string>>({});
+  const [loadingPreviews, setLoadingPreviews] = useState<Set<string>>(new Set());
 
-  // Handle turn transitions with enhanced animations
+  // Get player timeline with fallback
+  const timeline = Array.isArray(currentTurnPlayer?.timeline) ? currentTurnPlayer.timeline as Song[] : [];
+  const character = getCharacterById(currentTurnPlayer?.character || 'char_dave');
+
+  // Fetch preview URLs for timeline cards
   useEffect(() => {
-    if (isTransitioning) {
-      // Start exit animation for previous player
-      setTimelineState('exiting');
-      
-      // After exit completes, switch to new player and enter
-      setTimeout(() => {
-        setTimelineState('entering');
+    const fetchPreviewUrls = async () => {
+      for (const song of timeline) {
+        if (!song.preview_url && !cardPreviewUrls[song.id] && !loadingPreviews.has(song.id)) {
+          setLoadingPreviews(prev => new Set([...prev, song.id]));
+          
+          try {
+            // Extract a mock Deezer ID from song data
+            const mockTrackId = Math.abs(song.id.split('').reduce((a, b) => {
+              a = ((a << 5) - a) + b.charCodeAt(0);
+              return a & a;
+            }, 0)) % 1000000;
+
+            const previewUrl = await DeezerAudioService.getPreviewUrl(mockTrackId);
+            setCardPreviewUrls(prev => ({ ...prev, [song.id]: previewUrl }));
+            console.log('[HostCurrentPlayerTimeline] Preview URL fetched for card:', song.deezer_title);
+          } catch (error) {
+            console.warn('[HostCurrentPlayerTimeline] Failed to fetch preview for card:', song.deezer_title, error);
+          } finally {
+            setLoadingPreviews(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(song.id);
+              return newSet;
+            });
+          }
+        }
+      }
+    };
+
+    if (timeline.length > 0) {
+      fetchPreviewUrls();
+    }
+  }, [timeline, cardPreviewUrls, loadingPreviews]);
+
+  const handleCardClick = async (song: Song) => {
+    const previewUrl = song.preview_url || cardPreviewUrls[song.id];
+    
+    if (!previewUrl) {
+      console.warn('[HostCurrentPlayerTimeline] No preview URL available for card:', song.deezer_title);
+      return;
+    }
+
+    try {
+      if (playingCardId === song.id) {
+        // Stop current preview
+        audioEngine.stopPreview();
+        setPlayingCardId(null);
+      } else {
+        // Stop any currently playing preview
+        audioEngine.stopPreview();
         
-        // Animate cards appearing one by one
-        const cardIndices = currentTurnPlayer.timeline.map((_, index) => index);
-        setVisibleCards([]);
+        // Start new preview
+        audioEngine.playPreview(previewUrl);
+        setPlayingCardId(song.id);
         
-        cardIndices.forEach((index, i) => {
-          setTimeout(() => {
-            setVisibleCards(prev => [...prev, index]);
-          }, i * 150);
-        });
-        
+        // Auto-stop after 30 seconds
         setTimeout(() => {
-          setTimelineState('stable');
-        }, cardIndices.length * 150 + 500);
-      }, 1000);
-    } else {
-      // Normal stable state
-      setTimelineState('stable');
-      setVisibleCards(currentTurnPlayer.timeline.map((_, index) => index));
+          setPlayingCardId(null);
+        }, 30000);
+      }
+    } catch (error) {
+      console.error('[HostCurrentPlayerTimeline] Error playing card preview:', error);
+      setPlayingCardId(null);
     }
-  }, [isTransitioning, currentTurnPlayer]);
+  };
 
-  // Handle new card placement animation
+  // Cleanup audio when component unmounts
   useEffect(() => {
-    if (cardPlacementResult && cardPlacementResult.correct) {
-      const newCardIndex = currentTurnPlayer.timeline.length - 1;
-      setNewlyPlacedCardIndex(newCardIndex);
-      setCardsShifting(true);
-      
-      // First animate existing cards making room
-      setTimeout(() => {
-        // Then animate the new card sliding in
-        setTimeout(() => {
-          setCardsShifting(false);
-          setNewlyPlacedCardIndex(null);
-        }, 800);
-      }, 300);
-    }
-  }, [cardPlacementResult, currentTurnPlayer.timeline.length]);
+    return () => {
+      audioEngine.stopPreview();
+      setPlayingCardId(null);
+    };
+  }, []);
 
-  // Trigger feedback animation when placement result changes
-  useEffect(() => {
-    if (cardPlacementResult) {
-      const animationClass = cardPlacementResult.correct 
-        ? 'animate-host-feedback-correct' 
-        : 'animate-host-feedback-incorrect';
-      
-      setFeedbackAnimation(animationClass);
-      
-      // Clear animation after it completes
-      setTimeout(() => {
-        setFeedbackAnimation('');
-      }, 1000);
-    }
-  }, [cardPlacementResult]);
+  if (!currentTurnPlayer) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-600">No current player</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex justify-center items-center w-full z-20">
-      <div className="flex gap-2 items-center overflow-x-auto pb-2">
-        {currentTurnPlayer.timeline.length === 0 ? (
-          <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
-            <Music className="h-8 w-8 opacity-50" />
-            <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
-          </div>
-        ) : (
-          <>
-            {/* Gap before first card */}
-            <div 
-              className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
-              }`}
+    <div className="w-full max-w-6xl">
+      {/* Player Info Header */}
+      <div className="flex items-center justify-center mb-8">
+        <div className="flex items-center gap-4 bg-white/20 backdrop-blur-sm rounded-lg p-4">
+          {character ? (
+            <img 
+              src={character.image} 
+              alt={character.name}
+              className="w-12 h-12 object-contain"
             />
+          ) : (
+            <div 
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: currentTurnPlayer.color }}
+            >
+              {currentTurnPlayer.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">{currentTurnPlayer.name}</h3>
+            <p className="text-gray-600">Score: {currentTurnPlayer.score || 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="flex items-center justify-center gap-6 overflow-x-auto pb-4">
+        {timeline.length === 0 ? (
+          <div className="text-gray-600 text-lg">No cards in timeline yet</div>
+        ) : (
+          timeline.map((song, index) => {
+            const isPlaying = playingCardId === song.id;
+            const hasPreview = !!(song.preview_url || cardPreviewUrls[song.id]);
+            const isLoadingPreview = loadingPreviews.has(song.id);
             
-            {currentTurnPlayer.timeline.filter(song => song !== null && song !== undefined).map((song, index) => (
-              <React.Fragment key={`${song?.deezer_title || 'unknown'}-${index}`}>
-                {/* Song card with enhanced animations */}
-                <div
-                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
-                    newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
-                  } ${
-                    cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
-                  } ${
-                    cardsShifting && index > (newlyPlacedCardIndex || 0) ? 'animate-card-shift-right' : ''
-                  } ${
-                    !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
-                  } ${
-                    timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
-                  } ${
-                    mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
-                  }`}
-                  style={{
-                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
-                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
-                    animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
-                                   timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
-                                   '0s',
-                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
-                  }}
-                >
-                  {/* Mobile viewport indicator badge */}
-                  {mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex && (
-                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg animate-pulse border border-blue-300">
-                      👀
+            return (
+              <div
+                key={`${song.id}-${index}`}
+                className={`
+                  bg-white/90 rounded-lg p-4 min-w-[200px] shadow-lg transition-all duration-300
+                  ${hasPreview ? 'cursor-pointer hover:bg-white hover:shadow-xl hover:scale-105' : 'cursor-default'}
+                  ${isPlaying ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
+                  ${cardPlacementResult?.song.id === song.id ? 
+                    cardPlacementResult.correct ? 'ring-2 ring-green-500' : 'ring-2 ring-red-500' 
+                    : ''}
+                `}
+                onClick={() => hasPreview && handleCardClick(song)}
+              >
+                <div className="space-y-2">
+                  <div className="font-semibold text-gray-900 text-sm line-clamp-2">
+                    {song.deezer_title || 'Unknown Title'}
+                  </div>
+                  <div className="text-gray-700 text-xs">
+                    {song.deezer_artist || 'Unknown Artist'}
+                  </div>
+                  <div className="text-gray-600 text-xs">
+                    {song.deezer_album || 'Unknown Album'}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xl font-bold text-blue-600 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                      {song.release_year || 'Unknown'}
                     </div>
-                  )}
-                  
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
-                  
-                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-2">
-                    {/* Artist name - medium, white, wrapped, max 20 letters per line */}
-                    <div className="text-sm font-medium text-white leading-tight overflow-hidden">
-                      <div className="break-words">
-                        {truncateText(song.deezer_artist, 20)}
-                      </div>
-                    </div>
-                    
-                    {/* Song release year - large, white */}
-                    <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
-                      {song.release_year}
-                    </div>
-                    
-                    {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
-                    <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
-                      <div className="break-words">
-                        {truncateText(song.deezer_title, 20)}
-                      </div>
+                    <div className="flex items-center text-xs text-gray-500">
+                      {isLoadingPreview && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></div>
+                      )}
+                      {isPlaying && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1"></div>
+                      )}
+                      {hasPreview && !isLoadingPreview && (
+                        <span>{isPlaying ? 'Playing...' : 'Click to play'}</span>
+                      )}
+                      {!hasPreview && !isLoadingPreview && (
+                        <span>No preview</span>
+                      )}
                     </div>
                   </div>
                 </div>
-                
-                {/* Gap after this card */}
-                <div 
-                  className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
-                    highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
-                  }`}
-                />
-              </React.Fragment>
-            ))}
-          </>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Mobile Viewport Indicator */}
-      {mobileViewport && (
-        <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2">
-          <div className="bg-blue-500/20 backdrop-blur-md rounded-xl px-4 py-2 border border-blue-400/30">
-            <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
-              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-              <span>Mobile viewing: Cards {mobileViewport.startIndex + 1}-{mobileViewport.endIndex + 1} of {mobileViewport.totalCards}</span>
+      {/* Timeline Legend */}
+      {timeline.length > 0 && (
+        <div className="flex justify-center mt-4">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg px-4 py-2">
+            <div className="text-sm text-gray-700">
+              Click on cards to preview songs • Timeline sorted by year: {timeline[0]?.release_year} - {timeline[timeline.length - 1]?.release_year}
             </div>
           </div>
         </div>

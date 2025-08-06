@@ -1,487 +1,594 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Song, Player } from '@/types/game';
-import type { Json } from '@/integrations/supabase/types';
-import { getDefaultCharacter } from '@/constants/characters';
-
-/**
- * Validates that a timeline is in correct chronological order by release year
- * @param timeline Array of songs to validate
- * @returns true if timeline is in correct chronological order, false otherwise
- */
-function validateTimelineOrder(timeline: Song[]): boolean {
-  if (timeline.length <= 1) {
-    return true; // Single song or empty timeline is always valid
-  }
-
-  for (let i = 0; i < timeline.length - 1; i++) {
-    const currentYear = parseInt(timeline[i].release_year);
-    const nextYear = parseInt(timeline[i + 1].release_year);
-    
-    // Check if years are valid numbers
-    if (isNaN(currentYear) || isNaN(nextYear)) {
-      console.warn('⚠️ Invalid release year found in timeline validation:', {
-        current: timeline[i].release_year,
-        next: timeline[i + 1].release_year
-      });
-      return false; // Invalid years are considered incorrect
-    }
-    
-    // Timeline should be in ascending chronological order
-    if (currentYear > nextYear) {
-      console.log('❌ Timeline order violation:', {
-        currentSong: `${timeline[i].deezer_title} (${currentYear})`,
-        nextSong: `${timeline[i + 1].deezer_title} (${nextYear})`,
-        position: i
-      });
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-interface PlaceCardResult {
-  success: boolean;
-  correct?: boolean;
-  gameEnded?: boolean;
-  winner?: Player;
-  error?: string;
-}
+import { Song, Player, GameRoom } from '@/types/game';
+import { DeezerAudioService } from './DeezerAudioService';
 
 export class GameService {
-  static async initializeGameWithStartingCards(roomId: string, songs: Song[]): Promise<void> {
+  static async createRoom(
+    hostId: string,
+    hostName: string,
+    lobbyCode: string,
+    gamemode: string,
+    gamemodeSettings: any,
+  ): Promise<{ data: GameRoom | null; error: any }> {
     try {
-      console.log('🎯 GAME INIT: Starting initialization for room:', roomId, 'with', songs.length, 'songs');
+      console.log('[GameService] Creating room:', { hostId, lobbyCode, gamemode });
 
-      // Robust validation of songs array
-      if (!songs || !Array.isArray(songs) || songs.length === 0) {
-        console.error('❌ CRITICAL: No songs provided to initialize game');
-        throw new Error('No songs available to start the game');
+      const { data, error } = await supabase
+        .from('game_rooms')
+        .insert([
+          {
+            host_id: hostId,
+            host_name: hostName,
+            lobby_code: lobbyCode,
+            phase: 'waiting',
+            gamemode: gamemode,
+            gamemode_settings: gamemodeSettings,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[GameService] Error creating room:', error);
+        return { data: null, error };
       }
 
-      if (songs.length < 2) {
-        console.error('❌ CRITICAL: Not enough songs to initialize game');
-        throw new Error('Need at least 2 songs to initialize game');
-      }
+      const gameRoom: GameRoom = {
+        id: data.id,
+        lobby_code: data.lobby_code,
+        host_id: data.host_id,
+        host_name: data.host_name,
+        phase: data.phase as any,
+        gamemode: data.gamemode,
+        gamemode_settings: data.gamemode_settings,
+        songs: Array.isArray(data.songs) ? data.songs as Song[] : [],
+        current_song: data.current_song as Song | null,
+        current_song_index: data.current_song_index || 0,
+        current_player_id: data.current_player_id,
+        current_turn: data.current_turn || 1,
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
 
-      // Validate that songs have required properties
-      const validSongs = songs.filter(song => 
-        song && 
-        song.deezer_title && 
-        song.deezer_artist && 
-        song.release_year
-      );
+      console.log('[GameService] Room created successfully:', gameRoom);
+      return { data: gameRoom, error: null };
+    } catch (error) {
+      console.error('[GameService] Exception creating room:', error);
+      return { data: null, error };
+    }
+  }
 
-      if (validSongs.length < 2) {
-        console.error('❌ CRITICAL: Not enough valid songs to initialize game');
-        throw new Error('Not enough valid songs to initialize game');
-      }
+  static async addPlayer(
+    roomId: string,
+    name: string,
+    character: string,
+    color: string,
+    playerSessionId: string
+  ): Promise<{ data: Player | null; error: any }> {
+    try {
+      console.log('[GameService] Adding player:', { roomId, name, character, color });
 
-      console.log('✅ Using', validSongs.length, 'valid songs for game initialization');
-
-      // Fetch all non-host players in the room
-      const { data: players, error: playersError } = await supabase
+      // Check if the player already exists in the room
+      const { data: existingPlayers, error: existingPlayersError } = await supabase
         .from('players')
         .select('*')
         .eq('room_id', roomId)
-        .eq('is_host', false);
+        .eq('name', name);
 
-      if (playersError) {
-        console.error('❌ Error fetching players:', playersError);
-        throw playersError;
+      if (existingPlayersError) {
+        console.error('[GameService] Error checking for existing players:', existingPlayersError);
+        return { data: null, error: existingPlayersError };
       }
 
-      console.log('👥 Non-host players in room for initialization:', players.length);
-
-      if (players.length === 0) {
-        throw new Error('No players found to start the game');
+      if (existingPlayers && existingPlayers.length > 0) {
+        const errorMessage = 'Player with this name already exists in the room';
+        console.warn('[GameService] ' + errorMessage);
+        return { data: null, error: { message: errorMessage } };
       }
 
-      // CRITICAL: Set the first player as the current player for turn management
-      const firstPlayer = players[0];
-      console.log('🎯 Setting first player for turn:', firstPlayer.name);
-
-      // Create a copy of valid songs to work with
-      const availableSongs = [...validSongs];
-      
-      // Pick and remove mystery card from available songs
-      const mysteryCardIndex = Math.floor(Math.random() * availableSongs.length);
-      const mysteryCard = availableSongs.splice(mysteryCardIndex, 1)[0];
-      
-      if (!mysteryCard) {
-        console.error('❌ CRITICAL: Failed to select mystery card');
-        throw new Error('Failed to select mystery card');
-      }
-      
-      console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
-
-      // CRITICAL: Update room with mystery card AND set phase to playing AND set current player
-      // This is the authoritative state change that will trigger the UI update
-      const { error: roomUpdateError } = await supabase
-        .from('game_rooms')
-        .update({ 
-          current_song: mysteryCard as unknown as Json,
-          songs: validSongs as unknown as Json,
-          phase: 'playing', // This is the key - authoritative phase change
-          current_turn: 0,
-          current_song_index: 0,
-          current_player_id: firstPlayer.id
-        })
-        .eq('id', roomId);
-
-      if (roomUpdateError) {
-        console.error('❌ Failed to update room:', roomUpdateError);
-        throw roomUpdateError;
-      }
-
-      console.log('✅ Room updated with mystery card and playing phase');
-
-      // Assign starting cards to each player
-      for (const player of players) {
-        if (availableSongs.length === 0) {
-          console.warn('⚠️ Ran out of songs to assign as starting cards');
-          break;
-        }
-
-        // Pick a random starting card for this player
-        const startingCardIndex = Math.floor(Math.random() * availableSongs.length);
-        const startingCard = availableSongs.splice(startingCardIndex, 1)[0];
-
-        if (!startingCard) {
-          console.error(`❌ CRITICAL: Failed to get starting card for player ${player.name}`);
-          throw new Error(`Failed to get starting card for player ${player.name}`);
-        }
-
-        console.log(`🎴 Assigning starting card "${startingCard.deezer_title}" to player ${player.name}`);
-
-        // Update player's timeline with the starting card
-        const { error: updateError } = await supabase
-          .from('players')
-          .update({ 
-            timeline: [startingCard] as unknown as Json,
-            score: 0 // Ensure score is reset
-          })
-          .eq('id', player.id);
-
-        if (updateError) {
-          console.error('❌ Error updating player timeline:', updateError);
-          throw updateError;
-        }
-
-        console.log(`✅ Starting card assigned to ${player.name}`);
-      }
-
-      console.log('✅ GAME INIT: Finished assigning starting cards and mystery card');
-    } catch (error) {
-      console.error('❌ GAME INIT: Failed to initialize game:', error);
-      throw error;
-    }
-  }
-
-  static async setCurrentSong(roomId: string, song: Song): Promise<void> {
-    try {
-      console.log('🎵 Setting current song for room:', roomId, 'to', song.deezer_title);
-
-      const { error } = await supabase
-        .from('game_rooms')
-        .update({ current_song: song as unknown as Json })
-        .eq('id', roomId);
+      const { data, error } = await supabase
+        .from('players')
+        .insert([
+          {
+            room_id: roomId,
+            name: name,
+            character: character,
+            color: color,
+            player_session_id: playerSessionId
+          },
+        ])
+        .select()
+        .single();
 
       if (error) {
-        console.error('❌ Failed to set current song:', error);
-        throw error;
+        console.error('[GameService] Error adding player:', error);
+        return { data: null, error };
       }
 
-      console.log('✅ Current song updated successfully.');
+      const player: Player = {
+        id: data.id,
+        room_id: data.room_id,
+        name: data.name,
+        character: data.character,
+        color: data.color,
+        score: data.score || 0,
+        timeline: Array.isArray(data.timeline) ? data.timeline as Song[] : [],
+        timeline_color: data.timeline_color,
+        is_host: data.is_host || false,
+        player_session_id: data.player_session_id,
+        joined_at: data.joined_at,
+        last_active: data.last_active
+      };
+
+      console.log('[GameService] Player added successfully:', player);
+      return { data: player, error: null };
     } catch (error) {
-      console.error('❌ Failed to set current song:', error);
-      throw error;
+      console.error('[GameService] Exception adding player:', error);
+      return { data: null, error };
     }
   }
 
-  static async updatePlayerTimeline(playerId: string, timeline: Song[], score?: number): Promise<void> {
+  static async startGame(roomId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const updateData: { timeline: Json; score?: number } = {
-        timeline: timeline as unknown as Json
-      };
+      console.log('[GameService] Starting game in room:', roomId);
 
-      if (score !== undefined) {
-        updateData.score = score;
+      // Fetch players in the room
+      const { data: players, error: playersError } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId);
+
+      if (playersError) {
+        console.error('[GameService] Error fetching players:', playersError);
+        return { success: false, error: playersError.message };
       }
 
+      if (!players || players.length === 0) {
+        console.warn('[GameService] No players in the room, cannot start the game');
+        return { success: false, error: 'No players in the room' };
+      }
+
+      // Randomly select the first player as the current player
+      const randomIndex = Math.floor(Math.random() * players.length);
+      const firstPlayer = players[randomIndex];
+
+      // Update the room to set the phase to 'playing' and assign the current player
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({ phase: 'playing', current_player_id: firstPlayer.id })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('[GameService] Error updating room:', updateError);
+        return { success: false, error: updateError.message };
+      }
+
+      console.log('[GameService] Game started successfully in room:', roomId, 'Current player:', firstPlayer.id);
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception starting game:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async placeCard(
+    roomId: string,
+    playerId: string,
+    song: Song,
+    position: number
+  ): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; error?: string }> {
+    try {
+      console.log('[GameService] Placing card:', { roomId, playerId, song: song.deezer_title, position });
+
+      // Get the room and players
+      const { room, players, error: roomError } = await this.getRoomWithPlayers(roomId);
+      if (!room || !players || roomError) {
+        console.error('[GameService] Error fetching room with players:', roomError);
+        return { success: false, error: roomError };
+      }
+
+      // Find the current player
+      const currentPlayer = players.find(p => p.id === playerId);
+      if (!currentPlayer) {
+        console.warn('[GameService] Current player not found:', playerId);
+        return { success: false, error: 'Current player not found' };
+      }
+
+      // Check if it's the player's turn
+      if (room.current_player_id !== playerId) {
+        console.warn('[GameService] Not current player\'s turn:', { currentPlayerId: room.current_player_id, playerId });
+        return { success: false, error: 'Not current player\'s turn' };
+      }
+
+      // Get the current song
+      const currentSong = room.current_song;
+      if (!currentSong) {
+        console.warn('[GameService] No current song set for the room');
+        return { success: false, error: 'No current song set for the room' };
+      }
+
+      // Update the player's timeline
+      const timeline = Array.isArray(currentPlayer.timeline) ? [...currentPlayer.timeline] : [];
+      timeline.splice(position, 0, currentSong);
+
+      const { success: timelineSuccess, error: timelineError } = await this.updatePlayerTimeline(playerId, timeline);
+      if (!timelineSuccess) {
+        console.error('[GameService] Error updating player timeline:', timelineError);
+        return { success: false, error: timelineError };
+      }
+
+      // Determine if the card placement was correct
+      let correct = false;
+      if (timeline.length > 1) {
+        if (position === 0) {
+          // First card in timeline
+          correct = currentSong.release_year <= timeline[1].release_year;
+        } else if (position === timeline.length - 1) {
+          // Last card in timeline
+          correct = currentSong.release_year >= timeline[position - 1].release_year;
+        } else {
+          // Card in the middle of timeline
+          correct = currentSong.release_year >= timeline[position - 1].release_year &&
+            currentSong.release_year <= timeline[position + 1].release_year;
+        }
+      } else {
+        correct = true; // First card is always correct
+      }
+
+      // Update player's score
+      let newScore = currentPlayer.score || 0;
+      if (correct) {
+        newScore += 1;
+      }
+
+      const { error: scoreError } = await supabase
+        .from('players')
+        .update({ score: newScore })
+        .eq('id', playerId);
+
+      if (scoreError) {
+        console.error('[GameService] Error updating player score:', scoreError);
+        return { success: false, error: scoreError.message };
+      }
+
+      // Check for game end condition (timeline complete)
+      let gameEnded = false;
+      let winner: Player | undefined;
+      if (timeline.length >= 5) {
+        gameEnded = true;
+        winner = currentPlayer;
+
+        // Update room phase to 'finished'
+        const { error: roomUpdateError } = await supabase
+          .from('game_rooms')
+          .update({ phase: 'finished' })
+          .eq('id', roomId);
+
+        if (roomUpdateError) {
+          console.error('[GameService] Error updating room phase:', roomUpdateError);
+          return { success: false, error: roomUpdateError.message };
+        }
+      }
+
+      // Determine the next player
+      let nextPlayerId: string | undefined;
+      if (!gameEnded) {
+        const currentPlayerIndex = players.findIndex(p => p.id === playerId);
+        const nextPlayerIndex = (currentPlayerIndex + 1) % players.length;
+        nextPlayerId = players[nextPlayerIndex].id;
+
+        // Update the room with the next player
+        const { error: nextPlayerError } = await supabase
+          .from('game_rooms')
+          .update({ current_player_id: nextPlayerId })
+          .eq('id', roomId);
+
+        if (nextPlayerError) {
+          console.error('[GameService] Error updating current player:', nextPlayerError);
+          return { success: false, error: nextPlayerError.message };
+        }
+      }
+
+      console.log('[GameService] Card placed successfully:', { correct, gameEnded, nextPlayerId });
+      return { success: true, correct, gameEnded, winner };
+    } catch (error) {
+      console.error('[GameService] Exception placing card:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async updatePlayerTimeline(
+    playerId: string, 
+    timeline: Song[]
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Updating player timeline:', { playerId, timelineLength: timeline.length });
+      
       const { error } = await supabase
         .from('players')
-        .update(updateData)
+        .update({ 
+          timeline: timeline as any // Convert to Json type
+        })
         .eq('id', playerId);
 
       if (error) {
-        console.error('Failed to update player timeline:', error);
-        throw error;
+        console.error('[GameService] Error updating timeline:', error);
+        return { success: false, error: error.message };
       }
 
-      console.log('Player timeline updated successfully');
+      console.log('[GameService] Timeline updated successfully');
+      return { success: true };
     } catch (error) {
-      console.error('Failed to update player timeline:', error);
-      throw error;
+      console.error('[GameService] Exception updating timeline:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
     }
   }
 
-  static async endGame(roomId: string, winnerId: string): Promise<void> {
+  static async getRoomWithPlayers(roomId: string): Promise<{
+    room: GameRoom | null;
+    players: Player[];
+    error?: string;
+  }> {
     try {
-      const { error } = await supabase
-        .from('game_rooms')
-        .update({ phase: 'finished' })
-        .eq('id', roomId);
+      console.log('[GameService] Fetching room with players:', roomId);
 
-      if (error) {
-        console.error('Failed to end game:', error);
-        throw error;
-      }
-
-      console.log('Game ended successfully');
-    } catch (error) {
-      console.error('Failed to end game:', error);
-      throw error;
-    }
-  }
-
-  static async placeCardAndAdvanceTurn(
-    roomId: string, 
-    playerId: string, 
-    song: Song, 
-    position: number, 
-    availableSongs: Song[] = []
-  ): Promise<PlaceCardResult> {
-    try {
-      console.log('🃏 GameService: Placing card and advancing turn', { roomId, playerId, song: song.deezer_title, position });
-
-      // Get current room data to understand turn state
+      // Fetch room data
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .select('*')
         .eq('id', roomId)
         .single();
 
-      if (roomError || !roomData) {
-        console.error('❌ Failed to get room data:', roomError);
-        return { success: false, error: 'Room not found' };
+      if (roomError) {
+        console.error('[GameService] Error fetching room:', roomError);
+        return { room: null, players: [], error: roomError.message };
       }
 
-      // Get current player data
-      const { data: playerData, error: playerError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', playerId)
-        .single();
-
-      if (playerError || !playerData) {
-        console.error('❌ Failed to get player data:', playerError);
-        return { success: false, error: 'Player not found' };
-      }
-
-      // Get all non-host players to determine turn order
-      const { data: allPlayers, error: playersError } = await supabase
+      // Fetch players for the room
+      const { data: playersData, error: playersError } = await supabase
         .from('players')
         .select('*')
         .eq('room_id', roomId)
-        .eq('is_host', false)
-        .order('id', { ascending: true });
+        .order('joined_at', { ascending: true });
 
-      if (playersError || !allPlayers || allPlayers.length === 0) {
-        console.error('❌ Failed to get players for turn rotation:', playersError);
-        return { success: false, error: 'No players found' };
+      if (playersError) {
+        console.error('[GameService] Error fetching players:', playersError);
+        return { room: roomData, players: [], error: playersError.message };
       }
 
-      // Update player timeline
-      const currentTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as unknown as Song[] : [];
-      const testTimeline = [...currentTimeline];
-      
-      // Insert the card at the specified position
-      if (position >= testTimeline.length) {
-        testTimeline.push(song);
-      } else {
-        testTimeline.splice(position, 0, song);
-      }
-
-      // CRITICAL FIX: Proper timeline validation based on release years
-      const isCorrect = validateTimelineOrder(testTimeline);
-      
-      console.log('🔍 Timeline validation:', {
-        playerName: playerData.name,
-        songTitle: song.deezer_title,
-        songYear: song.release_year,
-        position,
-        timelineBefore: currentTimeline.map(s => `${s.deezer_title} (${s.release_year})`),
-        timelineAfter: testTimeline.map(s => `${s.deezer_title} (${s.release_year})`),
-        isCorrect
-      });
-
-      // If placement is incorrect, do NOT update the timeline - reject the placement
-      let finalTimeline = currentTimeline;
-      let newScore = playerData.score;
-      
-      if (isCorrect) {
-        // Only update timeline if placement is correct
-        finalTimeline = testTimeline;
-        newScore = playerData.score + 1;
-        console.log('✅ Correct placement - timeline updated');
-      } else {
-        // Incorrect placement - keep original timeline, no score increase
-        console.log('❌ Incorrect placement - timeline unchanged');
-      }
-
-      // Update player data
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-          timeline: finalTimeline as unknown as Json,
-          score: newScore
-        })
-        .eq('id', playerId);
-
-      if (updateError) {
-        console.error('❌ Failed to update player:', updateError);
-        return { success: false, error: 'Failed to update player' };
-      }
-
-      // Check for winner
-      let winner: Player | null = null;
-      let gameEnded = false;
-
-      if (newScore >= 10) {
-        // Convert database player to Player type - use getDefaultCharacter for missing character
-        winner = {
-          id: playerData.id,
-          name: playerData.name,
-          color: playerData.color,
-          timelineColor: playerData.timeline_color,
-          score: newScore,
-          timeline: finalTimeline,
-          character: (playerData as any).character || getDefaultCharacter().id
-        };
-        gameEnded = true;
-
-        // Update room to finished state
-        await supabase
-          .from('game_rooms')
-          .update({ phase: 'finished' })
-          .eq('id', roomId);
-
-        console.log('✅ Game ended with winner:', winner.name);
-        return { 
-          success: true, 
-          correct: isCorrect, 
-          gameEnded, 
-          winner: winner 
-        };
-      }
-
-      // CRITICAL FIX: Implement proper turn rotation
-      // Find current player index in the turn order
-      const currentPlayerIndex = allPlayers.findIndex(p => p.id === playerId);
-      if (currentPlayerIndex === -1) {
-        console.error('❌ Current player not found in players list');
-        return { success: false, error: 'Current player not found' };
-      }
-
-      // Calculate next player index (with wraparound)
-      const nextPlayerIndex = (currentPlayerIndex + 1) % allPlayers.length;
-      const nextPlayer = allPlayers[nextPlayerIndex];
-
-      console.log('🔄 Turn rotation:', {
-        currentPlayer: playerData.name,
-        currentPlayerIndex,
-        nextPlayer: nextPlayer.name,
-        nextPlayerIndex,
-        totalPlayers: allPlayers.length
-      });
-
-      // CRITICAL FIX: Generate new card for the CURRENT player (who just played)
-      // Remove the song they just placed from available songs to prevent duplicates
-      const availableForNewCard = (roomData.songs as Song[] || availableSongs).filter(
-        availableSong => availableSong.deezer_title !== song.deezer_title
-      );
-
-      let newCardForCurrentPlayer: Song | null = null;
-      if (availableForNewCard.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableForNewCard.length);
-        newCardForCurrentPlayer = availableForNewCard[randomIndex];
-        
-        console.log('🎴 Generating new card for current player:', {
-          player: playerData.name,
-          newCard: newCardForCurrentPlayer.deezer_title,
-          availableCards: availableForNewCard.length
-        });
-
-        // Update the current player with their new card (replacing their hand)
-        const { error: newCardError } = await supabase
-          .from('players')
-          .update({
-            current_song: newCardForCurrentPlayer as unknown as Json
-          })
-          .eq('id', playerId);
-
-        if (newCardError) {
-          console.warn('⚠️ Failed to assign new card to current player:', newCardError);
-        }
-      }
-
-      // Set new mystery card for the next player if available
-      let newMysteryCard: Song | null = null;
-      if (availableForNewCard.length > 1) {
-        // Pick a different song than the one given to current player
-        const mysteryCardCandidates = availableForNewCard.filter(
-          s => !newCardForCurrentPlayer || s.deezer_title !== newCardForCurrentPlayer.deezer_title
-        );
-        
-        if (mysteryCardCandidates.length > 0) {
-          const mysteryIndex = Math.floor(Math.random() * mysteryCardCandidates.length);
-          newMysteryCard = mysteryCardCandidates[mysteryIndex];
-        }
-      }
-
-      // Update room with next player turn and new mystery card
-      const roomUpdates: {
-        current_player_id: string;
-        current_turn: number;
-        current_song?: Json;
-      } = {
-        current_player_id: nextPlayer.id,
-        current_turn: (roomData.current_turn || 0) + 1
+      // Convert database records to typed objects
+      const room: GameRoom = {
+        id: roomData.id,
+        lobby_code: roomData.lobby_code,
+        host_id: roomData.host_id,
+        host_name: roomData.host_name,
+        phase: roomData.phase as any,
+        gamemode: roomData.gamemode,
+        gamemode_settings: roomData.gamemode_settings,
+        songs: Array.isArray(roomData.songs) ? roomData.songs as Song[] : [],
+        current_song: roomData.current_song as Song | null,
+        current_song_index: roomData.current_song_index || 0,
+        current_player_id: roomData.current_player_id,
+        current_turn: roomData.current_turn || 1,
+        created_at: roomData.created_at,
+        updated_at: roomData.updated_at
       };
 
-      if (newMysteryCard) {
-        roomUpdates.current_song = newMysteryCard as unknown as Json;
-        console.log('🎵 New mystery card for next turn:', newMysteryCard.deezer_title);
-      }
+      const players: Player[] = playersData.map(player => ({
+        id: player.id,
+        room_id: player.room_id,
+        name: player.name,
+        character: player.character,
+        color: player.color,
+        score: player.score || 0,
+        timeline: Array.isArray(player.timeline) ? player.timeline as Song[] : [],
+        timeline_color: player.timeline_color,
+        is_host: player.is_host || false,
+        player_session_id: player.player_session_id,
+        joined_at: player.joined_at,
+        last_active: player.last_active
+      }));
 
-      const { error: turnError } = await supabase
+      console.log('[GameService] Room and players fetched successfully:', {
+        roomPhase: room.phase,
+        playersCount: players.length
+      });
+
+      return { room, players };
+    } catch (error) {
+      console.error('[GameService] Exception fetching room with players:', error);
+      return { 
+        room: null, 
+        players: [], 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  static async updateRoomCurrentSong(
+    roomId: string,
+    song: Song
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Updating current song for room:', roomId, song.deezer_title);
+      
+      // Try to fetch preview URL for the song
+      let songWithPreview = { ...song };
+      try {
+        if (!song.preview_url) {
+          // Extract a mock Deezer ID from song data for preview fetching
+          const mockTrackId = Math.abs(song.id.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+          }, 0)) % 1000000;
+
+          const previewUrl = await DeezerAudioService.getPreviewUrl(mockTrackId);
+          songWithPreview.preview_url = previewUrl;
+          console.log('[GameService] Preview URL fetched for current song:', previewUrl);
+        }
+      } catch (previewError) {
+        console.warn('[GameService] Failed to fetch preview URL, continuing without preview:', previewError);
+      }
+      
+      const { error } = await supabase
         .from('game_rooms')
-        .update(roomUpdates)
+        .update({ current_song: songWithPreview as any })
         .eq('id', roomId);
 
-      if (turnError) {
-        console.error('❌ Failed to advance turn:', turnError);
-        return { success: false, error: 'Failed to advance turn' };
+      if (error) {
+        console.error('[GameService] Error updating current song:', error);
+        return { success: false, error: error.message };
       }
 
-      console.log('✅ Card placed and turn advanced successfully', { 
-        isCorrect, 
-        newScore, 
-        nextPlayer: nextPlayer.name,
-        newMysteryCard: newMysteryCard?.deezer_title || 'None'
-      });
-
-      return { 
-        success: true, 
-        correct: isCorrect, 
-        gameEnded, 
-        winner: winner || undefined 
-      };
-
+      console.log('[GameService] Current song updated successfully');
+      return { success: true };
     } catch (error) {
-      console.error('❌ GameService: Failed to place card:', error);
-      return { success: false, error: 'Failed to place card' };
+      console.error('[GameService] Exception updating current song:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  static async resetGame(roomId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Resetting game in room:', roomId);
+
+      // Reset room state
+      const { error: roomError } = await supabase
+        .from('game_rooms')
+        .update({
+          phase: 'waiting',
+          current_song: null,
+          current_song_index: 0,
+          current_player_id: null,
+          current_turn: 1
+        })
+        .eq('id', roomId);
+
+      if (roomError) {
+        console.error('[GameService] Error resetting room:', roomError);
+        return { success: false, error: roomError.message };
+      }
+
+      // Reset player states (score and timeline)
+      const { error: playersError } = await supabase
+        .from('players')
+        .update({
+          score: 0,
+          timeline: []
+        })
+        .eq('room_id', roomId);
+
+      if (playersError) {
+        console.error('[GameService] Error resetting players:', playersError);
+        return { success: false, error: playersError.message };
+      }
+
+      console.log('[GameService] Game reset successfully in room:', roomId);
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception resetting game:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async getSongsForRoom(roomId: string): Promise<{ songs: Song[]; error?: string }> {
+    try {
+      console.log('[GameService] Fetching songs for room:', roomId);
+
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('songs')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) {
+        console.error('[GameService] Error fetching room:', roomError);
+        return { songs: [], error: roomError.message };
+      }
+
+      const songs = Array.isArray(roomData?.songs) ? roomData.songs as Song[] : [];
+
+      console.log('[GameService] Songs fetched successfully:', { count: songs.length });
+      return { songs, error: undefined };
+    } catch (error) {
+      console.error('[GameService] Exception fetching songs:', error);
+      return { songs: [], error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async addSongToRoom(roomId: string, song: Song): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Adding song to room:', { roomId, song: song.deezer_title });
+
+      // Fetch existing songs
+      const { songs: existingSongs, error: fetchError } = await this.getSongsForRoom(roomId);
+      if (fetchError) {
+        console.error('[GameService] Error fetching existing songs:', fetchError);
+        return { success: false, error: fetchError };
+      }
+
+      // Check if the song already exists
+      if (existingSongs.find(s => s.id === song.id)) {
+        console.warn('[GameService] Song already exists in room:', song.deezer_title);
+        return { success: false, error: 'Song already exists in room' };
+      }
+
+      // Add the new song
+      const updatedSongs = [...existingSongs, song];
+
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({ songs: updatedSongs as any })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('[GameService] Error updating songs:', updateError);
+        return { success: false, error: updateError.message };
+      }
+
+      console.log('[GameService] Song added successfully:', song.deezer_title);
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception adding song:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  static async removeSongFromRoom(roomId: string, songId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[GameService] Removing song from room:', { roomId, songId });
+
+      // Fetch existing songs
+      const { songs: existingSongs, error: fetchError } = await this.getSongsForRoom(roomId);
+      if (fetchError) {
+        console.error('[GameService] Error fetching existing songs:', fetchError);
+        return { success: false, error: fetchError };
+      }
+
+      // Filter out the song to be removed
+      const updatedSongs = existingSongs.filter(song => song.id !== songId);
+
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({ songs: updatedSongs as any })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('[GameService] Error updating songs:', updateError);
+        return { success: false, error: updateError.message };
+      }
+
+      console.log('[GameService] Song removed successfully:', songId);
+      return { success: true };
+    } catch (error) {
+      console.error('[GameService] Exception removing song:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
 import { audioEngine } from '@/utils/audioEngine';
 import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
 import { getCharacterById } from '@/constants/characters';
+import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 // Import required assets
 import logoImage from '@/assets/ass_rythmy.png';
@@ -54,6 +54,8 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
   console.log("Rendering Host Screen 0.2.2");
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
+  const [mysteryPreviewUrl, setMysteryPreviewUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   
   // Generate a random cassette color for the current mystery card
   const cassetteImage = React.useMemo(() => {
@@ -107,8 +109,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
       roomData: room ? {
         id: room.id,
         phase: room.phase,
-        current_player_id: room.current_player_id,
-        current_turn: room.current_turn
+        current_player_id: room.current_player_id
       } : 'No room data'
     });
   }, [players.length, actualPlayers.length, room, currentTurnIndex, currentPlayer, isHost, mysteryCard]);
@@ -124,8 +125,49 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
     }
   }, [room?.current_player_id, actualPlayers, currentTurnIndex]);
 
+  // Fetch preview URL for mystery card when it changes
+  useEffect(() => {
+    const fetchPreviewUrl = async () => {
+      if (!mysteryCard?.id) {
+        setMysteryPreviewUrl(null);
+        return;
+      }
+
+      // Check if we already have a preview URL
+      if (mysteryCard.preview_url) {
+        setMysteryPreviewUrl(mysteryCard.preview_url);
+        return;
+      }
+
+      try {
+        setIsLoadingPreview(true);
+        console.log('[HostVisuals] Fetching preview URL for mystery card:', mysteryCard.deezer_title);
+        
+        // Extract Deezer track ID from the song data
+        // For now, we'll use a mock implementation since we don't have real Deezer IDs
+        const mockTrackId = Math.abs(mysteryCard.id.split('').reduce((a, b) => {
+          a = ((a << 5) - a) + b.charCodeAt(0);
+          return a & a;
+        }, 0)) % 1000000;
+
+        const previewUrl = await DeezerAudioService.getPreviewUrl(mockTrackId);
+        setMysteryPreviewUrl(previewUrl);
+        console.log('[HostVisuals] Preview URL fetched:', previewUrl);
+      } catch (error) {
+        console.warn('[HostVisuals] Failed to fetch preview URL:', error);
+        setMysteryPreviewUrl(null);
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    };
+
+    fetchPreviewUrl();
+  }, [mysteryCard?.id]);
+
   const handlePlayPreview = async () => {
-    if (!mysteryCard?.preview_url) {
+    const previewUrl = mysteryPreviewUrl || mysteryCard?.preview_url;
+    
+    if (!previewUrl) {
       console.warn('[HostVisuals] No preview URL available for mystery card');
       return;
     }
@@ -135,7 +177,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         audioEngine.stopPreview();
         setIsPlayingPreview(false);
       } else {
-        audioEngine.playPreview(mysteryCard.preview_url);
+        audioEngine.playPreview(previewUrl);
         setIsPlayingPreview(true);
         
         // Auto-stop after 30 seconds
@@ -473,22 +515,28 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
           
           {/* Play/Pause Controls */}
           <div className="flex items-center gap-4">
-            {mysteryCard?.preview_url && (
+            {mysteryCard && (mysteryPreviewUrl || mysteryCard.preview_url) && (
               <button
                 onClick={handlePlayPreview}
                 className="transition-all duration-300 hover:scale-110 active:scale-95 p-2 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
                 aria-label={isPlayingPreview ? "Pause preview" : "Play preview"}
+                disabled={isLoadingPreview}
               >
                 <img 
                   src={isPlayingPreview ? pauseImage : playImage} 
                   alt={isPlayingPreview ? "Pause" : "Play"} 
-                  className="h-12 w-auto drop-shadow-lg" 
+                  className={`h-12 w-auto drop-shadow-lg ${isLoadingPreview ? 'opacity-50' : ''}`} 
                 />
               </button>
             )}
-            {mysteryCard && !mysteryCard.preview_url && (
+            {mysteryCard && !mysteryPreviewUrl && !mysteryCard.preview_url && !isLoadingPreview && (
               <div className="flex items-center justify-center h-12 w-12 bg-gray-500/50 rounded-full">
                 <Music className="h-6 w-6 text-gray-400" />
+              </div>
+            )}
+            {isLoadingPreview && (
+              <div className="flex items-center justify-center h-12 w-12">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
               </div>
             )}
           </div>
