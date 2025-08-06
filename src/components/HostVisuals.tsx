@@ -30,6 +30,7 @@ interface HostVisualsProps {
 }
 
 export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsProps) {
+  console.log("Rendering Host Screen 0.2.2");
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   
@@ -87,7 +88,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
         setCurrentTurnIndex(playerIndex);
       }
     }
-  }, [room?.current_player_id, actualPlayers]);
+  }, [room?.current_player_id, actualPlayers, currentTurnIndex]);
 
   const handlePlayPreview = async () => {
     if (!mysteryCard?.preview_url) {
@@ -114,73 +115,269 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
     }
   };
 
-  // Handle room not loaded
+  // Handle room not loaded - use new layout structure
   if (!room) {
     return (
       <div 
-        className="flex flex-col items-center justify-center text-gray-800"
-        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+        className="text-white relative overflow-hidden"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#f0f0f0',
+          display: 'grid',
+          gridTemplateRows: 'auto 1fr auto',
+          gridTemplateAreas: '"header" "main" "footer"'
+        }}
       >
-        <AlertTriangle className="h-16 w-16 mb-4 text-yellow-600" />
-        <h2 className="text-2xl font-bold mb-2">Room Not Found</h2>
-        <p className="text-lg opacity-75">Unable to load room data.</p>
+        {/* Top Bar */}
+        <div 
+          style={{ gridArea: 'header' }}
+          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
+        >
+          {/* Top-Left: Logo */}
+          <div className="flex items-center">
+            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
+          </div>
+
+          {/* Top-Center: Loading indicator */}
+          <div className="flex flex-col items-center gap-4">
+            <AlertTriangle className="h-16 w-16 text-yellow-600" />
+          </div>
+
+          {/* Top-Right: Empty space for consistency */}
+          <div className="w-24"></div>
+        </div>
+
+        {/* Middle Section: Error message */}
+        <div 
+          style={{ gridArea: 'main' }}
+          className="flex flex-col items-center justify-center p-8"
+        >
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Room Not Found</h2>
+          <p className="text-lg text-gray-600">Unable to load room data.</p>
+        </div>
+
+        {/* Bottom Bar: Empty for consistency */}
+        <div 
+          style={{ gridArea: 'footer' }}
+          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
+        >
+        </div>
       </div>
     );
   }
 
-  // Show loading state if we're in playing phase but have no players
+  // Show loading state if we're in playing phase but have no players - use new layout structure
   if (room.phase === 'playing' && actualPlayers.length === 0) {
     return (
       <div 
-        className="flex flex-col items-center justify-center text-gray-800"
-        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+        className="text-white relative overflow-hidden"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#f0f0f0',
+          display: 'grid',
+          gridTemplateRows: 'auto 1fr auto',
+          gridTemplateAreas: '"header" "main" "footer"'
+        }}
       >
-        <Music className="h-16 w-16 mb-4 animate-pulse" />
-        <h2 className="text-2xl font-bold mb-2">Loading Players...</h2>
-        <p className="text-lg opacity-75">Synchronizing player data...</p>
-        <div className="mt-4 text-sm opacity-60">
-          <p>Room: {room.lobby_code}</p>
-          <p>Phase: {room.phase}</p>
-          <p>Total Input Players: {players.length}</p>
+        {/* Top Bar */}
+        <div 
+          style={{ gridArea: 'header' }}
+          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
+        >
+          {/* Top-Left: Logo */}
+          <div className="flex items-center">
+            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
+          </div>
+
+          {/* Top-Center: Loading indicator */}
+          <div className="flex flex-col items-center gap-4">
+            <Music className="h-16 w-16 animate-pulse" />
+          </div>
+
+          {/* Top-Right: Room Code */}
+          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
+            <div className="text-purple-800 font-mono text-lg font-bold">
+              {room.lobby_code}
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Section: Loading message */}
+        <div 
+          style={{ gridArea: 'main' }}
+          className="flex flex-col items-center justify-center p-8"
+        >
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Loading Players...</h2>
+          <p className="text-lg text-gray-600">Synchronizing player data...</p>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Room: {room.lobby_code}</p>
+            <p>Phase: {room.phase}</p>
+            <p>Total Input Players: {players.length}</p>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Empty for consistency */}
+        <div 
+          style={{ gridArea: 'footer' }}
+          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
+        >
         </div>
       </div>
     );
   }
 
-  // Show waiting state if no players joined yet
+  // Show waiting state if no players joined yet - use new layout structure
   if (actualPlayers.length === 0) {
     return (
       <div 
-        className="flex flex-col items-center justify-center text-gray-800"
-        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+        className="text-white relative overflow-hidden"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#f0f0f0',
+          display: 'grid',
+          gridTemplateRows: 'auto 1fr auto',
+          gridTemplateAreas: '"header" "main" "footer"'
+        }}
       >
-        <Music className="h-16 w-16 mb-4 animate-pulse" />
-        <h2 className="text-2xl font-bold mb-2">Waiting for Players...</h2>
-        <p className="text-lg opacity-75">The game will start once players join the lobby.</p>
-        <div className="mt-4 text-sm opacity-60">
-          <p>Room: {room.lobby_code}</p>
-          <p>Phase: {room.phase}</p>
-          <p>Host ID: {room.host_id}</p>
+        {/* Top Bar */}
+        <div 
+          style={{ gridArea: 'header' }}
+          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
+        >
+          {/* Top-Left: Logo */}
+          <div className="flex items-center">
+            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
+          </div>
+
+          {/* Top-Center: Waiting indicator */}
+          <div className="flex flex-col items-center gap-4">
+            <Music className="h-16 w-16 animate-pulse" />
+          </div>
+
+          {/* Top-Right: Room Code */}
+          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
+            <div className="text-purple-800 font-mono text-lg font-bold">
+              {room.lobby_code}
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Section: Waiting message */}
+        <div 
+          style={{ gridArea: 'main' }}
+          className="flex flex-col items-center justify-center p-8"
+        >
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Waiting for Players...</h2>
+          <p className="text-lg text-gray-600">The game will start once players join the lobby.</p>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Room: {room.lobby_code}</p>
+            <p>Phase: {room.phase}</p>
+            <p>Host ID: {room.host_id}</p>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Empty for consistency */}
+        <div 
+          style={{ gridArea: 'footer' }}
+          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
+        >
         </div>
       </div>
     );
   }
 
-  // Show game setup state if no current player determined yet
+  // Show game setup state if no current player determined yet - use new layout structure
   if (room.phase === 'playing' && !currentPlayer) {
     return (
       <div 
-        className="flex flex-col items-center justify-center text-gray-800"
-        style={{ width: '100vw', height: '100vh', backgroundColor: '#f0f0f0' }}
+        className="text-white relative overflow-hidden"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#f0f0f0',
+          display: 'grid',
+          gridTemplateRows: 'auto 1fr auto',
+          gridTemplateAreas: '"header" "main" "footer"'
+        }}
       >
-        <Music className="h-16 w-16 mb-4 animate-spin" />
-        <h2 className="text-2xl font-bold mb-2">Setting Up Game...</h2>
-        <p className="text-lg opacity-75">Determining player turns...</p>
-        <div className="mt-4 text-sm opacity-60 space-y-1">
-          <p>Players Ready: {actualPlayers.length}</p>
-          <p>Current Player ID: {room.current_player_id || 'Not set'}</p>
-          <p>Current Turn Index: {currentTurnIndex}</p>
-          <p>Available Players: {actualPlayers.map(p => p.name).join(', ')}</p>
+        {/* Top Bar */}
+        <div 
+          style={{ gridArea: 'header' }}
+          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
+        >
+          {/* Top-Left: Logo */}
+          <div className="flex items-center">
+            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
+          </div>
+
+          {/* Top-Center: Setup indicator */}
+          <div className="flex flex-col items-center gap-4">
+            <Music className="h-16 w-16 animate-spin" />
+          </div>
+
+          {/* Top-Right: Room Code */}
+          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
+            <div className="text-purple-800 font-mono text-lg font-bold">
+              {room.lobby_code}
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Section: Setup message */}
+        <div 
+          style={{ gridArea: 'main' }}
+          className="flex flex-col items-center justify-center p-8"
+        >
+          <h2 className="text-2xl font-bold mb-2 text-gray-800">Setting Up Game...</h2>
+          <p className="text-lg text-gray-600">Determining player turns...</p>
+          <div className="mt-4 text-sm text-gray-500 space-y-1">
+            <p>Players Ready: {actualPlayers.length}</p>
+            <p>Current Player ID: {room.current_player_id || 'Not set'}</p>
+            <p>Current Turn Index: {currentTurnIndex}</p>
+            <p>Available Players: {actualPlayers.map(p => p.name).join(', ')}</p>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Show available players if any */}
+        <div 
+          style={{ gridArea: 'footer' }}
+          className="bg-white/10 backdrop-blur-sm border-t border-gray-300"
+        >
+          {actualPlayers.length > 0 && (
+            <div className="p-4">
+              <div className="flex justify-center items-center gap-6">
+                {actualPlayers.map(player => {
+                  const character = getCharacterById(player.character || 'char_dave');
+                  return (
+                    <div 
+                      key={player.id} 
+                      className="flex flex-col items-center p-3 rounded-lg bg-white/20"
+                    >
+                      {character ? (
+                        <img 
+                          src={character.image} 
+                          alt={character.name}
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div 
+                          className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                          style={{ backgroundColor: player.color }}
+                        >
+                          {player.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-gray-800 text-sm font-medium mt-2">{player.name}</span>
+                      <span className="text-gray-600 text-xs">Setting up...</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
