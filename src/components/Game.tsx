@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { GameService } from '@/services/gameService';
@@ -72,13 +73,17 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
       // Generate a unique lobby code
       const lobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Create the room in the database
+      // Generate a unique player session ID for the host
+      const hostSessionId = crypto.randomUUID();
+
+      // Create the room in the database with the required host_id
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
+          host_id: hostSessionId, // Use the host session ID as host_id
           host_name: 'Host', // Default host name
-          phase: 'lobby',
+          phase: 'lobby', // Use database phase 'lobby'
           gamemode: 'classic',
           songs: []
         })
@@ -94,9 +99,6 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         });
         return;
       }
-
-      // Generate a unique player session ID for the host
-      const hostSessionId = crypto.randomUUID();
 
       // Create the host player entry
       const { data: hostPlayer, error: hostError } = await supabase
@@ -244,7 +246,6 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         </div>
       );
 
-    case 'lobby':
     case 'hostLobby':
       if (!room || !isHost) {
         return (
