@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useRealtimeGameState } from '@/hooks/useRealtimeGameState';
 import { GameService } from '@/services/gameService';
@@ -25,6 +24,9 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
   
   // Custom songs loaded by host
   const [customSongs, setCustomSongs] = useState<Song[]>([]);
+  
+  // State for join flow
+  const [isJoining, setIsJoining] = useState<boolean>(false);
   
   // Get realtime game state from Supabase - this is the authoritative source
   const { 
@@ -54,9 +56,10 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
       playersCount: players.length,
       isConnected,
       error,
-      customSongsCount: customSongs.length
+      customSongsCount: customSongs.length,
+      isJoining
     });
-  }, [roomId, playerId, room?.phase, isHost, players.length, isConnected, error, customSongs.length]);
+  }, [roomId, playerId, room?.phase, isHost, players.length, isConnected, error, customSongs.length, isJoining]);
 
   // Connection status for UI feedback
   const connectionStatus = {
@@ -153,18 +156,93 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
 
   const handleJoinRoom = () => {
     console.log('👤 Joining room');
-    // Handle room joining logic - for now just log
+    setIsJoining(true);
   };
 
   const handleMobileJoin = async (lobbyCode: string, playerName: string): Promise<boolean> => {
     console.log('📱 Mobile join:', { playerName, lobbyCode });
     try {
-      // Implementation for mobile join
+      // Find room with lobby code
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('lobby_code', lobbyCode.toUpperCase())
+        .eq('phase', 'lobby')
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('❌ Room not found:', roomError);
+        toast({
+          title: "Room Not Found",
+          description: "Could not find room with that code. Please check the code and try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // Generate unique player session ID
+      const playerSessionId = crypto.randomUUID();
+
+      // Create player entry
+      const { data: playerData, error: playerError } = await supabase
+        .from('players')
+        .insert({
+          room_id: roomData.id,
+          player_session_id: playerSessionId,
+          name: playerName,
+          color: '#FF3B82', // Default player color
+          timeline_color: '#FF3B82',
+          is_host: false,
+          score: 0,
+          timeline: []
+        })
+        .select()
+        .single();
+
+      if (playerError) {
+        console.error('❌ Failed to create player:', playerError);
+        toast({
+          title: "Failed to Join",
+          description: "Could not join the room. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      console.log('✅ Player joined successfully:', {
+        roomId: roomData.id,
+        playerId: playerData.id,
+        playerName
+      });
+
+      // Set room and player IDs to trigger realtime subscription
+      setRoomId(roomData.id);
+      setPlayerId(playerSessionId);
+      setIsJoining(false);
+
+      toast({
+        title: "Joined Room!",
+        description: `Welcome to ${lobbyCode}!`,
+      });
+
       return true;
     } catch (error) {
       console.error('❌ Failed to join room:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while joining the room.",
+        variant: "destructive",
+      });
       return false;
     }
+  };
+
+  const handleBackToMenu = () => {
+    console.log('🔙 Back to menu');
+    setIsJoining(false);
+    setRoomId(null);
+    setPlayerId(null);
+    setCustomSongs([]);
   };
 
   const handleLoadPlaylist = (songs: Song[]) => {
@@ -229,8 +307,13 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
     await updateGameState({ phase: 'hostLobby' as any });
   };
 
-  // Determine current phase based on authoritative room state
-  const currentPhase = room?.phase || 'menu';
+  // Determine current phase based on authoritative room state or local state
+  let currentPhase = room?.phase || 'menu';
+  
+  // Override with local join state if user is joining
+  if (isJoining && !room) {
+    currentPhase = 'mobileJoin';
+  }
   
   console.log('🎭 Current Phase:', currentPhase);
 
@@ -275,7 +358,8 @@ export function Game({ initialRoomId, initialPlayerId }: GameProps) {
         <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800">
           <MobileJoinFlow
             onJoinRoom={handleMobileJoin}
-            onBackToMenu={handleJoinRoom}
+            onBackToMenu={handleBackToMenu}
+            isLoading={false}
           />
         </div>
       );
