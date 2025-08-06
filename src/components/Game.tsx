@@ -175,7 +175,10 @@ export function Game() {
       case 'menu':
         return (
           <MainMenu 
-            onCreateRoom={handleCreateRoom}
+            onCreateRoom={() => {
+              // Show a prompt for host name - for now use default
+              handleCreateRoom('Host');
+            }}
             onJoinRoom={handleGoToMobileJoin}
           />
         );
@@ -183,16 +186,13 @@ export function Game() {
       case 'hostLobby':
         return (
           <HostLobby
+            room={room!}
             players={players}
-            onBackToMenu={handleBackToMenu}
-            onUpdateSongs={(songs: Song[]) => {
+            onLoadPlaylist={(songs: Song[]) => {
               setGameState(prev => ({ ...prev, songs }));
               updateRoomSongs(songs);
             }}
-            onUpdateGamemode={updateRoomGamemode}
-            onKickPlayer={kickPlayer}
-            gamemode={room?.gamemode || 'classic'}
-            gamemodeSettings={room?.gamemode_settings || {}}
+            customSongs={gameState.songs}
           />
         );
 
@@ -207,7 +207,6 @@ export function Game() {
       case 'mobileLobby':
         return (
           <MobilePlayerLobby
-            playerName={gameState.playerName || ''}
             players={players}
             currentPlayer={currentPlayer}
             onUpdatePlayer={handleUpdatePlayer}
@@ -249,7 +248,14 @@ export function Game() {
         );
 
       default:
-        return <MainMenu onCreateRoom={handleCreateRoom} onJoinRoom={handleGoToMobileJoin} />;
+        return (
+          <MainMenu 
+            onCreateRoom={() => {
+              handleCreateRoom('Host');
+            }}
+            onJoinRoom={handleGoToMobileJoin}
+          />
+        );
     }
   };
 
