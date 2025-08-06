@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Feedback } from '@/components/Feedback';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
-import { HostGameView } from '@/components/HostVisuals';
+import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 
 interface GamePlayProps {
@@ -189,21 +189,14 @@ export function GamePlay({
     return <Feedback correct={feedback.correct} song={feedback.song} />;
   }
 
-  // Host view - use HostGameView component
+  // Host view - use HostVisuals component
   if (isHost) {
     return (
-      <HostGameView
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={room.current_song}
-        roomCode={room.lobby_code}
+      <HostVisuals
+        room={room}
         players={players}
-        mysteryCardRevealed={mysteryCardRevealed}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        cardPlacementResult={cardPlacementResult}
-        transitioning={isProcessingMove}
-        highlightedGapIndex={null}
-        mobileViewport={null}
+        mysteryCard={room.current_song}
+        isHost={isHost}
       />
     );
   }

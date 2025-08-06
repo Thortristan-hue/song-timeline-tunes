@@ -6,7 +6,7 @@ import { Music, Play, Pause } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
 import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
-import { AudioEngine } from '@/utils/audioEngine';
+import { audioEngine } from '@/utils/audioEngine';
 import { getActualPlayers } from '@/utils/playerUtils';
 
 interface HostVisualsProps {
@@ -57,10 +57,10 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
 
     try {
       if (isPlayingPreview) {
-        AudioEngine.stopPreview();
+        audioEngine.stopPreview();
         setIsPlayingPreview(false);
       } else {
-        AudioEngine.playPreview(mysteryCard.preview_url);
+        audioEngine.playPreview(mysteryCard.preview_url);
         setIsPlayingPreview(true);
         
         // Auto-stop after 30 seconds
@@ -158,8 +158,7 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
       <div className="h-48 border-t border-white/20 bg-black/10">
         <HostAllPlayersOverview 
           players={actualPlayers}
-          currentPlayerId={currentPlayer.id}
-          hostName={room?.host_name || 'Host'}
+          currentTurnPlayer={currentPlayer}
         />
       </div>
     </div>
