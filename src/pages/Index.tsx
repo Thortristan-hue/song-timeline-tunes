@@ -1,16 +1,20 @@
 
 import { Game } from "@/components/Game";
+import { Toaster } from "@/components/ui/toaster";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GameErrorBoundary } from "@/components/GameErrorBoundary";
 
-export default function Index() {
-  // Get initial room and player IDs from URL params if available
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialRoomId = urlParams.get('roomId') || undefined;
-  const initialPlayerId = urlParams.get('playerId') || undefined;
+const queryClient = new QueryClient();
 
+const Index = () => {
   return (
-    <Game 
-      initialRoomId={initialRoomId}
-      initialPlayerId={initialPlayerId}
-    />
+    <QueryClientProvider client={queryClient}>
+      <GameErrorBoundary>
+        <Game />
+        <Toaster />
+      </GameErrorBoundary>
+    </QueryClientProvider>
   );
-}
+};
+
+export default Index;

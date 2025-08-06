@@ -33,6 +33,16 @@ export class GameService {
       .filter((song): song is Song => song !== null);
   };
 
+  // Helper function to safely convert database phase to GamePhase
+  private static toGamePhase = (dbPhase: string): GamePhase => {
+    switch (dbPhase) {
+      case 'lobby': return 'hostLobby';
+      case 'playing': return 'playing';
+      case 'finished': return 'finished';
+      default: return 'menu';
+    }
+  };
+
   static async createRoom(
     hostId: string,
     hostName: string,
@@ -68,7 +78,7 @@ export class GameService {
         lobby_code: data.lobby_code,
         host_id: data.host_id,
         host_name: data.host_name,
-        phase: data.phase as GamePhase,
+        phase: GameService.toGamePhase(data.phase),
         gamemode: data.gamemode as GameMode,
         gamemode_settings: (data.gamemode_settings as GameModeSettings) || {},
         songs: GameService.jsonArrayToSongs(data.songs),
@@ -116,16 +126,14 @@ export class GameService {
 
       const { data, error } = await supabase
         .from('players')
-        .insert([
-          {
-            room_id: roomId,
-            name: name,
-            character: character,
-            color: color,
-            timeline_color: color,
-            player_session_id: playerSessionId
-          },
-        ])
+        .insert({
+          room_id: roomId,
+          name: name,
+          character: character,
+          color: color,
+          timeline_color: color,
+          player_session_id: playerSessionId
+        })
         .select()
         .single();
 
@@ -479,14 +487,15 @@ export class GameService {
         lobby_code: roomData.lobby_code,
         host_id: roomData.host_id,
         host_name: roomData.host_name,
-        phase: roomData.phase as GamePhase,
+        phase: GameService.toGamePhase(roomData.phase),
         gamemode: roomData.gamemode as GameMode,
         gamemode_settings: (roomData.gamemode_settings as GameModeSettings) || {},
         songs: GameService.jsonArrayToSongs(roomData.songs),
         current_song: GameService.jsonToSong(roomData.current_song),
         current_turn: roomData.current_turn || 1,
         created_at: roomData.created_at,
-        updated_at: roomData.updated_at
+        updated_at: roomData.updated_at,
+        current_player_id: roomData.current_player_id
       };
 
       const players: Player[] = playersData.map(player => ({

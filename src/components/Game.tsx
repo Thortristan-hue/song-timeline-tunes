@@ -6,7 +6,7 @@ import { Song, GamePhase } from '@/types/game';
 import { MainMenu } from './MainMenu';
 import { HostLobby } from './HostLobby';
 import { MobileJoin } from './MobileJoin';
-import { MobilePlayerLobby } from './MobilePlayerLobby';
+import MobilePlayerLobby from './MobilePlayerLobby';
 import { GamePlay } from './GamePlay';
 import { VictoryScreen } from './VictoryScreen';
 import { useToast } from '@/components/ui/use-toast';
@@ -75,6 +75,7 @@ export function Game() {
         isHost: false
       }));
     }
+    return success;
   }, [joinRoom]);
 
   // Handle start game
@@ -169,7 +170,6 @@ export function Game() {
       case 'hostLobby':
         return (
           <HostLobby
-            lobbyCode={gameState.lobbyCode || ''}
             players={players}
             songs={gameState.songs}
             onStartGame={handleStartGame}
@@ -215,7 +215,6 @@ export function Game() {
             currentPlayer={currentPlayer}
             isHost={isHost}
             onPlaceCard={handlePlaceCard}
-            onLeaveRoom={handleLeaveRoom}
             customSongs={gameState.songs}
             gameLogic={gameLogic}
           />
@@ -226,7 +225,6 @@ export function Game() {
           <VictoryScreen
             winner={players.find(p => p.score === Math.max(...players.map(p => p.score))) || null}
             players={players}
-            isHost={isHost}
             onBackToMenu={handleBackToMenu}
             onPlayAgain={() => {
               setGameState(prev => ({
