@@ -473,11 +473,25 @@ export function useGameRoom(): UseGameRoomResult {
   };
 
   const updatePlayer = async (updates: Partial<Player>): Promise<boolean> => {
+    if (!room?.id) {
+      console.error('Cannot update player: no room available');
+      setError('Room not available');
+      return false;
+    }
+
+    if (!currentPlayer?.id) {
+      console.error('Cannot update player: no current player');
+      setError('Player not found');
+      return false;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      // Update the player in the database
+      console.log('Updating player:', { playerId: currentPlayer.id, roomId: room.id, updates });
+      
+      // Update the player in the database using the player's actual ID
       const { error } = await supabase
         .from('players')
         .update({
@@ -488,8 +502,8 @@ export function useGameRoom(): UseGameRoomResult {
           timeline: updates.timeline as any,
           character: updates.character
         })
-        .eq('player_session_id', playerSessionId.current)
-        .eq('room_id', room?.id);
+        .eq('id', currentPlayer.id)
+        .eq('room_id', room.id);
 
       if (error) {
         console.error('Failed to update player:', error);
@@ -498,16 +512,9 @@ export function useGameRoom(): UseGameRoomResult {
       }
 
       // Update the local state
-      setCurrentPlayer((prevPlayer: Player | null) => {
-        if (prevPlayer) {
-          return { ...prevPlayer, ...updates };
-        }
-        return prevPlayer;
-      });
-
-      // Fetch players
-      await fetchPlayers();
-
+      setCurrentPlayer(prev => prev ? { ...prev, ...updates } : null);
+      
+      console.log('Player updated successfully');
       return true;
     } catch (err) {
       console.error('Failed to update player:', err);

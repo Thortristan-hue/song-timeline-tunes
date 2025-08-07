@@ -67,14 +67,6 @@ export function Game() {
   const handleJoinRoom = useCallback(async (lobbyCode: string, playerName: string) => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
-      // Check for pending character selection
-      const pendingCharacter = localStorage.getItem('pendingCharacter');
-      if (pendingCharacter) {
-        // Update player with selected character
-        await updatePlayer({ character: pendingCharacter });
-        localStorage.removeItem('pendingCharacter');
-      }
-      
       setGameState(prev => ({
         ...prev,
         phase: 'mobileLobby' as GamePhase,
@@ -82,6 +74,20 @@ export function Game() {
         playerName,
         isHost: false
       }));
+      
+      // Handle pending character selection after state is set
+      setTimeout(async () => {
+        const pendingCharacter = localStorage.getItem('pendingCharacter');
+        if (pendingCharacter) {
+          console.log('Applying pending character:', pendingCharacter);
+          const updateSuccess = await updatePlayer({ character: pendingCharacter });
+          if (updateSuccess) {
+            localStorage.removeItem('pendingCharacter');
+          } else {
+            console.error('Failed to update character, will retry later');
+          }
+        }
+      }, 1000); // Give room state time to be set
     }
     return success;
   }, [joinRoom, updatePlayer]);
