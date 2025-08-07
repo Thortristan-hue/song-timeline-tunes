@@ -29,7 +29,13 @@ export function MobileJoinFlow({
 
   const handlePlayerSetup = async (name: string, character: string) => {
     console.log('🔗 Player setup:', { name, character, code: verifiedCode });
-    return await onJoinRoom(verifiedCode, name);
+    // First join the room with the player name
+    const joinSuccess = await onJoinRoom(verifiedCode, name);
+    if (joinSuccess) {
+      // Store character selection for later update
+      localStorage.setItem('pendingCharacter', character);
+    }
+    return joinSuccess;
   };
 
   const handleBackToCodeEntry = () => {

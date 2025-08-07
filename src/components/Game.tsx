@@ -4,7 +4,7 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 import { Song, GamePhase } from '@/types/game';
 import { MainMenu } from './MainMenu';
 import { HostLobby } from './HostLobby';
-import { MobileJoin } from './MobileJoin';
+import { MobileJoinFlow } from './MobileJoinFlow';
 import MobilePlayerLobby from './MobilePlayerLobby';
 import { GamePlay } from './GamePlay';
 import { VictoryScreen } from './VictoryScreen';
@@ -67,6 +67,14 @@ export function Game() {
   const handleJoinRoom = useCallback(async (lobbyCode: string, playerName: string) => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
+      // Check for pending character selection
+      const pendingCharacter = localStorage.getItem('pendingCharacter');
+      if (pendingCharacter) {
+        // Update player with selected character
+        await updatePlayer({ character: pendingCharacter });
+        localStorage.removeItem('pendingCharacter');
+      }
+      
       setGameState(prev => ({
         ...prev,
         phase: 'mobileLobby' as GamePhase,
@@ -76,7 +84,7 @@ export function Game() {
       }));
     }
     return success;
-  }, [joinRoom]);
+  }, [joinRoom, updatePlayer]);
 
   // Handle start game
   const handleStartGame = useCallback(async () => {
@@ -157,14 +165,21 @@ export function Game() {
     await updatePlayer(updates);
   }, [currentPlayer, updatePlayer]);
 
-  // Update game state when room changes
+  // Update game state when room changes - but preserve proper UI states
   useEffect(() => {
     if (room) {
-      setGameState(prev => ({
-        ...prev,
-        phase: room.phase,
-        lobbyCode: room.lobby_code
-      }));
+      setGameState(prev => {
+        // Only update phase when it's an actual game phase change
+        if (room.phase === 'playing' && prev.phase !== 'playing') {
+          return { ...prev, phase: 'playing', lobbyCode: room.lobby_code };
+        }
+        if (room.phase === 'finished' && prev.phase !== 'finished') {
+          return { ...prev, phase: 'finished', lobbyCode: room.lobby_code };
+        }
+        
+        // Just update lobby code for other phases
+        return { ...prev, lobbyCode: room.lobby_code };
+      });
     }
   }, [room?.phase, room?.lobby_code]);
 
@@ -197,9 +212,10 @@ export function Game() {
 
       case 'mobileJoin':
         return (
-          <MobileJoin
+          <MobileJoinFlow
             onJoinRoom={handleJoinRoom}
             onBackToMenu={handleBackToMenu}
+            isLoading={isLoading}
           />
         );
 
