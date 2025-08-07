@@ -5,15 +5,14 @@ import { Music, Play, Pause, AlertTriangle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
 import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
-import { audioEngine } from '@/utils/audioEngine';
+import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
 import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
 import { getCharacterById } from '@/constants/characters';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 // Import required assets
 import logoImage from '@/assets/ass_rythmy.png';
-import playImage from '@/assets/ass_play.png';
-import pauseImage from '@/assets/ass_pause.png';
+import { AudioButton } from '@/components/AudioButton';
 
 // Import all cassette colors for randomization
 import cassettePurple from '@/assets/cassette-purple.png';
@@ -164,45 +163,9 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
     fetchPreviewUrl();
   }, [mysteryCard?.id]);
 
-  const handlePlayPreview = async () => {
-    const previewUrl = mysteryPreviewUrl || mysteryCard?.preview_url;
-    
-    if (!previewUrl) {
-      console.warn('[HostVisuals] No preview URL available for mystery card');
-      return;
-    }
+  // Audio state is now managed by AudioButton component
 
-    try {
-      if (isPlayingPreview) {
-        audioEngine.stopPreview();
-        setIsPlayingPreview(false);
-      } else {
-        audioEngine.playPreview(previewUrl);
-        setIsPlayingPreview(true);
-        
-        // Auto-stop after 30 seconds
-        setTimeout(() => {
-          setIsPlayingPreview(false);
-        }, 30000);
-      }
-    } catch (error) {
-      console.error('[HostVisuals] Error playing preview:', error);
-      setIsPlayingPreview(false);
-    }
-  };
-
-  // Cleanup audio when mystery card changes or component unmounts
-  useEffect(() => {
-    return () => {
-      audioEngine.stopPreview();
-      setIsPlayingPreview(false);
-    };
-  }, [mysteryCard]);
-
-  // Reset playing state when mystery card changes
-  useEffect(() => {
-    setIsPlayingPreview(false);
-  }, [mysteryCard?.id]);
+  // Audio cleanup is now handled by AudioButton component
 
   // Handle room not loaded - use new layout structure
   if (!room) {
@@ -516,18 +479,16 @@ export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsP
           {/* Play/Pause Controls */}
           <div className="flex items-center gap-4">
             {mysteryCard && (mysteryPreviewUrl || mysteryCard.preview_url) && (
-              <button
-                onClick={handlePlayPreview}
-                className="transition-all duration-300 hover:scale-110 active:scale-95 p-2 rounded-full hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                aria-label={isPlayingPreview ? "Pause preview" : "Play preview"}
-                disabled={isLoadingPreview}
-              >
-                <img 
-                  src={isPlayingPreview ? pauseImage : playImage} 
-                  alt={isPlayingPreview ? "Pause" : "Play"} 
-                  className={`h-12 w-auto drop-shadow-lg ${isLoadingPreview ? 'opacity-50' : ''}`} 
-                />
-              </button>
+              <AudioButton 
+                previewUrl={mysteryPreviewUrl || undefined}
+                size="lg" 
+                variant="ghost"
+                className="p-2 rounded-full hover:bg-white/10"
+                onStateChange={(isPlaying, isLoading, error) => {
+                  setIsPlayingPreview(isPlaying);
+                  setIsLoadingPreview(isLoading);
+                }}
+              />
             )}
             {mysteryCard && !mysteryPreviewUrl && !mysteryCard.preview_url && !isLoadingPreview && (
               <div className="flex items-center justify-center h-12 w-12 bg-gray-500/50 rounded-full">

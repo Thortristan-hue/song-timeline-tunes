@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { GameSounds } from '@/utils/audio';
+import { GameSounds } from '@/utils/unifiedAudioEngine';
 
 export function useSoundEffects() {
   // All sound effects now use the robust audio utility

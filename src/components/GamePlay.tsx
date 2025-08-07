@@ -7,7 +7,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
-import { audioEngine } from '@/utils/audioEngine';
+import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -81,7 +81,7 @@ export function GamePlay({
   // Cleanup audio when mystery card changes
   useEffect(() => {
     return () => {
-      audioEngine.stopPreview();
+      unifiedAudioEngine.stopPreview();
       setIsPlaying(false);
     };
   }, [room?.current_song?.id]);
@@ -149,7 +149,7 @@ export function GamePlay({
     }
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     const newIsPlaying = !isPlaying;
     
     // Actually control audio playback using audio engine
@@ -157,7 +157,7 @@ export function GamePlay({
       if (newIsPlaying) {
         console.log('[GamePlay] Starting audio playback for player:', room.current_song.deezer_title);
         try {
-          audioEngine.playPreview(room.current_song.preview_url);
+          await unifiedAudioEngine.playPreview(room.current_song.preview_url);
           setIsPlaying(true);
           
           // Auto-stop after 30 seconds
@@ -175,7 +175,7 @@ export function GamePlay({
         }
       } else {
         console.log('[GamePlay] Stopping audio playback for player');
-        audioEngine.stopPreview();
+        unifiedAudioEngine.stopPreview();
         setIsPlaying(false);
       }
     } else {

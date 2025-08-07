@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Song } from '@/types/game';
 import { getCharacterById } from '@/constants/characters';
-import { audioEngine } from '@/utils/audioEngine';
+import { AudioButton } from '@/components/AudioButton';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 // Define the props for the component
@@ -72,20 +72,9 @@ export function HostCurrentPlayerTimeline({
     try {
       if (playingCardId === song.id) {
         // Stop current preview
-        audioEngine.stopPreview();
         setPlayingCardId(null);
       } else {
-        // Stop any currently playing preview
-        audioEngine.stopPreview();
-        
-        // Start new preview
-        audioEngine.playPreview(previewUrl);
         setPlayingCardId(song.id);
-        
-        // Auto-stop after 30 seconds
-        setTimeout(() => {
-          setPlayingCardId(null);
-        }, 30000);
       }
     } catch (error) {
       console.error('[HostCurrentPlayerTimeline] Error playing card preview:', error);
@@ -96,7 +85,6 @@ export function HostCurrentPlayerTimeline({
   // Cleanup audio when component unmounts
   useEffect(() => {
     return () => {
-      audioEngine.stopPreview();
       setPlayingCardId(null);
     };
   }, []);
@@ -150,13 +138,11 @@ export function HostCurrentPlayerTimeline({
                 key={`${song.id}-${index}`}
                 className={`
                   bg-white/90 rounded-lg p-4 min-w-[200px] shadow-lg transition-all duration-300
-                  ${hasPreview ? 'cursor-pointer hover:bg-white hover:shadow-xl hover:scale-105' : 'cursor-default'}
-                  ${isPlaying ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
+                  hover:bg-white hover:shadow-xl hover:scale-105
                   ${cardPlacementResult?.song.id === song.id ? 
                     cardPlacementResult.correct ? 'ring-2 ring-green-500' : 'ring-2 ring-red-500' 
                     : ''}
                 `}
-                onClick={() => hasPreview && handleCardClick(song)}
               >
                 <div className="space-y-2">
                   <div className="font-semibold text-gray-900 text-sm line-clamp-2">
@@ -172,20 +158,12 @@ export function HostCurrentPlayerTimeline({
                     <div className="text-xl font-bold text-blue-600 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                       {song.release_year || 'Unknown'}
                     </div>
-                    <div className="flex items-center text-xs text-gray-500">
-                      {isLoadingPreview && (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></div>
-                      )}
-                      {isPlaying && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mr-1"></div>
-                      )}
-                      {hasPreview && !isLoadingPreview && (
-                        <span>{isPlaying ? 'Playing...' : 'Click to play'}</span>
-                      )}
-                      {!hasPreview && !isLoadingPreview && (
-                        <span>No preview</span>
-                      )}
-                    </div>
+                    <AudioButton 
+                      previewUrl={song.preview_url || cardPreviewUrls[song.id]}
+                      size="sm"
+                      variant="ghost"
+                      showVolumeIcon={false}
+                    />
                   </div>
                 </div>
               </div>
