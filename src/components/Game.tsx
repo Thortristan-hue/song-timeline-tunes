@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -74,23 +75,37 @@ export function Game() {
         playerName,
         isHost: false
       }));
+    }
+    return success;
+  }, [joinRoom]);
+
+  // Handle pending character update when room and player are ready
+  useEffect(() => {
+    const handlePendingCharacter = async () => {
+      const pendingCharacter = localStorage.getItem('pendingCharacter');
       
-      // Handle pending character selection after state is set
-      setTimeout(async () => {
-        const pendingCharacter = localStorage.getItem('pendingCharacter');
-        if (pendingCharacter) {
-          console.log('Applying pending character:', pendingCharacter);
+      // Only proceed if we have all the necessary conditions
+      if (pendingCharacter && room?.id && currentPlayer?.id && !isHost) {
+        console.log('Applying pending character:', pendingCharacter, 'for player:', currentPlayer.id);
+        
+        try {
           const updateSuccess = await updatePlayer({ character: pendingCharacter });
           if (updateSuccess) {
             localStorage.removeItem('pendingCharacter');
+            console.log('Character successfully updated');
           } else {
-            console.error('Failed to update character, will retry later');
+            console.error('Failed to update character');
           }
+        } catch (error) {
+          console.error('Error updating character:', error);
         }
-      }, 1000); // Give room state time to be set
-    }
-    return success;
-  }, [joinRoom, updatePlayer]);
+      }
+    };
+
+    // Add a small delay to ensure all state is settled
+    const timeoutId = setTimeout(handlePendingCharacter, 500);
+    return () => clearTimeout(timeoutId);
+  }, [room?.id, currentPlayer?.id, isHost, updatePlayer]);
 
   // Handle start game
   const handleStartGame = useCallback(async () => {
@@ -138,6 +153,8 @@ export function Game() {
 
   // Handle leave room
   const handleLeaveRoom = useCallback(() => {
+    // Clear any pending character data
+    localStorage.removeItem('pendingCharacter');
     leaveRoom();
     setGameState({
       phase: 'menu',
@@ -161,7 +178,7 @@ export function Game() {
 
   // Handle player update with correct signature
   const handleUpdatePlayer = useCallback(async (name: string, character: string) => {
-    if (!currentPlayer) return;
+    if (!currentPlayer || !room?.id) return;
     
     const updates = {
       name,
@@ -169,7 +186,7 @@ export function Game() {
     };
     
     await updatePlayer(updates);
-  }, [currentPlayer, updatePlayer]);
+  }, [currentPlayer, room?.id, updatePlayer]);
 
   // Update game state when room changes - but preserve proper UI states
   useEffect(() => {
