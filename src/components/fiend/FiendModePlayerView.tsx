@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,10 +44,12 @@ export function FiendModePlayerView({
 
   // Reset submission state when new song starts
   useEffect(() => {
-    setHasSubmitted(false);
-    setLastResult(null);
-    setSelectedYear(1990);
-  }, [currentSong.id]);
+    if (currentSong?.id) {
+      setHasSubmitted(false);
+      setLastResult(null);
+      setSelectedYear(1990);
+    }
+  }, [currentSong?.id]);
 
   const handleYearChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedYear(parseInt(event.target.value));
@@ -158,7 +161,7 @@ export function FiendModePlayerView({
           </div>
 
           {/* Year Slider Interface */}
-          {!hasSubmitted && !gameEnded && (
+          {!hasSubmitted && !gameEnded && currentSong && (
             <div className="space-y-4">
               <div className="text-center mb-2">
                 <div className="text-white font-bold text-lg">When was this released?</div>
@@ -229,7 +232,7 @@ export function FiendModePlayerView({
           )}
 
           {/* Result Display */}
-          {hasSubmitted && lastResult && (
+          {hasSubmitted && lastResult && currentSong && (
             <div className="text-center">
               <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 rounded-2xl p-4">
                 <div className="mb-3">

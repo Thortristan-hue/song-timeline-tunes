@@ -354,6 +354,7 @@ export function Game() {
               updateRoomSongs(songs);
             }}
             customSongs={gameState.songs}
+            onStartGame={handleStartGame}
           />
         ) : null;
 
@@ -407,10 +408,10 @@ export function Game() {
 
       case GamePhase.FINISHED:
         // Show victory screen or use winner from game state if available
-        const winner = gameState.winner || players.find(p => p.score === Math.max(...players.map(p => p.score)));
+        const winner = gameState.winner || (players.length > 0 ? players.find(p => p.score === Math.max(...players.map(p => p.score))) : null);
         return (
           <VictoryScreen
-            winner={winner || null}
+            winner={winner}
             players={players}
             onBackToMenu={handleBackToMenu}
             onPlayAgain={() => {
