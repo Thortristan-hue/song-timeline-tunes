@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Crown } from 'lucide-react';
