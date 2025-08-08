@@ -1,14 +1,16 @@
 
 
-# Rythmy - Music Timeline Game
+# Rhythmi - Music Timeline Game
 
 A real-time multiplayer music timeline game where players guess when songs were released and organize them chronologically. Players join via mobile devices while the host displays the game on a larger screen, creating an engaging party game experience.
 
 ## Game Overview
 
-Rythmy is a social music guessing game that tests players' knowledge of music history. The host presents mystery songs, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 songs wins!
+Rhythmi is a social music guessing game that tests players' knowledge of music history. The host presents mystery songs, and players must place them in the correct chronological order on their personal timelines. Points are awarded for correct placements, and the first player to reach 10 songs wins!
 
 ## Project Architecture
+
+This project now uses a consolidated orchestration pattern with strict TypeScript and enhanced type safety. Game flow is centralized in `components/Game.tsx` with comprehensive validation at all boundaries.
 
 ### Core Application Files
 - `src/App.tsx` - Root application component with React Query setup, routing configuration, and global providers (Toaster, Tooltip)

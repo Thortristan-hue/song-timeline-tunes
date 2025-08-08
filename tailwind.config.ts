@@ -38,6 +38,7 @@ export default {
 				'safe-right': 'env(safe-area-inset-right)',
 			},
 			colors: {
+				// Shadcn/ui colors
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -80,6 +81,24 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Game-specific color palette
+				'game-primary': '#8b5cf6',
+				'game-secondary': '#ec4899', 
+				'game-accent': '#06b6d4',
+				'game-success': '#10b981',
+				'game-warning': '#f59e0b',
+				'game-error': '#ef4444',
+				'game-text': {
+					primary: '#ffffff',
+					secondary: '#e2e8f0',
+					muted: '#94a3b8',
+					dark: '#1e293b'
+				},
+				'game-bg': {
+					primary: '#0f172a',
+					secondary: '#1e293b',
+					card: 'rgba(30, 41, 59, 0.8)'
 				}
 			},
 			borderRadius: {
@@ -127,6 +146,46 @@ export default {
 				'fade-in-down': {
 					'0%': { opacity: '0', transform: 'translateY(-20px)' },
 					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				// Game-specific animations
+				'epic-timeline-enter': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateX(-100vw) scale(0.3) rotateY(-90deg)',
+						filter: 'blur(20px)'
+					},
+					'30%': {
+						opacity: '0.3',
+						transform: 'translateX(-20vw) scale(0.7) rotateY(-30deg)',
+						filter: 'blur(10px)'
+					},
+					'70%': {
+						opacity: '0.8',
+						transform: 'translateX(5vw) scale(1.1) rotateY(10deg)',
+						filter: 'blur(3px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateX(0) scale(1) rotateY(0deg)',
+						filter: 'blur(0px)'
+					}
+				},
+				'epic-card-drop': {
+					'0%': {
+						transform: 'scale(0.3) translateY(-200px) rotateZ(-45deg)',
+						opacity: '0',
+						filter: 'blur(15px)'
+					},
+					'60%': {
+						transform: 'scale(0.95) translateY(-15px) rotateZ(-5deg)',
+						opacity: '1',
+						filter: 'blur(1px)'
+					},
+					'100%': {
+						transform: 'scale(1) translateY(0) rotateZ(0deg)',
+						opacity: '1',
+						filter: 'blur(0px)'
+					}
 				},
 				'scale-in': {
 					'0%': { opacity: '0', transform: 'scale(0.9)' },
@@ -179,7 +238,10 @@ export default {
 				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
 				'card-hover': 'card-hover 0.3s ease-out forwards',
 				'spin-slow': 'spin-slow 20s linear infinite',
-				'wiggle': 'wiggle 1s ease-in-out infinite'
+				'wiggle': 'wiggle 1s ease-in-out infinite',
+				// Game-specific animations
+				'epic-timeline-enter': 'epic-timeline-enter 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+				'epic-card-drop': 'epic-card-drop 2.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
 			}
 		}
 	},
