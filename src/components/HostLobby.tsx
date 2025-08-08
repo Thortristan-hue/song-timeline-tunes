@@ -1,183 +1,189 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Users, Music2, ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Music, Gamepad2, Play } from 'lucide-react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { PlaylistLoader } from './PlaylistLoader';
 import { QRCodeGenerator } from './QRCodeGenerator';
+import { CHARACTERS } from '@/constants/characters';
 
 interface HostLobbyProps {
   room: GameRoom;
   players: Player[];
   customSongs: Song[];
-  onStartGame: () => void;
+  onStartGame: () => Promise<void>;
   onSongsLoaded: (songs: Song[]) => void;
 }
 
 export function HostLobby({ 
   room, 
-  players,
-  customSongs,
+  players, 
+  customSongs, 
   onStartGame,
-  onSongsLoaded
+  onSongsLoaded 
 }: HostLobbyProps) {
-  const [songs, setSongs] = useState<Song[]>(customSongs || []);
-  const [isStartingGame, setIsStartingGame] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
-  // Enhanced debugging for HostLobby
-  useEffect(() => {
-    console.log('[HostLobby] State debug:', {
-      roomId: room?.id,
-      lobbyCode: room?.lobby_code,
-      playersCount: players?.length || 0,
-      songsCount: songs?.length || 0,
-      customSongsCount: customSongs?.length || 0
-    });
-  }, [room, players, songs, customSongs]);
-
-  // Sync songs when customSongs prop changes
-  useEffect(() => {
-    if (customSongs && customSongs.length > 0) {
-      setSongs(customSongs);
+  const handlePlaylistLoaded = (success: boolean, count?: number) => {
+    if (success && count) {
+      console.log(`[HostLobby] Playlist loaded successfully with ${count} songs`);
     }
-  }, [customSongs]);
-
-  const minPlayersRequired = 2;
-  const minSongsRequired = 20;
-  const canStartGame = players.length >= minPlayersRequired && songs.length >= minSongsRequired;
-
-  const handleStartGame = async () => {
-    if (!canStartGame || isStartingGame) return;
-    
-    setIsStartingGame(true);
-    console.log('[HostLobby] Starting game...');
-    await onStartGame();
-    setIsStartingGame(false);
   };
 
-  const handleSongsLoaded = (loadedSongs: Song[]) => {
-    console.log('[HostLobby] Songs loaded:', loadedSongs.length);
-    setSongs(loadedSongs);
-    onSongsLoaded(loadedSongs);
+  const handleSetCustomSongs = (songs: Song[]) => {
+    onSongsLoaded(songs);
   };
+
+  const handleStartClick = async () => {
+    setIsStarting(true);
+    try {
+      await onStartGame();
+    } catch (error) {
+      console.error('[HostLobby] Error starting game:', error);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const canStartGame = players.length >= 1 && customSongs.length >= 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">TimeLiner Host</h1>
-          <p className="text-white/70">Room Code: <span className="font-mono text-xl">{room?.lobby_code}</span></p>
+          <h1 className="text-4xl font-bold text-white mb-2">Host Lobby</h1>
+          <div className="flex items-center justify-center gap-2 text-purple-200">
+            <Gamepad2 className="h-5 w-5" />
+            <span>Room Code: </span>
+            <Badge variant="secondary" className="text-lg px-3 py-1 font-mono">
+              {room.lobby_code}
+            </Badge>
+          </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Game Setup */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Players */}
           <div className="space-y-6">
-            {/* Players Section */}
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <Card className="bg-white/10 border-white/20">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
                   <Users className="h-5 w-5" />
                   Players ({players.length})
-                  <Badge variant="outline" className="ml-auto border-white/20 text-white">
-                    Min: {minPlayersRequired}
-                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {players.length === 0 ? (
-                    <p className="text-white/60 text-center py-4">
-                      Waiting for players to join...
-                    </p>
-                  ) : (
-                    players.map((player, index) => (
-                      <div
-                        key={player.id}
-                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: player.color }}
+                <div className="space-y-3">
+                  {players.map((player) => {
+                    const character = CHARACTERS.find(c => c.id === player.character);
+                    return (
+                      <div key={player.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                        {character && (
+                          <img 
+                            src={character.avatar} 
+                            alt={character.name}
+                            className="w-10 h-10 rounded-full"
                           />
-                          <span className="text-white font-medium">{player.name}</span>
+                        )}
+                        <div className="flex-1">
+                          <div className="text-white font-medium">{player.name}</div>
+                          <div className="text-purple-200 text-sm">
+                            {character?.name || 'Default Character'}
+                          </div>
                         </div>
-                        <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
-                          Player {index + 1}
+                        <Badge 
+                          variant="outline" 
+                          className="border-purple-400 text-purple-200"
+                        >
+                          Ready
                         </Badge>
                       </div>
-                    ))
+                    );
+                  })}
+                  
+                  {players.length === 0 && (
+                    <div className="text-center py-8 text-purple-200">
+                      <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Waiting for players to join...</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Music Section */}
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            {/* QR Code */}
+            <Card className="bg-white/10 border-white/20">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Music2 className="h-5 w-5" />
-                  Playlist ({songs.length} songs)
-                  <Badge variant="outline" className="ml-auto border-white/20 text-white">
-                    Min: {minSongsRequired}
-                  </Badge>
-                </CardTitle>
+                <CardTitle className="text-white text-center">Join Game</CardTitle>
               </CardHeader>
-              <CardContent>
-                <PlaylistLoader
-                  onSongsLoaded={handleSongsLoaded}
-                />
+              <CardContent className="flex justify-center">
+                <QRCodeGenerator value={room.lobby_code} />
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - QR Code & Controls */}
+          {/* Right Column - Music & Controls */}
           <div className="space-y-6">
-            {/* QR Code */}
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+            <Card className="bg-white/10 border-white/20">
               <CardHeader>
-                <CardTitle className="text-white text-center">Join Game</CardTitle>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Music className="h-5 w-5" />
+                  Music Setup
+                </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-4">
-                <QRCodeGenerator value={room?.lobby_code || ''} />
-                <p className="text-white/70 text-center">
-                  Players can scan this QR code or visit the website and enter code:
-                </p>
-                <div className="bg-white/20 px-4 py-2 rounded-lg">
-                  <span className="text-white font-mono text-xl">{room?.lobby_code}</span>
-                </div>
+              <CardContent>
+                <PlaylistLoader
+                  onPlaylistLoaded={handlePlaylistLoaded}
+                  setCustomSongs={handleSetCustomSongs}
+                  isDarkMode={true}
+                />
               </CardContent>
             </Card>
 
-            {/* Start Game Button */}
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
-              <CardContent className="pt-6">
-                <Button
-                  onClick={handleStartGame}
-                  disabled={!canStartGame || isStartingGame}
-                  size="lg"
+            {/* Game Status */}
+            <Card className="bg-white/10 border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white">Game Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between text-purple-200">
+                  <span>Players:</span>
+                  <Badge variant={players.length >= 1 ? "default" : "destructive"}>
+                    {players.length} / 8
+                  </Badge>
+                </div>
+                <div className="flex justify-between text-purple-200">
+                  <span>Songs:</span>
+                  <Badge variant={customSongs.length >= 10 ? "default" : "destructive"}>
+                    {customSongs.length} loaded
+                  </Badge>
+                </div>
+                
+                <Button 
+                  onClick={handleStartClick}
+                  disabled={!canStartGame || isStarting}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
                 >
-                  <Play className="mr-2 h-5 w-5" />
-                  {isStartingGame ? 'Starting Game...' : 'Start Game'}
-                  <ChevronRight className="ml-2 h-5 w-5" />
+                  {isStarting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Starting Game...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Start Game
+                    </>
+                  )}
                 </Button>
                 
                 {!canStartGame && (
-                  <div className="mt-4 space-y-2">
-                    {players.length < minPlayersRequired && (
-                      <p className="text-yellow-400 text-sm text-center">
-                        Need {minPlayersRequired - players.length} more players
-                      </p>
-                    )}
-                    {songs.length < minSongsRequired && (
-                      <p className="text-yellow-400 text-sm text-center">
-                        Need {minSongsRequired - songs.length} more songs
-                      </p>
-                    )}
+                  <div className="text-yellow-300 text-sm text-center">
+                    {players.length < 1 && "Need at least 1 player to start. "}
+                    {customSongs.length < 10 && "Need at least 10 songs loaded."}
                   </div>
                 )}
               </CardContent>
