@@ -52,7 +52,26 @@ export function useGameRoom(): UseGameRoomReturn {
       timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
       timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
-      character: dbPlayer.character
+      character: dbPlayer.character || 'char_jessica'
+    };
+  };
+
+  // Helper function to transform database room to GameRoom interface
+  const transformDatabaseRoom = (dbRoom: any): GameRoom => {
+    return {
+      id: dbRoom.id,
+      lobby_code: dbRoom.lobby_code,
+      host_id: dbRoom.host_id,
+      host_name: dbRoom.host_name,
+      phase: dbRoom.phase,
+      gamemode: dbRoom.gamemode || 'classic',
+      gamemode_settings: dbRoom.gamemode_settings || {},
+      songs: Array.isArray(dbRoom.songs) ? dbRoom.songs : [],
+      created_at: dbRoom.created_at,
+      updated_at: dbRoom.updated_at,
+      current_turn: dbRoom.current_turn,
+      current_song: dbRoom.current_song,
+      current_player_id: dbRoom.current_player_id
     };
   };
 
@@ -70,7 +89,7 @@ export function useGameRoom(): UseGameRoomReturn {
         (payload) => {
           console.log('[useGameRoom] Room update received:', payload);
           if (payload.new) {
-            setRoom(payload.new as GameRoom);
+            setRoom(transformDatabaseRoom(payload.new));
           }
         }
       )
@@ -169,7 +188,7 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       console.log('[useGameRoom] Room created:', data);
-      setRoom(data as GameRoom);
+      setRoom(transformDatabaseRoom(data));
       setIsHost(true);
       
       setupRoomSubscription(data.id);
@@ -210,7 +229,8 @@ export function useGameRoom(): UseGameRoomReturn {
           timeline_color: '#FF6B9D',
           score: 0,
           timeline: [],
-          character: 'char_jessica'
+          character: 'char_jessica',
+          player_session_id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
         })
         .select()
         .single();
@@ -222,7 +242,7 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       console.log('[useGameRoom] Player created:', playerData);
-      setRoom(roomData as GameRoom);
+      setRoom(transformDatabaseRoom(roomData));
       setCurrentPlayer(transformDatabasePlayer(playerData));
       setIsHost(false);
       
