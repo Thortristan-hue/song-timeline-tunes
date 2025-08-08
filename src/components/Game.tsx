@@ -62,11 +62,12 @@ export function Game() {
   };
 
   // Handle join room
-  const handleJoinRoom = async (lobbyCode: string, playerName: string) => {
+  const handleJoinRoom = async (lobbyCode: string, playerName: string): Promise<boolean> => {
     const success = await joinRoom(lobbyCode, playerName);
     if (success) {
       console.log('[Game] Successfully joined room');
     }
+    return success;
   };
 
   // Handle start game
@@ -115,6 +116,24 @@ export function Game() {
   const handleSongsLoaded = (songs: Song[]) => {
     console.log('[Game] Songs loaded:', songs.length);
     setCustomSongs(songs);
+  };
+
+  // Dummy handlers for GamePlay props that aren't implemented yet
+  const handlePlaceCard = async (song: Song, position: number) => {
+    console.log('[Game] Place card:', song, position);
+    return { success: true, correct: true };
+  };
+
+  const handleReconnect = () => {
+    console.log('[Game] Reconnect');
+  };
+
+  const handleReplayGame = () => {
+    console.log('[Game] Replay game');
+  };
+
+  const handlePlayPause = async () => {
+    console.log('[Game] Play/pause');
   };
 
   // Show loading state
@@ -199,6 +218,21 @@ export function Game() {
             isHost={isHost}
             customSongs={customSongs}
             onSetCurrentSong={setCurrentSong}
+            onPlaceCard={handlePlaceCard}
+            connectionStatus={{
+              isConnected: true,
+              isReconnecting: false,
+              lastError: null,
+              retryCount: 0
+            }}
+            onReconnect={handleReconnect}
+            onReplayGame={handleReplayGame}
+            isProcessingMove={false}
+            isPlaying={false}
+            onPlayPause={handlePlayPause}
+            mysteryCardRevealed={false}
+            cardPlacementResult={null}
+            gameEnded={false}
           />
         </>
       );
@@ -220,6 +254,21 @@ export function Game() {
           isHost={isHost}
           customSongs={customSongs}
           onSetCurrentSong={setCurrentSong}
+          onPlaceCard={handlePlaceCard}
+          connectionStatus={{
+            isConnected: true,
+            isReconnecting: false,
+            lastError: null,
+            retryCount: 0
+          }}
+          onReconnect={handleReconnect}
+          onReplayGame={handleReplayGame}
+          isProcessingMove={false}
+          isPlaying={false}
+          onPlayPause={handlePlayPause}
+          mysteryCardRevealed={false}
+          cardPlacementResult={null}
+          gameEnded={true}
         />
       );
     

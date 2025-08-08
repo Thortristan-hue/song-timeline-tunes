@@ -2,24 +2,27 @@
 import { useState } from 'react';
 import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
+import { GameRoom, Player } from '@/types/game';
 
 interface MobileJoinFlowProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
-  onBackToMenu: () => void;
-  isLoading?: boolean;
-  autoJoinCode?: string;
+  room: GameRoom | null;
+  currentPlayer: Player | null;
+  players: Player[];
+  onUpdatePlayer: (updates: { name?: string; character?: string }) => Promise<boolean>;
 }
 
 export function MobileJoinFlow({ 
   onJoinRoom, 
-  onBackToMenu, 
-  isLoading = false, 
-  autoJoinCode = '' 
+  room,
+  currentPlayer,
+  players,
+  onUpdatePlayer
 }: MobileJoinFlowProps) {
   const [currentStep, setCurrentStep] = useState<'code' | 'setup'>('code');
   const [verifiedCode, setVerifiedCode] = useState<string>('');
   
-  console.log('🔗 MobileJoinFlow rendered with autoJoinCode:', autoJoinCode);
+  console.log('🔗 MobileJoinFlow rendered');
 
   const handleCodeSubmit = (code: string) => {
     console.log('🔗 Code submitted:', code);
@@ -43,13 +46,18 @@ export function MobileJoinFlow({
     setVerifiedCode('');
   };
 
+  const handleBackToMenu = () => {
+    // This would be handled by parent component
+    console.log('Back to menu');
+  };
+
   if (currentStep === 'setup') {
     return (
       <MobilePlayerSetup
         lobbyCode={verifiedCode}
         onPlayerSetup={handlePlayerSetup}
         onBackToCodeEntry={handleBackToCodeEntry}
-        isLoading={isLoading}
+        isLoading={false}
       />
     );
   }
@@ -57,9 +65,9 @@ export function MobileJoinFlow({
   return (
     <MobileCodeEntry
       onCodeSubmit={handleCodeSubmit}
-      onBackToMenu={onBackToMenu}
-      isLoading={isLoading}
-      autoJoinCode={autoJoinCode}
+      onBackToMenu={handleBackToMenu}
+      isLoading={false}
+      autoJoinCode=""
     />
   );
 }
