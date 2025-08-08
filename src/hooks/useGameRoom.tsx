@@ -49,7 +49,7 @@ export function useGameRoom(): UseGameRoomReturn {
       id: dbPlayer.id,
       name: dbPlayer.name,
       color: dbPlayer.color,
-      timelineColor: dbPlayer.timeline_color, // Convert snake_case to camelCase
+      timelineColor: dbPlayer.timeline_color,
       score: dbPlayer.score || 0,
       timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
       character: dbPlayer.character
@@ -59,7 +59,6 @@ export function useGameRoom(): UseGameRoomReturn {
   const setupRoomSubscription = useCallback((roomId: string) => {
     console.log('[useGameRoom] Setting up room subscription for:', roomId);
     
-    // Clean up existing subscription
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
     }
@@ -105,8 +104,8 @@ export function useGameRoom(): UseGameRoomReturn {
       .channel(`players-${roomId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
-        async (payload) => {
-          console.log('[useGameRoom] Players change detected:', payload.eventType);
+        async () => {
+          console.log('[useGameRoom] Players change detected');
           await fetchPlayers(roomId);
         }
       )
@@ -128,11 +127,9 @@ export function useGameRoom(): UseGameRoomReturn {
 
       console.log('[useGameRoom] Players fetched:', data?.length || 0);
       
-      // Transform database players to Player interface format
       const transformedPlayers = data?.map(transformDatabasePlayer) || [];
       setPlayers(transformedPlayers);
 
-      // Update current player if we have a stored ID
       if (currentPlayerIdRef.current && data) {
         const dbPlayer = data.find(p => p.id === currentPlayerIdRef.current);
         if (dbPlayer) {
@@ -149,13 +146,13 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
 
     try {
-      // Generate lobby code
       const lobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
       const { data, error } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
+          host_id: 'temp_host_id',
           host_name: hostName || 'Host',
           phase: DatabasePhase.LOBBY,
           gamemode: 'classic',
@@ -175,7 +172,6 @@ export function useGameRoom(): UseGameRoomReturn {
       setRoom(data as GameRoom);
       setIsHost(true);
       
-      // Set up subscriptions
       setupRoomSubscription(data.id);
       setupPlayersSubscription(data.id);
       
@@ -194,7 +190,6 @@ export function useGameRoom(): UseGameRoomReturn {
     setError(null);
 
     try {
-      // Find room by lobby code
       const { data: roomData, error: roomError } = await supabase
         .from('game_rooms')
         .select('*')
@@ -206,17 +201,16 @@ export function useGameRoom(): UseGameRoomReturn {
         return false;
       }
 
-      // Create player
       const { data: playerData, error: playerError } = await supabase
         .from('players')
         .insert({
           room_id: roomData.id,
           name: playerName,
-          color: '#FF6B9D', // Default color
+          color: '#FF6B9D',
           timeline_color: '#FF6B9D',
           score: 0,
           timeline: [],
-          character: 'char_jessica' // Default character
+          character: 'char_jessica'
         })
         .select()
         .single();
@@ -232,10 +226,8 @@ export function useGameRoom(): UseGameRoomReturn {
       setCurrentPlayer(transformDatabasePlayer(playerData));
       setIsHost(false);
       
-      // Store player ID for reconnection
       currentPlayerIdRef.current = playerData.id || null;
       
-      // Set up subscriptions
       setupRoomSubscription(roomData.id);
       setupPlayersSubscription(roomData.id);
       
@@ -266,7 +258,6 @@ export function useGameRoom(): UseGameRoomReturn {
         return false;
       }
 
-      // Update local state
       setCurrentPlayer(prev => prev ? { ...prev, ...updates } : null);
       
       console.log('[useGameRoom] Player updated successfully');
@@ -318,7 +309,6 @@ export function useGameRoom(): UseGameRoomReturn {
   const leaveRoom = useCallback(() => {
     console.log('[useGameRoom] Leaving room');
     
-    // Clean up subscriptions
     if (subscriptionRef.current) {
       supabase.removeChannel(subscriptionRef.current);
       subscriptionRef.current = null;
@@ -329,7 +319,6 @@ export function useGameRoom(): UseGameRoomReturn {
       playersSubscriptionRef.current = null;
     }
 
-    // Reset state
     setRoom(null);
     setPlayers([]);
     setCurrentPlayer(null);
@@ -338,7 +327,6 @@ export function useGameRoom(): UseGameRoomReturn {
     roomIdRef.current = null;
     currentPlayerIdRef.current = null;
     
-    // Reset connection status
     setConnectionStatus({
       isConnected: true,
       isReconnecting: false,
@@ -347,7 +335,6 @@ export function useGameRoom(): UseGameRoomReturn {
     });
   }, []);
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (subscriptionRef.current) {
