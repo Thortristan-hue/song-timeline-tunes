@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { GameLogic } from '@/services/gameLogic';
-import { useToast } from '@/hooks/use-toast';
 import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 
@@ -36,8 +35,7 @@ export function GamePlay({
   players, 
   currentPlayer, 
   isHost, 
-  onPlaceCard, 
-  onSetCurrentSong,
+  onPlaceCard,
   // Orchestration state from Game.tsx
   isPlaying,
   onPlayPause,
@@ -45,7 +43,6 @@ export function GamePlay({
   cardPlacementResult,
   gameEnded
 }: GamePlayProps) {
-  const { toast } = useToast();
   const [gameLogic, setGameLogic] = useState<GameLogic | null>(null);
 
   // Enhanced debugging for GamePlay

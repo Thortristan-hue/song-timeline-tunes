@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Song } from '@/types/game';
 import { CheckCircle, XCircle } from 'lucide-react';
 

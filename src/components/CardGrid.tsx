@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Song } from '@/types/game';
 
 interface CardGridProps {

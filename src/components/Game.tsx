@@ -1,7 +1,5 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { useGameLogic } from '@/hooks/useGameLogic';
 import { Song, GamePhase, Player } from '@/types/game';
 import { MainMenu } from './MainMenu';
 import { HostLobby } from './HostLobby';
