@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
@@ -56,7 +57,6 @@ export function Game() {
     joinRoom,
     updatePlayer,
     updateRoomSongs,
-    startGame,
     leaveRoom,
     setCurrentSong,
     connectionStatus
