@@ -1,242 +1,183 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, Play, Settings, Music2, Upload } from 'lucide-react';
-import { Player, GameRoom, GameMode } from '@/types/game';
-import { QRCodeGenerator } from '@/components/QRCodeGenerator';
-import { PlaylistLoader } from '@/components/PlaylistLoader';
-import { Song } from '@/types/game';
-import { getCharacterById } from '@/constants/characters';
+import { Play, Users, Music2, ChevronRight } from 'lucide-react';
+import { Song, Player, GameRoom } from '@/types/game';
+import { PlaylistLoader } from './PlaylistLoader';
+import { QRCodeGenerator } from './QRCodeGenerator';
 
 interface HostLobbyProps {
-  room: GameRoom | null;
+  room: GameRoom;
   players: Player[];
-  isHost: boolean;
-  onStartGame: () => Promise<void>;
-  onGameModeChange: (mode: GameMode) => Promise<void>;
-  onPlaylistUploaded: (songs: Song[]) => Promise<void>;
-  connectionStatus: {
-    isConnected: boolean;
-    isReconnecting: boolean;
-    lastError: string | null;
-    retryCount: number;
-  };
-  onReconnect: () => void;
+  customSongs: Song[];
 }
 
 export function HostLobby({ 
   room, 
-  players, 
-  isHost, 
-  onStartGame,
-  onGameModeChange,
-  onPlaylistUploaded,
-  connectionStatus,
-  onReconnect
+  players,
+  customSongs 
 }: HostLobbyProps) {
-  const [selectedMode, setSelectedMode] = useState<GameMode>(room?.gamemode || 'classic');
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [playlistUrl, setPlaylistUrl] = useState<string>('');
-  const [minSongsRequired, setMinSongsRequired] = useState<number>(5);
-  const [isPlaylistValid, setIsPlaylistValid] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [songs, setSongs] = useState<Song[]>(customSongs || []);
+  const [isStartingGame, setIsStartingGame] = useState(false);
+  const [playlistUrl, setPlaylistUrl] = useState('');
 
+  // Enhanced debugging for HostLobby
   useEffect(() => {
-    if (room) {
-      setSelectedMode(room.gamemode);
-    }
-  }, [room]);
+    console.log('[HostLobby] State debug:', {
+      roomId: room?.id,
+      lobbyCode: room?.lobby_code,
+      playersCount: players?.length || 0,
+      songsCount: songs?.length || 0,
+      customSongsCount: customSongs?.length || 0
+    });
+  }, [room, players, songs, customSongs]);
 
+  // Sync songs when customSongs prop changes
   useEffect(() => {
-    if (songs.length >= minSongsRequired) {
-      setIsPlaylistValid(true);
-    } else {
-      setIsPlaylistValid(false);
+    if (customSongs && customSongs.length > 0) {
+      setSongs(customSongs);
     }
-  }, [songs, minSongsRequired]);
+  }, [customSongs]);
 
-  const handleModeChange = async (mode: GameMode) => {
-    setSelectedMode(mode);
-    await onGameModeChange(mode);
-  };
+  const minPlayersRequired = 2;
+  const minSongsRequired = 20;
+  const canStartGame = players.length >= minPlayersRequired && songs.length >= minSongsRequired;
 
   const handleStartGame = async () => {
-    await onStartGame();
+    if (!canStartGame || isStartingGame) return;
+    
+    setIsStartingGame(true);
+    console.log('[HostLobby] Starting game...');
+    // Game start logic will be handled by the parent component
   };
 
-  const handleSongsUploaded = async (uploadedSongs: Song[]) => {
-    setSongs(uploadedSongs);
-    await onPlaylistUploaded(uploadedSongs);
-  };
-
-  const handleSubmit = async () => {
-    console.log('Submitting playlist URL:', playlistUrl);
+  const onSongsLoaded = (loadedSongs: Song[]) => {
+    console.log('[HostLobby] Songs loaded:', loadedSongs.length);
+    setSongs(loadedSongs);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-purple-900 text-white">
-      {/* Header */}
-      <div className="p-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Host Lobby</h1>
-          <p className="text-gray-400">Prepare your game</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Clock className="h-5 w-5 text-gray-500" />
-          <span className="text-sm text-gray-400">{new Date().toLocaleTimeString()}</span>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-col md:flex-row flex-grow p-6 gap-6 overflow-auto">
-        {/* Left Panel: Room Info and Players */}
-        <div className="md:w-1/2 flex flex-col gap-4">
-          <Card className="bg-gray-800 border border-gray-700 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-semibold">Room Information</h2>
-            </div>
-            {room ? (
-              <>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-gray-400 text-sm">Lobby Code</p>
-                    <p className="font-bold text-lg">{room.lobby_code}</p>
-                  </div>
-                  <QRCodeGenerator value={window.location.origin + '/join/' + room.lobby_code} size={80} />
-                </div>
-                <div className="mt-2">
-                  <p className="text-gray-400 text-sm">Game Mode</p>
-                  <Badge variant="secondary">{room.gamemode}</Badge>
-                </div>
-              </>
-            ) : (
-              <p className="text-gray-500">Loading room info...</p>
-            )}
-          </Card>
-
-          <Card className="bg-gray-800 border border-gray-700 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-semibold">Players in Lobby</h2>
-            </div>
-            {players && players.length > 0 ? (
-              <ul className="space-y-2">
-                {players.map((player) => (
-                  <li key={player.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="block w-2 h-2 rounded-full"
-                        style={{ backgroundColor: player.color }}
-                      ></span>
-                      <span>{player.name}</span>
-                      <Badge className="ml-2">{player.character}</Badge>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500">No players have joined yet.</p>
-            )}
-          </Card>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">TimeLiner Host</h1>
+          <p className="text-white/70">Room Code: <span className="font-mono text-xl">{room?.lobby_code}</span></p>
         </div>
 
-        {/* Right Panel: Game Settings */}
-        <div className="md:w-1/2 flex flex-col gap-4">
-          <Card className="bg-gray-800 border border-gray-700 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <Settings className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-semibold">Game Settings</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-md font-semibold">Game Mode</h3>
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    variant={selectedMode === 'classic' ? 'default' : 'outline'}
-                    onClick={() => handleModeChange('classic')}
-                  >
-                    Classic
-                  </Button>
-                  <Button
-                    variant={selectedMode === 'sprint' ? 'default' : 'outline'}
-                    onClick={() => handleModeChange('sprint')}
-                  >
-                    Sprint
-                  </Button>
-                  <Button
-                    variant={selectedMode === 'fiend' ? 'default' : 'outline'}
-                    onClick={() => handleModeChange('fiend')}
-                  >
-                    Fiend
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Playlist Loader */}
-          <Card className="bg-gray-800 border border-gray-700 p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <Music2 className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-semibold">Playlist Settings</h2>
-            </div>
-            <PlaylistLoader 
-              songs={songs}
-              setSongs={setSongs}
-              playlistUrl={playlistUrl}
-              setPlaylistUrl={setPlaylistUrl}
-              minSongsRequired={minSongsRequired}
-              setMinSongsRequired={setMinSongsRequired}
-              isPlaylistValid={isPlaylistValid}
-              setIsPlaylistValid={setIsPlaylistValid}
-              isLoading={isLoading}
-              setIsLoading={setIsLoading}
-              uploadProgress={uploadProgress}
-              setUploadProgress={setUploadProgress}
-              uploadError={uploadError}
-              setUploadError={setUploadError}
-              onSongsUploaded={handleSongsUploaded}
-            />
-          </Card>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="p-6 border-t border-gray-700 flex justify-between items-center">
-        <div className="text-sm text-gray-400">
-          {connectionStatus.isConnected ? (
-            <>
-              Connected to server (Retries: {connectionStatus.retryCount})
-            </>
-          ) : (
-            <>
-              {connectionStatus.isReconnecting ? (
-                <>Reconnecting... (Attempt {connectionStatus.retryCount + 1})</>
-              ) : (
-                <>
-                  Disconnected. <Button variant="link" onClick={onReconnect}>Reconnect</Button>
-                  {connectionStatus.lastError && (
-                    <div className="text-red-500 mt-1">
-                      Last error: {connectionStatus.lastError}
-                    </div>
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Game Setup */}
+          <div className="space-y-6">
+            {/* Players Section */}
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Players ({players.length})
+                  <Badge variant="outline" className="ml-auto border-white/20 text-white">
+                    Min: {minPlayersRequired}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {players.length === 0 ? (
+                    <p className="text-white/60 text-center py-4">
+                      Waiting for players to join...
+                    </p>
+                  ) : (
+                    players.map((player, index) => (
+                      <div
+                        key={player.id}
+                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: player.color }}
+                          />
+                          <span className="text-white font-medium">{player.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
+                          Player {index + 1}
+                        </Badge>
+                      </div>
+                    ))
                   )}
-                </>
-              )}
-            </>
-          )}
-        </div>
-        <div>
-          <Button
-            onClick={handleStartGame}
-            disabled={!isPlaylistValid}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Start Game
-          </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Music Section */}
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Music2 className="h-5 w-5" />
+                  Playlist ({songs.length} songs)
+                  <Badge variant="outline" className="ml-auto border-white/20 text-white">
+                    Min: {minSongsRequired}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PlaylistLoader
+                  onSongsLoaded={onSongsLoaded}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - QR Code & Controls */}
+          <div className="space-y-6">
+            {/* QR Code */}
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white text-center">Join Game</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center space-y-4">
+                <QRCodeGenerator roomCode={room?.lobby_code || ''} />
+                <p className="text-white/70 text-center">
+                  Players can scan this QR code or visit the website and enter code:
+                </p>
+                <div className="bg-white/20 px-4 py-2 rounded-lg">
+                  <span className="text-white font-mono text-xl">{room?.lobby_code}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Start Game Button */}
+            <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+              <CardContent className="pt-6">
+                <Button
+                  onClick={handleStartGame}
+                  disabled={!canStartGame || isStartingGame}
+                  size="lg"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  {isStartingGame ? 'Starting Game...' : 'Start Game'}
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Button>
+                
+                {!canStartGame && (
+                  <div className="mt-4 space-y-2">
+                    {players.length < minPlayersRequired && (
+                      <p className="text-yellow-400 text-sm text-center">
+                        Need {minPlayersRequired - players.length} more players
+                      </p>
+                    )}
+                    {songs.length < minSongsRequired && (
+                      <p className="text-yellow-400 text-sm text-center">
+                        Need {minSongsRequired - songs.length} more songs
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

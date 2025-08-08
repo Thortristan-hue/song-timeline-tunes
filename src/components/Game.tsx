@@ -1,5 +1,3 @@
-
-
 import { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
@@ -332,10 +330,6 @@ export function Game() {
           <HostLobby
             room={room}
             players={players}
-            onLoadPlaylist={(songs: Song[]) => {
-              setGameState(prev => ({ ...prev, songs }));
-              updateRoomSongs(songs);
-            }}
             customSongs={gameState.songs}
           />
         ) : null;

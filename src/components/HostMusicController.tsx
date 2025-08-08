@@ -1,122 +1,90 @@
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Play, Pause, Square, Volume2, VolumeX, RotateCcw, SkipForward } from 'lucide-react';
-import { Song } from '@/types/game';
-import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
+
+import { useEffect, useRef } from 'react';
+import { useGameRoom } from '@/hooks/useGameRoom';
+import { Song, Player, GameRoom } from '@/types/game';
+import { GameService } from '@/services/gameService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface HostMusicControllerProps {
-  currentSong: Song | null;
-  isPlaying: boolean;
-  volume: number;
-  onPlayPause: () => void;
-  onStop: () => void;
-  onAdjustVolume: (volume: number) => void;
-  onRestart: () => void;
-  onSkip: () => void;
+  room: GameRoom;
+  players: Player[];
+  isHost: boolean;
 }
 
-export function HostMusicController({
-  currentSong,
-  isPlaying,
-  volume,
-  onPlayPause,
-  onStop,
-  onAdjustVolume,
-  onRestart,
-  onSkip
-}: HostMusicControllerProps) {
-  const [isMuted, setIsMuted] = useState(false);
-  const volumeRef = useRef(volume);
+export function HostMusicController({ room, players, isHost }: HostMusicControllerProps) {
+  const { setCurrentSong } = useGameRoom();
+  const { toast } = useToast();
+  const currentSongRef = useRef<Song | null>(null);
 
+  // Only run for host
   useEffect(() => {
-    volumeRef.current = volume;
-  }, [volume]);
+    if (!isHost || !room) return;
 
-  const handleVolumeChange = (newVolume: number[]) => {
-    const parsedVolume = newVolume[0] / 100;
-    onAdjustVolume(parsedVolume);
-  };
+    console.log('[HostMusicController] Initializing for room:', room.id);
+    
+    const initializeGame = async () => {
+      try {
+        // Start the first round
+        console.log('[HostMusicController] Starting first round');
+        await GameService.startNextRound(room.id);
+      } catch (error) {
+        console.error('[HostMusicController] Failed to start first round:', error);
+        toast({
+          title: "Game Start Failed",
+          description: "Unable to start the game. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (!isMuted) {
-      onAdjustVolume(0);
-    } else {
-      onAdjustVolume(volumeRef.current);
+    // Small delay to ensure all setup is complete
+    const timeoutId = setTimeout(initializeGame, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [room, isHost, toast]);
+
+  // Monitor current song changes and sync with room state
+  useEffect(() => {
+    if (!isHost || !room?.current_song) return;
+
+    const currentSong = room.current_song;
+    
+    // Only update if the song actually changed
+    if (currentSongRef.current?.id !== currentSong.id) {
+      console.log('[HostMusicController] Current song changed:', {
+        from: currentSongRef.current?.deezer_title || 'none',
+        to: currentSong.deezer_title
+      });
+      
+      currentSongRef.current = currentSong;
+      setCurrentSong(currentSong);
     }
-  };
+  }, [room?.current_song, isHost, setCurrentSong]);
 
-  return (
-    <Card className="w-full bg-white/5 backdrop-blur-lg border-white/10 p-4">
-      <div className="flex items-center justify-between">
-        {/* Song Information */}
-        <div className="flex-grow">
-          {currentSong ? (
-            <>
-              <div className="font-bold">{currentSong.deezer_title}</div>
-              <div className="text-sm text-gray-500">{currentSong.deezer_artist}</div>
-            </>
-          ) : (
-            <div className="text-gray-500">No song selected</div>
-          )}
-        </div>
+  // Handle turn transitions
+  useEffect(() => {
+    if (!isHost || !room) return;
 
-        {/* Controls */}
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={onRestart}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={onPlayPause}
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={onStop}
-          >
-            <Square className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={onSkip}
-          >
-            <SkipForward className="h-4 w-4" />
-          </Button>
+    const handleTurnTransition = async () => {
+      // Check if current turn player has completed their timeline
+      const currentPlayer = players.find(p => p.id === room.current_player_id);
+      
+      if (currentPlayer && currentPlayer.timeline.length >= 5) {
+        console.log('[HostMusicController] Player completed timeline:', currentPlayer.name);
+        
+        try {
+          await GameService.checkGameEnd(room.id);
+        } catch (error) {
+          console.error('[HostMusicController] Error checking game end:', error);
+        }
+      }
+    };
 
-          {/* Volume Control */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            onClick={toggleMute}
-          >
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
-          <Slider
-            defaultValue={[volume * 100]}
-            max={100}
-            step={1}
-            onValueChange={handleVolumeChange}
-            aria-label="Volume"
-            className="w-[100px]"
-          />
-        </div>
-      </div>
-    </Card>
-  );
+    handleTurnTransition();
+  }, [room?.current_player_id, players, isHost, room]);
+
+  // This component doesn't render anything visible
+  return null;
 }
