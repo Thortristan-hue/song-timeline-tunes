@@ -1,142 +1,122 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Howl } from 'howler';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
+import { Play, Pause, Square, Volume2, VolumeX, RotateCcw, SkipForward } from 'lucide-react';
+import { Song } from '@/types/game';
+import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
 
 interface HostMusicControllerProps {
-  roomId: string;
-  isHost: boolean;
+  currentSong: Song | null;
+  isPlaying: boolean;
+  volume: number;
+  onPlayPause: () => void;
+  onStop: () => void;
+  onAdjustVolume: (volume: number) => void;
+  onRestart: () => void;
+  onSkip: () => void;
 }
 
-interface MusicControlEvent {
-  action: 'play' | 'pause' | 'stop';
-  trackId?: string;
-  trackUrl?: string;
-  position?: number;
-  timestamp: number;
-}
-
-export function HostMusicController({ roomId, isHost }: HostMusicControllerProps) {
-  const musicRef = useRef<Howl | null>(null);
-  const currentTrackRef = useRef<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+export function HostMusicController({
+  currentSong,
+  isPlaying,
+  volume,
+  onPlayPause,
+  onStop,
+  onAdjustVolume,
+  onRestart,
+  onSkip
+}: HostMusicControllerProps) {
+  const [isMuted, setIsMuted] = useState(false);
+  const volumeRef = useRef(volume);
 
   useEffect(() => {
-    if (!isHost) return;
+    volumeRef.current = volume;
+  }, [volume]);
 
-    console.log('[HostMusicController] Setting up music control for host in room:', roomId);
+  const handleVolumeChange = (newVolume: number[]) => {
+    const parsedVolume = newVolume[0] / 100;
+    onAdjustVolume(parsedVolume);
+  };
 
-    // Subscribe to music control events
-    const channel = supabase
-      .channel(`room-music-${roomId}`)
-      .on('broadcast', { event: 'music-control' }, (payload) => {
-        console.log('[HostMusicController] Received music control event:', payload);
-        handleMusicControl(payload.payload);
-      })
-      .subscribe();
-
-    return () => {
-      console.log('[HostMusicController] Cleaning up music controller');
-      if (musicRef.current) {
-        musicRef.current.unload();
-        musicRef.current = null;
-      }
-      supabase.removeChannel(channel);
-    };
-  }, [roomId, isHost]);
-
-  const handleMusicControl = async (event: MusicControlEvent) => {
-    if (!isHost) return;
-
-    console.log('[HostMusicController] Processing music control:', event);
-    setIsLoading(true);
-
-    try {
-      switch (event.action) {
-        case 'play':
-          if (event.trackUrl) {
-            // If new track, load it first
-            if (currentTrackRef.current !== event.trackUrl) {
-              // Unload previous track
-              if (musicRef.current) {
-                musicRef.current.unload();
-                musicRef.current = null;
-              }
-
-              // Load new track
-              musicRef.current = new Howl({
-                src: [event.trackUrl],
-                html5: true,
-                volume: 0.6,
-                preload: true,
-                onload: () => {
-                  console.log('[HostMusicController] Track loaded successfully');
-                  setIsLoading(false);
-                },
-                onloaderror: (id, error) => {
-                  console.error('[HostMusicController] Track load failed:', error);
-                  setIsLoading(false);
-                },
-                onplay: () => {
-                  console.log('[HostMusicController] Music playback started');
-                },
-                onpause: () => {
-                  console.log('[HostMusicController] Music playback paused');
-                },
-                onend: () => {
-                  console.log('[HostMusicController] Music playback ended');
-                }
-              });
-
-              currentTrackRef.current = event.trackUrl;
-            }
-
-            // Stop any other playing audio first
-            const allAudio = document.querySelectorAll('audio');
-            allAudio.forEach(otherAudio => {
-              if (!otherAudio.paused) {
-                otherAudio.pause();
-                otherAudio.currentTime = 0;
-              }
-            });
-
-            // Play the music
-            if (musicRef.current) {
-              if (event.position) {
-                musicRef.current.seek(event.position);
-              }
-              musicRef.current.play();
-            }
-          }
-          break;
-
-        case 'pause':
-          if (musicRef.current) {
-            musicRef.current.pause();
-          }
-          break;
-
-        case 'stop':
-          if (musicRef.current) {
-            musicRef.current.stop();
-          }
-          break;
-
-        default:
-          console.warn('[HostMusicController] Unknown music action:', event.action);
-      }
-    } catch (error) {
-      console.error('[HostMusicController] Error handling music control:', error);
-    } finally {
-      setIsLoading(false);
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (!isMuted) {
+      onAdjustVolume(0);
+    } else {
+      onAdjustVolume(volumeRef.current);
     }
   };
 
-  // Only render for host, and it's invisible
-  if (!isHost) return null;
-
   return (
-    <div style={{ display: 'none' }} data-component="host-music-controller">
-      {isLoading && <span>Loading music...</span>}
-    </div>
+    <Card className="w-full bg-white/5 backdrop-blur-lg border-white/10 p-4">
+      <div className="flex items-center justify-between">
+        {/* Song Information */}
+        <div className="flex-grow">
+          {currentSong ? (
+            <>
+              <div className="font-bold">{currentSong.deezer_title}</div>
+              <div className="text-sm text-gray-500">{currentSong.deezer_artist}</div>
+            </>
+          ) : (
+            <div className="text-gray-500">No song selected</div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={onRestart}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={onPlayPause}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={onStop}
+          >
+            <Square className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={onSkip}
+          >
+            <SkipForward className="h-4 w-4" />
+          </Button>
+
+          {/* Volume Control */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            onClick={toggleMute}
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+          <Slider
+            defaultValue={[volume * 100]}
+            max={100}
+            step={1}
+            onValueChange={handleVolumeChange}
+            aria-label="Volume"
+            className="w-[100px]"
+          />
+        </div>
+      </div>
+    </Card>
   );
 }

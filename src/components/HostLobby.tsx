@@ -1,208 +1,242 @@
-
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, Settings, Music, Play } from "lucide-react";
-import { Player, GameRoom, Song } from '@/types/game';
-import { QRCodeGenerator } from './QRCodeGenerator';
-import { PlaylistLoader } from './PlaylistLoader';
-import { useGameInitializer } from '@/hooks/useGameInitializer';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Users, Play, Settings, Music2, Upload } from 'lucide-react';
+import { Player, GameRoom, GameMode } from '@/types/game';
+import { QRCodeGenerator } from '@/components/QRCodeGenerator';
+import { PlaylistLoader } from '@/components/PlaylistLoader';
+import { Song } from '@/types/game';
+import { getCharacterById } from '@/constants/characters';
 
 interface HostLobbyProps {
-  room: GameRoom;
+  room: GameRoom | null;
   players: Player[];
-  onLoadPlaylist: (songs: Song[]) => void;
-  customSongs: Song[];
+  isHost: boolean;
+  onStartGame: () => Promise<void>;
+  onGameModeChange: (mode: GameMode) => Promise<void>;
+  onPlaylistUploaded: (songs: Song[]) => Promise<void>;
+  connectionStatus: {
+    isConnected: boolean;
+    isReconnecting: boolean;
+    lastError: string | null;
+    retryCount: number;
+  };
+  onReconnect: () => void;
 }
 
-export function HostLobby({ room, players, onLoadPlaylist, customSongs }: HostLobbyProps) {
-  const [canStartGame, setCanStartGame] = useState(false);
-  const { startGame, isInitializing } = useGameInitializer();
+export function HostLobby({ 
+  room, 
+  players, 
+  isHost, 
+  onStartGame,
+  onGameModeChange,
+  onPlaylistUploaded,
+  connectionStatus,
+  onReconnect
+}: HostLobbyProps) {
+  const [selectedMode, setSelectedMode] = useState<GameMode>(room?.gamemode || 'classic');
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [playlistUrl, setPlaylistUrl] = useState<string>('');
+  const [minSongsRequired, setMinSongsRequired] = useState<number>(5);
+  const [isPlaylistValid, setIsPlaylistValid] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Check if game can be started
   useEffect(() => {
-    const hasPlayers = players.length >= 1; // At least 1 non-host player
-    const hasSongs = customSongs.length >= 2; // At least 2 songs
-    setCanStartGame(hasPlayers && hasSongs);
-    
-    console.log('HostLobby: Game start readiness check:', {
-      players: players.length,
-      songs: customSongs.length,
-      canStart: hasPlayers && hasSongs
-    });
-  }, [players.length, customSongs.length]);
+    if (room) {
+      setSelectedMode(room.gamemode);
+    }
+  }, [room]);
+
+  useEffect(() => {
+    if (songs.length >= minSongsRequired) {
+      setIsPlaylistValid(true);
+    } else {
+      setIsPlaylistValid(false);
+    }
+  }, [songs, minSongsRequired]);
+
+  const handleModeChange = async (mode: GameMode) => {
+    setSelectedMode(mode);
+    await onGameModeChange(mode);
+  };
 
   const handleStartGame = async () => {
-    if (!canStartGame || !room?.id) {
-      console.warn('HostLobby: Cannot start game - requirements not met');
-      return;
-    }
-
-    console.log('🎮 HostLobby: Starting game with:', {
-      roomId: room.id,
-      playersCount: players.length,
-      songsCount: customSongs.length
-    });
-
-    const success = await startGame(room.id, customSongs);
-    
-    if (success) {
-      console.log('✅ HostLobby: Game initialization completed successfully');
-    } else {
-      console.error('❌ HostLobby: Game initialization failed');
-    }
+    await onStartGame();
   };
 
-  const handlePlaylistLoaded = (success: boolean, count?: number) => {
-    if (success && count) {
-      console.log('🎵 Playlist loaded successfully:', count, 'songs');
-      // This would need to be updated to work with the actual playlist data
-      // For now, we'll just show a success message
-    }
+  const handleSongsUploaded = async (uploadedSongs: Song[]) => {
+    setSongs(uploadedSongs);
+    await onPlaylistUploaded(uploadedSongs);
   };
 
-  // Enhanced debugging for room state
-  useEffect(() => {
-    console.log('HostLobby: Current state:', {
-      roomPhase: room?.phase,
-      roomId: room?.id,
-      lobbyCode: room?.lobby_code,
-      playersCount: players.length,
-      songsCount: customSongs.length
-    });
-  }, [room, players.length, customSongs.length]);
-
-  if (!room) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 mb-4"></div>
-          <div>Loading lobby...</div>
-        </div>
-      </div>
-    );
-  }
+  const handleSubmit = async () => {
+    console.log('Submitting playlist URL:', playlistUrl);
+  };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Left Column - Lobby Info & Players */}
-        <div className="space-y-6">
-          {/* Room Info Card */}
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold">Host Lobby</h1>
-              <Badge variant="secondary" className="text-lg px-3 py-1">
-                {room.lobby_code}
-              </Badge>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-purple-900 text-white">
+      {/* Header */}
+      <div className="p-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Host Lobby</h1>
+          <p className="text-gray-400">Prepare your game</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <Clock className="h-5 w-5 text-gray-500" />
+          <span className="text-sm text-gray-400">{new Date().toLocaleTimeString()}</span>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-col md:flex-row flex-grow p-6 gap-6 overflow-auto">
+        {/* Left Panel: Room Info and Players */}
+        <div className="md:w-1/2 flex flex-col gap-4">
+          <Card className="bg-gray-800 border border-gray-700 p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-5 w-5 text-gray-500" />
+              <h2 className="text-lg font-semibold">Room Information</h2>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span>{players.length} Players</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Music className="h-4 w-4" />
-                <span>{customSongs.length} Songs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span>Mode: {room.gamemode || 'Classic'}</span>
-              </div>
-            </div>
+            {room ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-gray-400 text-sm">Lobby Code</p>
+                    <p className="font-bold text-lg">{room.lobby_code}</p>
+                  </div>
+                  <QRCodeGenerator value={window.location.origin + '/join/' + room.lobby_code} size={80} />
+                </div>
+                <div className="mt-2">
+                  <p className="text-gray-400 text-sm">Game Mode</p>
+                  <Badge variant="secondary">{room.gamemode}</Badge>
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-500">Loading room info...</p>
+            )}
           </Card>
 
-          {/* Players List */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Players ({players.length})</h2>
-            {players.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Waiting for players to join...
-              </p>
-            ) : (
-              <div className="space-y-3">
+          <Card className="bg-gray-800 border border-gray-700 p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-5 w-5 text-gray-500" />
+              <h2 className="text-lg font-semibold">Players in Lobby</h2>
+            </div>
+            {players && players.length > 0 ? (
+              <ul className="space-y-2">
                 {players.map((player) => (
-                  <div key={player.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                      style={{ backgroundColor: player.color }}
-                    >
-                      {player.name.charAt(0).toUpperCase()}
+                  <li key={player.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="block w-2 h-2 rounded-full"
+                        style={{ backgroundColor: player.color }}
+                      ></span>
+                      <span>{player.name}</span>
+                      <Badge className="ml-2">{player.character}</Badge>
                     </div>
-                    <div>
-                      <p className="font-medium">{player.name}</p>
-                      <p className="text-sm text-gray-500">Ready to play</p>
-                    </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
+            ) : (
+              <p className="text-gray-500">No players have joined yet.</p>
             )}
           </Card>
         </div>
 
-        {/* Right Column - QR Code & Game Controls */}
-        <div className="space-y-6">
-          {/* QR Code */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4 text-center">Join Game</h2>
-            <QRCodeGenerator value={room.lobby_code} />
+        {/* Right Panel: Game Settings */}
+        <div className="md:w-1/2 flex flex-col gap-4">
+          <Card className="bg-gray-800 border border-gray-700 p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Settings className="h-5 w-5 text-gray-500" />
+              <h2 className="text-lg font-semibold">Game Settings</h2>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-md font-semibold">Game Mode</h3>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant={selectedMode === 'classic' ? 'default' : 'outline'}
+                    onClick={() => handleModeChange('classic')}
+                  >
+                    Classic
+                  </Button>
+                  <Button
+                    variant={selectedMode === 'sprint' ? 'default' : 'outline'}
+                    onClick={() => handleModeChange('sprint')}
+                  >
+                    Sprint
+                  </Button>
+                  <Button
+                    variant={selectedMode === 'fiend' ? 'default' : 'outline'}
+                    onClick={() => handleModeChange('fiend')}
+                  >
+                    Fiend
+                  </Button>
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Playlist Loader */}
-          <Card className="p-6">
+          <Card className="bg-gray-800 border border-gray-700 p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Music2 className="h-5 w-5 text-gray-500" />
+              <h2 className="text-lg font-semibold">Playlist Settings</h2>
+            </div>
             <PlaylistLoader 
-              onPlaylistLoaded={handlePlaylistLoaded}
-              setCustomSongs={onLoadPlaylist}
-              isDarkMode={false}
+              songs={songs}
+              setSongs={setSongs}
+              playlistUrl={playlistUrl}
+              setPlaylistUrl={setPlaylistUrl}
+              minSongsRequired={minSongsRequired}
+              setMinSongsRequired={setMinSongsRequired}
+              isPlaylistValid={isPlaylistValid}
+              setIsPlaylistValid={setIsPlaylistValid}
+              isLoading={isLoading}
+              setIsLoading={setIsLoading}
+              uploadProgress={uploadProgress}
+              setUploadProgress={setUploadProgress}
+              uploadError={uploadError}
+              setUploadError={setUploadError}
+              onSongsUploaded={handleSongsUploaded}
             />
           </Card>
+        </div>
+      </div>
 
-          {/* Game Start */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Start Game</h2>
-            
-            <div className="space-y-4">
-              {/* Requirements Check */}
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${players.length >= 1 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span>At least 1 player ({players.length}/1)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${customSongs.length >= 2 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span>At least 2 songs ({customSongs.length}/2)</span>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleStartGame}
-                disabled={!canStartGame || isInitializing}
-                className="w-full"
-                size="lg"
-              >
-                {isInitializing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Starting Game...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Start Game
-                  </>
-                )}
-              </Button>
-
-              {!canStartGame && (
-                <p className="text-sm text-gray-500 text-center">
-                  {players.length < 1 && "Wait for players to join. "}
-                  {customSongs.length < 2 && "Load a playlist with at least 2 songs."}
-                </p>
+      {/* Footer */}
+      <div className="p-6 border-t border-gray-700 flex justify-between items-center">
+        <div className="text-sm text-gray-400">
+          {connectionStatus.isConnected ? (
+            <>
+              Connected to server (Retries: {connectionStatus.retryCount})
+            </>
+          ) : (
+            <>
+              {connectionStatus.isReconnecting ? (
+                <>Reconnecting... (Attempt {connectionStatus.retryCount + 1})</>
+              ) : (
+                <>
+                  Disconnected. <Button variant="link" onClick={onReconnect}>Reconnect</Button>
+                  {connectionStatus.lastError && (
+                    <div className="text-red-500 mt-1">
+                      Last error: {connectionStatus.lastError}
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-          </Card>
+            </>
+          )}
+        </div>
+        <div>
+          <Button
+            onClick={handleStartGame}
+            disabled={!isPlaylistValid}
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Start Game
+          </Button>
         </div>
       </div>
     </div>

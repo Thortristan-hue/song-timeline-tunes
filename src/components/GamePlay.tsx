@@ -107,12 +107,24 @@ export function GamePlay({
     );
   }
 
+  // Only render player view if we have a current song
+  if (!room?.current_song) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-white text-lg mb-2">Waiting for song...</div>
+          <div className="text-white/60 text-sm">The host is preparing the next song</div>
+        </div>
+      </div>
+    );
+  }
+
   // Player view - use MobilePlayerGameView component
   return (
     <MobilePlayerGameView
       currentPlayer={currentPlayer}
       currentTurnPlayer={currentTurnPlayer}
-      currentSong={room?.current_song || null}
+      currentSong={room.current_song}
       roomCode={room.lobby_code}
       isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
       isPlaying={isPlaying}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Song, Player } from '@/types/game';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Play, Pause, Square } from 'lucide-react';
@@ -31,13 +30,10 @@ export function FiendModeHostView({
   roundNumber,
   totalRounds,
   roomCode,
-  timeLeft = 30,
   playerGuesses = {},
-  isPlaying = false,
   onPlayPause = () => {},
   onStop = () => {}
 }: FiendModeHostViewProps) {
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const allPlayersSubmitted = players.every(p => playerGuesses[p.id]);
 
   return (

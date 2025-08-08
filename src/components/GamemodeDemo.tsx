@@ -126,6 +126,10 @@ export function GamemodeDemo({ onBack }: GamemodeDemoProps) {
     return { success: true, correct: Math.random() > 0.5 };
   };
 
+  const handleSubmitGuess = async () => {
+    return { success: true, accuracy: Math.random() * 100, points: Math.floor(Math.random() * 1000) };
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
@@ -213,7 +217,8 @@ export function GamemodeDemo({ onBack }: GamemodeDemoProps) {
             players={mockPlayers}
             currentSong={mockSong}
             roomCode="DEMO"
-            currentRound={2}
+            roundNumber={2}
+            totalRounds={5}
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
           />
@@ -224,10 +229,11 @@ export function GamemodeDemo({ onBack }: GamemodeDemoProps) {
             currentPlayer={mockPlayers[0]}
             currentSong={mockSong}
             roomCode="DEMO"
-            currentRound={2}
+            roundNumber={2}
+            totalRounds={5}
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
-            onPlaceCard={handlePlaceCard}
+            onSubmitGuess={handleSubmitGuess}
             gameEnded={false}
           />
         )}
