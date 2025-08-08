@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Player } from '@/types/game';
-import { GAME_CHARACTERS, getCharacterById, getDefaultCharacter } from '@/constants/characters';
+import { getCharacterById } from '@/constants/characters';
 
 // Import cassette images as backup only
 import cassetteBlue from '@/assets/cassette-blue.png';

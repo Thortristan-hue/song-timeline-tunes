@@ -1,15 +1,11 @@
 
-import React from "react";
-import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Player } from "@/types/game";
 import { Badge } from './ui/badge';
 
-
 interface CircularPlayersLayoutProps {
   players: Player[];
   currentPlayerId: string;
-  isDarkMode: boolean;
   transitioningTurn?: boolean;
   transitionProgress?: number;
 }
@@ -17,17 +13,15 @@ interface CircularPlayersLayoutProps {
 export function CircularPlayersLayout({ 
   players, 
   currentPlayerId, 
-  isDarkMode,
   transitioningTurn = false,
   transitionProgress = 0
 }: CircularPlayersLayoutProps) {
   const otherPlayers = players.filter(p => p.id !== currentPlayerId);
-  const currentPlayer = players.find(p => p.id === currentPlayerId);
   
   return (
     <div className="absolute bottom-4 left-0 right-0 z-20">
       <div className="flex justify-center items-center gap-8 px-8">
-        {otherPlayers.map((player, index) => {
+        {otherPlayers.map((player) => {
           // Calculate if this player is becoming the current player
           const nextPlayerIndex = players.findIndex(p => p.id === currentPlayerId);
           const thisPlayerIndex = players.findIndex(p => p.id === player.id);
