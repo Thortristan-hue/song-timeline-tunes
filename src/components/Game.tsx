@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase } from '@/types/game';
@@ -22,8 +23,7 @@ export function Game() {
     joinRoom,
     updatePlayer,
     leaveRoom,
-    setCurrentSong,
-    connectionStatus
+    setCurrentSong
   } = useGameRoom();
 
   const { toast } = useToast();
@@ -81,7 +81,7 @@ export function Game() {
         .from('game_rooms')
         .update({ 
           phase: 'playing',
-          songs: customSongs
+          songs: customSongs as any // Type assertion to handle Json type
         })
         .eq('id', room.id);
 
@@ -178,6 +178,13 @@ export function Game() {
     
     case 'playing':
       if (!room) return <MainMenu onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />;
+      if (!currentPlayer) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+            <div className="text-white text-xl">Player not found...</div>
+          </div>
+        );
+      }
       return (
         <>
           <HostMusicController
@@ -198,6 +205,13 @@ export function Game() {
     
     case 'finished':
       if (!room) return <MainMenu onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />;
+      if (!currentPlayer) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+            <div className="text-white text-xl">Player not found...</div>
+          </div>
+        );
+      }
       return (
         <GamePlay
           room={room}
