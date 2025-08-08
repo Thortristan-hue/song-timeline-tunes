@@ -2,10 +2,27 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, GamePhase, GameMode, GameModeSettings } from '@/types/game';
 import { Json } from '@/integrations/supabase/types';
+import { IGameService } from './IGameService';
+import { 
+  uuidSchema, 
+  cardPlacementSchema, 
+  playerUpdateSchema,
+  songSchema
+} from '@/schemas/validation';
+import { ZodError } from 'zod';
 
-export class GameService {
+export class GameService implements IGameService {
   static async initializeGameWithStartingCards(roomId: string, songs: Song[]): Promise<void> {
     try {
+      // Validate inputs
+      uuidSchema.parse(roomId);
+      if (!songs || songs.length === 0) {
+        throw new Error('Songs array cannot be empty');
+      }
+      
+      // Validate each song
+      songs.forEach(song => songSchema.parse(song));
+
       // Fetch all players in the room
       const { data: players, error: playersError } = await supabase
         .from('players')
@@ -41,7 +58,7 @@ export class GameService {
         // Update the player's timeline with the starting card at position 0
         const { error: updateError } = await supabase
           .from('players')
-          .update({ timeline: [randomCard] as any })
+          .update({ timeline: [randomCard] as Json })
           .eq('id', player.id);
 
         if (updateError) {
@@ -54,6 +71,10 @@ export class GameService {
       console.log('Successfully initialized game with starting cards for all players.');
 
     } catch (error) {
+      if (error instanceof ZodError) {
+        console.error('Validation error in initializeGameWithStartingCards:', error.issues);
+        throw new Error(`Invalid input: ${error.issues.map(i => i.message).join(', ')}`);
+      }
       console.error('Error in initializeGameWithStartingCards:', error);
       throw error;
     }
@@ -61,11 +82,19 @@ export class GameService {
 
   static async placeCard(roomId: string, playerId: string, song: Song, position: number): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; }> {
     try {
+      // Validate inputs using zod
+      const validatedInput = cardPlacementSchema.parse({
+        roomId,
+        playerId, 
+        song,
+        position
+      });
+
       // Optimistic update: Assume the card placement is correct
       const { error: playerUpdateError } = await supabase
         .from('players')
-        .update({ timeline: { [position]: song } as any })
-        .eq('id', playerId);
+        .update({ timeline: { [validatedInput.position]: validatedInput.song } as Json })
+        .eq('id', validatedInput.playerId);
 
       if (playerUpdateError) {
         console.error('Error placing card:', playerUpdateError);
@@ -73,29 +102,33 @@ export class GameService {
       }
 
       // Check if the placed card is correct (you'll need to implement this logic)
-      const isCorrect = await this.isCardPlacementCorrect(roomId, playerId, song, position);
+      const isCorrect = await this.isCardPlacementCorrect(validatedInput.roomId, validatedInput.playerId, validatedInput.song, validatedInput.position);
 
       // If the card placement is incorrect, revert the timeline and return
       if (!isCorrect) {
         console.log('Incorrect card placement. Reverting timeline.');
-        await this.revertTimeline(roomId, playerId, position);
+        await this.revertTimeline(validatedInput.roomId, validatedInput.playerId, validatedInput.position);
         return { success: false, correct: false };
       }
 
       // Award points to the player (you'll need to implement this logic)
-      await this.awardPoints(roomId, playerId, 10); // Example: Award 10 points
+      await this.awardPoints(validatedInput.roomId, validatedInput.playerId, 10); // Example: Award 10 points
 
       // Check if the game has ended (you'll need to implement this logic)
-      const gameEnded = await this.checkIfGameEnded(roomId);
+      const gameEnded = await this.checkIfGameEnded(validatedInput.roomId);
 
       if (gameEnded) {
         console.log('Game has ended!');
-        const winner = await this.determineWinner(roomId);
+        const winner = await this.determineWinner(validatedInput.roomId);
         return { success: true, correct: true, gameEnded: true, winner: winner || undefined };
       }
 
       return { success: true, correct: true, gameEnded: false };
     } catch (error) {
+      if (error instanceof ZodError) {
+        console.error('Validation error in placeCard:', error.issues);
+        throw new Error(`Invalid input: ${error.issues.map(i => i.message).join(', ')}`);
+      }
       console.error('Error in placeCard:', error);
       return { success: false };
     }

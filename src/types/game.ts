@@ -1,10 +1,59 @@
 
-export type GamePhase = 'menu' | 'hostLobby' | 'mobileJoin' | 'mobileLobby' | 'playing' | 'finished';
+// UI-specific phase types for better type safety
+export const GamePhase = {
+  MENU: 'menu',
+  HOST_LOBBY: 'hostLobby',
+  MOBILE_JOIN: 'mobileJoin', 
+  MOBILE_LOBBY: 'mobileLobby',
+  PLAYING: 'playing',
+  FINISHED: 'finished'
+} as const;
 
-export type GameMode = 'classic' | 'fiend' | 'sprint';
+export type GamePhase = typeof GamePhase[keyof typeof GamePhase];
+
+// Game mode discriminated union
+export const GameMode = {
+  CLASSIC: 'classic',
+  FIEND: 'fiend', 
+  SPRINT: 'sprint'
+} as const;
+
+export type GameMode = typeof GameMode[keyof typeof GameMode];
 
 // Database phase type (what's actually stored in the database)
-export type DatabasePhase = 'lobby' | 'playing' | 'finished';
+export const DatabasePhase = {
+  LOBBY: 'lobby',
+  PLAYING: 'playing', 
+  FINISHED: 'finished'
+} as const;
+
+export type DatabasePhase = typeof DatabasePhase[keyof typeof DatabasePhase];
+
+// Phase transition helpers
+export const canTransitionTo = (from: GamePhase, to: GamePhase): boolean => {
+  const transitions: Record<GamePhase, GamePhase[]> = {
+    [GamePhase.MENU]: [GamePhase.HOST_LOBBY, GamePhase.MOBILE_JOIN],
+    [GamePhase.HOST_LOBBY]: [GamePhase.PLAYING, GamePhase.MENU],
+    [GamePhase.MOBILE_JOIN]: [GamePhase.MOBILE_LOBBY, GamePhase.MENU],
+    [GamePhase.MOBILE_LOBBY]: [GamePhase.PLAYING, GamePhase.MENU],
+    [GamePhase.PLAYING]: [GamePhase.FINISHED, GamePhase.MENU],
+    [GamePhase.FINISHED]: [GamePhase.MENU, GamePhase.HOST_LOBBY, GamePhase.MOBILE_LOBBY]
+  };
+  
+  return transitions[from]?.includes(to) ?? false;
+};
+
+export const isHostPhase = (phase: GamePhase): boolean => {
+  return phase === GamePhase.HOST_LOBBY;
+};
+
+export const isPlayerPhase = (phase: GamePhase): boolean => {
+  return [GamePhase.MOBILE_JOIN, GamePhase.MOBILE_LOBBY].includes(phase);
+};
+
+export const isGamePhase = (phase: GamePhase): boolean => {
+  return [GamePhase.PLAYING, GamePhase.FINISHED].includes(phase);
+};
 
 export interface GameModeSettings {
   // Fiend Mode settings

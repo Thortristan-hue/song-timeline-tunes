@@ -12,7 +12,24 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Build artifacts
+build/
+out/
+coverage/
+
+# Lock files (only keep one)
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +39,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary files
+.tmp/
+temp/

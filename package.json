@@ -11,6 +11,9 @@
     "preview": "vite preview"
   },
   "homepage": "./",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",

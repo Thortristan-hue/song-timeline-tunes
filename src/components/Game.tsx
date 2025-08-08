@@ -9,8 +9,11 @@ import { MobileJoinFlow } from './MobileJoinFlow';
 import MobilePlayerLobby from './MobilePlayerLobby';
 import { GamePlay } from './GamePlay';
 import { VictoryScreen } from './VictoryScreen';
+import { Feedback } from './Feedback';
 import { useToast } from '@/components/ui/use-toast';
+import { useConfettiStore } from '@/stores/useConfettiStore';
 import { GameService } from '@/services/gameService';
+import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
 
 interface GameState {
   phase: GamePhase;
@@ -18,13 +21,29 @@ interface GameState {
   playerName?: string;
   isHost: boolean;
   songs: Song[];
+  // Game orchestration state
+  isProcessingMove: boolean;
+  feedback: { show: boolean; correct: boolean; song: Song | null };
+  winner: Player | null;
+  showVictoryScreen: boolean;
+  isPlaying: boolean;
+  mysteryCardRevealed: boolean;
+  cardPlacementResult: { correct: boolean; song: Song } | null;
 }
 
 export function Game() {
   const [gameState, setGameState] = useState<GameState>({
-    phase: 'menu',
+    phase: GamePhase.MENU,
     isHost: false,
-    songs: []
+    songs: [],
+    // Game orchestration state
+    isProcessingMove: false,
+    feedback: { show: false, correct: false, song: null },
+    winner: null,
+    showVictoryScreen: false,
+    isPlaying: false,
+    mysteryCardRevealed: false,
+    cardPlacementResult: null
   });
 
   const {
@@ -50,6 +69,7 @@ export function Game() {
 
   const gameLogic = useGameLogic(room?.id || null, players, room, setCurrentSong);
   const { toast } = useToast();
+  const { fire } = useConfettiStore();
 
   // Handle create room
   const handleCreateRoom = useCallback(async (hostName: string) => {
@@ -57,7 +77,7 @@ export function Game() {
     if (lobbyCode) {
       setGameState(prev => ({
         ...prev,
-        phase: 'hostLobby' as GamePhase,
+        phase: GamePhase.HOST_LOBBY,
         lobbyCode,
         isHost: true
       }));
@@ -70,7 +90,7 @@ export function Game() {
     if (success) {
       setGameState(prev => ({
         ...prev,
-        phase: 'mobileLobby' as GamePhase,
+        phase: GamePhase.MOBILE_LOBBY,
         lobbyCode,
         playerName,
         isHost: false
@@ -113,7 +133,7 @@ export function Game() {
       await startGame();
       setGameState(prev => ({
         ...prev,
-        phase: 'playing' as GamePhase
+        phase: GamePhase.PLAYING
       }));
     } catch (error) {
       console.error('Failed to start game:', error);
@@ -125,11 +145,15 @@ export function Game() {
     }
   }, [startGame, toast]);
 
-  // Handle card placement
+  // Handle card placement with full orchestration
   const handlePlaceCard = useCallback(async (song: Song, position: number) => {
-    if (!room || !currentPlayer) return { success: false };
+    if (!room || !currentPlayer || gameState.isProcessingMove) return { success: false };
 
+    setGameState(prev => ({ ...prev, isProcessingMove: true }));
+    
     try {
+      console.log('🃏 Card placement attempted:', { song: song.deezer_title, position });
+      
       const result = await GameService.placeCard(
         room.id,
         currentPlayer.id,
@@ -137,29 +161,127 @@ export function Game() {
         position
       );
 
-      if (result.gameEnded) {
-        setGameState(prev => ({
-          ...prev,
-          phase: 'finished' as GamePhase
-        }));
+      if (result.success) {
+        console.log('✅ Card placed successfully');
+        
+        // Show feedback if correctness information is available
+        if (result.correct !== undefined) {
+          setGameState(prev => ({
+            ...prev,
+            feedback: {
+              show: true,
+              correct: result.correct,
+              song: song
+            },
+            cardPlacementResult: {
+              correct: result.correct,
+              song: song
+            }
+          }));
+          
+          // Auto-hide feedback after delay
+          setTimeout(() => {
+            setGameState(prev => ({
+              ...prev,
+              feedback: { show: false, correct: false, song: null },
+              cardPlacementResult: null
+            }));
+          }, 3000);
+        }
+        
+        // Check for game end with winner
+        if (result.gameEnded && result.winner) {
+          console.log('🎉 Game ended with winner:', result.winner.name);
+          setGameState(prev => ({
+            ...prev,
+            phase: GamePhase.FINISHED,
+            winner: result.winner || null,
+            showVictoryScreen: true
+          }));
+          fire(); // Trigger confetti
+        } else if (result.gameEnded) {
+          // Game ended without specific winner info
+          setGameState(prev => ({
+            ...prev,
+            phase: GamePhase.FINISHED
+          }));
+        }
       }
 
       return result;
     } catch (error) {
-      console.error('Failed to place card:', error);
+      console.error('❌ Card placement failed:', error);
+      toast({
+        title: "Card placement failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
       return { success: false };
+    } finally {
+      setGameState(prev => ({ ...prev, isProcessingMove: false }));
     }
-  }, [room, currentPlayer]);
+  }, [room, currentPlayer, gameState.isProcessingMove, toast, fire]);
 
-  // Handle leave room
+  // Handle audio playback control
+  const handlePlayPause = useCallback(async () => {
+    const newIsPlaying = !gameState.isPlaying;
+    
+    // Actually control audio playback using audio engine
+    if (room?.current_song?.preview_url) {
+      if (newIsPlaying) {
+        console.log('[Game] Starting audio playback for player:', room.current_song.deezer_title);
+        try {
+          await unifiedAudioEngine.playPreview(room.current_song.preview_url);
+          setGameState(prev => ({ ...prev, isPlaying: true }));
+          
+          // Auto-stop after 30 seconds
+          setTimeout(() => {
+            setGameState(prev => ({ ...prev, isPlaying: false }));
+          }, 30000);
+        } catch (error) {
+          console.error('[Game] Failed to start audio playback:', error);
+          toast({
+            title: "Audio playback failed",
+            description: "Unable to play song preview",
+            variant: "destructive",
+          });
+          setGameState(prev => ({ ...prev, isPlaying: false }));
+        }
+      } else {
+        console.log('[Game] Stopping audio playback for player');
+        unifiedAudioEngine.stopPreview();
+        setGameState(prev => ({ ...prev, isPlaying: false }));
+      }
+    } else {
+      console.warn('[Game] No preview URL available for current song');
+      setGameState(prev => ({ ...prev, isPlaying: false }));
+      if (newIsPlaying) {
+        toast({
+          title: "No preview available",
+          description: "This song doesn't have a preview",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [gameState.isPlaying, room?.current_song, toast]);
   const handleLeaveRoom = useCallback(() => {
     // Clear any pending character data
     localStorage.removeItem('pendingCharacter');
+    // Stop any audio playback
+    unifiedAudioEngine.stopPreview();
     leaveRoom();
     setGameState({
-      phase: 'menu',
+      phase: GamePhase.MENU,
       isHost: false,
-      songs: []
+      songs: [],
+      // Reset game orchestration state
+      isProcessingMove: false,
+      feedback: { show: false, correct: false, song: null },
+      winner: null,
+      showVictoryScreen: false,
+      isPlaying: false,
+      mysteryCardRevealed: false,
+      cardPlacementResult: null
     });
   }, [leaveRoom]);
 
@@ -172,7 +294,7 @@ export function Game() {
   const handleGoToMobileJoin = useCallback(() => {
     setGameState(prev => ({
       ...prev,
-      phase: 'mobileJoin' as GamePhase
+      phase: GamePhase.MOBILE_JOIN
     }));
   }, []);
 
@@ -193,11 +315,11 @@ export function Game() {
     if (room) {
       setGameState(prev => {
         // Only update phase when it's an actual game phase change
-        if (room.phase === 'playing' && prev.phase !== 'playing') {
-          return { ...prev, phase: 'playing', lobbyCode: room.lobby_code };
+        if (room.phase === GamePhase.PLAYING && prev.phase !== GamePhase.PLAYING) {
+          return { ...prev, phase: GamePhase.PLAYING, lobbyCode: room.lobby_code };
         }
-        if (room.phase === 'finished' && prev.phase !== 'finished') {
-          return { ...prev, phase: 'finished', lobbyCode: room.lobby_code };
+        if (room.phase === GamePhase.FINISHED && prev.phase !== GamePhase.FINISHED) {
+          return { ...prev, phase: GamePhase.FINISHED, lobbyCode: room.lobby_code };
         }
         
         // Just update lobby code for other phases
@@ -206,10 +328,18 @@ export function Game() {
     }
   }, [room?.phase, room?.lobby_code]);
 
+  // Cleanup audio when mystery card changes and reset playing state
+  useEffect(() => {
+    setGameState(prev => ({ ...prev, isPlaying: false }));
+    return () => {
+      unifiedAudioEngine.stopPreview();
+    };
+  }, [room?.current_song?.id]);
+
   // Render current phase
   const renderCurrentPhase = () => {
     switch (gameState.phase) {
-      case 'menu':
+      case GamePhase.MENU:
         return (
           <MainMenu 
             onCreateRoom={() => {
@@ -220,7 +350,7 @@ export function Game() {
           />
         );
 
-      case 'hostLobby':
+      case GamePhase.HOST_LOBBY:
         return (
           <HostLobby
             room={room!}
@@ -233,7 +363,7 @@ export function Game() {
           />
         );
 
-      case 'mobileJoin':
+      case GamePhase.MOBILE_JOIN:
         return (
           <MobileJoinFlow
             onJoinRoom={handleJoinRoom}
@@ -242,7 +372,7 @@ export function Game() {
           />
         );
 
-      case 'mobileLobby':
+      case GamePhase.MOBILE_LOBBY:
         return (
           <MobilePlayerLobby
             room={room}
@@ -253,7 +383,12 @@ export function Game() {
           />
         );
 
-      case 'playing':
+      case GamePhase.PLAYING:
+        // Show feedback overlay if active
+        if (gameState.feedback.show) {
+          return <Feedback correct={gameState.feedback.correct} song={gameState.feedback.song} />;
+        }
+        
         return (
           <GamePlay
             room={room}
@@ -266,19 +401,35 @@ export function Game() {
             connectionStatus={connectionStatus}
             onReconnect={() => {}}
             onReplayGame={() => {}}
+            // Pass consolidated orchestration state
+            isProcessingMove={gameState.isProcessingMove}
+            isPlaying={gameState.isPlaying}
+            onPlayPause={handlePlayPause}
+            mysteryCardRevealed={gameState.mysteryCardRevealed}
+            cardPlacementResult={gameState.cardPlacementResult}
+            gameEnded={room?.phase === GamePhase.FINISHED}
           />
         );
 
-      case 'finished':
+      case GamePhase.FINISHED:
+        // Show victory screen or use winner from game state if available
+        const winner = gameState.winner || players.find(p => p.score === Math.max(...players.map(p => p.score))) || null;
         return (
           <VictoryScreen
-            winner={players.find(p => p.score === Math.max(...players.map(p => p.score))) || null}
+            winner={winner}
             players={players}
             onBackToMenu={handleBackToMenu}
             onPlayAgain={() => {
               setGameState(prev => ({
                 ...prev,
-                phase: isHost ? ('hostLobby' as GamePhase) : ('mobileLobby' as GamePhase)
+                phase: isHost ? GamePhase.HOST_LOBBY : GamePhase.MOBILE_LOBBY,
+                // Reset game state for new game
+                winner: null,
+                showVictoryScreen: false,
+                isPlaying: false,
+                mysteryCardRevealed: false,
+                cardPlacementResult: null,
+                feedback: { show: false, correct: false, song: null }
               }));
             }}
           />
