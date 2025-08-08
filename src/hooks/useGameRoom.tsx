@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, DatabasePhase } from '@/types/game';
-import { useToast } from '@/components/ui/use-toast';
 
 interface UseGameRoomReturn {
   room: GameRoom | null;
@@ -43,6 +42,19 @@ export function useGameRoom(): UseGameRoomReturn {
   const playersSubscriptionRef = useRef<any>(null);
   const roomIdRef = useRef<string | null>(null);
   const currentPlayerIdRef = useRef<string | null>(null);
+
+  // Helper function to transform database player to Player interface
+  const transformDatabasePlayer = (dbPlayer: any): Player => {
+    return {
+      id: dbPlayer.id,
+      name: dbPlayer.name,
+      color: dbPlayer.color,
+      timelineColor: dbPlayer.timeline_color, // Convert snake_case to camelCase
+      score: dbPlayer.score || 0,
+      timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
+      character: dbPlayer.character
+    };
+  };
 
   const setupRoomSubscription = useCallback((roomId: string) => {
     console.log('[useGameRoom] Setting up room subscription for:', roomId);
@@ -115,13 +127,16 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       console.log('[useGameRoom] Players fetched:', data?.length || 0);
-      setPlayers(data || []);
+      
+      // Transform database players to Player interface format
+      const transformedPlayers = data?.map(transformDatabasePlayer) || [];
+      setPlayers(transformedPlayers);
 
       // Update current player if we have a stored ID
       if (currentPlayerIdRef.current && data) {
-        const player = data.find(p => p.id === currentPlayerIdRef.current);
-        if (player) {
-          setCurrentPlayer(player);
+        const dbPlayer = data.find(p => p.id === currentPlayerIdRef.current);
+        if (dbPlayer) {
+          setCurrentPlayer(transformDatabasePlayer(dbPlayer));
         }
       }
     } catch (error) {
@@ -201,7 +216,7 @@ export function useGameRoom(): UseGameRoomReturn {
           timeline_color: '#FF6B9D',
           score: 0,
           timeline: [],
-          character: 'jessica' // Default character
+          character: 'char_jessica' // Default character
         })
         .select()
         .single();
@@ -214,7 +229,7 @@ export function useGameRoom(): UseGameRoomReturn {
 
       console.log('[useGameRoom] Player created:', playerData);
       setRoom(roomData as GameRoom);
-      setCurrentPlayer(playerData);
+      setCurrentPlayer(transformDatabasePlayer(playerData));
       setIsHost(false);
       
       // Store player ID for reconnection

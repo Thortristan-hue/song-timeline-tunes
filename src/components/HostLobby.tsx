@@ -7,7 +7,7 @@ import { Users, Music, Gamepad2, Play } from 'lucide-react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { PlaylistLoader } from './PlaylistLoader';
 import { QRCodeGenerator } from './QRCodeGenerator';
-import { CHARACTERS } from '@/constants/characters';
+import { GAME_CHARACTERS, Character } from '@/constants/characters';
 
 interface HostLobbyProps {
   room: GameRoom;
@@ -77,12 +77,12 @@ export function HostLobby({
               <CardContent>
                 <div className="space-y-3">
                   {players.map((player) => {
-                    const character = CHARACTERS.find(c => c.id === player.character);
+                    const character = GAME_CHARACTERS.find((c: Character) => c.id === player.character);
                     return (
                       <div key={player.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
                         {character && (
                           <img 
-                            src={character.avatar} 
+                            src={character.image} 
                             alt={character.name}
                             className="w-10 h-10 rounded-full"
                           />
