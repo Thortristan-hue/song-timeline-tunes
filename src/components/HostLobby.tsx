@@ -12,16 +12,19 @@ interface HostLobbyProps {
   room: GameRoom;
   players: Player[];
   customSongs: Song[];
+  onStartGame: () => void;
+  onSongsLoaded: (songs: Song[]) => void;
 }
 
 export function HostLobby({ 
   room, 
   players,
-  customSongs 
+  customSongs,
+  onStartGame,
+  onSongsLoaded
 }: HostLobbyProps) {
   const [songs, setSongs] = useState<Song[]>(customSongs || []);
   const [isStartingGame, setIsStartingGame] = useState(false);
-  const [playlistUrl, setPlaylistUrl] = useState('');
 
   // Enhanced debugging for HostLobby
   useEffect(() => {
@@ -50,12 +53,14 @@ export function HostLobby({
     
     setIsStartingGame(true);
     console.log('[HostLobby] Starting game...');
-    // Game start logic will be handled by the parent component
+    await onStartGame();
+    setIsStartingGame(false);
   };
 
-  const onSongsLoaded = (loadedSongs: Song[]) => {
+  const handleSongsLoaded = (loadedSongs: Song[]) => {
     console.log('[HostLobby] Songs loaded:', loadedSongs.length);
     setSongs(loadedSongs);
+    onSongsLoaded(loadedSongs);
   };
 
   return (
@@ -123,7 +128,7 @@ export function HostLobby({
               </CardHeader>
               <CardContent>
                 <PlaylistLoader
-                  onSongsLoaded={onSongsLoaded}
+                  onSongsLoaded={handleSongsLoaded}
                 />
               </CardContent>
             </Card>
@@ -137,7 +142,7 @@ export function HostLobby({
                 <CardTitle className="text-white text-center">Join Game</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center space-y-4">
-                <QRCodeGenerator roomCode={room?.lobby_code || ''} />
+                <QRCodeGenerator value={room?.lobby_code || ''} />
                 <p className="text-white/70 text-center">
                   Players can scan this QR code or visit the website and enter code:
                 </p>

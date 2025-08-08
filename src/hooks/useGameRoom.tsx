@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Song, Player, GameRoom, GamePhase, DatabasePhase } from '@/types/game';
+import { Song, Player, GameRoom, DatabasePhase } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 
 interface UseGameRoomReturn {
@@ -38,7 +39,6 @@ export function useGameRoom(): UseGameRoomReturn {
     retryCount: 0
   });
 
-  const { toast } = useToast();
   const subscriptionRef = useRef<any>(null);
   const playersSubscriptionRef = useRef<any>(null);
   const roomIdRef = useRef<string | null>(null);
@@ -99,26 +99,6 @@ export function useGameRoom(): UseGameRoomReturn {
         }
       )
       .subscribe();
-  }, []);
-
-  const fetchRoom = useCallback(async (roomId: string): Promise<GameRoom | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('game_rooms')
-        .select('*')
-        .eq('id', roomId)
-        .single();
-
-      if (error) {
-        console.error('[useGameRoom] Error fetching room:', error);
-        return null;
-      }
-
-      return data as GameRoom;
-    } catch (error) {
-      console.error('[useGameRoom] Error fetching room:', error);
-      return null;
-    }
   }, []);
 
   const fetchPlayers = useCallback(async (roomId: string) => {
@@ -238,7 +218,7 @@ export function useGameRoom(): UseGameRoomReturn {
       setIsHost(false);
       
       // Store player ID for reconnection
-      currentPlayerIdRef.current = playerData.id || undefined;
+      currentPlayerIdRef.current = playerData.id || null;
       
       // Set up subscriptions
       setupRoomSubscription(roomData.id);

@@ -24,9 +24,12 @@ export function HostMusicController({ room, players, isHost }: HostMusicControll
     
     const initializeGame = async () => {
       try {
-        // Start the first round
-        console.log('[HostMusicController] Starting first round');
-        await GameService.startNextRound(room.id);
+        // Start the first round by selecting a random song
+        if (room.songs && room.songs.length > 0) {
+          const randomSong = room.songs[Math.floor(Math.random() * room.songs.length)];
+          console.log('[HostMusicController] Starting first round with song:', randomSong.deezer_title);
+          await setCurrentSong(randomSong);
+        }
       } catch (error) {
         console.error('[HostMusicController] Failed to start first round:', error);
         toast({
@@ -43,7 +46,7 @@ export function HostMusicController({ room, players, isHost }: HostMusicControll
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [room, isHost, toast]);
+  }, [room, isHost, toast, setCurrentSong]);
 
   // Monitor current song changes and sync with room state
   useEffect(() => {
@@ -75,7 +78,7 @@ export function HostMusicController({ room, players, isHost }: HostMusicControll
         console.log('[HostMusicController] Player completed timeline:', currentPlayer.name);
         
         try {
-          await GameService.checkGameEnd(room.id);
+          await GameService.checkIfGameEnded(room.id);
         } catch (error) {
           console.error('[HostMusicController] Error checking game end:', error);
         }
