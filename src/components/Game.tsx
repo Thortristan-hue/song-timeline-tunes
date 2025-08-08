@@ -22,7 +22,7 @@ interface GameState {
 
 export function Game() {
   const [gameState, setGameState] = useState<GameState>({
-    phase: 'menu',
+    phase: GamePhase.MENU,
     isHost: false,
     songs: []
   });
@@ -57,7 +57,7 @@ export function Game() {
     if (lobbyCode) {
       setGameState(prev => ({
         ...prev,
-        phase: 'hostLobby' as GamePhase,
+        phase: GamePhase.HOST_LOBBY,
         lobbyCode,
         isHost: true
       }));
@@ -70,7 +70,7 @@ export function Game() {
     if (success) {
       setGameState(prev => ({
         ...prev,
-        phase: 'mobileLobby' as GamePhase,
+        phase: GamePhase.MOBILE_LOBBY,
         lobbyCode,
         playerName,
         isHost: false
@@ -113,7 +113,7 @@ export function Game() {
       await startGame();
       setGameState(prev => ({
         ...prev,
-        phase: 'playing' as GamePhase
+        phase: GamePhase.PLAYING
       }));
     } catch (error) {
       console.error('Failed to start game:', error);
@@ -140,7 +140,7 @@ export function Game() {
       if (result.gameEnded) {
         setGameState(prev => ({
           ...prev,
-          phase: 'finished' as GamePhase
+          phase: GamePhase.FINISHED
         }));
       }
 
@@ -157,7 +157,7 @@ export function Game() {
     localStorage.removeItem('pendingCharacter');
     leaveRoom();
     setGameState({
-      phase: 'menu',
+      phase: GamePhase.MENU,
       isHost: false,
       songs: []
     });
@@ -172,7 +172,7 @@ export function Game() {
   const handleGoToMobileJoin = useCallback(() => {
     setGameState(prev => ({
       ...prev,
-      phase: 'mobileJoin' as GamePhase
+      phase: GamePhase.MOBILE_JOIN
     }));
   }, []);
 
@@ -193,11 +193,11 @@ export function Game() {
     if (room) {
       setGameState(prev => {
         // Only update phase when it's an actual game phase change
-        if (room.phase === 'playing' && prev.phase !== 'playing') {
-          return { ...prev, phase: 'playing', lobbyCode: room.lobby_code };
+        if (room.phase === GamePhase.PLAYING && prev.phase !== GamePhase.PLAYING) {
+          return { ...prev, phase: GamePhase.PLAYING, lobbyCode: room.lobby_code };
         }
-        if (room.phase === 'finished' && prev.phase !== 'finished') {
-          return { ...prev, phase: 'finished', lobbyCode: room.lobby_code };
+        if (room.phase === GamePhase.FINISHED && prev.phase !== GamePhase.FINISHED) {
+          return { ...prev, phase: GamePhase.FINISHED, lobbyCode: room.lobby_code };
         }
         
         // Just update lobby code for other phases
@@ -209,7 +209,7 @@ export function Game() {
   // Render current phase
   const renderCurrentPhase = () => {
     switch (gameState.phase) {
-      case 'menu':
+      case GamePhase.MENU:
         return (
           <MainMenu 
             onCreateRoom={() => {
@@ -220,7 +220,7 @@ export function Game() {
           />
         );
 
-      case 'hostLobby':
+      case GamePhase.HOST_LOBBY:
         return (
           <HostLobby
             room={room!}
@@ -233,7 +233,7 @@ export function Game() {
           />
         );
 
-      case 'mobileJoin':
+      case GamePhase.MOBILE_JOIN:
         return (
           <MobileJoinFlow
             onJoinRoom={handleJoinRoom}
@@ -242,7 +242,7 @@ export function Game() {
           />
         );
 
-      case 'mobileLobby':
+      case GamePhase.MOBILE_LOBBY:
         return (
           <MobilePlayerLobby
             room={room}
@@ -253,7 +253,7 @@ export function Game() {
           />
         );
 
-      case 'playing':
+      case GamePhase.PLAYING:
         return (
           <GamePlay
             room={room}
@@ -269,7 +269,7 @@ export function Game() {
           />
         );
 
-      case 'finished':
+      case GamePhase.FINISHED:
         return (
           <VictoryScreen
             winner={players.find(p => p.score === Math.max(...players.map(p => p.score))) || null}
@@ -278,7 +278,7 @@ export function Game() {
             onPlayAgain={() => {
               setGameState(prev => ({
                 ...prev,
-                phase: isHost ? ('hostLobby' as GamePhase) : ('mobileLobby' as GamePhase)
+                phase: isHost ? GamePhase.HOST_LOBBY : GamePhase.MOBILE_LOBBY
               }));
             }}
           />
