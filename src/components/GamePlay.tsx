@@ -112,7 +112,7 @@ export function GamePlay({
     <MobilePlayerGameView
       currentPlayer={currentPlayer}
       currentTurnPlayer={currentTurnPlayer}
-      currentSong={room?.current_song || null}
+      currentSong={room?.current_song}
       roomCode={room.lobby_code}
       isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
       isPlaying={isPlaying}
