@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
 

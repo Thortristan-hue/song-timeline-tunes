@@ -1,8 +1,8 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { Song, GamePhase } from '@/types/game';
+import { Song, GamePhase, Player } from '@/types/game';
 import { MainMenu } from './MainMenu';
 import { HostLobby } from './HostLobby';
 import { MobileJoinFlow } from './MobileJoinFlow';
@@ -57,13 +57,9 @@ export function Game() {
     joinRoom,
     updatePlayer,
     updateRoomSongs,
-    updateRoomGamemode,
     startGame,
     leaveRoom,
-    placeCard,
     setCurrentSong,
-    assignStartingCards,
-    kickPlayer,
     connectionStatus
   } = useGameRoom();
 
@@ -123,7 +119,7 @@ export function Game() {
     };
 
     // Add a small delay to ensure all state is settled
-    const timeoutId = setTimeout(handlePendingCharacter, 500);
+    const timeoutId = setTimeout(handlePendingCharacter, 1000);
     return () => clearTimeout(timeoutId);
   }, [room?.id, currentPlayer?.id, isHost, updatePlayer]);
 
@@ -170,11 +166,11 @@ export function Game() {
             ...prev,
             feedback: {
               show: true,
-              correct: result.correct,
+              correct: result.correct || false,
               song: song
             },
             cardPlacementResult: {
-              correct: result.correct,
+              correct: result.correct || false,
               song: song
             }
           }));
@@ -264,6 +260,7 @@ export function Game() {
       }
     }
   }, [gameState.isPlaying, room?.current_song, toast]);
+
   const handleLeaveRoom = useCallback(() => {
     // Clear any pending character data
     localStorage.removeItem('pendingCharacter');
@@ -351,9 +348,9 @@ export function Game() {
         );
 
       case GamePhase.HOST_LOBBY:
-        return (
+        return room ? (
           <HostLobby
-            room={room!}
+            room={room}
             players={players}
             onLoadPlaylist={(songs: Song[]) => {
               setGameState(prev => ({ ...prev, songs }));
@@ -361,7 +358,7 @@ export function Game() {
             }}
             customSongs={gameState.songs}
           />
-        );
+        ) : null;
 
       case GamePhase.MOBILE_JOIN:
         return (
@@ -389,7 +386,7 @@ export function Game() {
           return <Feedback correct={gameState.feedback.correct} song={gameState.feedback.song} />;
         }
         
-        return (
+        return room ? (
           <GamePlay
             room={room}
             players={players}
@@ -409,7 +406,7 @@ export function Game() {
             cardPlacementResult={gameState.cardPlacementResult}
             gameEnded={room?.phase === GamePhase.FINISHED}
           />
-        );
+        ) : null;
 
       case GamePhase.FINISHED:
         // Show victory screen or use winner from game state if available
