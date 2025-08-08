@@ -428,7 +428,7 @@ export function Game() {
               }));
             }}
           />
-        );
+        ) : null;
 
       default:
         return (
