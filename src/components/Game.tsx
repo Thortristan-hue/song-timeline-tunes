@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
@@ -119,24 +120,6 @@ export function Game() {
     const timeoutId = setTimeout(handlePendingCharacter, 1000);
     return () => clearTimeout(timeoutId);
   }, [room?.id, currentPlayer?.id, isHost, updatePlayer]);
-
-  // Handle start game
-  const handleStartGame = useCallback(async () => {
-    try {
-      await startGame();
-      setGameState(prev => ({
-        ...prev,
-        phase: GamePhase.PLAYING
-      }));
-    } catch (error) {
-      console.error('Failed to start game:', error);
-      toast({
-        title: "Failed to Start Game",
-        description: "Please try again",
-        variant: "destructive",
-      });
-    }
-  }, [startGame, toast]);
 
   // Handle card placement with full orchestration
   const handlePlaceCard = useCallback(async (song: Song, position: number) => {
@@ -354,7 +337,6 @@ export function Game() {
               updateRoomSongs(songs);
             }}
             customSongs={gameState.songs}
-            onStartGame={handleStartGame}
           />
         ) : null;
 
@@ -409,6 +391,24 @@ export function Game() {
       case GamePhase.FINISHED:
         // Show victory screen or use winner from game state if available
         const winner = gameState.winner || (players.length > 0 ? players.find(p => p.score === Math.max(...players.map(p => p.score))) : null);
+        
+        if (!winner) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-4">Game Finished</h2>
+                <p className="mb-4">No winner could be determined</p>
+                <button 
+                  onClick={handleBackToMenu}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded"
+                >
+                  Back to Menu
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <VictoryScreen
             winner={winner}
@@ -428,7 +428,7 @@ export function Game() {
               }));
             }}
           />
-        ) : null;
+        );
 
       default:
         return (
