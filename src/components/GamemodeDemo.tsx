@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SprintModeHostView } from '@/components/sprint/SprintModeHostView';
 import { SprintModePlayerView } from '@/components/sprint/SprintModePlayerView';
 import { FiendModeHostView } from '@/components/fiend/FiendModeHostView';
@@ -212,7 +212,6 @@ export function GamemodeDemo({ onBack }: GamemodeDemoProps) {
           <FiendModeHostView
             players={mockPlayers}
             currentSong={mockSong}
-            rounds={5}
             roomCode="DEMO"
             currentRound={2}
             isPlaying={isPlaying}
@@ -225,7 +224,6 @@ export function GamemodeDemo({ onBack }: GamemodeDemoProps) {
             currentPlayer={mockPlayers[0]}
             currentSong={mockSong}
             roomCode="DEMO"
-            rounds={5}
             currentRound={2}
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
