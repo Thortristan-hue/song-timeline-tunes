@@ -63,7 +63,6 @@ export function Game() {
     connectionStatus
   } = useGameRoom();
 
-  const gameLogic = useGameLogic(room?.id || null, players, room, setCurrentSong);
   const { toast } = useToast();
   const { fire } = useConfettiStore();
 
@@ -386,7 +385,7 @@ export function Game() {
           return <Feedback correct={gameState.feedback.correct} song={gameState.feedback.song} />;
         }
         
-        return room ? (
+        return room && currentPlayer ? (
           <GamePlay
             room={room}
             players={players}
@@ -410,10 +409,10 @@ export function Game() {
 
       case GamePhase.FINISHED:
         // Show victory screen or use winner from game state if available
-        const winner = gameState.winner || players.find(p => p.score === Math.max(...players.map(p => p.score))) || null;
+        const winner = gameState.winner || players.find(p => p.score === Math.max(...players.map(p => p.score)));
         return (
           <VictoryScreen
-            winner={winner}
+            winner={winner || null}
             players={players}
             onBackToMenu={handleBackToMenu}
             onPlayAgain={() => {

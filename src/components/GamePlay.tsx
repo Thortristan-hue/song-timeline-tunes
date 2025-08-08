@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { GameLogic } from '@/services/gameLogic';
 import { useToast } from '@/hooks/use-toast';
@@ -36,13 +37,8 @@ export function GamePlay({
   currentPlayer, 
   isHost, 
   onPlaceCard, 
-  onSetCurrentSong, 
-  customSongs, 
-  connectionStatus, 
-  onReconnect, 
-  onReplayGame,
+  onSetCurrentSong,
   // Orchestration state from Game.tsx
-  isProcessingMove,
   isPlaying,
   onPlayPause,
   mysteryCardRevealed,
@@ -85,40 +81,6 @@ export function GamePlay({
     return { success: result.success };
   };
 
-  const handleSetMysteryCard = async () => {
-    if (!isHost || !gameLogic) return;
-
-    try {
-      const song = gameLogic.getRandomAvailableSong();
-      if (song) {
-        console.log('🎵 Setting mystery card:', song.deezer_title);
-        await onSetCurrentSong(song);
-      } else {
-        console.warn('No available songs to set as mystery card');
-        toast({
-          title: "No songs available",
-          description: "Please add more songs to the playlist",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('❌ Failed to set mystery card:', error);
-      toast({
-        title: "Failed to set mystery card",
-        description: "Please try again",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBackToMenu = () => {
-    window.location.reload();
-  };
-
-  const handlePlayAgain = () => {
-    onReplayGame();
-  };
-
   if (!gameLogic) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -129,9 +91,6 @@ export function GamePlay({
       </div>
     );
   }
-
-  // Show feedback overlay - handled by Game.tsx now
-  // Game end and victory screen also handled by Game.tsx
 
   // Host view - use HostVisuals component
   if (isHost) {
@@ -156,7 +115,7 @@ export function GamePlay({
     <MobilePlayerGameView
       currentPlayer={currentPlayer}
       currentTurnPlayer={currentTurnPlayer}
-      currentSong={room.current_song}
+      currentSong={room.current_song || null}
       roomCode={room.lobby_code}
       isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
       isPlaying={isPlaying}

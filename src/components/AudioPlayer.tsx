@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { MusicRemoteControl } from '@/components/MusicRemoteControl';
 
 interface AudioPlayerProps {
@@ -15,7 +14,6 @@ interface AudioPlayerProps {
 export function AudioPlayer({
   src,
   isPlaying,
-  onPlayPause,
   className,
   disabled = false,
   roomId,
