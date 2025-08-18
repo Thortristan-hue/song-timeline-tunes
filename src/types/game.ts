@@ -1,3 +1,4 @@
+
 // UI-specific phase types for better type safety
 export const GamePhase = {
   MENU: 'menu',
@@ -50,12 +51,12 @@ export const isPlayerPhase = (phase: GamePhase): boolean => {
   return [GamePhase.MOBILE_JOIN, GamePhase.MOBILE_LOBBY].includes(phase);
 };
 
-export function isMobilePhase(phase: GamePhase): phase is 'mobileJoin' | 'mobileLobby' {
-  return phase === 'mobileJoin' || phase === 'mobileLobby';
+export function isMobilePhase(phase: GamePhase): phase is typeof GamePhase.MOBILE_JOIN | typeof GamePhase.MOBILE_LOBBY {
+  return phase === GamePhase.MOBILE_JOIN || phase === GamePhase.MOBILE_LOBBY;
 }
 
-export function isGamePhase(phase: GamePhase): phase is 'playing' | 'finished' {
-  return phase === 'playing' || phase === 'finished';
+export function isGamePhase(phase: GamePhase): phase is typeof GamePhase.PLAYING | typeof GamePhase.FINISHED {
+  return phase === GamePhase.PLAYING || phase === GamePhase.FINISHED;
 }
 
 export interface GameModeSettings {

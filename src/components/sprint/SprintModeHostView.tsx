@@ -1,16 +1,14 @@
-import React from 'react';
+
 import { Song, Player } from '@/types/game';
 import { CassettePlayerDisplay } from '@/components/CassettePlayerDisplay';
 import { Play, Pause, Square } from 'lucide-react';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 // Import new assets
 import assRoomcode from '@/assets/ass_roomcode.png';
 import assRythmy from '@/assets/ass_rythmy.png';
 import assSpeaker from '@/assets/ass_speaker.png';
 import assCassBg from '@/assets/ass_cass_bg.png';
-// TODO: Add missing button assets
-// import buttonBlue from '@/assets/button_blue.png';
-// import buttonOrange from '@/assets/button_orange.png';
 
 interface SprintModeHostViewProps {
   players: Player[];
@@ -37,6 +35,9 @@ export function SprintModeHostView({
   onPlayPause = () => {},
   onStop = () => {}
 }: SprintModeHostViewProps) {
+  // Suppress unused variables that may be used in future implementations
+  suppressUnused(currentSong, targetCards, timeLeft, playerTimeouts, recentPlacements, isPlaying);
+
   const sortedPlayers = [...players].sort((a, b) => b.timeline.length - a.timeline.length);
 
   return (
@@ -139,7 +140,7 @@ export function SprintModeHostView({
                 {sortedPlayers[0].timeline
                   .filter(song => song !== null)
                   .sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year))
-                  .map((song, idx) => (
+                  .map((song) => (
                     <div 
                       key={song.id}
                       className="min-w-[120px] text-center p-4 bg-white/10 border border-white/20 rounded-xl backdrop-blur-sm"

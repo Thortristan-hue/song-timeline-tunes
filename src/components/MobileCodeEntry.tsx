@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Key, Check } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface MobileCodeEntryProps {
   onCodeSubmit: (code: string) => void;
@@ -22,8 +20,9 @@ export function MobileCodeEntry({
 }: MobileCodeEntryProps) {
   const [lobbyCode, setLobbyCode] = useState(autoJoinCode || '');
   const [error, setError] = useState('');
-  const soundEffects = useSoundEffects();
-  const { toast } = useToast();
+
+  // Suppress unused variables that may be used in future implementations
+  suppressUnused();
 
   // Auto-submit when code is provided via QR scan
   useEffect(() => {

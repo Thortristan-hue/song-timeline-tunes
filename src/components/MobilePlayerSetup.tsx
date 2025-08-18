@@ -1,12 +1,11 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { GAME_CHARACTERS, getDefaultCharacter } from '@/constants/characters';
+import { GAME_CHARACTERS } from '@/constants/characters';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface MobilePlayerSetupProps {
   lobbyCode: string;
@@ -25,7 +24,9 @@ export function MobilePlayerSetup({
   const [selectedCharacterIndex, setSelectedCharacterIndex] = useState(0); // Default to first character
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
-  const { toast } = useToast();
+
+  // Suppress unused variables that may be used in future implementations
+  suppressUnused();
 
   const selectedCharacter = GAME_CHARACTERS[selectedCharacterIndex];
 

@@ -1,8 +1,10 @@
 
+
 import { useState } from 'react';
 import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
 import { GameRoom, Player } from '@/types/game';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface MobileJoinFlowProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
@@ -21,6 +23,9 @@ export function MobileJoinFlow({
 }: MobileJoinFlowProps) {
   const [currentStep, setCurrentStep] = useState<'code' | 'setup'>('code');
   const [verifiedCode, setVerifiedCode] = useState<string>('');
+
+  // Suppress unused variables that may be used in future implementations
+  suppressUnused(room, currentPlayer, players, onUpdatePlayer);
   
   console.log('🔗 MobileJoinFlow rendered');
 
