@@ -22,9 +22,7 @@ interface MobilePlayerGameViewProps {
 
 export function MobilePlayerGameView({
   currentPlayer,
-  currentTurnPlayer,
   currentSong,
-  isMyTurn,
   isPlaying,
   onPlayPause,
   onPlaceCard,
@@ -89,7 +87,7 @@ export function MobilePlayerGameView({
             </Button>
           </div>
         ) : (
-          <RecordMysteryCard />
+          <RecordMysteryCard song={currentSong} />
         )}
       </div>
     </div>

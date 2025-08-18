@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { HostVisuals } from '@/components/HostVisuals';
 import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
-import { suppressUnused } from '@/utils/suppressUnused';
 
 interface GamePlayProps {
   room: GameRoom;

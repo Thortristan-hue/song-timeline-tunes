@@ -26,14 +26,13 @@ export function HostLobby({
 }: HostLobbyProps) {
   const [isStarting, setIsStarting] = useState(false);
 
-  const handlePlaylistLoaded = (success: boolean, count?: number) => {
-    if (success && count) {
-      console.log(`[HostLobby] Playlist loaded successfully with ${count} songs`);
-    }
+  const handlePlaylistLoad = (songs: Song[]) => {
+    onSongsLoaded(songs);
+    console.log(`[HostLobby] Playlist loaded successfully with ${songs.length} songs`);
   };
 
-  const handleSetCustomSongs = (songs: Song[]) => {
-    onSongsLoaded(songs);
+  const handlePlaylistError = (message: string) => {
+    console.error('[HostLobby] Playlist error:', message);
   };
 
   const handleStartClick = async () => {
@@ -135,9 +134,9 @@ export function HostLobby({
               </CardHeader>
               <CardContent>
                 <PlaylistLoader
-                  onPlaylistLoaded={handlePlaylistLoaded}
-                  setCustomSongs={handleSetCustomSongs}
-                  isDarkMode={true}
+                  onPlaylistLoad={handlePlaylistLoad}
+                  onError={handlePlaylistError}
+                  currentSongs={customSongs}
                 />
               </CardContent>
             </Card>
