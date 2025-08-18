@@ -397,24 +397,6 @@ export default function MobilePlayerGameView({
                   </div>
                 </div>
               </div>
-              
-              {/* Character Display while waiting */}
-              <div className="mt-8">
-                <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
-                  <img
-                    src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
-                    alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
-                    className="h-10 w-10 rounded-full border-2"
-                    style={{ borderColor: currentPlayer.color }}
-                  />
-                  <div className="text-white text-base font-semibold">
-                    {currentPlayer.name}
-                  </div>
-                  <div className="text-white/70 text-sm">
-                    Score: {currentPlayer.score || 0}
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -578,26 +560,8 @@ export default function MobilePlayerGameView({
           </div>
         )}
 
-        {/* Footer with Character and Debug Menu */}
+        {/* Footer with Debug Menu */}
         <div className="flex-shrink-0 py-4">
-          {/* Character Display - moved to more prominent position */}
-          <div className="flex justify-center mb-4">
-            <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
-              <img
-                src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
-                alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
-                className="h-10 w-10 rounded-full border-2"
-                style={{ borderColor: currentPlayer.color }}
-              />
-              <div className="text-white text-base font-semibold">
-                {currentPlayer.name}
-              </div>
-              <div className="text-white/70 text-sm">
-                Score: {currentPlayer.score || 0}
-              </div>
-            </div>
-          </div>
-          
           {/* Debug Menu */}
           <div className="text-center">
             <div 

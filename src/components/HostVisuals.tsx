@@ -90,18 +90,7 @@ export function HostGameView({
 
       {/* Main Content Area */}
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Current Turn Player Timeline (moved to center top) */}
-        {currentTurnPlayer && (
-          <div className="w-full max-w-6xl mb-8">
-            <HostCurrentPlayerTimeline 
-              currentTurnPlayer={currentTurnPlayer}
-              highlightedGapIndex={highlightedGapIndex}
-              mobileViewport={mobileViewport}
-            />
-          </div>
-        )}
-
-        {/* Center - Control Panel (moved to middle) */}
+        {/* Top - Control Panel (moved from middle to top) */}
         <div className="mb-8">
           <div className="relative">
             <img 
@@ -144,6 +133,17 @@ export function HostGameView({
             </div>
           </div>
         </div>
+
+        {/* Center - Current Turn Player Timeline (moved from top to center) */}
+        {currentTurnPlayer && (
+          <div className="w-full max-w-6xl mb-8">
+            <HostCurrentPlayerTimeline 
+              currentTurnPlayer={currentTurnPlayer}
+              highlightedGapIndex={highlightedGapIndex}
+              mobileViewport={mobileViewport}
+            />
+          </div>
+        )}
 
         {/* Mystery Card (moved lower) */}
         <div className="mb-8">
@@ -202,6 +202,45 @@ export function HostGameView({
           </div>
         </div>
       </div>
+
+      {/* Feedback Overlay for Host Display */}
+      {cardPlacementResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 text-center transform transition-all duration-500 scale-100 animate-in fade-in slide-in-from-bottom-4 ${
+            cardPlacementResult.correct ? 'border-4 border-green-500' : 'border-4 border-red-500'
+          }`}>
+            <div className={`text-6xl mb-4 ${cardPlacementResult.correct ? 'text-green-500' : 'text-red-500'}`}>
+              {cardPlacementResult.correct ? '✓' : '✗'}
+            </div>
+            
+            <h2 className={`text-3xl font-bold mb-4 ${cardPlacementResult.correct ? 'text-green-600' : 'text-red-600'}`}>
+              {cardPlacementResult.correct ? 'Correct!' : 'Incorrect!'}
+            </h2>
+            
+            <div className="bg-gray-100 rounded-xl p-4 mb-4">
+              <div className="text-xl font-semibold text-gray-900 mb-2">
+                {cardPlacementResult.song.deezer_title}
+              </div>
+              <div className="text-lg text-gray-700 mb-3">
+                by {cardPlacementResult.song.deezer_artist}
+              </div>
+              <div className={`inline-block text-white px-4 py-2 rounded-xl font-bold text-2xl ${
+                cardPlacementResult.correct ? 'bg-green-500' : 'bg-red-500'
+              }`}>
+                Released in {cardPlacementResult.song.release_year}
+              </div>
+            </div>
+            
+            <div className={`text-lg font-medium ${cardPlacementResult.correct ? 'text-green-600' : 'text-red-600'}`}>
+              {cardPlacementResult.correct ? (
+                `${currentTurnPlayer?.name} got it right! +1 point`
+              ) : (
+                `${currentTurnPlayer?.name} missed this one`
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
