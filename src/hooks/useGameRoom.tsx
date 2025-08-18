@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player, GameRoom, DatabasePhase } from '@/types/game';
+import { Json } from '@/integrations/supabase/types';
 
 interface UseGameRoomReturn {
   room: GameRoom | null;
@@ -171,7 +172,7 @@ export function useGameRoom(): UseGameRoomReturn {
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
-          host_id: 'temp_host_id',
+          host_id: `host_${Date.now()}`,
           host_name: hostName || 'Host',
           phase: DatabasePhase.LOBBY,
           gamemode: 'classic',
@@ -294,7 +295,7 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update({ songs })
+        .update({ songs: songs as Json })
         .eq('id', room.id);
 
       if (error) {
@@ -315,7 +316,7 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song })
+        .update({ current_song: song as Json })
         .eq('id', room.id);
 
       if (error) {
