@@ -43,7 +43,6 @@ export function HostVisuals({
     console.error('Audio error in HostVisuals:', error);
     setAudioError(error);
     setIsLoadingPreview(false);
-    suppressUnused(error);
     
     toast({
       title: "Audio Error",
@@ -110,11 +109,6 @@ export function HostVisuals({
       playPreview();
     }
   }, [isPlayingPreview, stopPreview, playPreview]);
-
-  // Handle audio ended event
-  const handleAudioEnded = useCallback(() => {
-    setIsPlayingPreview(false);
-  }, []);
 
   // Handle audio load error
   const handleAudioLoadError = useCallback((e: any) => {
@@ -184,8 +178,10 @@ export function HostVisuals({
               key={audioPlayerKey}
               src={previewUrl}
               isPlaying={isPlayingPreview}
-              onError={handleAudioLoadError}
-              audioRef={audioElementRef}
+              onPlayPause={togglePlayPause}
+              roomId={room?.id || ''}
+              trackId={room?.current_song?.id}
+              disabled={isLoadingPreview}
             />
             <Button onClick={togglePlayPause} disabled={isLoadingPreview}>
               {isLoadingPreview ? 'Loading...' : (isPlayingPreview ? 'Pause' : 'Play')}

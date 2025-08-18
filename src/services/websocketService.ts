@@ -1,316 +1,102 @@
-import { GameService } from './gameService';
-import { Song, Player, GameRoom } from '@/types/game';
-
-export interface WebSocketMessage {
-  type: string;
-  data: any;
-  timestamp: number;
-  roomId?: string;
-}
-
-export interface WebSocketCallbacks {
-  onRoomUpdate?: (room: GameRoom) => void;
-  onPlayersUpdate?: (players: Player[]) => void;
-  onGameStart?: (data: any) => void;
-  onCardPlaced?: (data: any) => void;
-  onSongSet?: (song: Song) => void;
-  onGameStarted?: (data: any) => void;
-  onError?: (error: Error) => void;
-  onConnectionChange?: (connected: boolean) => void;
-}
+import { gameService } from '@/services/gameService';
+import { Song } from '@/types/game';
 
 export class WebSocketService {
-  private ws: WebSocket | null = null;
-  private roomId: string | null = null;
-  private callbacks: WebSocketCallbacks = {};
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private isConnecting = false;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
-  private messageQueue: WebSocketMessage[] = [];
-  private isHost = false;
+  private socket: WebSocket | null = null;
+  private url: string;
+  private reconnectInterval: number;
+  private reconnectTimeoutId: number | null = null;
+  private messageQueue: string[] = [];
+  private isReconnecting: boolean = false;
 
-  constructor(roomId: string, callbacks: WebSocketCallbacks) {
-    this.roomId = roomId;
-    this.callbacks = callbacks;
-    this.connect();
+  constructor(url: string, reconnectInterval: number = 3000) {
+    this.url = url;
+    this.reconnectInterval = reconnectInterval;
   }
 
-  private connect(): void {
-    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.CONNECTING)) {
-      return;
-    }
-
-    this.isConnecting = true;
-    
-    try {
-      const wsUrl = this.getWebSocketUrl();
-      console.log('[WebSocket] Connecting to:', wsUrl);
-      
-      this.ws = new WebSocket(wsUrl);
-      
-      this.ws.onopen = this.handleOpen.bind(this);
-      this.ws.onmessage = this.handleMessage.bind(this);
-      this.ws.onclose = this.handleClose.bind(this);
-      this.ws.onerror = this.handleError.bind(this);
-      
-    } catch (error) {
-      console.error('[WebSocket] Connection error:', error);
-      this.isConnecting = false;
-      this.scheduleReconnect();
-    }
-  }
-
-  private getWebSocketUrl(): string {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    return `${protocol}//${host}/ws/game/${this.roomId}`;
-  }
-
-  private handleOpen(): void {
-    console.log('[WebSocket] Connected successfully');
-    this.isConnecting = false;
-    this.reconnectAttempts = 0;
-    
-    // Start heartbeat
-    this.startHeartbeat();
-    
-    // Send queued messages
-    this.flushMessageQueue();
-    
-    // Notify connection change
-    if (this.callbacks.onConnectionChange) {
-      this.callbacks.onConnectionChange(true);
-    }
-    
-    // Join room
-    this.send({
-      type: 'joinRoom',
-      data: { roomId: this.roomId, isHost: this.isHost },
-      timestamp: Date.now()
+  connect(roomId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.socket = new WebSocket(`${this.url}?roomId=${roomId}`);
+  
+      this.socket.onopen = () => {
+        console.log('WebSocket connected');
+        this.isReconnecting = false;
+        this.clearReconnectTimeout();
+        this.flushMessageQueue();
+        resolve();
+      };
+  
+      this.socket.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
+      };
+  
+      this.socket.onclose = (event) => {
+        console.log('WebSocket closed:', event.reason, event.code);
+        if (event.code !== 1000) {
+          // Normal closure should not trigger a reconnect
+          this.reconnect();
+        }
+      };
+  
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        reject(error);
+        this.reconnect();
+      };
     });
   }
 
-  private async handleMessage(event: MessageEvent): Promise<void> {
-    try {
-      const message: WebSocketMessage = JSON.parse(event.data);
-      console.log('[WebSocket] Message received:', message);
-      
-      const { type, data } = message;
-      
-      switch (type) {
-        case 'roomUpdate':
-          if (this.callbacks.onRoomUpdate) {
-            this.callbacks.onRoomUpdate(data);
-          }
-          break;
-          
-        case 'playersUpdate':
-          if (this.callbacks.onPlayersUpdate) {
-            this.callbacks.onPlayersUpdate(data);
-          }
-          break;
-          
-        case 'cardPlaced':
-          if (this.callbacks.onCardPlaced) {
-            this.callbacks.onCardPlaced(data);
-          }
-          break;
-          
-        case 'songSet':
-          if (this.callbacks.onSongSet) {
-            this.callbacks.onSongSet(data);
-          }
-          break;
-          
-        case 'gameStart':
-          console.log('[WebSocket] Game start received:', data);
-          if (this.callbacks.onGameStart) {
-            this.callbacks.onGameStart(data);
-          }
-          
-          // Initialize game if we have songs
-          if (data.songs && data.songs.length > 0) {
-            try {
-              await GameService.initializeGameWithStartingCards(this.roomId!, data.songs);
-            } catch (error) {
-              console.error('[WebSocket] Failed to initialize game:', error);
-            }
-          }
-          break;
-          
-        case 'gameStarted':
-          if (this.callbacks.onGameStarted) {
-            this.callbacks.onGameStarted(data);
-          }
-          break;
-          
-        case 'pong':
-          // Heartbeat response - connection is alive
-          break;
-          
-        case 'error':
-          console.error('[WebSocket] Server error:', data);
-          if (this.callbacks.onError) {
-            this.callbacks.onError(new Error(data.message || 'WebSocket server error'));
-          }
-          break;
-          
-        default:
-          console.warn('[WebSocket] Unknown message type:', type);
-      }
-      
-    } catch (error) {
-      console.error('[WebSocket] Error parsing message:', error);
-      if (this.callbacks.onError) {
-        this.callbacks.onError(error as Error);
-      }
+  private reconnect(): void {
+    if (this.isReconnecting) {
+      return; // Prevent multiple reconnect attempts
+    }
+    this.isReconnecting = true;
+    console.log(`Attempting to reconnect in ${this.reconnectInterval}ms`);
+    this.reconnectTimeoutId = window.setTimeout(() => {
+      this.connect('').catch(() => {
+        console.log('Reconnection attempt failed.');
+      });
+    }, this.reconnectInterval);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeoutId !== null) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
     }
   }
 
-  private handleClose(event: CloseEvent): void {
-    console.log('[WebSocket] Connection closed:', event.code, event.reason);
-    this.isConnecting = false;
-    
-    // Stop heartbeat
-    this.stopHeartbeat();
-    
-    // Notify connection change
-    if (this.callbacks.onConnectionChange) {
-      this.callbacks.onConnectionChange(false);
-    }
-    
-    // Attempt to reconnect if not a clean close
-    if (event.code !== 1000) {
-      this.scheduleReconnect();
-    }
+  disconnect(): void {
+    if (!this.socket) return;
+    this.socket.close(1000, 'Normal closure');
+    this.socket = null;
+    this.clearReconnectTimeout();
   }
 
-  private handleError(error: Event): void {
-    console.error('[WebSocket] Connection error:', error);
-    this.isConnecting = false;
-    
-    if (this.callbacks.onError) {
-      this.callbacks.onError(new Error('WebSocket connection error'));
-    }
-  }
-
-  private scheduleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[WebSocket] Max reconnection attempts reached');
-      if (this.callbacks.onError) {
-        this.callbacks.onError(new Error('Max reconnection attempts reached'));
-      }
+  sendMessage(message: string): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not connected, queuing message:', message);
+      this.messageQueue.push(message);
       return;
     }
-    
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
-    console.log(`[WebSocket] Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
-    
-    setTimeout(() => {
-      this.reconnectAttempts++;
-      this.connect();
-    }, delay);
-  }
-
-  private startHeartbeat(): void {
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.send({
-          type: 'ping',
-          data: {},
-          timestamp: Date.now()
-        });
-      }
-    }, 30000); // Send ping every 30 seconds
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
+    this.socket.send(message);
   }
 
   private flushMessageQueue(): void {
     while (this.messageQueue.length > 0) {
       const message = this.messageQueue.shift();
       if (message) {
-        this.sendImmediate(message);
+        this.sendMessage(message);
       }
     }
   }
 
-  private sendImmediate(message: WebSocketMessage): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify(message));
-      } catch (error) {
-        console.error('[WebSocket] Error sending message:', error);
-      }
+  async initializeGame(roomId: string, songs: Song[]): Promise<void> {
+    try {
+      await gameService.initializeGameWithStartingCards(roomId, songs);
+    } catch (error) {
+      console.error('Failed to initialize game:', error);
+      throw error;
     }
-  }
-
-  public send(message: WebSocketMessage): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.sendImmediate(message);
-    } else {
-      // Queue message for later
-      this.messageQueue.push(message);
-      
-      // Try to connect if not already connecting
-      if (!this.isConnecting && (!this.ws || this.ws.readyState === WebSocket.CLOSED)) {
-        this.connect();
-      }
-    }
-  }
-
-  public setHostStatus(isHost: boolean): void {
-    this.isHost = isHost;
-  }
-
-  public forceReconnect(): void {
-    console.log('[WebSocket] Force reconnecting...');
-    this.reconnectAttempts = 0;
-    
-    if (this.ws) {
-      this.ws.close();
-    }
-    
-    setTimeout(() => {
-      this.connect();
-    }, 100);
-  }
-
-  public disconnect(): void {
-    console.log('[WebSocket] Disconnecting...');
-    
-    this.stopHeartbeat();
-    
-    if (this.ws) {
-      this.ws.close(1000, 'Client disconnect');
-      this.ws = null;
-    }
-    
-    this.messageQueue = [];
-    this.reconnectAttempts = 0;
-    this.isConnecting = false;
-  }
-
-  public isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
-  }
-
-  public getConnectionState(): {
-    isConnected: boolean;
-    isConnecting: boolean;
-    reconnectAttempts: number;
-  } {
-    return {
-      isConnected: this.isConnected(),
-      isConnecting: this.isConnecting,
-      reconnectAttempts: this.reconnectAttempts
-    };
   }
 }
