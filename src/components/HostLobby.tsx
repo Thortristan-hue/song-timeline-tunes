@@ -53,6 +53,15 @@ export function HostLobby({
     console.log('🧍 HostLobby: Player count:', players.length);
   }, [players]);
 
+  // Mock players for testing UI (when no real players are connected)
+  const mockPlayers = players.length === 0 ? [
+    { id: '1', name: 'Alice', character: 'char_fiona', color: '#FF3B30', timeline: [] },
+    { id: '2', name: 'Bob', character: 'char_dave', color: '#007AFF', timeline: [] },
+    { id: '3', name: 'Charlie', character: 'char_jessica', color: '#34C759', timeline: [] }
+  ] : [];
+  
+  const displayPlayers = players.length > 0 ? players : mockPlayers;
+
   const handleCreateRoom = useCallback(async () => {
     console.log('🏠 Creating room...');
     const success = await createRoom();
@@ -156,7 +165,7 @@ export function HostLobby({
     }
   }, [players.length, soundEffects]);
 
-  if (!roomCreated || isLoading) {
+  if (false && (!roomCreated || isLoading)) { // Temporarily disabled for testing
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">
         {/* Enhanced Dark Background Effects */}
@@ -225,7 +234,7 @@ export function HostLobby({
     );
   }
 
-  const gameUrl = `${window.location.origin}?join=${lobbyCode}`;
+  const gameUrl = `${window.location.origin}?join=${lobbyCode || 'TEST123'}`;
   console.log('🔗 Generated QR code URL:', gameUrl);
 
   return (
@@ -367,7 +376,7 @@ export function HostLobby({
                   
                   <div className="relative group">
                     <div className="bg-[#1A1A2E]/70 border border-[#4a4f5b]/30 text-white text-2xl sm:text-3xl font-bold font-mono px-4 py-3 rounded-2xl tracking-widest transition-all duration-300 group-hover:scale-105 shadow-lg backdrop-blur-sm">
-                      {lobbyCode}
+                      {lobbyCode || 'TEST123'}
                     </div>
                     
                     <Button
@@ -556,28 +565,28 @@ export function HostLobby({
                   soundEffects.playGameStart();
                   onStartGame();
                 }}
-                disabled={players.length < 1}
+                disabled={displayPlayers.length < 1}
                 className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group mb-4"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-[#a53b8b]/0 via-[#a53b8b]/10 to-[#a53b8b]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-x-full group-hover:translate-x-0"></div>
                 <Play className="h-5 w-5 mr-2" />
-                {players.length < 1 ? 'Waiting for the squad...' : 
-                  `Start ${selectedGamemode === 'classic' ? 'Classic' : selectedGamemode === 'fiend' ? 'Fiend Mode' : 'Sprint Mode'}! (${players.length} ${players.length === 1 ? 'player' : 'players'})`}
+                {displayPlayers.length < 1 ? 'Waiting for the squad...' : 
+                  `Start ${selectedGamemode === 'classic' ? 'Classic' : selectedGamemode === 'fiend' ? 'Fiend Mode' : 'Sprint Mode'}! (${displayPlayers.length} ${displayPlayers.length === 1 ? 'player' : 'players'})`}
               </Button>
 
               <Card className="bg-[#0e1f2f]/60 backdrop-blur-3xl border border-[#107793]/30 p-4 flex-1 rounded-3xl shadow-lg shadow-[#107793]/10 hover:bg-[#0e1f2f]/70 transition-all duration-500 min-h-0">
                 <div className="flex items-center gap-3 mb-4">
                   <Users className="h-5 w-5 text-[#4CC9F0]" />
                   <h3 className="text-lg font-bold text-white tracking-tight">
-                    The Squad ({players.length})
+                    The Squad ({displayPlayers.length})
                   </h3>
-                  {players.length > 0 && (
+                  {displayPlayers.length > 0 && (
                     <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
                   )}
                 </div>
                 
                 <div className="space-y-2 overflow-y-auto flex-1">
-                  {players.length === 0 ? (
+                  {displayPlayers.length === 0 ? (
                     <div className="text-center py-8">
                       <div className="w-12 h-12 bg-[#0e1f2f]/60 border-2 border-[#4a4f5b] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#4a4f5b]/20 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-[#4a4f5b]/10 to-transparent"></div>
@@ -591,7 +600,7 @@ export function HostLobby({
                       </p>
                     </div>
                   ) : (
-                    players.map((player, index) => {
+                    displayPlayers.map((player, index) => {
                       const character = getCharacterById(player.character || getDefaultCharacter().id);
                       
                       return (
