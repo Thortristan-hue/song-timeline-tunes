@@ -295,7 +295,7 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update({ songs: songs as Json })
+        .update({ songs: songs as unknown as Json })
         .eq('id', room.id);
 
       if (error) {
@@ -316,7 +316,7 @@ export function useGameRoom(): UseGameRoomReturn {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song as Json })
+        .update({ current_song: song as unknown as Json })
         .eq('id', room.id);
 
       if (error) {

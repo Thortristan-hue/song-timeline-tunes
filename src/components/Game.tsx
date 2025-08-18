@@ -10,6 +10,7 @@ import { HostMusicController } from './HostMusicController';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { GameService } from '@/services/gameService';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 export function Game() {
   const {
@@ -82,7 +83,7 @@ export function Game() {
         .from('game_rooms')
         .update({ 
           phase: 'playing',
-          songs: customSongs as any // Type assertion to handle Json type
+          songs: customSongs as unknown as any // Type assertion to handle Json type
         })
         .eq('id', room.id);
 
@@ -121,6 +122,7 @@ export function Game() {
   // Dummy handlers for GamePlay props that aren't implemented yet
   const handlePlaceCard = async (song: Song, position: number) => {
     console.log('[Game] Place card:', song, position);
+    suppressUnused(song, position); // Suppress unused warnings
     return { success: true, correct: true };
   };
 
