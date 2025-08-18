@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import { GameService } from '@/services/gameService';
+import { gameService } from '@/services/gameService';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface UseSprintGameLogicResult {
   correctPlacements: number;
@@ -17,6 +18,8 @@ export function useSprintGameLogic(
   isHost: boolean,
   customSongs: Song[]
 ): UseSprintGameLogicResult {
+  suppressUnused(players, isHost, customSongs);
+  
   const [correctPlacements, setCorrectPlacements] = useState<number>(0);
   const [isPlacing, setIsPlacing] = useState<boolean>(false);
 
@@ -28,7 +31,7 @@ export function useSprintGameLogic(
     setIsPlacing(true);
 
     try {
-      const result = await GameService.placeCard(
+      const result = await gameService.placeCard(
         room.id,
         currentPlayer.id,
         song,
@@ -42,7 +45,7 @@ export function useSprintGameLogic(
         const targetCards = room.gamemode_settings?.targetCards || 20;
         if (correctPlacements + 1 >= targetCards) {
           // Player wins by reaching target
-          await GameService.endGame(room.id);
+          await gameService.endGame(room.id);
           return { success: true, gameEnded: true, winner: currentPlayer, correct: true };
         }
       }
@@ -60,7 +63,7 @@ export function useSprintGameLogic(
     if (!room) return;
     
     try {
-      await GameService.endGame(room.id);
+      await gameService.endGame(room.id);
     } catch (error) {
       console.error('Failed to end game:', error);
     }

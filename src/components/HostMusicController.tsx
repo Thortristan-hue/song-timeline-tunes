@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, Player, GameRoom } from '@/types/game';
-import { GameService } from '@/services/gameService';
+import { gameService } from '@/services/gameService';
 import { useToast } from '@/components/ui/use-toast';
 
 interface HostMusicControllerProps {
@@ -78,7 +78,7 @@ export function HostMusicController({ room, players, isHost }: HostMusicControll
         console.log('[HostMusicController] Player completed timeline:', currentPlayer.name);
         
         try {
-          await GameService.checkIfGameEnded(room.id);
+          await gameService.checkIfGameEnded(room.id);
         } catch (error) {
           console.error('[HostMusicController] Error checking game end:', error);
         }

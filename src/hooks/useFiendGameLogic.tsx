@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { GameRoom, Player, Song } from '@/types/game';
-import { GameService } from '@/services/gameService';
+import { gameService } from '@/services/gameService';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface UseFiendGameLogicResult {
   currentRound: number;
@@ -17,6 +18,8 @@ export function useFiendGameLogic(
   isHost: boolean,
   customSongs: Song[]
 ): UseFiendGameLogicResult {
+  suppressUnused(isHost, customSongs);
+  
   const [currentRound, setCurrentRound] = useState(1);
   const [isPlacing, setIsPlacing] = useState(false);
 
@@ -28,7 +31,7 @@ export function useFiendGameLogic(
     setIsPlacing(true);
 
     try {
-      const result = await GameService.placeCard(
+      const result = await gameService.placeCard(
         room.id,
         currentPlayer.id,
         song,
@@ -42,7 +45,7 @@ export function useFiendGameLogic(
         const targetRounds = room.gamemode_settings?.rounds || 10;
         if (currentRound >= targetRounds) {
           // End the game
-          await GameService.endGame(room.id);
+          await gameService.endGame(room.id);
           
           // Find the winner (highest score)
           const winner = players.reduce((prev, current) => 
@@ -66,7 +69,7 @@ export function useFiendGameLogic(
     if (!room) return;
     
     try {
-      await GameService.endGame(room.id);
+      await gameService.endGame(room.id);
     } catch (error) {
       console.error('Failed to end game:', error);
     }

@@ -1,6 +1,8 @@
 
 import { useState } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
+import { gameService } from '@/services/gameService';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface UseClassicGameLogicResult {
   isPlacing: boolean;
@@ -14,6 +16,8 @@ export function useClassicGameLogic(
   isHost: boolean,
   customSongs: Song[]
 ): UseClassicGameLogicResult {
+  suppressUnused(players, isHost, customSongs);
+  
   const [isPlacing, setIsPlacing] = useState(false);
 
   const placeCard = async (song: Song, position: number): Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player; }> => {
@@ -24,8 +28,7 @@ export function useClassicGameLogic(
     setIsPlacing(true);
 
     try {
-      const { GameService } = await import('@/services/gameService');
-      const result = await GameService.placeCard(
+      const result = await gameService.placeCard(
         room.id,
         currentPlayer.id,
         song,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase } from '@/types/game';
@@ -9,7 +8,7 @@ import { GamePlay } from './GamePlay';
 import { HostMusicController } from './HostMusicController';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { GameService } from '@/services/gameService';
+import { GameService, gameService } from '@/services/gameService';
 import { suppressUnused } from '@/utils/suppressUnused';
 
 export function Game() {
@@ -39,11 +38,11 @@ export function Game() {
     // Initialize game with starting cards when transitioning to playing phase
     if (room.phase === 'playing' && customSongs.length > 0) {
       console.log('[Game] Initializing game with starting cards');
-      GameService.initializeGameWithStartingCards(room.id, customSongs)
+      gameService.initializeGameWithStartingCards(room.id, customSongs)
         .then(() => {
           console.log('[Game] Game initialized successfully');
         })
-        .catch((error) => {
+        .catch((error: any) => {
           console.error('[Game] Failed to initialize game:', error);
           toast({
             title: "Game Initialization Failed",

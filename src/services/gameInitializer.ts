@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { GameService } from '@/services/gameService';
+import { gameService } from '@/services/gameService';
 import { Song } from '@/types/game';
 
 export class GameInitializer {
@@ -23,7 +23,7 @@ export class GameInitializer {
       }
 
       // Initialize game with starting cards - this will set phase to 'playing'
-      await GameService.initializeGameWithStartingCards(roomId, songs);
+      await gameService.initializeGameWithStartingCards(roomId, songs);
 
       console.log('✅ GameInitializer: Game started successfully');
       return { success: true };
