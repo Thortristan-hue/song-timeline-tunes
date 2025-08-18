@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { GameLogic } from '@/services/gameLogic';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import { AudioPlayer } from '@/components/AudioPlayer';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -48,6 +49,7 @@ export function GamePlay({
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
   const { fire } = useConfettiStore();
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Find current turn player
   const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
@@ -124,6 +126,7 @@ export function GamePlay({
   };
 
   const handlePlayPause = () => {
+    console.log('🎵 GamePlay: Play/pause toggle requested, isPlaying:', isPlaying);
     setIsPlaying(!isPlaying);
   };
 
@@ -189,39 +192,58 @@ export function GamePlay({
     return <Feedback correct={feedback.correct} song={feedback.song} />;
   }
 
+  // Hidden audio player for current song
+  const currentSongAudio = room.current_song && (
+    <AudioPlayer
+      ref={audioRef}
+      src={room.current_song.preview_url}
+      trackId={room.current_song.trackId}
+      isPlaying={isPlaying}
+      onPlayPause={handlePlayPause}
+      className="hidden"
+      volume={0.7}
+    />
+  );
+
   // Host view - use HostGameView component
   if (isHost) {
     return (
-      <HostGameView
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={room.current_song}
-        roomCode={room.lobby_code}
-        players={players}
-        mysteryCardRevealed={mysteryCardRevealed}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        cardPlacementResult={cardPlacementResult}
-        transitioning={isProcessingMove}
-        highlightedGapIndex={null}
-        mobileViewport={null}
-      />
+      <>
+        {currentSongAudio}
+        <HostGameView
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={room.current_song}
+          roomCode={room.lobby_code}
+          players={players}
+          mysteryCardRevealed={mysteryCardRevealed}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          cardPlacementResult={cardPlacementResult}
+          transitioning={isProcessingMove}
+          highlightedGapIndex={null}
+          mobileViewport={null}
+        />
+      </>
     );
   }
 
   // Player view - use MobilePlayerGameView component
   return (
-    <MobilePlayerGameView
-      currentPlayer={currentPlayer}
-      currentTurnPlayer={currentTurnPlayer}
-      currentSong={room.current_song}
-      roomCode={room.lobby_code}
-      isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
-      isPlaying={isPlaying}
-      onPlayPause={handlePlayPause}
-      onPlaceCard={handleCardPlacement}
-      mysteryCardRevealed={mysteryCardRevealed}
-      cardPlacementResult={cardPlacementResult}
-      gameEnded={room.phase === 'finished'}
-    />
+    <>
+      {currentSongAudio}
+      <MobilePlayerGameView
+        currentPlayer={currentPlayer}
+        currentTurnPlayer={currentTurnPlayer}
+        currentSong={room.current_song}
+        roomCode={room.lobby_code}
+        isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        onPlaceCard={handleCardPlacement}
+        mysteryCardRevealed={mysteryCardRevealed}
+        cardPlacementResult={cardPlacementResult}
+        gameEnded={room.phase === 'finished'}
+      />
+    </>
   );
 }

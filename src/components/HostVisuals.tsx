@@ -88,7 +88,7 @@ export function HostGameView({
         />
       </div>
 
-      {/* Center Top - Control Panel */}
+      {/* Center Top - Control Panel (moved to top) */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
         <div className="relative">
           <img 
@@ -134,7 +134,16 @@ export function HostGameView({
 
       {/* Main Content Area */}
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Current Turn Player Timeline */}
+        {/* Mystery Card (moved higher up) */}
+        <div className="mb-8">
+          <RecordMysteryCard
+            song={currentSong}
+            isRevealed={isCardRevealed}
+            isDestroyed={cardPlacementResult?.correct === false}
+          />
+        </div>
+
+        {/* Current Turn Player Timeline (moved to center) */}
         {currentTurnPlayer && (
           <div className="w-full max-w-6xl mb-8">
             <HostCurrentPlayerTimeline 
@@ -145,16 +154,7 @@ export function HostGameView({
           </div>
         )}
 
-        {/* Mystery Card */}
-        <div className="mb-8">
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={isCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-        </div>
-
-        {/* Player Characters Display */}
+        {/* Player Characters Display (moved to bottom) */}
         <div className="w-full max-w-6xl">
           <div className="flex justify-center items-end space-x-6">
             {players.map((player) => {
