@@ -3,6 +3,7 @@ import { Song, Player, GameRoom } from '@/types/game';
 import { GameLogic } from '@/services/gameLogic';
 import { useToast } from '@/hooks/use-toast';
 import { Feedback } from '@/components/Feedback';
+import { KahootStyleFeedback } from '@/components/KahootStyleFeedback';
 import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostGameView } from '@/components/HostVisuals';
@@ -187,9 +188,20 @@ export function GamePlay({
     );
   }
 
-  // Show feedback overlay
+  // Show Kahoot-style feedback overlay for hosts, regular feedback for players
   if (feedback.show) {
-    return <Feedback correct={feedback.correct} song={feedback.song} />;
+    if (isHost) {
+      return (
+        <KahootStyleFeedback 
+          correct={feedback.correct} 
+          song={feedback.song}
+          onComplete={() => setFeedback({ show: false, correct: false, song: null })}
+          duration={3000}
+        />
+      );
+    } else {
+      return <Feedback correct={feedback.correct} song={feedback.song} />;
+    }
   }
 
   // Hidden audio player for current song

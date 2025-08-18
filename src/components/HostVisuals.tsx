@@ -155,7 +155,13 @@ export function HostGameView({
         )}
 
         {/* Mystery Card (moved lower) */}
-        <div className="mb-8">
+        <div className={`mb-8 transition-all duration-500 ${
+          cardPlacementResult 
+            ? cardPlacementResult.correct 
+              ? 'animate-card-placement-success' 
+              : 'animate-card-placement-error'
+            : ''
+        }`}>
           <RecordMysteryCard
             song={currentSong}
             isRevealed={isCardRevealed}
@@ -173,11 +179,11 @@ export function HostGameView({
               return (
                 <div
                   key={player.id}
-                  className={`relative transition-all duration-300 ${
+                  className={`relative transition-all duration-500 ${
                     isCurrentPlayer 
-                      ? 'scale-110 z-10' 
+                      ? 'scale-110 z-10 animate-player-highlight-pulse' 
                       : 'scale-100 opacity-75'
-                  }`}
+                  } ${transitioning ? 'animate-turn-transition-fadeout' : ''}`}
                 >
                   <div className="flex flex-col items-center space-y-2">
                     {/* Character Image */}
