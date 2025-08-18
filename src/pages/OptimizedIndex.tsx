@@ -101,7 +101,7 @@ export default function OptimizedIndex() {
           onPlaceCard={placeCard}
           mysteryCardRevealed={false}
           cardPlacementResult={null}
-          gameEnded={room.phase === 'finished'}
+          gameEnded={false}
         />
       );
     }
@@ -115,7 +115,12 @@ export default function OptimizedIndex() {
         onSetCurrentSong={() => Promise.resolve()}
         onPlaceCard={placeCard}
         customSongs={gameState.availableSongs}
-        connectionStatus={connectionStatus}
+        connectionStatus={{
+          isConnected: connectionStatus.isConnected,
+          isReconnecting: connectionStatus.isReconnecting,
+          lastError: '',
+          retryCount: connectionStatus.retryCount
+        }}
         onReconnect={() => {}}
         onReplayGame={() => window.location.reload()}
       />
@@ -134,10 +139,18 @@ export default function OptimizedIndex() {
           <HostLobby
             room={room}
             players={players}
+            lobbyCode={room.lobby_code}
             onStartGame={async () => {
               await initializeGame();
               await startGame();
             }}
+            onBackToMenu={() => {
+              leaveRoom();
+              window.location.reload();
+            }}
+            setCustomSongs={() => {}}
+            isLoading={isLoading}
+            customSongs={gameState.availableSongs}
           />
         </>
       );
