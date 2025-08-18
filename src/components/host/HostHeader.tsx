@@ -1,35 +1,26 @@
-import { GamePhase, GameMode } from '@/types/game';
-import { Clock, Users, Radio } from 'lucide-react';
-import { format } from 'date-fns';
+
+import { Badge } from '@/components/ui/badge';
+import { GameRoom } from '@/types/game';
 
 interface HostHeaderProps {
-  phase: GamePhase;
-  gameMode: GameMode;
-  createdAt: string;
+  room: GameRoom;
   playerCount: number;
 }
 
-export function HostHeader({ phase, gameMode, createdAt, playerCount }: HostHeaderProps) {
-  const formattedDate = format(new Date(createdAt), 'MMM dd, yyyy HH:mm');
-
+export function HostHeader({ room, playerCount }: HostHeaderProps) {
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-900/30 backdrop-blur-sm border-b border-gray-800 text-white">
-      {/* Left: Game Phase and Mode */}
+    <div className="flex items-center justify-between p-4 bg-gray-800 text-white">
       <div>
-        <div className="text-lg font-semibold">{phase}</div>
-        <div className="text-sm text-gray-400">Mode: {gameMode}</div>
+        <h1 className="text-2xl font-bold">Game Host View</h1>
+        <p className="text-gray-400">Room: {room.lobby_code}</p>
       </div>
-
-      {/* Middle: Game Creation Date */}
-      <div className="flex items-center gap-2 text-sm text-gray-400">
-        <Clock className="h-4 w-4" />
-        <span>Created: {formattedDate}</span>
-      </div>
-
-      {/* Right: Player Count */}
-      <div className="flex items-center gap-2">
-        <Users className="h-5 w-5 text-gray-400" />
-        <span className="text-sm">Players: {playerCount}</span>
+      <div className="flex items-center space-x-4">
+        <Badge variant="secondary">
+          {playerCount} Players
+        </Badge>
+        <Badge variant="outline">
+          {room.gamemode}
+        </Badge>
       </div>
     </div>
   );

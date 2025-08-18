@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { Song, GamePhase } from '@/types/game';
+import { Song, GamePhase, GameMode } from '@/types/game';
 import { MainMenu } from './MainMenu';
 import { HostLobby } from './HostLobby';
 import { MobileJoinFlow } from './MobileJoinFlow';
@@ -137,17 +138,16 @@ export function Game() {
     console.log('[Game] Play/pause');
   };
 
-  // Create wrapper functions for MainMenu that don't take parameters
-  const handleCreateRoomFromMenu = () => {
-    // This would trigger a modal or form to get the host name
-    // For now, use a default name
+  // Handle start host with game mode
+  const handleStartHost = (gameMode: GameMode) => {
     handleCreateRoom('Host');
+    suppressUnused(gameMode); // For now, suppress until game modes are implemented
   };
 
-  const handleJoinRoomFromMenu = () => {
+  // Handle join game
+  const handleJoin = () => {
+    console.log('[Game] Join game clicked');
     // This would trigger a modal or form to get the lobby code and player name
-    // For now, this is just a placeholder
-    console.log('[Game] Join room from menu clicked');
   };
 
   // Show loading state
@@ -182,10 +182,10 @@ export function Game() {
   // Render appropriate component based on phase
   switch (currentPhase) {
     case 'menu':
-      return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
     
     case 'hostLobby':
-      if (!isHost || !room) return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      if (!isHost || !room) return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
       return (
         <HostLobby
           room={room}
@@ -198,7 +198,7 @@ export function Game() {
     
     case 'mobileJoin':
     case 'mobileLobby':
-      if (isHost) return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      if (isHost) return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
       return (
         <MobileJoinFlow
           onJoinRoom={handleJoinRoom}
@@ -210,7 +210,7 @@ export function Game() {
       );
     
     case 'playing':
-      if (!room) return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      if (!room) return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
       if (!currentPlayer) {
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -252,7 +252,7 @@ export function Game() {
       );
     
     case 'finished':
-      if (!room) return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      if (!room) return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
       if (!currentPlayer) {
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -287,6 +287,6 @@ export function Game() {
       );
     
     default:
-      return <MainMenu onCreateRoom={handleCreateRoomFromMenu} onJoinRoom={handleJoinRoomFromMenu} />;
+      return <MainMenu onStartHost={handleStartHost} onJoin={handleJoin} />;
   }
 }

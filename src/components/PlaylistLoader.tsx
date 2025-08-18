@@ -1,22 +1,20 @@
+
 import React, { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileMusic, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { Song } from '@/types/game';
 import { cn } from '@/lib/utils';
 
 interface PlaylistLoaderProps {
   onPlaylistLoad: (songs: Song[]) => void;
   onError: (message: string) => void;
-  isLoading: boolean;
   currentSongs: Song[];
 }
 
 export function PlaylistLoader({
   onPlaylistLoad,
   onError,
-  isLoading,
   currentSongs
 }: PlaylistLoaderProps) {
   const [isDragOver, setIsDragOver] = useState(false);

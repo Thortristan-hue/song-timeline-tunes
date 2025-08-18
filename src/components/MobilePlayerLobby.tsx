@@ -1,13 +1,11 @@
-import React from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Player, GameRoom } from '@/types/game';
 import { Wifi, WifiOff } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface MobilePlayerLobbyProps {
   room: GameRoom;
   currentPlayer: Player;
-  onStartGame: () => void;
   onLeaveGame: () => void;
   isConnected: boolean;
 }
@@ -15,7 +13,6 @@ interface MobilePlayerLobbyProps {
 export function MobilePlayerLobby({
   room,
   currentPlayer,
-  onStartGame,
   onLeaveGame,
   isConnected
 }: MobilePlayerLobbyProps) {

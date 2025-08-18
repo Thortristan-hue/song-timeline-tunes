@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { HostVisuals } from '@/components/HostVisuals';
-import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
 import { suppressUnused } from '@/utils/suppressUnused';
 
 interface GamePlayProps {
@@ -36,9 +36,6 @@ export function GamePlay({
   currentPlayer, 
   isHost, 
   onPlaceCard,
-  onSetCurrentSong,
-  customSongs,
-  connectionStatus,
   // Orchestration state from Game.tsx
   isPlaying,
   onPlayPause,
@@ -46,9 +43,6 @@ export function GamePlay({
   cardPlacementResult,
   gameEnded
 }: GamePlayProps) {
-  // Suppress unused variable warnings for props that will be used later
-  suppressUnused(onSetCurrentSong, customSongs, connectionStatus);
-
   // Enhanced debugging for GamePlay
   useEffect(() => {
     console.log('[GamePlay] State debug:', {
