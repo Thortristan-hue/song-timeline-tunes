@@ -20,7 +20,17 @@ const mockSong: Song = {
   preview_url: 'https://example.com/preview.mp3'
 };
 
-const mockPlayers: Player[] = [];
+const mockPlayers: Player[] = [
+  {
+    id: 'demo-player',
+    name: 'Demo Player',
+    color: '#4CC9F0',
+    timelineColor: '#4CC9F0',
+    score: 0,
+    character: 'char_alice',
+    timeline: []
+  }
+];
 
 export function GamemodeDemo() {
   const [selectedMode, setSelectedMode] = useState<'fiend' | 'sprint'>('fiend');
