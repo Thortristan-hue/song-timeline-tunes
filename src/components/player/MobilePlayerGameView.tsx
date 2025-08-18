@@ -256,7 +256,7 @@ export default function MobilePlayerGameView({
     }
   }, [selectedPosition, isMyTurn, onHighlightGap]);
 
-  // Show result overlay
+  // Show enhanced result overlay with more vivid feedback
   if (cardPlacementResult) {
     const isCorrect = cardPlacementResult.correct;
     
@@ -266,103 +266,180 @@ export default function MobilePlayerGameView({
           "fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-700",
           "px-4 pt-safe-top pb-safe-bottom",
           isCorrect 
-            ? 'bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700' 
-            : 'bg-gradient-to-br from-red-500 via-rose-600 to-pink-700'
+            ? 'bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600' 
+            : 'bg-gradient-to-br from-red-400 via-rose-500 to-pink-600'
         )}
+        style={{
+          backgroundImage: isCorrect 
+            ? 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.2) 0%, transparent 50%)'
+            : 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.2) 0%, transparent 50%)'
+        }}
       >
-        {/* Animated background effects */}
+        {/* Enhanced animated background effects */}
         <div className="absolute inset-0 overflow-hidden">
-          {/* Floating particles */}
-          {[...Array(20)].map((_, i) => (
+          {/* Floating particles with more variety */}
+          {[...Array(30)].map((_, i) => (
             <div
               key={i}
               className={cn(
-                "absolute w-2 h-2 rounded-full animate-bounce opacity-60",
+                "absolute rounded-full animate-bounce opacity-70",
                 isCorrect ? "bg-yellow-300" : "bg-red-300"
               )}
               style={{
+                width: `${Math.random() * 8 + 4}px`,
+                height: `${Math.random() * 8 + 4}px`,
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 3}s`
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${1.5 + Math.random() * 2}s`
               }}
             />
           ))}
           
-          {/* Radial pulse effect */}
+          {/* Multiple radial pulse effects */}
           <div className={cn(
             "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2",
             "w-96 h-96 rounded-full opacity-20 animate-ping",
             isCorrect ? "bg-white" : "bg-yellow-200"
           )} />
+          <div className={cn(
+            "absolute top-1/3 left-1/3 transform -translate-x-1/2 -translate-y-1/2",
+            "w-64 h-64 rounded-full opacity-15 animate-ping",
+            isCorrect ? "bg-yellow-300" : "bg-red-300"
+          )} style={{ animationDelay: '0.5s' }} />
+          
+          {/* Sparkle effects */}
+          {isCorrect && [...Array(15)].map((_, i) => (
+            <div
+              key={`sparkle-${i}`}
+              className="absolute text-yellow-300 animate-ping opacity-80"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                fontSize: `${Math.random() * 20 + 10}px`
+              }}
+            >
+              ✨
+            </div>
+          ))}
         </div>
 
         <div className="relative text-center space-y-8 max-w-md w-full animate-in slide-in-from-bottom-8 duration-700">
-          {/* Large animated icon */}
+          {/* Super large animated icon with glow effect */}
           <div className="relative mb-6">
             <div className={cn(
-              "text-8xl mb-4 font-light transition-all duration-500 animate-in zoom-in-50",
-              "drop-shadow-2xl",
+              "text-9xl mb-4 font-light transition-all duration-500 animate-in zoom-in-50",
+              "drop-shadow-2xl filter",
               isCorrect ? 'text-yellow-200 animate-bounce' : 'text-red-200 animate-pulse'
-            )}>
+            )}
+            style={{
+              filter: isCorrect 
+                ? 'drop-shadow(0 0 20px rgba(255, 255, 0, 0.8))' 
+                : 'drop-shadow(0 0 20px rgba(255, 100, 100, 0.8))'
+            }}>
               {isCorrect ? '🎉' : '💔'}
             </div>
             <div className={cn(
-              "text-7xl font-black text-white drop-shadow-2xl animate-in slide-in-from-top-4 duration-500 delay-200",
+              "text-8xl font-black text-white drop-shadow-2xl animate-in slide-in-from-top-4 duration-500 delay-200",
               isCorrect ? 'animate-pulse' : 'animate-bounce'
-            )}>
+            )}
+            style={{
+              filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.8))',
+              textShadow: isCorrect 
+                ? '0 0 20px rgba(255, 255, 255, 0.8)' 
+                : '0 0 20px rgba(255, 255, 255, 0.6)'
+            }}>
               {isCorrect ? '✓' : '✗'}
             </div>
           </div>
           
-          {/* Result text with enhanced styling */}
+          {/* Enhanced result text with pulsing glow */}
           <div className={cn(
-            "text-4xl font-black text-white drop-shadow-2xl transition-all duration-300 animate-in slide-in-from-left-4 delay-300",
+            "text-5xl font-black text-white drop-shadow-2xl transition-all duration-300 animate-in slide-in-from-left-4 delay-300",
             isCorrect ? 'animate-pulse' : ''
-          )}>
+          )}
+          style={{
+            textShadow: isCorrect 
+              ? '0 0 30px rgba(255, 255, 255, 1), 0 0 40px rgba(255, 255, 0, 0.8)' 
+              : '0 0 30px rgba(255, 255, 255, 1), 0 0 40px rgba(255, 100, 100, 0.8)'
+          }}>
             {isCorrect ? 'AMAZING!' : 'OOPS!'}
           </div>
           
-          {/* Enhanced song information card */}
-          <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 border-4 border-white/50 shadow-2xl animate-in slide-in-from-bottom-4 duration-500 delay-400">
-            <div className="text-xl font-black text-gray-900 mb-3 leading-tight">
-              🎵 {cardPlacementResult.song.deezer_title}
+          {/* Super enhanced song information card */}
+          <div className={cn(
+            "bg-white/98 backdrop-blur-lg rounded-3xl p-8 border-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-500 delay-400 transform",
+            isCorrect ? 'border-green-400' : 'border-red-400'
+          )}
+          style={{
+            boxShadow: isCorrect 
+              ? '0 25px 50px rgba(0, 255, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)' 
+              : '0 25px 50px rgba(255, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+          }}>
+            {/* Song Title - Extra Large and Bold */}
+            <div className="text-2xl font-black text-gray-900 mb-4 leading-tight">
+              🎵 <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                {cardPlacementResult.song.deezer_title}
+              </span>
             </div>
-            <div className="text-lg text-gray-700 mb-4 font-bold">
-              🎤 by {cardPlacementResult.song.deezer_artist}
+            
+            {/* Artist Name - Large and Prominent */}
+            <div className="text-xl text-gray-700 mb-5 font-bold">
+              🎤 by <span className="text-gray-900">{cardPlacementResult.song.deezer_artist}</span>
             </div>
+            
+            {/* Release Year - Super Prominent */}
             <div className={cn(
-              "inline-block text-white px-6 py-3 rounded-2xl font-black text-2xl shadow-2xl transition-all duration-200 border-4 border-white/30",
+              "inline-block text-white px-8 py-4 rounded-2xl font-black text-3xl shadow-2xl transition-all duration-200 border-4 border-white/30 mb-4",
               isCorrect 
                 ? 'bg-gradient-to-r from-emerald-500 to-green-600 animate-pulse' 
                 : 'bg-gradient-to-r from-red-500 to-rose-600'
-            )}>
+            )}
+            style={{
+              boxShadow: isCorrect 
+                ? '0 15px 30px rgba(0, 255, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3)' 
+                : '0 15px 30px rgba(255, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.3)'
+            }}>
               📅 Released in {cardPlacementResult.song.release_year}
             </div>
             
             {/* Additional album info if available */}
             {cardPlacementResult.song.deezer_album && (
-              <div className="text-sm text-gray-600 mt-3 font-semibold">
-                💿 from "{cardPlacementResult.song.deezer_album}"
+              <div className="text-base text-gray-600 mt-4 font-semibold italic">
+                💿 from "<span className="text-gray-800">{cardPlacementResult.song.deezer_album}</span>"
               </div>
             )}
           </div>
           
-          {/* Enhanced feedback message */}
+          {/* Super enhanced feedback message */}
           <div className={cn(
-            "text-white text-xl font-black transition-all duration-300 animate-in slide-in-from-right-4 delay-500"
-          )}>
+            "text-white text-2xl font-black transition-all duration-300 animate-in slide-in-from-right-4 delay-500"
+          )}
+          style={{
+            textShadow: '0 0 20px rgba(0, 0, 0, 0.8)'
+          }}>
             {isCorrect ? (
-              <div className="space-y-2">
-                <div className="text-3xl animate-bounce">🎯 PERFECT PLACEMENT!</div>
-                <div className="text-lg opacity-90 font-bold">+1 Point for {currentPlayer.name}</div>
-                <div className="text-base opacity-80">You're on fire! 🔥</div>
+              <div className="space-y-3">
+                <div className="text-4xl animate-bounce" style={{ textShadow: '0 0 30px rgba(255, 255, 0, 0.8)' }}>
+                  🎯 PERFECT PLACEMENT!
+                </div>
+                <div className="text-xl opacity-95 font-bold bg-white/20 backdrop-blur-sm rounded-xl py-2 px-4">
+                  +1 Point for {currentPlayer.name}! 🏆
+                </div>
+                <div className="text-lg opacity-90 animate-pulse">
+                  You're absolutely crushing it! 🔥⭐
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="text-2xl">🎯 Not quite right</div>
-                <div className="text-lg opacity-90">Keep jamming, you've got this!</div>
-                <div className="text-base opacity-80">Music history is tricky! 🎵</div>
+              <div className="space-y-3">
+                <div className="text-3xl animate-bounce">🎯 Not quite right!</div>
+                <div className="text-xl opacity-95 bg-white/20 backdrop-blur-sm rounded-xl py-2 px-4">
+                  Keep the music flowing! 🎶
+                </div>
+                <div className="text-lg opacity-90">
+                  Music history is tricky, but you've got this! 💪🎵
+                </div>
               </div>
             )}
           </div>

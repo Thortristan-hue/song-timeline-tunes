@@ -97,55 +97,75 @@ export function HostGameView({
         />
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - Reorganized Layout */}
       <div className="flex flex-col items-center justify-start min-h-screen p-8 pt-20">
-        {/* Top Middle - Cassette Icon */}
-        <div className="mb-8">
+        
+        {/* TOP MIDDLE - Cassette Icon */}
+        <div className="mb-6">
           <div className="relative">
             <img 
               src={assCassBg} 
-              alt="Control Panel Background" 
-              className="h-24 w-auto"
+              alt="Cassette Player" 
+              className="h-32 w-auto drop-shadow-lg"
             />
-            
-            {/* Control Buttons Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center space-x-4">
-              {/* Play/Pause Button */}
-              <button
-                onClick={handleRecordClick}
-                className="relative group transition-transform hover:scale-110 active:scale-95"
-                disabled={!currentSong}
-              >
-                <img 
-                  src={isPlaying ? assPause : assPlay}
-                  alt={isPlaying ? "Pause" : "Play"}
-                  className="h-8 w-8"
-                />
-              </button>
-              
-              {/* Stop Button */}
-              <button
-                onClick={() => {
-                  if (isPlaying) {
-                    onPlayPause(); // This will stop/pause the audio
-                  }
-                }}
-                className="relative group transition-transform hover:scale-110 active:scale-95"
-                disabled={!isPlaying}
-              >
-                <img 
-                  src={assStop}
-                  alt="Stop"
-                  className="h-8 w-8"
-                />
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Center - Current Turn Player Timeline */}
+        {/* BELOW CASSETTE - Audio Controls */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-6 bg-black/30 backdrop-blur-sm rounded-2xl px-8 py-4 border border-white/20">
+            {/* Play/Pause Button */}
+            <button
+              onClick={handleRecordClick}
+              className="relative group transition-transform hover:scale-110 active:scale-95 p-2"
+              disabled={!currentSong}
+            >
+              <img 
+                src={isPlaying ? assPause : assPlay}
+                alt={isPlaying ? "Pause" : "Play"}
+                className="h-10 w-10 drop-shadow-md"
+              />
+              <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+            
+            {/* Stop Button */}
+            <button
+              onClick={() => {
+                if (isPlaying) {
+                  onPlayPause(); // This will stop/pause the audio
+                }
+              }}
+              className="relative group transition-transform hover:scale-110 active:scale-95 p-2"
+              disabled={!isPlaying}
+            >
+              <img 
+                src={assStop}
+                alt="Stop"
+                className="h-10 w-10 drop-shadow-md"
+              />
+              <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+
+            {/* Current Song Info */}
+            {currentSong && (
+              <div className="text-center text-white ml-6 border-l border-white/30 pl-6">
+                <div className="text-sm font-medium opacity-80">Now Playing</div>
+                <div className="text-lg font-bold">{currentSong.deezer_title}</div>
+                <div className="text-sm opacity-70">{currentSong.deezer_artist}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* BELOW AUDIO CONTROLS - Song Timeline */}
         {currentTurnPlayer && (
           <div className="w-full max-w-6xl mb-8 flex flex-col items-center">
+            <div className="mb-4 text-center">
+              <h2 className="text-2xl font-bold text-white mb-1">
+                {currentTurnPlayer.name}'s Timeline
+              </h2>
+              <p className="text-white/70">Place the mystery song in the correct chronological order</p>
+            </div>
             <HostCurrentPlayerTimeline 
               currentTurnPlayer={currentTurnPlayer}
               highlightedGapIndex={highlightedGapIndex}
@@ -154,7 +174,7 @@ export function HostGameView({
           </div>
         )}
 
-        {/* Mystery Card (moved lower) */}
+        {/* Mystery Card (positioned lower but visible) */}
         <div className={`mb-8 transition-all duration-500 ${
           cardPlacementResult 
             ? cardPlacementResult.correct 
@@ -169,7 +189,7 @@ export function HostGameView({
           />
         </div>
 
-        {/* Player Characters Display (moved to bottom) */}
+        {/* Player Characters Display (at bottom) */}
         <div className="w-full max-w-6xl">
           <div className="flex justify-center items-end space-x-6">
             {players.map((player) => {
@@ -191,11 +211,11 @@ export function HostGameView({
                       <img
                         src={character?.image || getDefaultCharacter().image}
                         alt={character?.name || getDefaultCharacter().name}
-                        className="h-20 w-20 rounded-full border-4"
+                        className="h-20 w-20 rounded-full border-4 object-cover"
                         style={{ borderColor: player.color }}
                       />
                       {isCurrentPlayer && (
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center animate-pulse">
                           <span className="text-xs">🎵</span>
                         </div>
                       )}
