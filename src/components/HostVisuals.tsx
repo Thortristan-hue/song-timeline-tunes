@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause } from 'lucide-react';
 import { Song, Player, GameRoom } from '@/types/game';
@@ -16,7 +16,6 @@ interface HostVisualsProps {
 export function HostVisuals({ room, isHost }: HostVisualsProps) {
   const [currentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   suppressUnused(isHost);
 
