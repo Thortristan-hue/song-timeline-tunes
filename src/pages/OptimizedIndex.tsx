@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useOptimizedGameRoom } from '@/hooks/useOptimizedGameRoom';
 import { useOptimizedGameLogic } from '@/hooks/useOptimizedGameLogic';
@@ -149,6 +150,8 @@ export default function OptimizedIndex() {
             }}
             setCustomSongs={() => {}}
             isLoading={isLoading}
+            createRoom={createRoom}
+            updateRoomGamemode={() => Promise.resolve()}
           />
         </>
       );
@@ -182,7 +185,6 @@ export default function OptimizedIndex() {
     <MainMenu
       onCreateRoom={() => {}}
       onJoinRoom={() => {}}
-      isLoading={isLoading}
     />
   );
 }
