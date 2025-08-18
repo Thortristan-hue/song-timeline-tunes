@@ -1,8 +1,9 @@
 
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 interface AudioPlayerProps {
   src: string | null;
@@ -11,6 +12,7 @@ interface AudioPlayerProps {
   className?: string;
   volume?: number;
   disabled?: boolean;
+  trackId?: string; // Add trackId to fetch preview if src is not available
 }
 
 export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
@@ -19,17 +21,44 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
   onPlayPause,
   className,
   volume = 0.5,
-  disabled = false
+  disabled = false,
+  trackId
 }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [actualSrc, setActualSrc] = useState<string | null>(src);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Expose audio element via ref for external control
   useImperativeHandle(ref, () => audioRef.current!, []);
 
-  // ENHANCED: Better audio handling with fresh URL validation and error recovery
+  // Fetch preview URL if src is not available but trackId is provided
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (!src && trackId && !isLoadingPreview) {
+        setIsLoadingPreview(true);
+        try {
+          console.log('🎵 Fetching preview URL for track:', trackId);
+          const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          setActualSrc(previewUrl);
+          console.log('✅ Preview URL fetched:', previewUrl);
+        } catch (error) {
+          console.error('❌ Failed to fetch preview URL:', error);
+          setActualSrc(null);
+        } finally {
+          setIsLoadingPreview(false);
+        }
+      } else if (src) {
+        setActualSrc(src);
+      }
+    };
+
+    fetchPreview();
+  }, [src, trackId, isLoadingPreview]);
+
+  // Enhanced audio handling with proper preview URL validation
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src || disabled) return;
+    if (!audio || !actualSrc || disabled || isLoadingPreview) return;
 
     // Set volume and CORS
     audio.volume = volume;
@@ -46,8 +75,9 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
       });
 
       // Set source and attempt to play
-      if (audio.src !== src) {
-        audio.src = src;
+      if (audio.src !== actualSrc) {
+        console.log('🔄 Setting audio source:', actualSrc);
+        audio.src = actualSrc;
         audio.load();
       }
       
@@ -74,7 +104,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     } else {
       audio.pause();
     }
-  }, [isPlaying, volume, src, disabled, onPlayPause]);
+  }, [isPlaying, volume, actualSrc, disabled, onPlayPause, isLoadingPreview]);
 
   // Handle audio events
   useEffect(() => {
@@ -127,12 +157,14 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     // Stop current audio when src changes
     audio.pause();
     audio.currentTime = 0;
-    if (src && src !== audio.src) {
-      console.log('🔄 Setting new audio source:', src);
-      audio.src = src;
+    if (actualSrc && actualSrc !== audio.src) {
+      console.log('🔄 Setting new audio source:', actualSrc);
+      audio.src = actualSrc;
       audio.load();
     }
-  }, [src]);
+  }, [actualSrc]);
+
+  const isActuallyDisabled = disabled || !actualSrc || isLoadingPreview;
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -147,10 +179,11 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         size="sm"
         variant="outline"
         className="flex items-center gap-1"
-        disabled={disabled || !src}
+        disabled={isActuallyDisabled}
       >
         {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-        {disabled && <span className="text-xs">Loading...</span>}
+        {isLoadingPreview && <span className="text-xs">Loading preview...</span>}
+        {isActuallyDisabled && !isLoadingPreview && <span className="text-xs">No preview</span>}
       </Button>
       <Volume2 className="h-3 w-3 text-muted-foreground" />
     </div>

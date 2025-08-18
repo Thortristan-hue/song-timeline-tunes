@@ -36,7 +36,7 @@ export class SoundEffects {
       this.initialized = true;
       console.log('🎵 Audio system initialized');
       
-      // Preload essential sounds
+      // Preload essential sounds from GitHub (public folder)
       this.preloadSounds();
     } catch (error) {
       console.warn('Audio system initialization failed, using fallback sounds:', error);
@@ -44,6 +44,7 @@ export class SoundEffects {
   }
 
   private async preloadSounds(): Promise<void> {
+    // Use GitHub assets (public folder) instead of Supabase
     const soundManifest: Record<SoundName, string> = {
       'button-click': '/sounds/button-click.mp3',
       'success': '/sounds/correct.mp3',
@@ -61,9 +62,9 @@ export class SoundEffects {
           this.loadSound(name as SoundName, url)
         )
       );
-      console.log('🎵 Audio files loaded successfully');
+      console.log('🎵 Audio files loaded successfully from GitHub');
     } catch (error) {
-      console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
+      console.warn('Some audio files could not be loaded from GitHub, fallback sounds will be used:', error);
     }
   }
 

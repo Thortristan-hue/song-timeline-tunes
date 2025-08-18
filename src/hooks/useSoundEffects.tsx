@@ -1,27 +1,18 @@
 
 import { useCallback } from 'react';
 
-// Supabase configuration for audio assets
-const SUPABASE_PROJECT_REF = 'vtymwospadqqbbgjqdqt';
-const SUPABASE_STORAGE_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/assets`;
-
 export function useSoundEffects() {
-  // Enhanced sound effect system with Supabase Storage and fallbacks
+  // Enhanced sound effect system with GitHub assets and fallbacks
   const playAudioFile = useCallback(async (filename: string, volume: number = 0.3) => {
     try {
-      // Primary: Try Supabase Storage URL with correct content-type
-      const supabaseUrl = `${SUPABASE_STORAGE_URL}/sounds/${filename}`;
-      
-      // Fallback: Local paths for development
-      const fallbackPaths = [
+      // Primary: Try GitHub assets (public folder)
+      const githubPaths = [
         `/sounds/${filename}`,
         `./sounds/${filename}`,
         `../sounds/${filename}`
       ];
       
-      const allPaths = [supabaseUrl, ...fallbackPaths];
-      
-      for (const path of allPaths) {
+      for (const path of githubPaths) {
         try {
           const audio = new Audio(path);
           audio.volume = volume;

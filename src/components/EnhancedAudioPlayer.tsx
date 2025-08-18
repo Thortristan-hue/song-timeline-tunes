@@ -1,6 +1,8 @@
+
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { DeezerAudioService } from '@/services/DeezerAudioService';
 
 // Import the specific assets
 import assSpeaker from '@/assets/ass_speaker.png';
@@ -17,6 +19,7 @@ interface EnhancedAudioPlayerProps {
   className?: string;
   volume?: number;
   disabled?: boolean;
+  trackId?: string; // Add trackId to fetch preview if src is not available
 }
 
 export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPlayerProps>(({
@@ -26,15 +29,42 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
   onStop,
   className,
   volume = 0.5,
-  disabled = false
+  disabled = false,
+  trackId
 }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playButtonFlipped, setPlayButtonFlipped] = useState(false);
   const [pauseButtonFlipped, setPauseButtonFlipped] = useState(false);
   const [stopButtonFlipped, setStopButtonFlipped] = useState(false);
+  const [actualSrc, setActualSrc] = useState<string | null>(src);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Expose audio element via ref for external control
   useImperativeHandle(ref, () => audioRef.current!, []);
+
+  // Fetch preview URL if src is not available but trackId is provided
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (!src && trackId && !isLoadingPreview) {
+        setIsLoadingPreview(true);
+        try {
+          console.log('🎵 Enhanced player fetching preview URL for track:', trackId);
+          const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          setActualSrc(previewUrl);
+          console.log('✅ Enhanced player preview URL fetched:', previewUrl);
+        } catch (error) {
+          console.error('❌ Enhanced player failed to fetch preview URL:', error);
+          setActualSrc(null);
+        } finally {
+          setIsLoadingPreview(false);
+        }
+      } else if (src) {
+        setActualSrc(src);
+      }
+    };
+
+    fetchPreview();
+  }, [src, trackId, isLoadingPreview]);
 
   // Handle button flip states based on playback logic
   useEffect(() => {
@@ -51,7 +81,7 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
   // Enhanced audio handling
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !src || disabled) return;
+    if (!audio || !actualSrc || disabled || isLoadingPreview) return;
 
     audio.volume = volume;
     audio.crossOrigin = 'anonymous';
@@ -66,8 +96,9 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
         }
       });
 
-      if (audio.src !== src) {
-        audio.src = src;
+      if (audio.src !== actualSrc) {
+        console.log('🔄 Enhanced player setting source:', actualSrc);
+        audio.src = actualSrc;
         audio.load();
       }
       
@@ -75,17 +106,17 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Audio playback started successfully');
+            console.log('✅ Enhanced player audio playback started successfully');
           })
           .catch(error => {
-            console.error('❌ Audio play failed:', error);
+            console.error('❌ Enhanced player audio play failed:', error);
             onPlayPause();
           });
       }
     } else {
       audio.pause();
     }
-  }, [isPlaying, volume, src, disabled, onPlayPause]);
+  }, [isPlaying, volume, actualSrc, disabled, onPlayPause, isLoadingPreview]);
 
   // Handle audio events
   useEffect(() => {
@@ -93,14 +124,14 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
     if (!audio) return;
 
     const handleEnded = () => {
-      console.log('🎵 Audio ended naturally');
+      console.log('🎵 Enhanced player audio ended naturally');
       onPlayPause();
     };
 
     const handleError = (e: Event) => {
       const target = e.target as HTMLAudioElement;
       const error = target.error;
-      console.error('❌ Audio error occurred:', {
+      console.error('❌ Enhanced player audio error occurred:', {
         code: error?.code,
         message: error?.message,
         src: target.src
@@ -124,12 +155,12 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
 
     audio.pause();
     audio.currentTime = 0;
-    if (src && src !== audio.src) {
-      console.log('🔄 Setting new audio source:', src);
-      audio.src = src;
+    if (actualSrc && actualSrc !== audio.src) {
+      console.log('🔄 Enhanced player setting new audio source:', actualSrc);
+      audio.src = actualSrc;
       audio.load();
     }
-  }, [src]);
+  }, [actualSrc]);
 
   const handlePlayPauseClick = () => {
     if (isPlaying) {
@@ -158,6 +189,8 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
     onStop();
   };
 
+  const isActuallyDisabled = disabled || !actualSrc || isLoadingPreview;
+
   return (
     <div className={cn("flex items-center justify-center gap-8", className)}>
       <audio
@@ -174,7 +207,6 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           alt="Speaker" 
           className="w-32 h-32 object-contain drop-shadow-lg"
           style={{ 
-            // Match corners with play screen styling
             borderRadius: '12px'
           }}
         />
@@ -188,13 +220,22 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           className="w-72 h-48 object-contain drop-shadow-lg"
         />
         
+        {/* Loading indicator */}
+        {isLoadingPreview && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-black/80 text-white px-3 py-1 rounded text-sm">
+              Loading preview...
+            </div>
+          </div>
+        )}
+        
         {/* Controls positioned lower on the cassette */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-6">
           {/* Play Button */}
           <button
             onClick={handlePlayPauseClick}
-            disabled={disabled || !src}
-            className="transition-transform duration-100 hover:scale-110 active:scale-95"
+            disabled={isActuallyDisabled}
+            className="transition-transform duration-100 hover:scale-110 active:scale-95 disabled:opacity-50"
           >
             <img 
               src={assPlay} 
@@ -208,8 +249,8 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           {/* Pause Button */}
           <button
             onClick={handlePlayPauseClick}
-            disabled={disabled || !src}
-            className="transition-transform duration-100 hover:scale-110 active:scale-95"
+            disabled={isActuallyDisabled}
+            className="transition-transform duration-100 hover:scale-110 active:scale-95 disabled:opacity-50"
           >
             <img 
               src={assPause} 
@@ -223,8 +264,8 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           {/* Stop Button */}
           <button
             onClick={handleStopClick}
-            disabled={disabled || !src}
-            className="transition-transform duration-100 hover:scale-110 active:scale-95"
+            disabled={isActuallyDisabled}
+            className="transition-transform duration-100 hover:scale-110 active:scale-95 disabled:opacity-50"
           >
             <img 
               src={assStop} 
