@@ -27,8 +27,8 @@ export class GameLogic {
   }
 
   checkWinCondition(): Player | null {
-    // Simple win condition: first player to reach 10 points
-    const winner = this.players.find(player => player.score >= 10);
+    // Simple win condition: first player to reach 9 points (10 cards total including starting card)
+    const winner = this.players.find(player => player.score >= 9);
     return winner || null;
   }
 }

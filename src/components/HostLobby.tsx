@@ -422,7 +422,7 @@ export function HostLobby({
                             <Music2 className="h-4 w-4 text-[#4CC9F0]" />
                             <div>
                               <div className="font-semibold">Classic/Timeliner</div>
-                              <div className="text-xs text-[#d9e8dd]/70">Place cards in timeline • First to 10 wins</div>
+                              <div className="text-xs text-[#d9e8dd]/70">Place cards in timeline • First to 9 wins</div>
                             </div>
                           </div>
                         </SelectItem>
@@ -500,7 +500,7 @@ export function HostLobby({
                             The classic experience
                           </div>
                           <div className="text-[#d9e8dd] font-medium text-xs">
-                            Build your timeline, first to 10 cards wins!
+                            Build your timeline, first to 9 correct cards wins!
                           </div>
                         </div>
                       </div>

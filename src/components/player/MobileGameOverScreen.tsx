@@ -35,7 +35,7 @@ export default function MobileGameOverScreen({
             Game Over!
           </h1>
           <div className="text-lg text-white/80">
-            Someone reached 10 cards!
+            Someone got 9 cards right!
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import { MobileCodeEntry } from './MobileCodeEntry';
 import { MobilePlayerSetup } from './MobilePlayerSetup';
 
 interface MobileJoinFlowProps {
-  onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
+  onJoinRoom: (lobbyCode: string, playerName: string, characterId?: string) => Promise<boolean>;
   onBackToMenu: () => void;
   isLoading?: boolean;
   autoJoinCode?: string;
@@ -29,7 +29,7 @@ export function MobileJoinFlow({
 
   const handlePlayerSetup = async (name: string, character: string) => {
     console.log('🔗 Player setup:', { name, character, code: verifiedCode });
-    return await onJoinRoom(verifiedCode, name);
+    return await onJoinRoom(verifiedCode, name, character);
   };
 
   const handleBackToCodeEntry = () => {

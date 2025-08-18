@@ -59,7 +59,7 @@ export function useGameLogic(
         players: activePlayers
       }));
       
-      const winner = activePlayers.find(player => player.score >= 10);
+      const winner = activePlayers.find(player => player.score >= 9);
       if (winner && !gameState.winner) {
         setGameState(prev => ({
           ...prev,

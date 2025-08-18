@@ -270,7 +270,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
             How to Play
           </h2>
           <p className={`text-center text-[#d9e8dd] text-base mb-10 ${getAnimationClass('menu-entrance', 'stagger-6')}`}>
-            Build the perfect music timeline! Listen to songs and arrange them chronologically to create a 10-card timeline and win the game.
+            Build the perfect music timeline! Listen to songs and arrange them chronologically to create a 10-card timeline (1 starting + 9 guessed) and win the game.
           </p>
           
           {/* What You Need Section */}
@@ -338,7 +338,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                   <div className="w-8 h-8 bg-[#107793] rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">4</div>
                   <div>
                     <h4 className="text-white font-semibold mb-1">Win the Game</h4>
-                    <p className="text-[#d9e8dd] text-sm">First player to build a complete timeline with 10 songs wins!</p>
+                    <p className="text-[#d9e8dd] text-sm">First player to build a complete timeline with 10 songs (1 starting + 9 guessed) wins!</p>
                   </div>
                 </div>
               </div>
