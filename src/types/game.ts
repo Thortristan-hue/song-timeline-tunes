@@ -1,3 +1,4 @@
+
 export interface Song {
   id: string;
   deezer_title: string;
@@ -16,15 +17,24 @@ export interface Player {
   character: string;
   score: number;
   timeline: Song[];
+  color: string;
+  timelineColor: string;
 }
 
 export interface GameRoom {
   id: string;
   lobby_code: string;
   host_id: string;
+  host_name: string;
   phase: GamePhase;
   current_player_id: string;
   current_song: Song | null;
+  gamemode: string;
+  gamemode_settings: Record<string, any>;
+  songs: Song[];
+  created_at: string;
+  updated_at: string;
+  current_turn: number;
 }
 
 export type GamePhase =
@@ -32,8 +42,22 @@ export type GamePhase =
   | 'mobileJoin'
   | 'mobileLobby'
   | 'lobby'
+  | 'hostLobby'
   | 'playing'
-  | 'gameOver';
+  | 'gameOver'
+  | 'finished';
+
+export enum GameMode {
+  CLASSIC = 'classic',
+  FIEND = 'fiend',
+  SPRINT = 'sprint'
+}
+
+export enum DatabasePhase {
+  LOBBY = 'lobby',
+  PLAYING = 'playing',
+  FINISHED = 'finished'
+}
 
 export interface Character {
   id: string;

@@ -8,7 +8,6 @@ import { GAME_CHARACTERS } from '@/constants/characters';
 
 interface HostCurrentPlayerTimelineProps {
   currentPlayer: Player;
-  songs: Song[];
   currentSong: Song | null;
   onPreviewSong?: (song: Song) => void;
   isPreviewPlaying?: boolean;
@@ -17,7 +16,6 @@ interface HostCurrentPlayerTimelineProps {
 
 export function HostCurrentPlayerTimeline({
   currentPlayer,
-  songs,
   currentSong,
   onPreviewSong,
   isPreviewPlaying = false,

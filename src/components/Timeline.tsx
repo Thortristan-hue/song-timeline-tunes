@@ -5,13 +5,19 @@ import { Song } from '@/types/game';
 interface TimelineProps {
   songs: Song[];
   onCardClick: (song: Song, position: number) => void;
+  onCardSelect?: (song: Song, position: number) => Promise<void>;
   isProcessingMove: boolean;
+  currentSong?: Song;
 }
 
-export function Timeline({ songs, onCardClick, isProcessingMove }: TimelineProps) {
+export function Timeline({ songs, onCardClick, onCardSelect, isProcessingMove, currentSong }: TimelineProps) {
   const handleCardClick = (song: Song, index: number) => {
     if (!isProcessingMove) {
-      onCardClick(song, index);
+      if (onCardSelect) {
+        onCardSelect(song, index);
+      } else {
+        onCardClick(song, index);
+      }
     }
   };
 
