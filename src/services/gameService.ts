@@ -53,7 +53,11 @@ export class GameService {
         trackId: this.extractTrackIdFromSong(mysteryCard)
       };
 
-      // Update room with enhanced mystery card
+      // Set first player as current player
+      const firstPlayer = players[0];
+      console.log('🎯 Setting first player for turn:', firstPlayer.name);
+
+      // Update room with enhanced mystery card and first player
       const { error: roomUpdateError } = await supabase
         .from('game_rooms')
         .update({ 
@@ -61,6 +65,7 @@ export class GameService {
           songs: songs as unknown as Json,
           phase: 'playing',
           current_turn: 0,
+          current_player_id: firstPlayer.id,
           current_song_index: 0
         })
         .eq('id', roomId);
@@ -347,6 +352,11 @@ export class GameService {
           .eq('id', roomId);
       }
 
+      // Advance turn to next player if game hasn't ended
+      if (!gameEnded) {
+        await this.advanceToNextPlayer(roomId);
+      }
+
       console.log('✅ Card placed successfully', { isCorrect, newScore, gameEnded, winner: winner?.name });
 
       return { 
@@ -394,5 +404,67 @@ export class GameService {
     });
     
     return isCorrect;
+  }
+
+  // Advance to the next player's turn
+  private static async advanceToNextPlayer(roomId: string): Promise<void> {
+    try {
+      console.log('🔄 Advancing to next player...');
+
+      // Get room data and all players
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('current_turn, current_player_id')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('❌ Failed to get room data for turn advancement:', roomError);
+        return;
+      }
+
+      // Get all non-host players ordered by join time
+      const { data: players, error: playersError } = await supabase
+        .from('players')
+        .select('id, name')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError || !players || players.length === 0) {
+        console.error('❌ Failed to get players for turn advancement:', playersError);
+        return;
+      }
+
+      // Calculate next turn
+      const currentTurn = roomData.current_turn || 0;
+      const nextTurn = (currentTurn + 1) % players.length;
+      const nextPlayer = players[nextTurn];
+
+      console.log('🎯 Turn advancement:', {
+        currentTurn,
+        nextTurn,
+        nextPlayerId: nextPlayer.id,
+        nextPlayerName: nextPlayer.name,
+        totalPlayers: players.length
+      });
+
+      // Update room with next player's turn
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({
+          current_turn: nextTurn,
+          current_player_id: nextPlayer.id
+        })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('❌ Failed to update turn:', updateError);
+      } else {
+        console.log('✅ Turn advanced successfully to', nextPlayer.name);
+      }
+    } catch (error) {
+      console.error('❌ Error advancing turn:', error);
+    }
   }
 }

@@ -197,7 +197,7 @@ export function GamePlay({
     <AudioPlayer
       ref={audioRef}
       src={room.current_song.preview_url}
-      trackId={room.current_song.trackId}
+      trackId={room.current_song.trackId || room.current_song.deezer_url}
       isPlaying={isPlaying}
       onPlayPause={handlePlayPause}
       className="hidden"
