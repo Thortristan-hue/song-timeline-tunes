@@ -1,212 +1,94 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Song, Player, GameRoom } from '@/types/game';
-import { AudioPlayer } from './AudioPlayer';
-import { Timeline } from './Timeline';
+
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { Play, Pause } from 'lucide-react';
+import { Song, Player, GameRoom } from '@/types/game';
+import { Timeline } from './Timeline';
+import { AudioPlayer } from './AudioPlayer';
 import { suppressUnused } from '@/utils/suppressUnused';
 
 interface HostVisualsProps {
-  room: GameRoom | null;
+  room: GameRoom;
   players: Player[];
-  currentPlayer: Player | null;
   isHost: boolean;
-  customSongs: Song[];
-  onSetCurrentSong: (song: Song) => Promise<void>;
-  connectionStatus: {
-    isConnected: boolean;
-    isReconnecting: boolean;
-    lastError: string | null;
-    retryCount: number;
-  };
 }
 
-export function HostVisuals({ 
-  room, 
-  currentPlayer, 
-  isHost, 
-  customSongs,
-  onSetCurrentSong,
-  connectionStatus
-}: HostVisualsProps) {
-  const { toast } = useToast();
-  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [audioPlayerKey, setAudioPlayerKey] = useState(0);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+export function HostVisuals({ room, isHost }: HostVisualsProps) {
+  const [currentSong] = useState<Song | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Handle audio error - moved before usage
-  const handleAudioError = useCallback((error: string) => {
-    console.error('Audio error in HostVisuals:', error);
-    setAudioError(error);
-    setIsLoadingPreview(false);
-    
-    toast({
-      title: "Audio Error",
-      description: "Failed to load audio preview",
-      variant: "destructive",
-    });
-  }, [toast]);
+  suppressUnused(isHost);
 
-  // Load the first song when customSongs changes
-  useEffect(() => {
-    if (customSongs.length > 0) {
-      setPreviewUrl(customSongs[0].preview_url || null);
-    }
-  }, [customSongs]);
+  const mysteryCard: Song = {
+    id: 'mystery-card',
+    deezer_title: 'Mystery Song',
+    deezer_artist: 'Unknown Artist',
+    deezer_album: 'Unknown Album',
+    release_year: '2024',
+    genre: 'Unknown',
+    cardColor: '#purple',
+    preview_url: 'https://example.com/preview.mp3'
+  };
 
-  // Update preview URL when current song changes
-  useEffect(() => {
-    if (room?.current_song) {
-      setPreviewUrl(room.current_song.preview_url || null);
-    }
-  }, [room?.current_song]);
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
 
-  // Function to play the audio preview
-  const playPreview = useCallback(async () => {
-    if (!previewUrl) {
-      toast({
-        title: "No Preview Available",
-        description: "This song does not have an audio preview.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleCardClick = (song: Song, position: number) => {
+    console.log('Card clicked:', song, position);
+  };
 
-    setIsLoadingPreview(true);
-    setAudioError(null);
-
-    try {
-      // Reset audio player by updating the key
-      setAudioPlayerKey(prevKey => prevKey + 1);
-      setIsPlayingPreview(true);
-    } catch (error: any) {
-      console.error("Error playing preview:", error);
-      handleAudioError(error.message || 'Failed to play audio');
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }, [previewUrl, toast, handleAudioError]);
-
-  // Function to stop the audio preview
-  const stopPreview = useCallback(() => {
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-    }
-    setIsPlayingPreview(false);
-    setIsLoadingPreview(false);
-  }, []);
-
-  // Toggle play/pause
-  const togglePlayPause = useCallback(() => {
-    if (isPlayingPreview) {
-      stopPreview();
-    } else {
-      playPreview();
-    }
-  }, [isPlayingPreview, stopPreview, playPreview]);
-
-  // Handle audio load error
-  const handleAudioLoadError = useCallback((e: any) => {
-    console.error('Failed to load audio:', e);
-    handleAudioError('Failed to load audio');
-    setIsPlayingPreview(false);
-    setIsLoadingPreview(false);
-  }, [handleAudioError]);
-
-  const handleSetCurrentSong = useCallback(async (song: Song) => {
-    if (!isHost || !room) return;
-
-    try {
-      await onSetCurrentSong(song);
-    } catch (error) {
-      console.error('Failed to set current song:', error);
-      toast({
-        title: "Set Current Song Failed",
-        description: "Unable to set the current song. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [isHost, room, onSetCurrentSong, toast]);
-
-  // Stub handlers for Timeline props
-  const handleCardClick = useCallback((song: Song) => {
-    suppressUnused(song);
-    console.log('Card clicked:', song);
-  }, []);
+  const handleAudioError = (e: any) => {
+    console.error('Audio error:', e);
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Connection Status */}
-      <div className="mb-4">
-        {connectionStatus.isConnected ? (
-          <span className="text-green-500">Connected</span>
-        ) : (
-          <span className="text-red-500">
-            {connectionStatus.isReconnecting ? 'Reconnecting...' : 'Disconnected'}
-          </span>
-        )}
-        {connectionStatus.lastError && (
-          <span className="text-red-500 ml-2">Error: {connectionStatus.lastError}</span>
-        )}
+    <div className="flex flex-col h-screen bg-gray-900 text-white">
+      {/* Game Header */}
+      <div className="flex justify-between items-center p-4 bg-gray-800">
+        <h1 className="text-2xl font-bold">Game Room: {room.lobby_code}</h1>
+        <div className="flex items-center gap-4">
+          <Button onClick={handlePlayPause} variant="outline">
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPlaying ? 'Pause' : 'Play'}
+          </Button>
+        </div>
       </div>
 
-      {/* Current Player Timeline */}
-      {currentPlayer && (
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-2">
-            {currentPlayer.name}'s Timeline
-          </h2>
+      {/* Main Game Area */}
+      <div className="flex-1 flex">
+        {/* Left Side - Mystery Card */}
+        <div className="w-1/3 p-6 bg-gray-800 border-r border-gray-700">
+          <h2 className="text-xl font-bold mb-4">Mystery Card</h2>
+          <div className="bg-purple-600 p-6 rounded-lg">
+            <div className="text-lg font-semibold">{mysteryCard.deezer_title}</div>
+            <div className="text-purple-200">{mysteryCard.deezer_artist}</div>
+            <div className="text-purple-300 text-sm">{mysteryCard.deezer_album}</div>
+            <div className="text-2xl font-bold mt-4">{mysteryCard.release_year}</div>
+          </div>
+        </div>
+
+        {/* Right Side - Timeline */}
+        <div className="flex-1 p-6">
           <Timeline 
-            songs={currentPlayer.timeline} 
+            songs={room.songs} 
             onCardClick={handleCardClick}
             isProcessingMove={false}
           />
         </div>
+      </div>
+
+      {/* Audio Player */}
+      {currentSong?.preview_url && (
+        <AudioPlayer
+          key={Date.now()}
+          src={currentSong.preview_url}
+          isPlaying={isPlaying}
+          onError={handleAudioError}
+          audioRef={audioRef}
+        />
       )}
-
-      {/* Audio Player Controls */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">Audio Preview</h3>
-        {previewUrl ? (
-          <>
-            <AudioPlayer
-              key={audioPlayerKey}
-              src={previewUrl}
-              isPlaying={isPlayingPreview}
-              onPlayPause={togglePlayPause}
-              roomId={room?.id || ''}
-              trackId={room?.current_song?.id}
-              disabled={isLoadingPreview}
-            />
-            <Button onClick={togglePlayPause} disabled={isLoadingPreview}>
-              {isLoadingPreview ? 'Loading...' : (isPlayingPreview ? 'Pause' : 'Play')}
-            </Button>
-            {audioError && <p className="text-red-500">{audioError}</p>}
-          </>
-        ) : (
-          <p>No audio preview available.</p>
-        )}
-      </div>
-
-      {/* Song Selection */}
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Available Songs</h3>
-        <div className="flex flex-wrap">
-          {customSongs.map((song) => (
-            <Button
-              key={song.id}
-              className="mr-2 mb-2"
-              onClick={() => handleSetCurrentSong(song)}
-            >
-              {song.deezer_title}
-            </Button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

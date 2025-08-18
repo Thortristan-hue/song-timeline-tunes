@@ -51,11 +51,11 @@ export const isPlayerPhase = (phase: GamePhase): boolean => {
 };
 
 export function isMobilePhase(phase: GamePhase): phase is 'mobileJoin' | 'mobileLobby' {
-  return phase === 'mobileJoin' || phase === 'mobileLobby';
+  return phase === GamePhase.MOBILE_JOIN || phase === GamePhase.MOBILE_LOBBY;
 }
 
 export function isGamePhase(phase: GamePhase): phase is 'playing' | 'finished' {
-  return phase === 'playing' || phase === 'finished';
+  return phase === GamePhase.PLAYING || phase === GamePhase.FINISHED;
 }
 
 export interface GameModeSettings {

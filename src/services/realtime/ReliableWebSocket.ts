@@ -1,13 +1,5 @@
-import { Socket, Channel } from 'phoenix';
 
-interface RealtimeChannel {
-  socket: Socket;
-  topic: string;
-  channel: Channel;
-  isConnected: boolean;
-  timeout: number;
-  reconnectAfterMs: number;
-}
+import { Socket, Channel } from 'phoenix';
 
 export class ReliableWebSocket {
   private socket: Socket;
@@ -15,7 +7,6 @@ export class ReliableWebSocket {
   private topic: string;
   private url: string;
   private isConnected: boolean = false;
-  private timeout: number = 5000;
   private reconnectAfterMs: number = 5000;
   private connectionAttempts: number = 0;
   private maxConnectionAttempts: number = 5;
@@ -68,8 +59,8 @@ export class ReliableWebSocket {
   }
 
   private setupChannel(): void {
-    if (this.channel && this.channel.topic) {
-      this.channel.unsubscribe();
+    if (this.channel) {
+      this.channel.leave();
     }
 
     this.channel = this.socket.channel(this.topic, {});
