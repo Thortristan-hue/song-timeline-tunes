@@ -50,13 +50,13 @@ export const isPlayerPhase = (phase: GamePhase): boolean => {
   return [GamePhase.MOBILE_JOIN, GamePhase.MOBILE_LOBBY].includes(phase);
 };
 
-export const isMobilePhase = (phase: GamePhase): phase is 'mobileJoin' | 'mobileLobby' => {
+export function isMobilePhase(phase: GamePhase): phase is 'mobileJoin' | 'mobileLobby' {
   return phase === 'mobileJoin' || phase === 'mobileLobby';
-};
+}
 
-export const isGamePhase = (phase: GamePhase): phase is 'playing' | 'finished' => {
+export function isGamePhase(phase: GamePhase): phase is 'playing' | 'finished' {
   return phase === 'playing' || phase === 'finished';
-};
+}
 
 export interface GameModeSettings {
   // Fiend Mode settings
