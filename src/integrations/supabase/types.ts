@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -84,7 +84,7 @@ export type Database = {
           host_id: string
           host_name?: string | null
           id?: string
-          lobby_code: string
+          lobby_code?: string
           phase?: string
           songs?: Json | null
           updated_at?: string
@@ -109,6 +109,7 @@ export type Database = {
       }
       players: {
         Row: {
+          character: string
           color: string
           id: string
           is_host: boolean | null
@@ -122,6 +123,7 @@ export type Database = {
           timeline_color: string
         }
         Insert: {
+          character?: string
           color: string
           id?: string
           is_host?: boolean | null
@@ -135,6 +137,7 @@ export type Database = {
           timeline_color: string
         }
         Update: {
+          character?: string
           color?: string
           id?: string
           is_host?: boolean | null
@@ -169,6 +172,14 @@ export type Database = {
       generate_lobby_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_player_room_id: {
+        Args: { session_id: string }
+        Returns: string
+      }
+      player_belongs_to_room: {
+        Args: { session_id: string; target_room_id: string }
+        Returns: boolean
       }
     }
     Enums: {
