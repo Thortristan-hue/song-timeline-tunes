@@ -8,6 +8,22 @@ import { optimizedRealtimeService } from '@/services/optimizedRealtimeService';
 import { getDefaultCharacter } from '@/constants/characters';
 import type { Json } from '@/integrations/supabase/types';
 
+// Add character property to database player interface
+interface DatabasePlayer {
+  id: string;
+  name: string;
+  color: string;
+  timeline_color: string;
+  score: number;
+  timeline: Json;
+  room_id: string;
+  player_session_id: string;
+  is_host: boolean;
+  joined_at: string;
+  last_active: string;
+  character?: string; // Add character property
+}
+
 export function useOptimizedGameRoom() {
   const { toast } = useToast();
   const [room, setRoom] = useState<GameRoom | null>(null);

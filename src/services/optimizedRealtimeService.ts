@@ -10,6 +10,22 @@ export interface RealtimeSubscription {
   onGameEvent?: (event: string, data: any) => void;
 }
 
+// Add character property to database player interface
+interface DatabasePlayer {
+  id: string;
+  name: string;
+  color: string;
+  timeline_color: string;
+  score: number;
+  timeline: any; // Json type
+  room_id: string;
+  player_session_id: string;
+  is_host: boolean;
+  joined_at: string;
+  last_active: string;
+  character?: string; // Add character property
+}
+
 export class OptimizedRealtimeService {
   private channels: Map<string, RealtimeChannel> = new Map();
   private subscriptions: Map<string, RealtimeSubscription> = new Map();
@@ -58,7 +74,7 @@ export class OptimizedRealtimeService {
         .eq('is_host', false);
       
       if (players) {
-        const convertedPlayers: Player[] = players.map(p => ({
+        const convertedPlayers: Player[] = players.map((p: DatabasePlayer) => ({
           id: p.id,
           name: p.name,
           color: p.color,

@@ -4,16 +4,16 @@ import { useOptimizedGameRoom } from '@/hooks/useOptimizedGameRoom';
 import { useOptimizedGameLogic } from '@/hooks/useOptimizedGameLogic';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
-import { MobilePlayerLobby } from '@/components/MobilePlayerLobby';
+import MobilePlayerLobby from '@/components/MobilePlayerLobby';
 import { GamePlay } from '@/components/GamePlay';
-import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
+import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { VictoryScreen } from '@/components/VictoryScreen';
-import { MobileVictoryScreen } from '@/components/player/MobileVictoryScreen';
+import MobileVictoryScreen from '@/components/player/MobileVictoryScreen';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function OptimizedIndex() {
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
   const {
     room,
@@ -67,9 +67,19 @@ export default function OptimizedIndex() {
   // Victory condition
   if (gameState.winner) {
     return isMobile ? (
-      <MobileVictoryScreen winner={gameState.winner} onPlayAgain={() => window.location.reload()} />
+      <MobileVictoryScreen 
+        winner={gameState.winner} 
+        players={players}
+        onPlayAgain={() => window.location.reload()}
+        onBackToMenu={() => window.location.reload()}
+      />
     ) : (
-      <VictoryScreen winner={gameState.winner} onPlayAgain={() => window.location.reload()} />
+      <VictoryScreen 
+        winner={gameState.winner} 
+        players={players}
+        onPlayAgain={() => window.location.reload()}
+        onBackToMenu={() => window.location.reload()}
+      />
     );
   }
 
@@ -79,7 +89,6 @@ export default function OptimizedIndex() {
       return (
         <MobilePlayerGameView
           currentPlayer={currentPlayer}
-          gameState={gameState}
           room={room}
           onPlaceCard={placeCard}
           setIsPlaying={setIsPlaying}
@@ -93,7 +102,6 @@ export default function OptimizedIndex() {
         players={players}
         currentPlayer={currentPlayer}
         isHost={isHost}
-        gameState={gameState}
         onSetCurrentSong={() => Promise.resolve()}
         onPlaceCard={placeCard}
         setIsPlaying={setIsPlaying}
@@ -114,7 +122,11 @@ export default function OptimizedIndex() {
           <HostLobby
             room={room}
             players={players}
-            onStartGame={startGame}
+            onStartGame={() => {
+              initializeGame().then(() => {
+                startGame();
+              });
+            }}
             onLeaveRoom={leaveRoom}
             initializeGame={initializeGame}
           />
@@ -141,8 +153,8 @@ export default function OptimizedIndex() {
   // Main menu
   return (
     <MainMenu
-      onCreateRoom={createRoom}
-      onJoinRoom={joinRoom}
+      onCreateRoom={(hostName: string) => createRoom(hostName)}
+      onJoinRoom={(lobbyCode: string, playerName: string) => joinRoom(lobbyCode, playerName)}
       isLoading={isLoading}
     />
   );
