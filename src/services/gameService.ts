@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Song, Player } from '@/types/game';
 import type { Json } from '@/integrations/supabase/types';
@@ -48,11 +47,17 @@ export class GameService {
       
       console.log('🎵 Selected mystery card:', mysteryCard.deezer_title);
 
-      // CRITICAL: Update room with mystery card AND set phase to playing AND store all songs
+      // Enhanced mystery card with track ID extraction for audio
+      const enhancedMysteryCard = {
+        ...mysteryCard,
+        trackId: this.extractTrackIdFromSong(mysteryCard)
+      };
+
+      // Update room with enhanced mystery card
       const { error: roomUpdateError } = await supabase
         .from('game_rooms')
         .update({ 
-          current_song: mysteryCard as unknown as Json,
+          current_song: enhancedMysteryCard as unknown as Json,
           songs: songs as unknown as Json,
           phase: 'playing',
           current_turn: 0,
@@ -65,7 +70,7 @@ export class GameService {
         throw roomUpdateError;
       }
 
-      console.log('✅ Room updated with mystery card and playing phase');
+      console.log('✅ Room updated with enhanced mystery card and playing phase');
 
       // Assign starting cards to each player
       for (const player of players) {
@@ -108,9 +113,15 @@ export class GameService {
     try {
       console.log('🎵 Setting current song for room:', roomId, 'to', song.deezer_title);
 
+      // Enhanced song with track ID for audio playback
+      const enhancedSong = {
+        ...song,
+        trackId: this.extractTrackIdFromSong(song)
+      };
+
       const { error } = await supabase
         .from('game_rooms')
-        .update({ current_song: song as unknown as Json })
+        .update({ current_song: enhancedSong as unknown as Json })
         .eq('id', roomId);
 
       if (error) {
@@ -118,11 +129,30 @@ export class GameService {
         throw error;
       }
 
-      console.log('✅ Current song updated successfully.');
+      console.log('✅ Current song updated successfully with track ID:', enhancedSong.trackId);
     } catch (error) {
       console.error('❌ Failed to set current song:', error);
       throw error;
     }
+  }
+
+  // Helper method to extract track ID from song for audio playback
+  private static extractTrackIdFromSong(song: Song): string | undefined {
+    if (song.deezer_url) {
+      const trackIdMatch = song.deezer_url.match(/track\/(\d+)/);
+      if (trackIdMatch) {
+        console.log('🎵 Extracted track ID:', trackIdMatch[1], 'from URL:', song.deezer_url);
+        return trackIdMatch[1];
+      }
+    }
+    
+    // Fallback: generate a consistent ID from song properties
+    const fallbackId = btoa(`${song.deezer_artist}-${song.deezer_title}-${song.release_year}`)
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .substring(0, 10);
+    
+    console.log('🎵 Generated fallback track ID:', fallbackId, 'for song:', song.deezer_title);
+    return fallbackId;
   }
 
   static async updatePlayerTimeline(playerId: string, timeline: Song[], score?: number): Promise<void> {
@@ -203,8 +233,8 @@ export class GameService {
         newTimeline.splice(position, 0, song);
       }
 
-      // Simple correctness check (you can implement more complex logic here)
-      const isCorrect = Math.random() > 0.3; // 70% chance of being correct for demo
+      // Enhanced correctness check based on chronological order
+      const isCorrect = this.checkTimelineCorrectness(newTimeline, song, position);
 
       // Update player data
       const newScore = playerData.score + (isCorrect ? 1 : 0);
@@ -226,7 +256,6 @@ export class GameService {
       let gameEnded = false;
 
       if (newScore >= 10) {
-        // Convert database player to Player type - use getDefaultCharacter for missing character
         winner = {
           id: playerData.id,
           name: playerData.name,
@@ -238,23 +267,10 @@ export class GameService {
         };
         gameEnded = true;
 
-        // Update room to finished state
         await supabase
           .from('game_rooms')
           .update({ phase: 'finished' })
           .eq('id', roomId);
-      }
-
-      // Advance turn (simple implementation)
-      const { error: turnError } = await supabase
-        .from('game_rooms')
-        .update({ 
-          current_turn: (playerData.room_id ? 1 : 0) + 1 // Simple turn advancement
-        })
-        .eq('id', roomId);
-
-      if (turnError) {
-        console.warn('⚠️ Failed to advance turn:', turnError);
       }
 
       console.log('✅ Card placed successfully', { isCorrect, newScore, gameEnded, winner: winner?.name });
@@ -270,5 +286,31 @@ export class GameService {
       console.error('❌ GameService: Failed to place card:', error);
       return { success: false, error: 'Failed to place card' };
     }
+  }
+
+  // Enhanced timeline correctness check
+  private static checkTimelineCorrectness(timeline: Song[], newSong: Song, position: number): boolean {
+    const sortedTimeline = [...timeline].sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+    const newSongYear = parseInt(newSong.release_year);
+    
+    // Check if the song fits chronologically in the position
+    const beforeSong = position > 0 ? sortedTimeline[position - 1] : null;
+    const afterSong = position < sortedTimeline.length - 1 ? sortedTimeline[position + 1] : null;
+    
+    const beforeYear = beforeSong ? parseInt(beforeSong.release_year) : 0;
+    const afterYear = afterSong ? parseInt(afterSong.release_year) : 9999;
+    
+    const isCorrect = newSongYear >= beforeYear && newSongYear <= afterYear;
+    
+    console.log('🎯 Timeline correctness check:', {
+      newSong: newSong.deezer_title,
+      newSongYear,
+      beforeYear,
+      afterYear,
+      position,
+      isCorrect
+    });
+    
+    return isCorrect;
   }
 }

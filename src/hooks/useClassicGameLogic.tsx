@@ -77,7 +77,7 @@ export function useClassicGameLogic(
     }
   }, [allPlayers, roomData?.host_id, gameState.winner]);
 
-  // CRITICAL: Enhanced room data handler with proper state synchronization
+  // Enhanced room data synchronization
   useEffect(() => {
     if (!roomData) return;
 
@@ -88,7 +88,7 @@ export function useClassicGameLogic(
       gameInitialized: gameState.gameFullyInitialized
     });
 
-    // CRITICAL: Always sync current song (mystery card) from room data
+    // Always sync the current song (mystery card)
     if (roomData.current_song && roomData.current_song.deezer_title) {
       console.log('🎵 CLASSIC MODE: Syncing mystery card from room:', roomData.current_song.deezer_title);
       setGameState(prev => ({
@@ -97,7 +97,7 @@ export function useClassicGameLogic(
       }));
     }
 
-    // Handle initial game setup from room data
+    // Initialize with room songs if available
     if (roomData.songs && roomData.songs.length > 0 && !gameState.gameFullyInitialized) {
       console.log('🎵 CLASSIC MODE: Initializing with room songs:', roomData.songs.length);
       
@@ -109,28 +109,59 @@ export function useClassicGameLogic(
         gameFullyInitialized: true,
         phase: roomData.phase === 'playing' ? 'playing' : 'ready'
       }));
-    }
-    // Update phase when room transitions to playing
-    else if (gameState.gameFullyInitialized || (roomData.phase === 'playing' && roomData.current_song)) {
-      console.log('🎯 CLASSIC MODE: Game ready - transitioning to playing phase');
+    } else if (gameState.gameFullyInitialized && roomData.phase === 'playing') {
       setGameState(prev => ({
         ...prev,
-        phase: 'playing',
-        gameFullyInitialized: true
+        phase: 'playing'
       }));
     }
 
-    // Always sync turn index
+    // Sync turn index
     if (typeof roomData.current_turn === 'number') {
       setGameState(prev => ({
         ...prev,
         currentTurnIndex: roomData.current_turn || 0
       }));
     }
-
   }, [roomData, gameState.gameFullyInitialized]);
 
-  // Initialize game with optimized song loading (fallback for local song fetching)
+  // Get next available song for mystery card
+  const getNextMysteryCard = useCallback((): Song | null => {
+    console.log('🎯 CLASSIC MODE: Getting next mystery card');
+    
+    // Get all used song IDs from all players' timelines
+    const usedSongIds = new Set<string>();
+    
+    gameState.players.forEach(player => {
+      player.timeline.forEach(song => {
+        if (song && song.id) {
+          usedSongIds.add(song.id);
+        }
+      });
+    });
+
+    // Add current song to used
+    if (gameState.currentSong) {
+      usedSongIds.add(gameState.currentSong.id);
+    }
+
+    // Find unused songs
+    const availableSongs = gameState.availableSongs.filter(song => !usedSongIds.has(song.id));
+    
+    console.log(`🎯 CLASSIC MODE: ${availableSongs.length} songs available for next mystery card`);
+    
+    if (availableSongs.length === 0) {
+      console.warn('⚠️ CLASSIC MODE: No more songs available!');
+      return null;
+    }
+
+    const nextSong = availableSongs[Math.floor(Math.random() * availableSongs.length)];
+    console.log('🎵 CLASSIC MODE: Selected next mystery card:', nextSong.deezer_title);
+    
+    return nextSong;
+  }, [gameState.players, gameState.currentSong, gameState.availableSongs]);
+
+  // Initialize game
   const initializeGame = useCallback(async () => {
     // If we already have songs from room data, don't fetch again
     if (roomData?.songs && roomData.songs.length > 0) {
@@ -200,19 +231,14 @@ export function useClassicGameLogic(
     }
   }, [toast, gameState.playlistInitialized, roomData?.songs]);
 
-  // Place card in timeline (turn-based)
+  // Enhanced place card function with automatic song advancement
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {
     if (!roomId || gameState.phase !== 'playing') {
       console.error('Cannot place card: invalid state', { roomId: !!roomId, phase: gameState.phase });
       return { success: false };
     }
 
-    if (gameState.availableSongs.length === 0) {
-      console.error('Cannot place card: no available songs');
-      return { success: false };
-    }
-
-    console.log('🎯 CLASSIC MODE: Attempting to place card with available songs:', gameState.availableSongs.length);
+    console.log('🎯 CLASSIC MODE: Placing card and advancing to next song');
 
     try {
       const result = await GameService.placeCardAndAdvanceTurn(
@@ -224,6 +250,21 @@ export function useClassicGameLogic(
       );
 
       if (result.success) {
+        // Get next mystery card
+        const nextSong = getNextMysteryCard();
+        
+        if (nextSong && onSetCurrentSong) {
+          console.log('🎵 CLASSIC MODE: Setting next mystery card:', nextSong.deezer_title);
+          await onSetCurrentSong(nextSong);
+          
+          // Update local state
+          setGameState(prev => ({
+            ...prev,
+            currentSong: nextSong,
+            usedSongs: [...prev.usedSongs, song]
+          }));
+        }
+
         // Check if game ended
         if (result.gameEnded && result.winner) {
           setGameState(prev => ({
@@ -241,7 +282,7 @@ export function useClassicGameLogic(
       console.error('Failed to place card in classic mode:', error);
       return { success: false };
     }
-  }, [roomId, gameState.phase, gameState.availableSongs]);
+  }, [roomId, gameState.phase, gameState.availableSongs, getNextMysteryCard, onSetCurrentSong]);
 
   return {
     gameState,
@@ -259,6 +300,7 @@ export function useClassicGameLogic(
     },
     initializeGame,
     placeCard,
+    getNextMysteryCard,
     WINNING_CARDS_COUNT
   };
 }

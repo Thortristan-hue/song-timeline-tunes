@@ -31,43 +31,53 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
 
   useImperativeHandle(ref, () => audioRef.current!, []);
 
-  // Fetch preview URL if needed
+  // Enhanced preview fetching with better logic
   useEffect(() => {
     const fetchPreview = async () => {
-      if (!src && trackId && !isLoadingPreview && !actualSrc) {
+      // Reset error state
+      setPreviewError(null);
+      
+      // If we have a direct src, use it
+      if (src) {
+        console.log('🎵 AudioPlayer: Using direct src:', src);
+        setActualSrc(src);
+        return;
+      }
+
+      // If we have a trackId but no src, fetch preview
+      if (trackId && !isLoadingPreview) {
         setIsLoadingPreview(true);
-        setPreviewError(null);
+        console.log('🎵 AudioPlayer: Fetching preview for trackId:', trackId);
         
         try {
-          console.log('🎵 Fetching preview URL for track:', trackId);
           const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          console.log('✅ AudioPlayer: Preview URL fetched:', previewUrl);
           setActualSrc(previewUrl);
-          console.log('✅ Preview URL fetched:', previewUrl);
         } catch (error) {
-          console.error('❌ Failed to fetch preview URL:', error);
+          console.error('❌ AudioPlayer: Failed to fetch preview URL:', error);
           setPreviewError('Preview not available');
           setActualSrc(null);
         } finally {
           setIsLoadingPreview(false);
         }
-      } else if (src && src !== actualSrc) {
-        setActualSrc(src);
-        setPreviewError(null);
       }
     };
 
     fetchPreview();
-  }, [src, trackId, isLoadingPreview, actualSrc]);
+  }, [src, trackId]);
 
-  // Audio playback handling
+  // Enhanced audio playback handling
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !actualSrc || disabled || isLoadingPreview) return;
+    if (!audio || isLoadingPreview) return;
 
+    // Set volume
     audio.volume = volume;
     audio.crossOrigin = 'anonymous';
     
-    if (isPlaying) {
+    if (isPlaying && actualSrc) {
+      console.log('🎵 AudioPlayer: Starting playback with src:', actualSrc);
+      
       // Stop other audio elements
       const allAudio = document.querySelectorAll('audio');
       allAudio.forEach(otherAudio => {
@@ -77,30 +87,32 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         }
       });
 
-      // Set source and play
+      // Set source if different
       if (audio.src !== actualSrc) {
-        console.log('🔄 Setting audio source:', actualSrc);
+        console.log('🔄 AudioPlayer: Setting new audio source');
         audio.src = actualSrc;
         audio.load();
       }
       
+      // Play audio
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Audio playback started');
+            console.log('✅ AudioPlayer: Playback started successfully');
             setPreviewError(null);
           })
           .catch(error => {
-            console.error('❌ Audio play failed:', error);
+            console.error('❌ AudioPlayer: Playback failed:', error);
             setPreviewError('Playback failed');
             onPlayPause(); // Reset playing state
           });
       }
-    } else {
+    } else if (!isPlaying) {
+      console.log('🎵 AudioPlayer: Pausing playback');
       audio.pause();
     }
-  }, [isPlaying, volume, actualSrc, disabled, onPlayPause, isLoadingPreview]);
+  }, [isPlaying, volume, actualSrc, onPlayPause, isLoadingPreview]);
 
   // Audio event handling
   useEffect(() => {
@@ -108,31 +120,43 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     if (!audio) return;
 
     const handleEnded = () => {
-      console.log('🎵 Audio ended');
+      console.log('🎵 AudioPlayer: Audio ended');
       onPlayPause();
     };
 
     const handleError = (e: Event) => {
       const target = e.target as HTMLAudioElement;
       const error = target.error;
-      console.error('❌ Audio error:', error);
+      console.error('❌ AudioPlayer: Audio error:', error);
       setPreviewError('Audio error');
       onPlayPause();
     };
 
     const handleCanPlay = () => {
-      console.log('✅ Audio ready to play');
+      console.log('✅ AudioPlayer: Audio ready to play');
       setPreviewError(null);
+    };
+
+    const handleLoadStart = () => {
+      console.log('🔄 AudioPlayer: Loading started');
+    };
+
+    const handleLoadedData = () => {
+      console.log('✅ AudioPlayer: Audio data loaded');
     };
 
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
     audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('loadeddata', handleLoadedData);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('loadeddata', handleLoadedData);
     };
   }, [onPlayPause]);
 
@@ -162,7 +186,9 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         )}
         {isLoadingPreview && <span className="text-xs">Loading...</span>}
         {previewError && <span className="text-xs text-red-500">{previewError}</span>}
-        {!isLoadingPreview && !previewError && !actualSrc && <span className="text-xs">No preview</span>}
+        {!isLoadingPreview && !previewError && !actualSrc && trackId && (
+          <span className="text-xs">Fetching...</span>
+        )}
       </Button>
       <Volume2 className="h-3 w-3 text-muted-foreground" />
     </div>
