@@ -23,7 +23,7 @@ export function HostCurrentPlayerTimeline({
 }: HostCurrentPlayerTimelineProps) {
   const character = GAME_CHARACTERS.find(c => c.id === currentPlayer.character);
 
-  const timelineCards = [...currentPlayer.timeline].map((song) => {
+  const timelineCards: (Song | null)[] = [...currentPlayer.timeline].map((song) => {
     return song || null;
   });
 
