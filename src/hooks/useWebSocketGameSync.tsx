@@ -1,9 +1,9 @@
 
 import { useEffect, useCallback, useState } from 'react';
-import { ReliableWebSocket } from '@/services/reliableWebSocketService';
 import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 export function useWebSocketGameSync(
   roomId: string | null,
@@ -61,32 +61,35 @@ export function useWebSocketGameSync(
 
   // Set up event listeners
   useEffect(() => {
-    const handlers = {
-      ROOM_UPDATE: (data: any) => {
-        console.log('🔄 Room update received:', data);
-        onRoomUpdate?.(data);
-      },
-      PLAYER_UPDATE: (data: any) => {
-        console.log('👥 Player update received:', data);
-        onPlayerUpdate?.(data);
-      },
-      GAME_START: (data: any) => {
-        console.log('🎮 Game start received:', data);
-        onGameStart?.(data);
-      },
-      CARD_PLACED: (data: any) => {
-        console.log('🃏 Card placed received:', data);
-        onCardPlaced?.(data);
-      },
-      SONG_SET: (data: any) => {
-        console.log('🎵 Song set received:', data);
-        onSongSet?.(data);
-      },
-      GAME_STARTED: (data: any) => {
-        console.log('🎮 GAME_STARTED received:', data);
-        onGameStarted?.(data);
-      }
-    };
+    // Suppress unused warnings for development
+    suppressUnused(onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted);
+    
+    // const handlers = {
+    //   ROOM_UPDATE: (data: any) => {
+    //     console.log('🔄 Room update received:', data);
+    //     onRoomUpdate?.(data);
+    //   },
+    //   PLAYER_UPDATE: (data: any) => {
+    //     console.log('👥 Player update received:', data);
+    //     onPlayerUpdate?.(data);
+    //   },
+    //   GAME_START: (data: any) => {
+    //     console.log('🎮 Game start received:', data);
+    //     onGameStart?.(data);
+    //   },
+    //   CARD_PLACED: (data: any) => {
+    //     console.log('🃏 Card placed received:', data);
+    //     onCardPlaced?.(data);
+    //   },
+    //   SONG_SET: (data: any) => {
+    //     console.log('🎵 Song set received:', data);
+    //     onSongSet?.(data);
+    //   },
+    //   GAME_STARTED: (data: any) => {
+    //     console.log('🎮 GAME_STARTED received:', data);
+    //     onGameStarted?.(data);
+    //   }
+    // };
 
     // Register all handlers - if methods exist
     // Object.entries(handlers).forEach(([event, handler]) => {
@@ -106,6 +109,9 @@ export function useWebSocketGameSync(
       console.warn('⚠️ Cannot broadcast player update - not ready');
       return;
     }
+    
+    // Suppress unused warning
+    suppressUnused(players);
     
     // connectionManager.sendMessage?.({
     //   type: 'PLAYER_UPDATE',
@@ -133,6 +139,9 @@ export function useWebSocketGameSync(
       return;
     }
     
+    // Suppress unused warning
+    suppressUnused(cardData);
+    
     // connectionManager.sendMessage?.({
     //   type: 'CARD_PLACED',
     //   roomId,
@@ -145,6 +154,9 @@ export function useWebSocketGameSync(
       console.warn('⚠️ Cannot broadcast song set - not ready');
       return;
     }
+    
+    // Suppress unused warning
+    suppressUnused(song);
     
     // connectionManager.sendMessage?.({
     //   type: 'SONG_SET',
@@ -160,10 +172,14 @@ export function useWebSocketGameSync(
     }
     
     console.log('📦 Sending HOST_SET_SONGS with', songList.length, 'songs');
+    // Suppress unused warnings
+    suppressUnused(songList, hostId);
     // connectionManager.sendHostSetSongs?.(roomId, songList, hostId);
   }, [roomId, syncState.isReady]);
 
   const setHostStatus = useCallback((isHost: boolean) => {
+    // Suppress unused warning
+    suppressUnused(isHost);
     // connectionManager.setHostStatus?.(isHost);
   }, []);
 

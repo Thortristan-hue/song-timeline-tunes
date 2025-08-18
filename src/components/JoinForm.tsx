@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Users, Key } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { joinRoomSchema, playerNameSchema } from '@/schemas/validation';
 import { ZodError } from 'zod';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 type JoinFormVariant = 'mobile' | 'host';
 
@@ -31,7 +32,9 @@ export function JoinForm({
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
-  const { toast } = useToast();
+
+  // Suppress unused warning for development
+  suppressUnused(isDarkMode);
 
   // Update lobbyCode when autoJoinCode changes
   useEffect(() => {

@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, AlertTriangle } from 'lucide-react';
+import { Music, AlertTriangle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
-import { HostAllPlayersOverview } from './host/HostAllPlayersOverview';
-import { unifiedAudioEngine } from '@/utils/unifiedAudioEngine';
 import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
 import { getCharacterById } from '@/constants/characters';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
@@ -51,7 +47,6 @@ interface HostVisualsProps {
 
 export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsProps) {
   console.log("Rendering Host Screen 0.2.2");
-  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   const [mysteryPreviewUrl, setMysteryPreviewUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
