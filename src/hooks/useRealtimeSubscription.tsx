@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { realtimeManager, RealtimeConfig } from '@/services/realtimeManager';
+import { supabaseRealtimeService, RealtimeConfig } from '@/services/supabaseRealtimeService';
 import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -54,24 +54,20 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
 
   // Set up realtime subscriptions
   useEffect(() => {
-    const realtimeConfigs: RealtimeConfig[] = configs.map(config => ({
-      channelName: config.channelName,
-      table: config.table,
-      filter: config.filter,
-      onUpdate: config.onUpdate,
-      onError: config.onError
-    }));
-
-    realtimeManager.connect(realtimeConfigs);
+    const connectToRealtime = async () => {
+      await supabaseRealtimeService.connectWithConfigs(configs);
+    };
+    
+    connectToRealtime();
 
     return () => {
-      realtimeManager.disconnect();
+      supabaseRealtimeService.disconnect();
     };
   }, [configs.length]); // Only reconnect when number of configs changes
 
   const forceReconnect = () => {
     console.log('🔄 Force reconnecting realtime subscriptions...');
-    realtimeManager.forceReconnect();
+    supabaseRealtimeService.forceReconnect();
   };
 
   return {
