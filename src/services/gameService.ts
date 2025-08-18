@@ -53,7 +53,11 @@ export class GameService {
         trackId: this.extractTrackIdFromSong(mysteryCard)
       };
 
-      // Update room with enhanced mystery card
+      // Set first player as current player
+      const firstPlayer = players[0];
+      console.log('🎯 Setting first player for turn:', firstPlayer.name);
+
+      // Update room with enhanced mystery card and first player
       const { error: roomUpdateError } = await supabase
         .from('game_rooms')
         .update({ 
@@ -61,6 +65,7 @@ export class GameService {
           songs: songs as unknown as Json,
           phase: 'playing',
           current_turn: 0,
+          current_player_id: firstPlayer.id,
           current_song_index: 0
         })
         .eq('id', roomId);
@@ -227,14 +232,19 @@ export class GameService {
       const currentTimeline = Array.isArray(playerData.timeline) ? playerData.timeline as unknown as Song[] : [];
       const newTimeline = [...currentTimeline];
       
-      if (position >= newTimeline.length) {
-        newTimeline.push(song);
-      } else {
-        newTimeline.splice(position, 0, song);
-      }
-
       // Enhanced correctness check based on chronological order
       const isCorrect = this.checkTimelineCorrectness(newTimeline, song, position);
+      
+      // Only place card if correct, otherwise discard it
+      if (isCorrect) {
+        if (position >= newTimeline.length) {
+          newTimeline.push(song);
+        } else {
+          newTimeline.splice(position, 0, song);
+        }
+      } else {
+        console.log('🗑️ Card placement incorrect - discarding card:', song.deezer_title);
+      }
 
       // Update player data
       const newScore = playerData.score + (isCorrect ? 1 : 0);
@@ -249,6 +259,75 @@ export class GameService {
       if (updateError) {
         console.error('❌ Failed to update player:', updateError);
         return { success: false, error: 'Failed to update player' };
+      }
+
+      // Get room data to fetch available songs for new mystery card
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('❌ Failed to get room data:', roomError);
+        return { success: false, error: 'Room not found' };
+      }
+
+      // Get all songs from room and find unused ones
+      const allSongs = Array.isArray(roomData.songs) ? roomData.songs as unknown as Song[] : [];
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('room_id', roomId);
+
+      if (playersError) {
+        console.error('❌ Failed to get players for used songs:', playersError);
+        return { success: false, error: 'Failed to get players' };
+      }
+
+      // Collect all used songs from all player timelines
+      const usedSongs = new Set<string>();
+      allPlayers.forEach(player => {
+        const timeline = Array.isArray(player.timeline) ? player.timeline as unknown as Song[] : [];
+        timeline.forEach(timelineSong => {
+          usedSongs.add(timelineSong.id);
+        });
+      });
+
+      // Add current mystery card to used songs
+      if (roomData.current_song) {
+        usedSongs.add((roomData.current_song as unknown as Song).id);
+      }
+
+      // Find available songs (not used in any timeline)
+      const availableSongsForNewCard = allSongs.filter(s => !usedSongs.has(s.id));
+      
+      // Pick a new mystery card if available
+      if (availableSongsForNewCard.length > 0) {
+        const newMysteryCard = availableSongsForNewCard[Math.floor(Math.random() * availableSongsForNewCard.length)];
+        console.log('🎵 Setting new mystery card:', newMysteryCard.deezer_title);
+        
+        // Enhanced mystery card with track ID extraction for audio
+        const enhancedMysteryCard = {
+          ...newMysteryCard,
+          trackId: this.extractTrackIdFromSong(newMysteryCard)
+        };
+
+        // Update room with new mystery card
+        const { error: mysteryUpdateError } = await supabase
+          .from('game_rooms')
+          .update({ 
+            current_song: enhancedMysteryCard as unknown as Json
+          })
+          .eq('id', roomId);
+
+        if (mysteryUpdateError) {
+          console.error('❌ Failed to update mystery card:', mysteryUpdateError);
+        } else {
+          console.log('✅ New mystery card set successfully');
+        }
+      } else {
+        console.warn('⚠️ No more available songs for new mystery card');
       }
 
       // Check for winner
@@ -273,6 +352,11 @@ export class GameService {
           .eq('id', roomId);
       }
 
+      // Advance turn to next player if game hasn't ended
+      if (!gameEnded) {
+        await this.advanceToNextPlayer(roomId);
+      }
+
       console.log('✅ Card placed successfully', { isCorrect, newScore, gameEnded, winner: winner?.name });
 
       return { 
@@ -290,27 +374,97 @@ export class GameService {
 
   // Enhanced timeline correctness check
   private static checkTimelineCorrectness(timeline: Song[], newSong: Song, position: number): boolean {
-    const sortedTimeline = [...timeline].sort((a, b) => parseInt(a.release_year) - parseInt(b.release_year));
+    // Create a copy of the timeline and insert the new song at the specified position
+    const testTimeline = [...timeline];
+    testTimeline.splice(position, 0, newSong);
+    
+    // Check if the timeline is chronologically ordered after insertion
     const newSongYear = parseInt(newSong.release_year);
     
-    // Check if the song fits chronologically in the position
-    const beforeSong = position > 0 ? sortedTimeline[position - 1] : null;
-    const afterSong = position < sortedTimeline.length - 1 ? sortedTimeline[position + 1] : null;
-    
+    // Check the song before (if exists)
+    const beforeSong = position > 0 ? testTimeline[position - 1] : null;
     const beforeYear = beforeSong ? parseInt(beforeSong.release_year) : 0;
+    
+    // Check the song after (if exists)
+    const afterSong = position < testTimeline.length - 1 ? testTimeline[position + 1] : null;
     const afterYear = afterSong ? parseInt(afterSong.release_year) : 9999;
     
+    // The card is correct if it fits chronologically between the surrounding cards
     const isCorrect = newSongYear >= beforeYear && newSongYear <= afterYear;
     
     console.log('🎯 Timeline correctness check:', {
       newSong: newSong.deezer_title,
       newSongYear,
-      beforeYear,
-      afterYear,
+      beforeYear: beforeSong ? beforeYear : 'none',
+      afterYear: afterSong ? afterYear : 'none',
       position,
-      isCorrect
+      isCorrect,
+      beforeSong: beforeSong?.deezer_title || 'none',
+      afterSong: afterSong?.deezer_title || 'none'
     });
     
     return isCorrect;
+  }
+
+  // Advance to the next player's turn
+  private static async advanceToNextPlayer(roomId: string): Promise<void> {
+    try {
+      console.log('🔄 Advancing to next player...');
+
+      // Get room data and all players
+      const { data: roomData, error: roomError } = await supabase
+        .from('game_rooms')
+        .select('current_turn, current_player_id')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError || !roomData) {
+        console.error('❌ Failed to get room data for turn advancement:', roomError);
+        return;
+      }
+
+      // Get all non-host players ordered by join time
+      const { data: players, error: playersError } = await supabase
+        .from('players')
+        .select('id, name')
+        .eq('room_id', roomId)
+        .eq('is_host', false)
+        .order('joined_at', { ascending: true });
+
+      if (playersError || !players || players.length === 0) {
+        console.error('❌ Failed to get players for turn advancement:', playersError);
+        return;
+      }
+
+      // Calculate next turn
+      const currentTurn = roomData.current_turn || 0;
+      const nextTurn = (currentTurn + 1) % players.length;
+      const nextPlayer = players[nextTurn];
+
+      console.log('🎯 Turn advancement:', {
+        currentTurn,
+        nextTurn,
+        nextPlayerId: nextPlayer.id,
+        nextPlayerName: nextPlayer.name,
+        totalPlayers: players.length
+      });
+
+      // Update room with next player's turn
+      const { error: updateError } = await supabase
+        .from('game_rooms')
+        .update({
+          current_turn: nextTurn,
+          current_player_id: nextPlayer.id
+        })
+        .eq('id', roomId);
+
+      if (updateError) {
+        console.error('❌ Failed to update turn:', updateError);
+      } else {
+        console.log('✅ Turn advanced successfully to', nextPlayer.name);
+      }
+    } catch (error) {
+      console.error('❌ Error advancing turn:', error);
+    }
   }
 }

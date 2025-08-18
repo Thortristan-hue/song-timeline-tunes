@@ -44,13 +44,23 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         return;
       }
 
+      // Try to extract trackId from src if it looks like a Deezer URL
+      let effectiveTrackId = trackId;
+      if (!effectiveTrackId && src) {
+        const trackIdMatch = src.match(/track\/(\d+)/);
+        if (trackIdMatch) {
+          effectiveTrackId = trackIdMatch[1];
+          console.log('🎵 AudioPlayer: Extracted trackId from src:', effectiveTrackId);
+        }
+      }
+
       // If we have a trackId but no src, fetch preview
-      if (trackId && !isLoadingPreview) {
+      if (effectiveTrackId && !isLoadingPreview) {
         setIsLoadingPreview(true);
-        console.log('🎵 AudioPlayer: Fetching preview for trackId:', trackId);
+        console.log('🎵 AudioPlayer: Fetching preview for trackId:', effectiveTrackId);
         
         try {
-          const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
+          const previewUrl = await DeezerAudioService.getPreviewUrl(effectiveTrackId);
           console.log('✅ AudioPlayer: Preview URL fetched:', previewUrl);
           setActualSrc(previewUrl);
         } catch (error) {
@@ -60,6 +70,9 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         } finally {
           setIsLoadingPreview(false);
         }
+      } else if (!src && !effectiveTrackId) {
+        console.log('⚠️ AudioPlayer: No src or trackId provided');
+        setActualSrc(null);
       }
     };
 

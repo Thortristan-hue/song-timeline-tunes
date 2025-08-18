@@ -43,6 +43,7 @@ export interface Song {
   cardColor: string;
   preview_url?: string;
   deezer_url?: string;
+  trackId?: string; // Added for audio playback
 }
 
 export interface Player {

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Music, Play, Pause, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn, getArtistColor, truncateText } from '@/lib/utils';
+import { getCharacterById as getCharacterByIdUtil, getDefaultCharacter } from '@/constants/characters';
 
 interface MobilePlayerGameViewProps {
   currentPlayer: Player;
@@ -382,7 +383,7 @@ export default function MobilePlayerGameView({
           
           {/* Waiting screen */}
           {!isMyTurn && !gameEnded && (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center">
               <div className="text-center space-y-6">
                 <div className="w-20 h-20 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
                   <Music className="w-10 h-10 text-white/90 animate-pulse" />
@@ -393,6 +394,24 @@ export default function MobilePlayerGameView({
                   </div>
                   <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
                     Wait for your turn
+                  </div>
+                </div>
+              </div>
+              
+              {/* Character Display while waiting */}
+              <div className="mt-8">
+                <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
+                  <img
+                    src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
+                    alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
+                    className="h-10 w-10 rounded-full border-2"
+                    style={{ borderColor: currentPlayer.color }}
+                  />
+                  <div className="text-white text-base font-semibold">
+                    {currentPlayer.name}
+                  </div>
+                  <div className="text-white/70 text-sm">
+                    Score: {currentPlayer.score || 0}
                   </div>
                 </div>
               </div>
@@ -559,22 +578,43 @@ export default function MobilePlayerGameView({
           </div>
         )}
 
-        {/* Footer with Debug Menu */}
-        <div className="flex-shrink-0 py-2 text-center">
-          <div 
-            className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 cursor-pointer"
-            onClick={handleDebugClick}
-          >
-            {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
-          </div>
-          {debugMode && currentSong && (
-            <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
-              <div className="font-semibold mb-1">Song Debug Info:</div>
-              <div>Title: {currentSong.deezer_title}</div>
-              <div>Artist: {currentSong.deezer_artist}</div>
-              <div>Release Year: {currentSong.release_year}</div>
+        {/* Footer with Character and Debug Menu */}
+        <div className="flex-shrink-0 py-4">
+          {/* Character Display - moved to more prominent position */}
+          <div className="flex justify-center mb-4">
+            <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
+              <img
+                src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
+                alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
+                className="h-10 w-10 rounded-full border-2"
+                style={{ borderColor: currentPlayer.color }}
+              />
+              <div className="text-white text-base font-semibold">
+                {currentPlayer.name}
+              </div>
+              <div className="text-white/70 text-sm">
+                Score: {currentPlayer.score || 0}
+              </div>
             </div>
-          )}
+          </div>
+          
+          {/* Debug Menu */}
+          <div className="text-center">
+            <div 
+              className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-purple-100 cursor-pointer"
+              onClick={handleDebugClick}
+            >
+              {debugMode ? 'DEBUG MODE' : 'RYTHMY'}
+            </div>
+            {debugMode && currentSong && (
+              <div className="mt-2 bg-black/50 backdrop-blur-xl rounded-xl p-3 border border-white/20 text-xs text-white">
+                <div className="font-semibold mb-1">Song Debug Info:</div>
+                <div>Title: {currentSong.deezer_title}</div>
+                <div>Artist: {currentSong.deezer_artist}</div>
+                <div>Release Year: {currentSong.release_year}</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
