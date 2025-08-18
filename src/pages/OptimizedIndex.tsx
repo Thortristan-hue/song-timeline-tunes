@@ -90,7 +90,6 @@ export default function OptimizedIndex() {
         <MobilePlayerGameView
           currentPlayer={currentPlayer}
           onPlaceCard={placeCard}
-          gameRoom={room}
         />
       );
     }
@@ -103,7 +102,6 @@ export default function OptimizedIndex() {
         isHost={isHost}
         onSetCurrentSong={() => Promise.resolve()}
         onPlaceCard={placeCard}
-        getCurrentPlayer={getCurrentPlayer}
       />
     );
   }
@@ -124,7 +122,6 @@ export default function OptimizedIndex() {
               await initializeGame();
               await startGame();
             }}
-            onLeaveRoom={leaveRoom}
             initializeGame={initializeGame}
           />
         </>
@@ -140,6 +137,14 @@ export default function OptimizedIndex() {
             room={room}
             currentPlayer={currentPlayer}
             players={players}
+            onBackToMenu={() => {
+              leaveRoom();
+              window.location.reload();
+            }}
+            onUpdatePlayer={async (name: string, character: string) => {
+              // TODO: Implement player update functionality
+              console.log('Update player:', name, character);
+            }}
           />
         </>
       );
