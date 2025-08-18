@@ -17,6 +17,7 @@ export class DeezerAudioService {
   static async getPreviewUrl(trackId: string | number): Promise<string> {
     const cacheKey = String(trackId);
     if (this.AUDIO_CACHE.has(cacheKey)) {
+      console.log('🎵 Using cached preview URL for track:', trackId);
       return this.AUDIO_CACHE.get(cacheKey)!;
     }
 
@@ -24,21 +25,34 @@ export class DeezerAudioService {
     const proxyUrl = `${this.PROXY_BASE}?url=${encodeURIComponent(apiUrl)}`;
     
     try {
-      const response = await fetch(proxyUrl);
+      console.log('🔄 Fetching track data from proxy:', proxyUrl);
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'omit'
+      });
+      
       if (!response.ok) {
-        throw new Error(`Deezer API request failed: ${response.status}`);
+        throw new Error(`Deezer API request failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📊 Track data received:', { id: data.id, title: data.title, hasPreview: !!data.preview });
+      
       if (!data.preview) {
         throw new Error('No preview available for this track');
       }
 
+      // Cache the preview URL
       this.AUDIO_CACHE.set(cacheKey, data.preview);
+      console.log('✅ Preview URL cached for track:', trackId);
+      
       return data.preview;
     } catch (error) {
-      console.error('Failed to get preview URL:', error);
-      throw new Error('Failed to load audio preview');
+      console.error('❌ Failed to get preview URL for track', trackId, ':', error);
+      throw new Error(`Failed to load audio preview: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -48,9 +62,10 @@ export class DeezerAudioService {
    * @returns HTMLAudioElement ready for playback
    */
   static createAudioElement(url: string): HTMLAudioElement {
-    const audio = new Audio(url);
+    const audio = new Audio();
     audio.preload = 'metadata';
     audio.crossOrigin = 'anonymous';
+    audio.src = url;
     return audio;
   }
 
@@ -59,7 +74,22 @@ export class DeezerAudioService {
    * @param originalUrl Original Deezer URL
    * @returns Proxied URL
    */
-  getProxiedUrl(originalUrl: string): string {
+  static getProxiedUrl(originalUrl: string): string {
     return `${DeezerAudioService.PROXY_BASE}?url=${encodeURIComponent(originalUrl)}`;
+  }
+
+  /**
+   * Clears the audio cache
+   */
+  static clearCache(): void {
+    this.AUDIO_CACHE.clear();
+    console.log('🗑️ Audio cache cleared');
+  }
+
+  /**
+   * Gets cache size
+   */
+  static getCacheSize(): number {
+    return this.AUDIO_CACHE.size;
   }
 }

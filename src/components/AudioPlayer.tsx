@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2 } from 'lucide-react';
+import { Play, Pause, Volume2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DeezerAudioService } from '@/services/DeezerAudioService';
 
@@ -12,7 +12,7 @@ interface AudioPlayerProps {
   className?: string;
   volume?: number;
   disabled?: boolean;
-  trackId?: string; // Add trackId to fetch preview if src is not available
+  trackId?: string;
 }
 
 export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
@@ -27,15 +27,17 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [actualSrc, setActualSrc] = useState<string | null>(src);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
-  // Expose audio element via ref for external control
   useImperativeHandle(ref, () => audioRef.current!, []);
 
-  // Fetch preview URL if src is not available but trackId is provided
+  // Fetch preview URL if needed
   useEffect(() => {
     const fetchPreview = async () => {
-      if (!src && trackId && !isLoadingPreview) {
+      if (!src && trackId && !isLoadingPreview && !actualSrc) {
         setIsLoadingPreview(true);
+        setPreviewError(null);
+        
         try {
           console.log('🎵 Fetching preview URL for track:', trackId);
           const previewUrl = await DeezerAudioService.getPreviewUrl(trackId);
@@ -43,29 +45,30 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
           console.log('✅ Preview URL fetched:', previewUrl);
         } catch (error) {
           console.error('❌ Failed to fetch preview URL:', error);
+          setPreviewError('Preview not available');
           setActualSrc(null);
         } finally {
           setIsLoadingPreview(false);
         }
-      } else if (src) {
+      } else if (src && src !== actualSrc) {
         setActualSrc(src);
+        setPreviewError(null);
       }
     };
 
     fetchPreview();
-  }, [src, trackId, isLoadingPreview]);
+  }, [src, trackId, isLoadingPreview, actualSrc]);
 
-  // Enhanced audio handling with proper preview URL validation
+  // Audio playback handling
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !actualSrc || disabled || isLoadingPreview) return;
 
-    // Set volume and CORS
     audio.volume = volume;
     audio.crossOrigin = 'anonymous';
     
     if (isPlaying) {
-      // Stop any other playing audio before starting
+      // Stop other audio elements
       const allAudio = document.querySelectorAll('audio');
       allAudio.forEach(otherAudio => {
         if (otherAudio !== audio && !otherAudio.paused) {
@@ -74,7 +77,7 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         }
       });
 
-      // Set source and attempt to play
+      // Set source and play
       if (audio.src !== actualSrc) {
         console.log('🔄 Setting audio source:', actualSrc);
         audio.src = actualSrc;
@@ -85,20 +88,13 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Audio playback started successfully');
+            console.log('✅ Audio playback started');
+            setPreviewError(null);
           })
           .catch(error => {
             console.error('❌ Audio play failed:', error);
-            // Reset playing state if audio fails
-            if (error.name === 'AbortError') {
-              console.log('🔄 Audio aborted, likely due to source change');
-            } else if (error.name === 'NotSupportedError') {
-              console.log('🔄 Audio format not supported or URL expired');
-              onPlayPause(); // Reset state
-            } else {
-              console.log('🔄 Other audio error, resetting state');
-              onPlayPause(); // Reset state
-            }
+            setPreviewError('Playback failed');
+            onPlayPause(); // Reset playing state
           });
       }
     } else {
@@ -106,65 +102,41 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
     }
   }, [isPlaying, volume, actualSrc, disabled, onPlayPause, isLoadingPreview]);
 
-  // Handle audio events
+  // Audio event handling
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const handleEnded = () => {
-      console.log('🎵 Audio ended naturally');
-      onPlayPause(); // This will set isPlaying to false
+      console.log('🎵 Audio ended');
+      onPlayPause();
     };
 
     const handleError = (e: Event) => {
       const target = e.target as HTMLAudioElement;
       const error = target.error;
-      console.error('❌ Audio error occurred:', {
-        code: error?.code,
-        message: error?.message,
-        src: target.src
-      });
-      onPlayPause(); // Stop playing on error
-    };
-
-    const handleLoadError = () => {
-      console.error('❌ Audio load error - invalid or expired URL');
-      onPlayPause(); // Stop playing on load error
+      console.error('❌ Audio error:', error);
+      setPreviewError('Audio error');
+      onPlayPause();
     };
 
     const handleCanPlay = () => {
-      console.log('✅ Audio can play - ready for playback');
+      console.log('✅ Audio ready to play');
+      setPreviewError(null);
     };
 
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
-    audio.addEventListener('abort', handleLoadError);
     audio.addEventListener('canplay', handleCanPlay);
     
     return () => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
-      audio.removeEventListener('abort', handleLoadError);
       audio.removeEventListener('canplay', handleCanPlay);
     };
   }, [onPlayPause]);
 
-  // Update src and reset audio when it changes
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Stop current audio when src changes
-    audio.pause();
-    audio.currentTime = 0;
-    if (actualSrc && actualSrc !== audio.src) {
-      console.log('🔄 Setting new audio source:', actualSrc);
-      audio.src = actualSrc;
-      audio.load();
-    }
-  }, [actualSrc]);
-
-  const isActuallyDisabled = disabled || !actualSrc || isLoadingPreview;
+  const isActuallyDisabled = disabled || (!actualSrc && !isLoadingPreview) || !!previewError;
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -181,9 +153,16 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         className="flex items-center gap-1"
         disabled={isActuallyDisabled}
       >
-        {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-        {isLoadingPreview && <span className="text-xs">Loading preview...</span>}
-        {isActuallyDisabled && !isLoadingPreview && <span className="text-xs">No preview</span>}
+        {isLoadingPreview ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : isPlaying ? (
+          <Pause className="h-3 w-3" />
+        ) : (
+          <Play className="h-3 w-3" />
+        )}
+        {isLoadingPreview && <span className="text-xs">Loading...</span>}
+        {previewError && <span className="text-xs text-red-500">{previewError}</span>}
+        {!isLoadingPreview && !previewError && !actualSrc && <span className="text-xs">No preview</span>}
       </Button>
       <Volume2 className="h-3 w-3 text-muted-foreground" />
     </div>

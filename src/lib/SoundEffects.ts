@@ -1,3 +1,4 @@
+
 // src/lib/SoundEffects.ts
 type SoundName = 
   | 'button-click' 
@@ -16,7 +17,6 @@ export class SoundEffects {
   private static instance: SoundEffects;
 
   private constructor() {
-    // Private constructor for singleton pattern
     this.init();
   }
 
@@ -36,7 +36,7 @@ export class SoundEffects {
       this.initialized = true;
       console.log('🎵 Audio system initialized');
       
-      // Preload essential sounds from GitHub (public folder)
+      // Preload essential sounds from GitHub public folder
       this.preloadSounds();
     } catch (error) {
       console.warn('Audio system initialization failed, using fallback sounds:', error);
@@ -44,7 +44,7 @@ export class SoundEffects {
   }
 
   private async preloadSounds(): Promise<void> {
-    // Use GitHub assets (public folder) instead of Supabase
+    // Use GitHub assets from public folder
     const soundManifest: Record<SoundName, string> = {
       'button-click': '/sounds/button-click.mp3',
       'success': '/sounds/correct.mp3',
@@ -57,14 +57,16 @@ export class SoundEffects {
     };
 
     try {
-      await Promise.all(
-        Object.entries(soundManifest).map(([name, url]) => 
-          this.loadSound(name as SoundName, url)
-        )
+      const loadPromises = Object.entries(soundManifest).map(([name, url]) => 
+        this.loadSound(name as SoundName, url).catch(error => {
+          console.warn(`Failed to load sound ${name}:`, error);
+        })
       );
-      console.log('🎵 Audio files loaded successfully from GitHub');
+      
+      await Promise.allSettled(loadPromises);
+      console.log('🎵 Audio files loading completed from GitHub');
     } catch (error) {
-      console.warn('Some audio files could not be loaded from GitHub, fallback sounds will be used:', error);
+      console.warn('Some audio files could not be loaded, fallback sounds will be used:', error);
     }
   }
 
@@ -87,8 +89,9 @@ export class SoundEffects {
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
       this.sounds.set(name, audioBuffer);
+      console.log(`✅ Loaded sound: ${name}`);
     } catch (error) {
-      console.warn(`Could not load audio file "${name}", fallback sound will be used`);
+      console.warn(`Could not load audio file "${name}":`, error);
       throw error;
     }
   }
