@@ -100,9 +100,24 @@ export function HostGameView({
       {/* Main Content Area - Reorganized Layout */}
       <div className="flex flex-col items-center justify-start min-h-screen p-8 pt-20">
         
-        {/* TOP MIDDLE - Cassette Player with integrated controls */}
+        {/* TOP MIDDLE - Cassette Player with integrated controls and Mystery Card */}
         <div className="mb-8">
           <div className="relative flex flex-col items-center">
+            {/* Mystery Card positioned on top of cassette */}
+            <div className={`mb-4 transition-all duration-500 ${
+              cardPlacementResult 
+                ? cardPlacementResult.correct 
+                  ? 'animate-smooth-card-success' 
+                  : 'animate-smooth-card-error'
+                : ''
+            }`}>
+              <RecordMysteryCard
+                song={currentSong}
+                isRevealed={isCardRevealed}
+                isDestroyed={cardPlacementResult?.correct === false}
+              />
+            </div>
+            
             {/* Cassette Background */}
             <div className="relative">
               <img 
@@ -170,21 +185,6 @@ export function HostGameView({
           </div>
         )}
 
-        {/* Mystery Card (positioned lower but visible) */}
-        <div className={`mb-8 transition-all duration-500 ${
-          cardPlacementResult 
-            ? cardPlacementResult.correct 
-              ? 'animate-smooth-card-success' 
-              : 'animate-smooth-card-error'
-            : ''
-        }`}>
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={isCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-        </div>
-
         {/* Player Characters Display (at bottom) */}
         <div className="w-full max-w-6xl">
           <div className="flex justify-center items-end space-x-6">
@@ -207,7 +207,7 @@ export function HostGameView({
                       <img
                         src={character?.image || getDefaultCharacter().image}
                         alt={character?.name || getDefaultCharacter().name}
-                        className="h-20 w-20 rounded-full border-4 object-cover"
+                        className="h-20 w-20 border-4 object-cover"
                         style={{ borderColor: player.color }}
                       />
                       {isCurrentPlayer && (

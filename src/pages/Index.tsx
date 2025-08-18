@@ -114,7 +114,7 @@ function Index() {
 
   // Check for winner
   useEffect(() => {
-    const winningPlayer = players.find(player => player.score >= 10);
+    const winningPlayer = players.find(player => player.score >= 9);
     if (winningPlayer && !winner) {
       setWinner(winningPlayer);
       setGamePhase('finished');
@@ -137,12 +137,23 @@ function Index() {
     }
   };
 
-  const handleJoinRoom = async (lobbyCode: string, name: string): Promise<boolean> => {
+  const handleJoinRoom = async (lobbyCode: string, name: string, characterId?: string): Promise<boolean> => {
     try {
-      console.log('🎮 Attempting to join room with:', { lobbyCode, name });
+      console.log('🎮 Attempting to join room with:', { lobbyCode, name, characterId });
       const success = await joinRoom(lobbyCode, name);
       if (success) {
         setPlayerName(name);
+        
+        // If character was selected during setup, update the player with character info
+        if (characterId) {
+          try {
+            await handleUpdatePlayer(name, characterId);
+            console.log('✅ Character set during join:', characterId);
+          } catch (error) {
+            console.warn('⚠️ Failed to set character during join, can be set later:', error);
+          }
+        }
+        
         setGamePhase('mobileLobby');
         soundEffects.playPlayerJoin();
         return true;

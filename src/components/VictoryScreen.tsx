@@ -200,7 +200,7 @@ export function VictoryScreen({ winner, players, onPlayAgain, onRestartWithSameP
               </div>
             </div>
             <div className="bg-gradient-to-r from-[#107793] to-[#a53b8b] text-white px-6 py-3 rounded-2xl text-2xl font-black inline-block hover:scale-105 transition-transform duration-300 interactive-button">
-              {winner.score || 0}/10 Points
+              {winner.score || 0}/9 Points
             </div>
           </div>
         </div>
@@ -241,7 +241,7 @@ export function VictoryScreen({ winner, players, onPlayAgain, onRestartWithSameP
                   )}
                 </div>
                 <div className="text-2xl font-bold text-white">
-                  {player.score || 0}/10
+                  {player.score || 0}/9
                 </div>
               </div>
             ))}

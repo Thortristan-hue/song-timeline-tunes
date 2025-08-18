@@ -303,7 +303,7 @@ export default function MobilePlayerLobby({
             <div className="space-y-2 text-sm text-gray-300">
               <p>• Listen to song clips and guess when they came out</p>
               <p>• Place them in the right order on your timeline</p>
-              <p>• First to get 10 right wins the round</p>
+              <p>• First to get 9 right wins the round</p>
             </div>
           </div>
 
