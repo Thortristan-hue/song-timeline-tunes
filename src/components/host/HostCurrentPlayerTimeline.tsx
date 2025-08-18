@@ -1,142 +1,193 @@
 
-import { Song, Player } from '@/types/game';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Play, Pause } from 'lucide-react';
-import { GAME_CHARACTERS } from '@/constants/characters';
+import { Music, Star, Calendar } from 'lucide-react';
+import { Player, Song } from '@/types/game';
+import { getArtistColor, truncateText } from '@/lib/utils';
 
 interface HostCurrentPlayerTimelineProps {
-  currentPlayer: Player;
-  currentSong: Song | null;
-  onPreviewSong?: (song: Song) => void;
-  isPreviewPlaying?: boolean;
-  onStopPreview?: () => void;
+  currentTurnPlayer: Player;
+  previousTurnPlayer?: Player;
+  cardPlacementResult?: { correct: boolean; song: Song } | null;
+  highlightedGapIndex?: number | null;
+  mobileViewport?: { startIndex: number; endIndex: number; totalCards: number } | null;
+  isTransitioning?: boolean;
 }
 
-export function HostCurrentPlayerTimeline({
-  currentPlayer,
-  currentSong,
-  onPreviewSong,
-  isPreviewPlaying = false,
-  onStopPreview
+export function HostCurrentPlayerTimeline({ 
+  currentTurnPlayer, 
+  previousTurnPlayer,
+  cardPlacementResult, 
+  highlightedGapIndex,
+  mobileViewport,
+  isTransitioning = false
 }: HostCurrentPlayerTimelineProps) {
-  const character = GAME_CHARACTERS.find(c => c.id === currentPlayer.character);
+  const [feedbackAnimation, setFeedbackAnimation] = useState<string>('');
+  const [timelineState, setTimelineState] = useState<'entering' | 'stable' | 'exiting'>('stable');
+  const [visibleCards, setVisibleCards] = useState<number[]>([]);
+  const [newlyPlacedCardIndex, setNewlyPlacedCardIndex] = useState<number | null>(null);
+  const [cardsShifting, setCardsShifting] = useState<boolean>(false);
 
-  const timelineCards: (Song | null)[] = [...currentPlayer.timeline].map((song) => {
-    return song || null;
-  });
-
-  // Ensure we have exactly 10 slots
-  while (timelineCards.length < 10) {
-    timelineCards.push(null);
-  }
-
-  const handlePreviewClick = (song: Song, event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (isPreviewPlaying) {
-      onStopPreview?.();
+  // Handle turn transitions with enhanced animations
+  useEffect(() => {
+    if (isTransitioning) {
+      // Start exit animation for previous player
+      setTimelineState('exiting');
+      
+      // After exit completes, switch to new player and enter
+      setTimeout(() => {
+        setTimelineState('entering');
+        
+        // Animate cards appearing one by one
+        const cardIndices = currentTurnPlayer.timeline.map((_, index) => index);
+        setVisibleCards([]);
+        
+        cardIndices.forEach((index, i) => {
+          setTimeout(() => {
+            setVisibleCards(prev => [...prev, index]);
+          }, i * 150);
+        });
+        
+        setTimeout(() => {
+          setTimelineState('stable');
+        }, cardIndices.length * 150 + 500);
+      }, 1000);
     } else {
-      onPreviewSong?.(song);
+      // Normal stable state
+      setTimelineState('stable');
+      setVisibleCards(currentTurnPlayer.timeline.map((_, index) => index));
     }
-  };
+  }, [isTransitioning, currentTurnPlayer]);
+
+  // Handle new card placement animation
+  useEffect(() => {
+    if (cardPlacementResult && cardPlacementResult.correct) {
+      const newCardIndex = currentTurnPlayer.timeline.length - 1;
+      setNewlyPlacedCardIndex(newCardIndex);
+      setCardsShifting(true);
+      
+      // First animate existing cards making room
+      setTimeout(() => {
+        // Then animate the new card sliding in
+        setTimeout(() => {
+          setCardsShifting(false);
+          setNewlyPlacedCardIndex(null);
+        }, 800);
+      }, 300);
+    }
+  }, [cardPlacementResult, currentTurnPlayer.timeline.length]);
+
+  // Trigger feedback animation when placement result changes
+  useEffect(() => {
+    if (cardPlacementResult) {
+      const animationClass = cardPlacementResult.correct 
+        ? 'animate-host-feedback-correct' 
+        : 'animate-host-feedback-incorrect';
+      
+      setFeedbackAnimation(animationClass);
+      
+      // Clear animation after it completes
+      setTimeout(() => {
+        setFeedbackAnimation('');
+      }, 1000);
+    }
+  }, [cardPlacementResult]);
 
   return (
-    <div className="space-y-4">
-      {/* Player Header */}
-      <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/10">
-        {character && (
-          <img 
-            src={character.image} 
-            alt={character.name}
-            className="w-12 h-12 rounded-full"
-          />
-        )}
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-white">{currentPlayer.name}</h3>
-          <div className="flex items-center gap-2 text-white/60">
-            <span>Score: {currentPlayer.score}</span>
-            <Badge variant="outline" className="border-white/20 text-white/60">
-              {character?.name || 'Default'}
-            </Badge>
+    <div className="flex justify-center items-center w-full z-20">
+      <div className="flex gap-2 items-center overflow-x-auto pb-2">
+        {currentTurnPlayer.timeline.length === 0 ? (
+          <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
+            <Music className="h-8 w-8 opacity-50" />
+            <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
           </div>
-        </div>
-      </div>
-
-      {/* Timeline */}
-      <div className="grid grid-cols-5 lg:grid-cols-10 gap-2">
-        {timelineCards.map((song, position) => (
-          <div
-            key={position}
-            className="aspect-square relative"
-          >
-            {song ? (
-              <Card className="h-full p-2 bg-white/10 border-white/20 hover:bg-white/15 transition-colors">
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 min-h-0">
-                    <div className="text-white text-xs font-medium truncate mb-1">
-                      {song.deezer_title}
+        ) : (
+          <>
+            {/* Gap before first card */}
+            <div 
+              className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+              }`}
+            />
+            
+            {currentTurnPlayer.timeline.map((song, index) => (
+              <React.Fragment key={`${song.deezer_title}-${index}`}>
+                {/* Song card with enhanced animations */}
+                <div
+                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
+                    newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
+                  } ${
+                    cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
+                  } ${
+                    cardsShifting && index > (newlyPlacedCardIndex || 0) ? 'animate-card-shift-right' : ''
+                  } ${
+                    !visibleCards.includes(index) ? 'opacity-0 scale-50 translate-y-8' : 'opacity-100 scale-100 translate-y-0'
+                  } ${
+                    timelineState === 'exiting' ? 'animate-cards-pack-up' : ''
+                  } ${
+                    mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex ? 'ring-2 ring-blue-400/60 shadow-blue-400/30' : ''
+                  }`}
+                  style={{
+                    backgroundColor: getArtistColor(song.deezer_artist).backgroundColor,
+                    backgroundImage: getArtistColor(song.deezer_artist).backgroundImage,
+                    animationDelay: timelineState === 'entering' ? `${index * 0.1}s` : 
+                                   timelineState === 'exiting' ? `${(currentTurnPlayer.timeline.length - index) * 0.05}s` : 
+                                   '0s',
+                    transitionDelay: timelineState === 'entering' ? `${index * 0.1}s` : '0s'
+                  }}
+                >
+                  {/* Mobile viewport indicator badge */}
+                  {mobileViewport && index >= mobileViewport.startIndex && index <= mobileViewport.endIndex && (
+                    <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full shadow-lg animate-pulse border border-blue-300">
+                      👀
                     </div>
-                    <div className="text-white/60 text-xs truncate mb-1">
-                      {song.deezer_artist}
-                    </div>
-                    <Badge 
-                      variant="outline" 
-                      className="text-xs border-white/20 text-white/60"
-                    >
-                      {song.release_year}
-                    </Badge>
-                  </div>
-                  
-                  {song.preview_url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-1 h-6 w-full text-white/60 hover:text-white hover:bg-white/20"
-                      onClick={(e) => handlePreviewClick(song, e)}
-                    >
-                      {isPreviewPlaying ? (
-                        <Pause className="h-3 w-3" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                    </Button>
                   )}
+                  
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
+                  
+                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-2">
+                    {/* Artist name - medium, white, wrapped, max 20 letters per line */}
+                    <div className="text-sm font-medium text-white leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_artist, 20)}
+                      </div>
+                    </div>
+                    
+                    {/* Song release year - large, white */}
+                    <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
+                      {song.release_year}
+                    </div>
+                    
+                    {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
+                    <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
+                      <div className="break-words">
+                        {truncateText(song.deezer_title, 20)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
+                {/* Gap after this card */}
                 <div 
-                  className="absolute top-1 right-1 w-2 h-2 rounded-full"
-                  style={{ backgroundColor: song.cardColor }}
+                  className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                    highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
+                  }`}
                 />
-              </Card>
-            ) : (
-              <Card className="h-full border-2 border-dashed border-white/20 bg-white/5 flex items-center justify-center">
-                <div className="text-white/40 text-xs font-medium">
-                  {position + 1}
-                </div>
-              </Card>
-            )}
-          </div>
-        ))}
+              </React.Fragment>
+            ))}
+          </>
+        )}
       </div>
 
-      {/* Current Mystery Song */}
-      {currentSong && (
-        <div className="mt-6">
-          <h4 className="text-white text-lg font-semibold mb-2">Current Mystery Song</h4>
-          <Card className="p-4 bg-purple-500/20 border-purple-500/40">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-white font-medium">{currentSong.deezer_title}</div>
-                <div className="text-white/70 text-sm">{currentSong.deezer_artist}</div>
-                <div className="text-white/60 text-sm">{currentSong.release_year}</div>
-              </div>
-              <div 
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: currentSong.cardColor }}
-              />
+      {/* Mobile Viewport Indicator */}
+      {mobileViewport && (
+        <div className="absolute top-full mt-4 left-1/2 transform -translate-x-1/2">
+          <div className="bg-blue-500/20 backdrop-blur-md rounded-xl px-4 py-2 border border-blue-400/30">
+            <div className="flex items-center gap-2 text-blue-400 text-sm font-medium">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span>Mobile viewing: Cards {mobileViewport.startIndex + 1}-{mobileViewport.endIndex + 1} of {mobileViewport.totalCards}</span>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>

@@ -1,17 +1,13 @@
 
 import { create } from 'zustand';
-import { suppressUnused } from '@/utils/suppressUnused';
 
-interface ConfettiState {
-  isActive: boolean;
-  trigger: () => void;
+interface ConfettiStore {
+  fire: () => void;
 }
 
-export const useConfettiStore = create<ConfettiState>((set, get) => {
-  suppressUnused(get);
-  
-  return {
-    isActive: false,
-    trigger: () => set({ isActive: true }),
-  };
-});
+export const useConfettiStore = create<ConfettiStore>((set) => ({
+  fire: () => {
+    // Simple confetti implementation
+    console.log('🎉 Confetti fired!');
+  }
+}));

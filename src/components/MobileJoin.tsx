@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, User, Key } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { suppressUnused } from '@/utils/suppressUnused';
 
 interface MobileJoinProps {
   onJoinRoom: (lobbyCode: string, playerName: string) => Promise<boolean>;
@@ -18,9 +18,7 @@ export function MobileJoin({ onJoinRoom, onBackToMenu, isLoading, autoJoinCode }
   const [playerName, setPlayerName] = useState('');
   const [error, setError] = useState('');
   const soundEffects = useSoundEffects();
-
-  // Suppress unused variables that may be used in future implementations
-  suppressUnused();
+  const { toast } = useToast();
 
   // Update lobbyCode when autoJoinCode changes
   useEffect(() => {

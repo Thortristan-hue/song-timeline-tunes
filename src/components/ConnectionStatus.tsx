@@ -1,5 +1,6 @@
 
-import { WifiOff, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ConnectionStatus as ConnectionStatusType } from '@/hooks/useRealtimeSubscription';
@@ -25,29 +26,21 @@ export function ConnectionStatus({
   const wsReconnecting = wsState?.isConnecting ?? false;
   const wsError = wsState?.lastError;
 
-  // Only show if there are actual connection issues that affect gameplay
-  const hasRealtimeIssue = !isConnected && lastError && retryCount > 1;
-  const hasWebSocketIssue = !wsConnected && wsError && (wsState?.reconnectAttempts || 0) > 1;
+  // Only show if there are actual connection issues
+  const hasRealtimeIssue = !isConnected && (lastError || isReconnecting);
+  const hasWebSocketIssue = !wsConnected && (wsError || wsReconnecting);
   
-  // Don't show connection status for minor issues or during initial connection
   if (!hasRealtimeIssue && !hasWebSocketIssue) {
     return null;
   }
 
-  // Don't show for technical errors that don't affect user experience
-  const ignoredDisplayErrors = [
-    'No subscription configs provided',
-    'Network offline',
-    'Connection timeout',
-    'WebSocket error occurred'
-  ];
-
-  const primaryError = wsError || lastError;
-  if (primaryError && ignoredDisplayErrors.some(ignored => primaryError.includes(ignored))) {
+  // Don't show for minor issues
+  if (lastError === 'No subscription configs provided' || wsError === 'Network offline') {
     return null;
   }
 
   const isAnyReconnecting = isReconnecting || wsReconnecting;
+  const primaryError = wsError || lastError;
 
   return (
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">
@@ -61,11 +54,11 @@ export function ConnectionStatus({
           <AlertDescription className="flex-1">
             {isAnyReconnecting ? (
               <span>
-                Reconnecting to game... ({Math.max(retryCount, wsState?.reconnectAttempts || 0)}/3)
+                Reconnecting... ({Math.max(retryCount, wsState?.reconnectAttempts || 0)}/3)
               </span>
             ) : (
               <span>
-                Connection lost - some features may not work properly
+                Connection lost. {primaryError && `${primaryError}`}
               </span>
             )}
           </AlertDescription>

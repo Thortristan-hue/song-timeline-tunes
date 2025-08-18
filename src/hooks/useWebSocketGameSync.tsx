@@ -1,9 +1,9 @@
 
 import { useEffect, useCallback, useState } from 'react';
+import { reliableWebSocketService } from '@/services/reliableWebSocketService';
 import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
-import { suppressUnused } from '@/utils/suppressUnused';
 
 export function useWebSocketGameSync(
   roomId: string | null,
@@ -39,13 +39,13 @@ export function useWebSocketGameSync(
   // Connect when room ID is available
   useEffect(() => {
     if (!roomId) {
-      // connectionManager.disconnect(); // Commented out - method may not exist
+      reliableWebSocketService.disconnect();
       return;
     }
 
     const connectToRoom = async () => {
       try {
-        // await connectionManager.connect(roomId); // Commented out - method may not exist
+        await reliableWebSocketService.connect(roomId);
         console.log('🔗 WebSocket sync established for room:', roomId);
       } catch (error) {
         console.error('❌ Failed to establish WebSocket sync:', error);
@@ -55,52 +55,49 @@ export function useWebSocketGameSync(
     connectToRoom();
 
     return () => {
-      // connectionManager.disconnect(); // Commented out - method may not exist
+      reliableWebSocketService.disconnect();
     };
   }, [roomId]);
 
   // Set up event listeners
   useEffect(() => {
-    // Suppress unused warnings for development
-    suppressUnused(onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted);
-    
-    // const handlers = {
-    //   ROOM_UPDATE: (data: any) => {
-    //     console.log('🔄 Room update received:', data);
-    //     onRoomUpdate?.(data);
-    //   },
-    //   PLAYER_UPDATE: (data: any) => {
-    //     console.log('👥 Player update received:', data);
-    //     onPlayerUpdate?.(data);
-    //   },
-    //   GAME_START: (data: any) => {
-    //     console.log('🎮 Game start received:', data);
-    //     onGameStart?.(data);
-    //   },
-    //   CARD_PLACED: (data: any) => {
-    //     console.log('🃏 Card placed received:', data);
-    //     onCardPlaced?.(data);
-    //   },
-    //   SONG_SET: (data: any) => {
-    //     console.log('🎵 Song set received:', data);
-    //     onSongSet?.(data);
-    //   },
-    //   GAME_STARTED: (data: any) => {
-    //     console.log('🎮 GAME_STARTED received:', data);
-    //     onGameStarted?.(data);
-    //   }
-    // };
+    const handlers = {
+      ROOM_UPDATE: (data: any) => {
+        console.log('🔄 Room update received:', data);
+        onRoomUpdate?.(data);
+      },
+      PLAYER_UPDATE: (data: any) => {
+        console.log('👥 Player update received:', data);
+        onPlayerUpdate?.(data);
+      },
+      GAME_START: (data: any) => {
+        console.log('🎮 Game start received:', data);
+        onGameStart?.(data);
+      },
+      CARD_PLACED: (data: any) => {
+        console.log('🃏 Card placed received:', data);
+        onCardPlaced?.(data);
+      },
+      SONG_SET: (data: any) => {
+        console.log('🎵 Song set received:', data);
+        onSongSet?.(data);
+      },
+      GAME_STARTED: (data: any) => {
+        console.log('🎮 GAME_STARTED received:', data);
+        onGameStarted?.(data);
+      }
+    };
 
-    // Register all handlers - if methods exist
-    // Object.entries(handlers).forEach(([event, handler]) => {
-    //   connectionManager.on?.(event, handler);
-    // });
+    // Register all handlers
+    Object.entries(handlers).forEach(([event, handler]) => {
+      reliableWebSocketService.on(event, handler);
+    });
 
     return () => {
-      // Cleanup all handlers - if methods exist
-      // Object.entries(handlers).forEach(([event, handler]) => {
-      //   connectionManager.off?.(event, handler);
-      // });
+      // Cleanup all handlers
+      Object.entries(handlers).forEach(([event, handler]) => {
+        reliableWebSocketService.off(event, handler);
+      });
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
 
@@ -110,14 +107,11 @@ export function useWebSocketGameSync(
       return;
     }
     
-    // Suppress unused warning
-    suppressUnused(players);
-    
-    // connectionManager.sendMessage?.({
-    //   type: 'PLAYER_UPDATE',
-    //   roomId,
-    //   data: players
-    // });
+    reliableWebSocketService.sendMessage({
+      type: 'PLAYER_UPDATE',
+      roomId,
+      data: players
+    });
   }, [roomId, syncState.isReady]);
 
   const broadcastGameStart = useCallback(() => {
@@ -126,11 +120,11 @@ export function useWebSocketGameSync(
       return;
     }
     
-    // connectionManager.sendMessage?.({
-    //   type: 'GAME_START',
-    //   roomId,
-    //   data: { timestamp: Date.now() }
-    // });
+    reliableWebSocketService.sendMessage({
+      type: 'GAME_START',
+      roomId,
+      data: { timestamp: Date.now() }
+    });
   }, [roomId, syncState.isReady]);
 
   const broadcastCardPlaced = useCallback((cardData: any) => {
@@ -139,14 +133,11 @@ export function useWebSocketGameSync(
       return;
     }
     
-    // Suppress unused warning
-    suppressUnused(cardData);
-    
-    // connectionManager.sendMessage?.({
-    //   type: 'CARD_PLACED',
-    //   roomId,
-    //   data: cardData
-    // });
+    reliableWebSocketService.sendMessage({
+      type: 'CARD_PLACED',
+      roomId,
+      data: cardData
+    });
   }, [roomId, syncState.isReady]);
 
   const broadcastSongSet = useCallback((song: Song) => {
@@ -155,14 +146,11 @@ export function useWebSocketGameSync(
       return;
     }
     
-    // Suppress unused warning
-    suppressUnused(song);
-    
-    // connectionManager.sendMessage?.({
-    //   type: 'SONG_SET',
-    //   roomId,
-    //   data: song
-    // });
+    reliableWebSocketService.sendMessage({
+      type: 'SONG_SET',
+      roomId,
+      data: song
+    });
   }, [roomId, syncState.isReady]);
 
   const sendHostSetSongs = useCallback((songList: Song[], hostId: string) => {
@@ -172,21 +160,17 @@ export function useWebSocketGameSync(
     }
     
     console.log('📦 Sending HOST_SET_SONGS with', songList.length, 'songs');
-    // Suppress unused warnings
-    suppressUnused(songList, hostId);
-    // connectionManager.sendHostSetSongs?.(roomId, songList, hostId);
+    reliableWebSocketService.sendHostSetSongs(roomId, songList, hostId);
   }, [roomId, syncState.isReady]);
 
   const setHostStatus = useCallback((isHost: boolean) => {
-    // Suppress unused warning
-    suppressUnused(isHost);
-    // connectionManager.setHostStatus?.(isHost);
+    reliableWebSocketService.setHostStatus(isHost);
   }, []);
 
   const forceReconnect = useCallback(() => {
     if (roomId) {
       connectionManager.resetRetries();
-      // connectionManager.connect?.(roomId);
+      reliableWebSocketService.connect(roomId);
     }
   }, [roomId]);
 

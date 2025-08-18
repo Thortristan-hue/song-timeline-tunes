@@ -1,15 +1,204 @@
 
-/* Essential Global Styles and Viewport Utilities */
-/* Only styles that cannot be handled by Tailwind CSS */
+/* Timeliner - Centralized Visual Design System */
 
+/* CSS Custom Properties for consistent design */
 :root {
   /* Mobile-safe viewport calculations */
   --mobile-vh: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   --mobile-safe-height: calc(100vh - env(safe-area-inset-top));
   --mobile-full-height: calc(100dvh - env(safe-area-inset-top));
+  
+  /* Color Palette - Enhanced for better contrast */
+  --timeliner-primary: #8b5cf6;
+  --timeliner-secondary: #ec4899;
+  --timeliner-accent: #06b6d4;
+  --timeliner-success: #10b981;
+  --timeliner-warning: #f59e0b;
+  --timeliner-error: #ef4444;
+  
+  /* Text colors with proper contrast */
+  --timeliner-text-primary: #ffffff;
+  --timeliner-text-secondary: #e2e8f0;
+  --timeliner-text-muted: #94a3b8;
+  --timeliner-text-dark: #1e293b;
+  
+  /* Background colors */
+  --timeliner-bg-primary: #0f172a;
+  --timeliner-bg-secondary: #1e293b;
+  --timeliner-bg-card: rgba(30, 41, 59, 0.8);
+  
+  /* Gradients */
+  --timeliner-bg-gradient: linear-gradient(135deg, #0f172a 0%, #581c87 25%, #312e81 50%, #7c3aed 100%);
+  --timeliner-card-gradient: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+  --timeliner-button-gradient: linear-gradient(135deg, var(--timeliner-primary) 0%, var(--timeliner-secondary) 100%);
+  
+  /* Shadows with better definition */
+  --timeliner-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.2);
+  --timeliner-shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  --timeliner-shadow-lg: 0 10px 20px -5px rgb(0 0 0 / 0.4), 0 4px 8px -4px rgb(0 0 0 / 0.3);
+  --timeliner-shadow-glow: 0 0 30px rgba(139, 92, 246, 0.4);
+  
+  /* ... keep existing code (spacing, radius, typography) */
 }
 
-/* Mobile viewport utilities - cannot be replicated in Tailwind */
+/* Base Design Classes with improved contrast */
+.timeliner-bg {
+  background: var(--timeliner-bg-gradient);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-card {
+  background: var(--timeliner-card-gradient);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-lg);
+  box-shadow: var(--timeliner-shadow-lg);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-button {
+  background: var(--timeliner-button-gradient);
+  border: none;
+  border-radius: var(--timeliner-radius-md);
+  color: var(--timeliner-text-primary);
+  font-weight: 600;
+  padding: var(--timeliner-space-md) var(--timeliner-space-lg);
+  box-shadow: var(--timeliner-shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeliner-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--timeliner-shadow-glow);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-button:active {
+  transform: translateY(0);
+}
+
+.timeliner-text-gradient {
+  background: linear-gradient(135deg, var(--timeliner-primary), var(--timeliner-secondary), var(--timeliner-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.timeliner-glow {
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-glass {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--timeliner-text-primary);
+}
+
+/* Component-specific styles with better contrast */
+.timeliner-menu-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-xl);
+  padding: var(--timeliner-space-2xl);
+  backdrop-filter: blur(20px);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-menu-card:hover {
+  transform: scale(1.05);
+  box-shadow: var(--timeliner-shadow-glow);
+}
+
+.timeliner-player-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--timeliner-radius-lg);
+  padding: var(--timeliner-space-lg);
+  backdrop-filter: blur(15px);
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-song-card {
+  background: var(--timeliner-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--timeliner-radius-md);
+  padding: var(--timeliner-space-md);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-song-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Status indicators with proper contrast */
+.timeliner-status-success {
+  background: linear-gradient(135deg, var(--timeliner-success), #34d399);
+  color: var(--timeliner-text-primary);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.timeliner-status-error {
+  background: linear-gradient(135deg, var(--timeliner-error), #f87171);
+  color: var(--timeliner-text-primary);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.timeliner-status-warning {
+  background: linear-gradient(135deg, var(--timeliner-warning), #fbbf24);
+  color: var(--timeliner-text-dark);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Responsive typography with better contrast */
+.timeliner-title {
+  font-size: var(--timeliner-font-size-8xl);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-subtitle {
+  font-size: var(--timeliner-font-size-3xl);
+  font-weight: 500;
+  color: var(--timeliner-text-secondary);
+}
+
+.timeliner-heading {
+  font-size: var(--timeliner-font-size-2xl);
+  font-weight: 600;
+  color: var(--timeliner-text-primary);
+}
+
+.timeliner-body {
+  font-size: var(--timeliner-font-size-base);
+  font-weight: 400;
+  color: var(--timeliner-text-secondary);
+}
+
+.timeliner-caption {
+  font-size: var(--timeliner-font-size-sm);
+  font-weight: 400;
+  color: var(--timeliner-text-muted);
+}
+
+/* High contrast utilities */
+.timeliner-text-contrast {
+  color: var(--timeliner-text-primary);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.timeliner-bg-contrast {
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile viewport utilities */
 .mobile-safe-height {
   height: var(--mobile-safe-height);
   min-height: var(--mobile-safe-height);
@@ -93,3 +282,142 @@
     --mobile-full-height: calc(100dvh - env(safe-area-inset-top));
   }
 }
+
+/* Enhanced Timeline Animations for Epic Card Placement */
+@keyframes epic-timeline-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(-100vw) scale(0.3) rotateY(-90deg);
+    filter: blur(20px);
+  }
+  30% {
+    opacity: 0.3;
+    transform: translateX(-20vw) scale(0.7) rotateY(-30deg);
+    filter: blur(10px);
+  }
+  70% {
+    opacity: 0.8;
+    transform: translateX(5vw) scale(1.1) rotateY(10deg);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1) rotateY(0deg);
+    filter: blur(0px);
+  }
+}
+
+@keyframes epic-card-drop {
+  0% {
+    transform: scale(0.3) translateY(-200px) rotateZ(-45deg) rotateX(180deg);
+    opacity: 0;
+    filter: blur(15px);
+    box-shadow: 0 0 0 0 rgba(255,255,255,0);
+  }
+  20% {
+    transform: scale(0.8) translateY(-50px) rotateZ(-15deg) rotateX(60deg);
+    opacity: 0.4;
+    filter: blur(8px);
+    box-shadow: 0 0 0 15px rgba(255,255,255,0.1);
+  }
+  40% {
+    transform: scale(1.4) translateY(30px) rotateZ(15deg) rotateX(20deg);
+    opacity: 0.7;
+    filter: blur(4px);
+    box-shadow: 0 0 0 30px rgba(255,255,255,0.2), 0 30px 80px rgba(0,0,0,0.8);
+  }
+  60% {
+    transform: scale(0.95) translateY(-15px) rotateZ(-5deg) rotateX(-10deg);
+    opacity: 1;
+    filter: blur(1px);
+    box-shadow: 0 0 0 40px rgba(255,255,255,0.15), 0 35px 90px rgba(0,0,0,0.7);
+  }
+  80% {
+    transform: scale(1.1) translateY(8px) rotateZ(3deg) rotateX(5deg);
+    box-shadow: 0 0 0 25px rgba(255,255,255,0.08), 0 25px 60px rgba(0,0,0,0.6);
+  }
+  100% {
+    transform: scale(1) translateY(0) rotateZ(0deg) rotateX(0deg);
+    opacity: 1;
+    filter: blur(0px);
+    box-shadow: 0 0 0 0 rgba(255,255,255,0), 0 15px 40px rgba(0,0,0,0.5);
+  }
+}
+
+@keyframes epic-timeline-exit {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1) rotateY(0deg);
+    filter: blur(0px);
+  }
+  30% {
+    opacity: 0.7;
+    transform: translateX(20vw) scale(0.9) rotateY(30deg);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(120vw) scale(0.2) rotateY(120deg);
+    filter: blur(25px);
+  }
+}
+
+/* Enhanced Host Feedback Animations */
+@keyframes host-feedback-correct {
+  0% {
+    background: transparent;
+  }
+  20% {
+    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3) 0%, transparent 70%);
+  }
+  40% {
+    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0.1) 50%, transparent 80%);
+  }
+  60% {
+    background: radial-gradient(circle at center, rgba(34, 197, 94, 0.3) 0%, rgba(34, 197, 94, 0.05) 60%, transparent 90%);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes host-feedback-incorrect {
+  0% {
+    background: transparent;
+  }
+  20% {
+    background: radial-gradient(circle at center, rgba(239, 68, 68, 0.3) 0%, transparent 70%);
+  }
+  40% {
+    background: radial-gradient(circle at center, rgba(239, 68, 68, 0.4) 0%, rgba(239, 68, 68, 0.1) 50%, transparent 80%);
+  }
+  60% {
+    background: radial-gradient(circle at center, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 60%, transparent 90%);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* Apply the enhanced animations */
+.animate-epic-timeline-enter {
+  animation: epic-timeline-enter 2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-epic-card-drop {
+  animation: epic-card-drop 2.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-epic-timeline-exit {
+  animation: epic-timeline-exit 1.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+}
+
+.animate-host-feedback-correct {
+  animation: host-feedback-correct 1.5s ease-out forwards;
+}
+
+.animate-host-feedback-incorrect {
+  animation: host-feedback-incorrect 1.2s ease-out forwards;
+}
+
+/* ... keep existing code (responsive adjustments and background effects) */

@@ -1,8 +1,12 @@
-
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import { HostVisuals } from '@/components/HostVisuals';
-import { MobilePlayerGameView } from '@/components/player/MobilePlayerGameView';
+import { GameLogic } from '@/services/gameLogic';
+import { useToast } from '@/hooks/use-toast';
+import { Feedback } from '@/components/Feedback';
+import { VictoryScreen } from '@/components/VictoryScreen';
+import { useConfettiStore } from '@/stores/useConfettiStore';
+import { HostGameView } from '@/components/HostVisuals';
+import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -20,13 +24,6 @@ interface GamePlayProps {
   };
   onReconnect: () => void;
   onReplayGame: () => void;
-  // Orchestration state passed from Game.tsx
-  isProcessingMove: boolean;
-  isPlaying: boolean;
-  onPlayPause: () => Promise<void>;
-  mysteryCardRevealed: boolean;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-  gameEnded: boolean;
 }
 
 export function GamePlay({ 
@@ -34,66 +31,180 @@ export function GamePlay({
   players, 
   currentPlayer, 
   isHost, 
-  onPlaceCard,
-  // Orchestration state from Game.tsx
-  isPlaying,
-  onPlayPause,
-  mysteryCardRevealed,
-  cardPlacementResult,
-  gameEnded
+  onPlaceCard, 
+  onSetCurrentSong, 
+  customSongs, 
+  connectionStatus, 
+  onReconnect, 
+  onReplayGame 
 }: GamePlayProps) {
-  // Enhanced debugging for GamePlay
-  useEffect(() => {
-    console.log('[GamePlay] State debug:', {
-      isHost,
-      roomPhase: room?.phase,
-      playersCount: players?.length || 0,
-      currentPlayerName: currentPlayer?.name,
-      mysteryCard: room?.current_song?.deezer_title,
-      roomId: room?.id
-    });
-  }, [room, players, currentPlayer, isHost]);
+  const { toast } = useToast();
+  const [gameLogic, setGameLogic] = useState<GameLogic | null>(null);
+  const [isProcessingMove, setIsProcessingMove] = useState(false);
+  const [feedback, setFeedback] = useState<{ show: boolean; correct: boolean; song: Song | null }>({ show: false, correct: false, song: null });
+  const [winner, setWinner] = useState<Player | null>(null);
+  const [showVictoryScreen, setShowVictoryScreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
+  const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
+  const { fire } = useConfettiStore();
 
   // Find current turn player
   const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
 
+  useEffect(() => {
+    if (room && currentPlayer && players) {
+      const newGameLogic = new GameLogic(room, players, currentPlayer);
+      setGameLogic(newGameLogic);
+    }
+  }, [room, players, currentPlayer]);
+
+  useEffect(() => {
+    if (winner) {
+      fire();
+    }
+  }, [winner, fire]);
+
   const handleCardPlacement = async (song: Song, position: number): Promise<{ success: boolean; }> => {
-    if (!currentPlayer || !room) {
+    if (!currentPlayer || !room || gameLogic?.isGameOver) {
       return { success: false };
     }
+
+    setIsProcessingMove(true);
     
-    // Delegate to the parent Game.tsx orchestration
-    console.log('🃏 [GamePlay] Delegating card placement to Game.tsx orchestration');
-    const result = await onPlaceCard(song, position);
-    return { success: result.success };
+    try {
+      console.log('🃏 Card placement attempted:', { song: song.deezer_title, position });
+      
+      const result = await onPlaceCard(song, position);
+      
+      if (result.success) {
+        console.log('✅ Card placed successfully');
+        
+        if (result.correct !== undefined) {
+          setFeedback({
+            show: true,
+            correct: result.correct,
+            song: song
+          });
+          
+          setCardPlacementResult({
+            correct: result.correct,
+            song: song
+          });
+          
+          // Auto-hide feedback after delay
+          setTimeout(() => {
+            setFeedback({ show: false, correct: false, song: null });
+            setCardPlacementResult(null);
+          }, 3000);
+        }
+        
+        // Check for game end
+        if (result.gameEnded && result.winner) {
+          console.log('🎉 Game ended with winner:', result.winner.name);
+          setWinner(result.winner);
+          setShowVictoryScreen(true);
+        }
+        
+        return { success: true };
+      }
+      
+      return { success: false };
+    } catch (error) {
+      console.error('❌ Card placement failed:', error);
+      toast({
+        title: "Card placement failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+      return { success: false };
+    } finally {
+      setIsProcessingMove(false);
+    }
   };
 
-  // Host view - use HostVisuals component
-  if (isHost) {
-    console.log('[GamePlay] Rendering HostVisuals with:', {
-      room: room ? { id: room.id, phase: room.phase, lobby_code: room.lobby_code } : null,
-      playersCount: players?.length || 0,
-      mysteryCard: room?.current_song?.deezer_title || 'None'
-    });
-    
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleSetMysteryCard = async () => {
+    if (!isHost || !gameLogic) return;
+
+    setIsProcessingMove(true);
+    try {
+      const song = gameLogic.getRandomAvailableSong();
+      if (song) {
+        console.log('🎵 Setting mystery card:', song.deezer_title);
+        await onSetCurrentSong(song);
+        setMysteryCardRevealed(true);
+      } else {
+        console.warn('No available songs to set as mystery card');
+        toast({
+          title: "No songs available",
+          description: "Please add more songs to the playlist",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to set mystery card:', error);
+      toast({
+        title: "Failed to set mystery card",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingMove(false);
+    }
+  };
+
+  const handleBackToMenu = () => {
+    setShowVictoryScreen(false);
+    window.location.reload();
+  };
+
+  const handlePlayAgain = () => {
+    setShowVictoryScreen(false);
+    setWinner(null);
+    onReplayGame();
+  };
+
+  if (!gameLogic) {
+    return <div>Loading game...</div>;
+  }
+
+  // Show victory screen
+  if (showVictoryScreen && winner) {
     return (
-      <HostVisuals
-        room={room}
+      <VictoryScreen 
+        winner={winner} 
         players={players || []}
-        isHost={isHost}
+        onPlayAgain={handlePlayAgain}
+        onBackToMenu={handleBackToMenu}
       />
     );
   }
 
-  // Only render player view if we have a current song
-  if (!room?.current_song) {
+  // Show feedback overlay
+  if (feedback.show) {
+    return <Feedback correct={feedback.correct} song={feedback.song} />;
+  }
+
+  // Host view - use HostGameView component
+  if (isHost) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="text-white text-lg mb-2">Waiting for song...</div>
-          <div className="text-white/60 text-sm">The host is preparing the next song</div>
-        </div>
-      </div>
+      <HostGameView
+        currentTurnPlayer={currentTurnPlayer}
+        currentSong={room.current_song}
+        roomCode={room.lobby_code}
+        players={players}
+        mysteryCardRevealed={mysteryCardRevealed}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        cardPlacementResult={cardPlacementResult}
+        transitioning={isProcessingMove}
+        highlightedGapIndex={null}
+        mobileViewport={null}
+      />
     );
   }
 
@@ -106,11 +217,11 @@ export function GamePlay({
       roomCode={room.lobby_code}
       isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
       isPlaying={isPlaying}
-      onPlayPause={onPlayPause}
+      onPlayPause={handlePlayPause}
       onPlaceCard={handleCardPlacement}
       mysteryCardRevealed={mysteryCardRevealed}
       cardPlacementResult={cardPlacementResult}
-      gameEnded={gameEnded}
+      gameEnded={room.phase === 'finished'}
     />
   );
 }

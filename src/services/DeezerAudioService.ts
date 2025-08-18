@@ -9,7 +9,7 @@ export class DeezerAudioService {
   private static readonly AUDIO_CACHE = new Map<string, string>();
 
   /**
-   * Gets the playable MP3 preview URL for a Deezer track with resilient error handling
+   * Gets the playable MP3 preview URL for a Deezer track
    * @param trackId Deezer track ID (number or string)
    * @returns Promise<string> MP3 preview URL
    * @throws Error if request fails or no preview available
@@ -24,76 +24,33 @@ export class DeezerAudioService {
     const proxyUrl = `${this.PROXY_BASE}?url=${encodeURIComponent(apiUrl)}`;
     
     try {
-      console.log('🎵 Fetching audio preview for track:', trackId);
-      
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        // Add timeout to prevent hanging requests
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-      
+      const response = await fetch(proxyUrl);
       if (!response.ok) {
-        const errorMsg = `Deezer API request failed: ${response.status} ${response.statusText}`;
-        console.warn('⚠️ Audio fetch failed (non-blocking):', errorMsg);
-        throw new Error(errorMsg);
+        throw new Error(`Deezer API request failed: ${response.status}`);
       }
 
       const data = await response.json();
       if (!data.preview) {
-        const errorMsg = `No preview available for track ${trackId}`;
-        console.warn('⚠️ No audio preview available (non-blocking):', errorMsg);
-        throw new Error(errorMsg);
+        throw new Error('No preview available for this track');
       }
 
-      console.log('✅ Audio preview URL fetched successfully for track:', trackId);
       this.AUDIO_CACHE.set(cacheKey, data.preview);
       return data.preview;
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to load audio preview';
-      console.warn('⚠️ Audio preview fetch failed (non-blocking):', {
-        trackId,
-        error: errorMsg,
-        note: 'Game will continue without this audio preview'
-      });
-      
-      // Re-throw but with clear indication this is non-blocking
-      throw new Error(`Audio unavailable: ${errorMsg}`);
+      console.error('Failed to get preview URL:', error);
+      throw new Error('Failed to load audio preview');
     }
   }
 
   /**
-   * Creates a configured audio element for playback with CORS resilience
+   * Creates a configured audio element for playback
    * @param url MP3 URL to play
    * @returns HTMLAudioElement ready for playback
    */
   static createAudioElement(url: string): HTMLAudioElement {
-    const audio = new Audio();
-    
-    // CRITICAL: Set crossOrigin BEFORE src assignment to fix CORS issues
-    audio.crossOrigin = 'anonymous';
+    const audio = new Audio(url);
     audio.preload = 'metadata';
-    
-    // Add error handling for audio loading failures
-    audio.addEventListener('error', (e) => {
-      console.warn('⚠️ Audio loading failed (non-blocking):', {
-        url: url,
-        error: e,
-        networkState: audio.networkState,
-        readyState: audio.readyState
-      });
-      // Don't throw - allow game to continue without audio
-    });
-
-    audio.addEventListener('canplaythrough', () => {
-      console.log('✅ Audio loaded successfully:', url.substring(0, 50) + '...');
-    });
-
-    // Set src after crossOrigin is configured
-    audio.src = url;
-    
+    audio.crossOrigin = 'anonymous';
     return audio;
   }
 

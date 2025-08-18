@@ -1,18 +1,12 @@
-import { cn } from '@/lib/utils';
 
-interface HostGameBackgroundProps {
-  isDarkMode: boolean;
-}
+import React from 'react';
 
-export function HostGameBackground({ isDarkMode }: HostGameBackgroundProps) {
+export function HostGameBackground() {
   return (
-    <div className={cn(
-      "fixed inset-0 z-0 transition-colors",
-      isDarkMode ? "bg-gray-900" : "bg-gray-100"
-    )}>
-      <div className="absolute inset-0 bg-grid-sm [mask-image:radial-gradient(ellipse_at_center,white,transparent)] dark:[mask-image:radial-gradient(ellipse_at_center,white,transparent)]"
-        style={{ WebkitMaskImage: 'radial-gradient(ellipse at center, white, transparent)' }}></div>
-      <div className="absolute inset-0 bg-noise-url bg-repeat opacity-20 dark:opacity-10"></div>
-    </div>
+    <>
+      <div className="absolute top-20 left-10 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-32 right-16 w-48 h-48 bg-blue-400/5 rounded-full blur-2xl animate-pulse" style={{animationDelay: '2s'}} />
+      <div className="absolute top-1/2 left-20 w-24 h-24 bg-purple-400/8 rounded-full blur-2xl animate-pulse" style={{animationDelay: '1s'}} />
+    </>
   );
 }

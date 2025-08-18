@@ -1,89 +1,207 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Play, Pause } from 'lucide-react';
-import { Song, Player, GameRoom } from '@/types/game';
-import { Timeline } from './Timeline';
-import { AudioPlayer } from './AudioPlayer';
-import { suppressUnused } from '@/utils/suppressUnused';
+import React, { useState, useEffect, useRef } from 'react';
+import { Song, Player } from '@/types/game';
+import { RecordMysteryCard } from '@/components/RecordMysteryCard';
+import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
+import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@/constants/characters';
 
-interface HostVisualsProps {
-  room: GameRoom;
+interface HostGameViewProps {
+  currentTurnPlayer: Player | null;
+  currentSong: Song | null;
+  roomCode: string;
   players: Player[];
-  isHost: boolean;
+  mysteryCardRevealed: boolean;
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  cardPlacementResult: { correct: boolean; song: Song } | null;
+  transitioning: boolean;
+  highlightedGapIndex: number | null;
+  mobileViewport: { startIndex: number; endIndex: number; totalCards: number } | null;
 }
 
-export function HostVisuals({ room, isHost }: HostVisualsProps) {
-  const [currentSong] = useState<Song | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+export function HostGameView({
+  currentTurnPlayer,
+  currentSong,
+  roomCode,
+  players,
+  mysteryCardRevealed,
+  isPlaying,
+  onPlayPause,
+  cardPlacementResult,
+  transitioning,
+  highlightedGapIndex,
+  mobileViewport
+}: HostGameViewProps) {
+  const [recordPlayerRef, setRecordPlayerRef] = useState<HTMLDivElement | null>(null);
+  const [isCardRevealed, setIsCardRevealed] = useState(false);
+  
+  useEffect(() => {
+    setIsCardRevealed(mysteryCardRevealed);
+  }, [mysteryCardRevealed]);
 
-  suppressUnused(isHost);
-
-  const mysteryCard: Song = {
-    id: 'mystery-card',
-    deezer_title: 'Mystery Song',
-    deezer_artist: 'Unknown Artist',
-    deezer_album: 'Unknown Album',
-    release_year: '2024',
-    genre: 'Unknown',
-    cardColor: '#purple',
-    preview_url: 'https://example.com/preview.mp3'
-  };
-
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleCardClick = (song: Song, position: number) => {
-    console.log('Card clicked:', song, position);
+  const handleRecordClick = () => {
+    onPlayPause();
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Game Header */}
-      <div className="flex justify-between items-center p-4 bg-gray-800">
-        <h1 className="text-2xl font-bold">Game Room: {room.lobby_code}</h1>
-        <div className="flex items-center gap-4">
-          <Button onClick={handlePlayPause} variant="outline">
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isPlaying ? 'Pause' : 'Play'}
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-[#494252] via-[#524555] to-[#403844] relative overflow-hidden">
+      {/* Top Left - RYTHMY Logo */}
+      <div className="absolute top-4 left-4 z-10">
+        <img 
+          src="/src/assets/ass_rythmy.png" 
+          alt="RYTHMY" 
+          className="h-12 w-auto"
+        />
       </div>
 
-      {/* Main Game Area */}
-      <div className="flex-1 flex">
-        {/* Left Side - Mystery Card */}
-        <div className="w-1/3 p-6 bg-gray-800 border-r border-gray-700">
-          <h2 className="text-xl font-bold mb-4">Mystery Card</h2>
-          <div className="bg-purple-600 p-6 rounded-lg">
-            <div className="text-lg font-semibold">{mysteryCard.deezer_title}</div>
-            <div className="text-purple-200">{mysteryCard.deezer_artist}</div>
-            <div className="text-purple-300 text-sm">{mysteryCard.deezer_album}</div>
-            <div className="text-2xl font-bold mt-4">{mysteryCard.release_year}</div>
+      {/* Top Right - Room Code */}
+      <div className="absolute top-4 right-4 z-10">
+        <div className="relative">
+          <img 
+            src="/src/assets/ass_roomcode.png" 
+            alt="Room Code Background" 
+            className="h-12 w-auto"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-white font-bold text-lg tracking-wider">
+              {roomCode}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Right Side - Timeline */}
-        <div className="flex-1 p-6">
-          <Timeline 
-            songs={room.songs} 
-            onCardClick={handleCardClick}
-            isProcessingMove={false}
+      {/* Bottom Left Speaker */}
+      <div className="absolute bottom-4 left-4 z-10">
+        <img 
+          src="/src/assets/ass_speaker.png" 
+          alt="Speaker" 
+          className="h-16 w-auto opacity-80"
+        />
+      </div>
+
+      {/* Bottom Right Speaker */}
+      <div className="absolute bottom-4 right-4 z-10">
+        <img 
+          src="/src/assets/ass_speaker.png" 
+          alt="Speaker" 
+          className="h-16 w-auto opacity-80 scale-x-[-1]"
+        />
+      </div>
+
+      {/* Center Top - Control Panel */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="relative">
+          <img 
+            src="/src/assets/ass_cass_bg.png" 
+            alt="Control Panel Background" 
+            className="h-20 w-auto"
           />
+          
+          {/* Control Buttons Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center space-x-4">
+            {/* Play/Pause Button */}
+            <button
+              onClick={handleRecordClick}
+              className="relative group transition-transform hover:scale-110"
+              disabled={!currentSong}
+            >
+              <img 
+                src={isPlaying ? "/src/assets/ass_pause.png" : "/src/assets/ass_play.png"}
+                alt={isPlaying ? "Pause" : "Play"}
+                className="h-8 w-8"
+              />
+            </button>
+            
+            {/* Stop Button */}
+            <button
+              onClick={() => {
+                if (isPlaying) {
+                  onPlayPause(); // This will stop/pause the audio
+                }
+              }}
+              className="relative group transition-transform hover:scale-110"
+              disabled={!isPlaying}
+            >
+              <img 
+                src="/src/assets/ass_stop.png"
+                alt="Stop"
+                className="h-8 w-8"
+              />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Audio Player */}
-      {currentSong?.preview_url && (
-        <AudioPlayer
-          src={currentSong.preview_url}
-          isPlaying={isPlaying}
-          onPlayPause={handlePlayPause}
-          roomId={room.id}
-          trackId={currentSong.id}
-        />
-      )}
+      {/* Main Content Area */}
+      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+        {/* Current Turn Player Timeline */}
+        {currentTurnPlayer && (
+          <div className="w-full max-w-6xl mb-8">
+            <HostCurrentPlayerTimeline 
+              currentTurnPlayer={currentTurnPlayer}
+              highlightedGapIndex={highlightedGapIndex}
+              mobileViewport={mobileViewport}
+            />
+          </div>
+        )}
+
+        {/* Mystery Card */}
+        <div className="mb-8">
+          <RecordMysteryCard
+            song={currentSong}
+            isRevealed={isCardRevealed}
+            isDestroyed={cardPlacementResult?.correct === false}
+          />
+        </div>
+
+        {/* Player Characters Display */}
+        <div className="w-full max-w-6xl">
+          <div className="flex justify-center items-end space-x-6">
+            {players.map((player) => {
+              const isCurrentPlayer = currentTurnPlayer?.id === player.id;
+              const character = getCharacterByIdUtil(player.character || getDefaultCharacter().id);
+              
+              return (
+                <div
+                  key={player.id}
+                  className={`relative transition-all duration-300 ${
+                    isCurrentPlayer 
+                      ? 'scale-110 z-10' 
+                      : 'scale-100 opacity-75'
+                  }`}
+                >
+                  <div className="flex flex-col items-center space-y-2">
+                    {/* Character Image */}
+                    <div className="relative">
+                      <img
+                        src={character?.image || getDefaultCharacter().image}
+                        alt={character?.name || getDefaultCharacter().name}
+                        className="h-20 w-20 rounded-full border-4"
+                        style={{ borderColor: player.color }}
+                      />
+                      {isCurrentPlayer && (
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-white flex items-center justify-center">
+                          <span className="text-xs">🎵</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Player Info */}
+                    <div className="text-center">
+                      <div className="text-white font-semibold text-sm truncate max-w-20">
+                        {player.name}
+                      </div>
+                      <div className="text-white/70 text-xs">
+                        {player.timeline.length} cards
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

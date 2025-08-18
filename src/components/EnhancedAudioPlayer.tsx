@@ -1,5 +1,5 @@
-
-import { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Import the specific assets

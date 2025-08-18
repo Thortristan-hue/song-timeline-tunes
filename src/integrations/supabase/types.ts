@@ -84,7 +84,7 @@ export type Database = {
           host_id: string
           host_name?: string | null
           id?: string
-          lobby_code?: string
+          lobby_code: string
           phase?: string
           songs?: Json | null
           updated_at?: string
@@ -109,7 +109,6 @@ export type Database = {
       }
       players: {
         Row: {
-          character: string
           color: string
           id: string
           is_host: boolean | null
@@ -123,7 +122,6 @@ export type Database = {
           timeline_color: string
         }
         Insert: {
-          character?: string
           color: string
           id?: string
           is_host?: boolean | null
@@ -137,7 +135,6 @@ export type Database = {
           timeline_color: string
         }
         Update: {
-          character?: string
           color?: string
           id?: string
           is_host?: boolean | null

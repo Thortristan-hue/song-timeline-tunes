@@ -19,7 +19,7 @@ function App() {
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/demo" element={<GamemodeDemo onBack={() => window.history.back()} />} />
+            <Route path="/demo" element={<GamemodeDemo />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

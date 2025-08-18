@@ -1,9 +1,12 @@
-
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Music, Play, Pause, Crown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Music, Play, Pause, Volume2, VolumeX, Crown, Clock, Trophy, Star, Zap, Check, X } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { MysteryCard } from '@/components/MysteryCard';
+import { cn } from '@/lib/utils';
 
 // Mystery Card for Players
 interface PlayerMysteryCardProps {
@@ -23,6 +26,8 @@ export function PlayerMysteryCard({
   onDragStart,
   onDragEnd
 }: PlayerMysteryCardProps) {
+  const [isMuted, setIsMuted] = useState(false);
+
   return (
     <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30">
       <div className="text-center space-y-4">

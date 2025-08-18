@@ -1,7 +1,7 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Play, Pause, Timer, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { Song, Player } from '@/types/game';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ export function SprintModePlayerView({
   isPlaying,
   onPlayPause,
   onPlaceCard,
+  gameEnded,
   targetCards,
   timeLeft = 30,
   isInTimeout = false,
@@ -44,12 +45,10 @@ export function SprintModePlayerView({
 
   // Reset result display when new song starts
   useEffect(() => {
-    if (currentSong) {
-      setLastResult(null);
-      setShowResult(false);
-      setSelectedPosition(Math.floor(timelineSongs.length / 2)); // Start in middle
-    }
-  }, [currentSong?.id, timelineSongs.length]);
+    setLastResult(null);
+    setShowResult(false);
+    setSelectedPosition(Math.floor(timelineSongs.length / 2)); // Start in middle
+  }, [currentSong.id, timelineSongs.length]);
 
   // Show result briefly after placement
   useEffect(() => {
@@ -198,7 +197,7 @@ export function SprintModePlayerView({
           </div>
 
           {/* Timeline Position Selector */}
-          {!isInTimeout && currentSong && (
+          {!isInTimeout && (
             <div className="space-y-4">
               <div className="text-center mb-2">
                 <div className="text-white font-bold text-lg">Where does this fit?</div>
@@ -309,7 +308,7 @@ export function SprintModePlayerView({
                 No cards yet - place your first one!
               </div>
             ) : (
-              timelineSongs.map((song) => (
+              timelineSongs.map((song, index) => (
                 <div 
                   key={song.id}
                   className="min-w-[60px] text-center p-2 bg-[#4CC9F0]/20 border border-[#4CC9F0]/50 rounded-lg"
