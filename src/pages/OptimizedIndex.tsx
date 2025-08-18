@@ -64,6 +64,9 @@ export default function OptimizedIndex() {
     );
   }
 
+  // Find current turn player
+  const currentTurnPlayer = players.find(p => p.id === room?.current_player_id) || players[0];
+
   // Victory condition
   if (gameState.winner) {
     return isMobile ? (
@@ -89,7 +92,16 @@ export default function OptimizedIndex() {
       return (
         <MobilePlayerGameView
           currentPlayer={currentPlayer}
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={room.current_song}
+          roomCode={room.lobby_code}
+          isMyTurn={currentPlayer?.id === currentTurnPlayer?.id}
+          isPlaying={gameState.isPlaying}
+          onPlayPause={() => setIsPlaying(!gameState.isPlaying)}
           onPlaceCard={placeCard}
+          mysteryCardRevealed={false}
+          cardPlacementResult={null}
+          gameEnded={room.phase === 'finished'}
         />
       );
     }
@@ -102,6 +114,10 @@ export default function OptimizedIndex() {
         isHost={isHost}
         onSetCurrentSong={() => Promise.resolve()}
         onPlaceCard={placeCard}
+        customSongs={gameState.availableSongs}
+        connectionStatus={connectionStatus}
+        onReconnect={() => {}}
+        onReplayGame={() => window.location.reload()}
       />
     );
   }
@@ -122,7 +138,6 @@ export default function OptimizedIndex() {
               await initializeGame();
               await startGame();
             }}
-            initializeGame={initializeGame}
           />
         </>
       );
