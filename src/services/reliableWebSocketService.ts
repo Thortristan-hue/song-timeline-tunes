@@ -1,13 +1,17 @@
 
 import { GameService } from './gameService';
-import { suppressUnused } from '@/utils/suppressUnused';
+import { Song } from '@/types/game';
 
 export class ReliableWebSocketService {
   private gameService = new GameService();
 
-  async initializeGame(roomId: string, hostId: string): Promise<void> {
+  private handleMessage = (message: any) => {
+    console.log('WebSocket message:', message);
+  };
+
+  async initializeGame(roomId: string, songs: Song[]): Promise<void> {
     try {
-      await this.gameService.initializeGameWithStartingCards(roomId, hostId);
+      await this.gameService.initializeGameWithStartingCards(roomId, songs);
     } catch (error) {
       console.error('Failed to initialize game:', error);
       throw error;

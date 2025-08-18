@@ -83,11 +83,7 @@ export function GamePlay({
       <HostVisuals
         room={room}
         players={players || []}
-        currentPlayer={currentPlayer}
         isHost={isHost}
-        customSongs={customSongs}
-        onSetCurrentSong={onSetCurrentSong}
-        connectionStatus={connectionStatus}
       />
     );
   }

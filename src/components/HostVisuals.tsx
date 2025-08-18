@@ -39,10 +39,6 @@ export function HostVisuals({ room, isHost }: HostVisualsProps) {
     console.log('Card clicked:', song, position);
   };
 
-  const handleAudioError = (e: any) => {
-    console.error('Audio error:', e);
-  };
-
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
       {/* Game Header */}
@@ -82,11 +78,11 @@ export function HostVisuals({ room, isHost }: HostVisualsProps) {
       {/* Audio Player */}
       {currentSong?.preview_url && (
         <AudioPlayer
-          key={Date.now()}
           src={currentSong.preview_url}
           isPlaying={isPlaying}
-          onError={handleAudioError}
-          audioRef={audioRef}
+          onPlayPause={handlePlayPause}
+          roomId={room.id}
+          trackId={currentSong.id}
         />
       )}
     </div>
