@@ -29,7 +29,7 @@ const convertDatabasePlayer = (dbPlayer: any): Player => {
     id: dbPlayer.id,
     name: dbPlayer.name || 'Unknown Player',
     color: dbPlayer.color || '#007AFF',
-    timelineColor: dbPlayer.timeline_color || dbPlayer.color || '#007AFF', // Map timeline_color to timelineColor
+    timelineColor: dbPlayer.timeline_color || dbPlayer.color || '#007AFF',
     score: dbPlayer.score || 0,
     timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
     character: dbPlayer.character || 'char_dave'
@@ -157,10 +157,11 @@ export class GameService implements IGameService {
 
       // Check if game ended
       const gameEnded = await this.checkIfGameEnded(roomId);
-      let winner = null;
+      let winner: Player | undefined = undefined;
       
       if (gameEnded) {
-        winner = await this.determineWinner(roomId);
+        const winnerResult = await this.determineWinner(roomId);
+        winner = winnerResult || undefined;
       } else {
         // Advance turn if game continues
         await this.advanceTurn(roomId);
@@ -267,6 +268,7 @@ export class GameService implements IGameService {
 
   // Player Management
   async awardPoints(roomId: string, playerId: string, points: number): Promise<void> {
+    suppressUnused(roomId);
     try {
       const player = await this.getPlayer(playerId);
       if (!player) return;
@@ -306,12 +308,14 @@ export class GameService implements IGameService {
   async createRoom(hostName: string): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const lobbyCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const hostId = `host-${Date.now()}`;
       
       const { data, error } = await supabase
         .from('game_rooms')
         .insert({
           lobby_code: lobbyCode,
           host_name: hostName,
+          host_id: hostId,
           phase: 'lobby',
           songs: []
         })
@@ -348,6 +352,8 @@ export class GameService implements IGameService {
           room_id: room.id,
           name: playerName,
           color: '#FF6B9D',
+          timeline_color: '#FF6B9D',
+          player_session_id: `player-${Date.now()}`,
           score: 0,
           timeline: []
         })
@@ -371,7 +377,7 @@ export class GameService implements IGameService {
         .update({
           name: updates.name,
           color: updates.color,
-          timeline_color: updates.timelineColor, // Map timelineColor to timeline_color
+          timeline_color: updates.timelineColor,
           score: updates.score,
           timeline: updates.timeline as any,
           character: updates.character

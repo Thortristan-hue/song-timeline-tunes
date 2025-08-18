@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { AudioPlayer } from './AudioPlayer';
@@ -23,7 +24,6 @@ interface HostVisualsProps {
 
 export function HostVisuals({ 
   room, 
-  players, 
   currentPlayer, 
   isHost, 
   customSongs,
@@ -37,6 +37,20 @@ export function HostVisuals({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [audioPlayerKey, setAudioPlayerKey] = useState(0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+
+  // Handle audio error - moved before usage
+  const handleAudioError = useCallback((error: string) => {
+    console.error('Audio error in HostVisuals:', error);
+    setAudioError(error);
+    setIsLoadingPreview(false);
+    suppressUnused(error);
+    
+    toast({
+      title: "Audio Error",
+      description: "Failed to load audio preview",
+      variant: "destructive",
+    });
+  }, [toast]);
 
   // Load the first song when customSongs changes
   useEffect(() => {
@@ -125,18 +139,11 @@ export function HostVisuals({
     }
   }, [isHost, room, onSetCurrentSong, toast]);
 
-  const handleAudioError = useCallback((error: string) => {
-    console.error('Audio error in HostVisuals:', error);
-    setAudioError(error);
-    setIsLoadingPreview(false); // Use setIsLoadingPreview instead of setIsPlayingPreview
-    suppressUnused(error); // Suppress the unused error parameter
-    
-    toast({
-      title: "Audio Error",
-      description: "Failed to load audio preview",
-      variant: "destructive",
-    });
-  }, [toast]);
+  // Stub handlers for Timeline props
+  const handleCardClick = useCallback((song: Song) => {
+    suppressUnused(song);
+    console.log('Card clicked:', song);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -160,7 +167,11 @@ export function HostVisuals({
           <h2 className="text-xl font-semibold mb-2">
             {currentPlayer.name}'s Timeline
           </h2>
-          <Timeline songs={currentPlayer.timeline} />
+          <Timeline 
+            songs={currentPlayer.timeline} 
+            onCardClick={handleCardClick}
+            isProcessingMove={false}
+          />
         </div>
       )}
 
@@ -173,7 +184,6 @@ export function HostVisuals({
               key={audioPlayerKey}
               src={previewUrl}
               isPlaying={isPlayingPreview}
-              onEnded={handleAudioEnded}
               onError={handleAudioLoadError}
               audioRef={audioElementRef}
             />

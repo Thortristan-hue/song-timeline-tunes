@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
-import { GameLogic } from '@/services/gameLogic';
 import { HostVisuals } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 
@@ -36,6 +35,9 @@ export function GamePlay({
   currentPlayer, 
   isHost, 
   onPlaceCard,
+  onSetCurrentSong,
+  customSongs,
+  connectionStatus,
   // Orchestration state from Game.tsx
   isPlaying,
   onPlayPause,
@@ -43,8 +45,6 @@ export function GamePlay({
   cardPlacementResult,
   gameEnded
 }: GamePlayProps) {
-  const [gameLogic, setGameLogic] = useState<GameLogic | null>(null);
-
   // Enhanced debugging for GamePlay
   useEffect(() => {
     console.log('[GamePlay] State debug:', {
@@ -60,15 +60,8 @@ export function GamePlay({
   // Find current turn player
   const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
 
-  useEffect(() => {
-    if (room && currentPlayer && players) {
-      const newGameLogic = new GameLogic(room, players, currentPlayer);
-      setGameLogic(newGameLogic);
-    }
-  }, [room, players, currentPlayer]);
-
   const handleCardPlacement = async (song: Song, position: number): Promise<{ success: boolean; }> => {
-    if (!currentPlayer || !room || gameLogic?.isGameOver) {
+    if (!currentPlayer || !room) {
       return { success: false };
     }
     
@@ -77,17 +70,6 @@ export function GamePlay({
     const result = await onPlaceCard(song, position);
     return { success: result.success };
   };
-
-  if (!gameLogic) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mb-4"></div>
-          <div>Loading game...</div>
-        </div>
-      </div>
-    );
-  }
 
   // Host view - use HostVisuals component
   if (isHost) {
@@ -101,8 +83,11 @@ export function GamePlay({
       <HostVisuals
         room={room}
         players={players || []}
-        mysteryCard={room?.current_song || null}
+        currentPlayer={currentPlayer}
         isHost={isHost}
+        customSongs={customSongs}
+        onSetCurrentSong={onSetCurrentSong}
+        connectionStatus={connectionStatus}
       />
     );
   }

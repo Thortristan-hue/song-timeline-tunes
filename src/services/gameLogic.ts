@@ -1,5 +1,5 @@
+
 import { Song, Player } from '@/types/game';
-import { gameService } from './gameService';
 import { suppressUnused } from '@/utils/suppressUnused';
 
 export async function validateCardPlacement(
