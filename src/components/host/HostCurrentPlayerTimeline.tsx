@@ -23,9 +23,8 @@ export function HostCurrentPlayerTimeline({
 }: HostCurrentPlayerTimelineProps) {
   const character = GAME_CHARACTERS.find(c => c.id === currentPlayer.character);
 
-  const timelineCards = [...currentPlayer.timeline].map((_, index) => {
-    const placedSong = currentPlayer.timeline[index];
-    return placedSong || null;
+  const timelineCards = [...currentPlayer.timeline].map((song) => {
+    return song || null;
   });
 
   // Ensure we have exactly 10 slots

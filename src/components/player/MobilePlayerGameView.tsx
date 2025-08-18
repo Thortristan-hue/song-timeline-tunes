@@ -36,6 +36,11 @@ export function MobilePlayerGameView({
     }
   };
 
+  const handleCardClick = (song: Song, position: number) => {
+    // For mobile, we use the select method directly
+    handleCardSelect(song, position);
+  };
+
   const handleConfirm = () => {
     setConfirmingPlacement(null);
   };
@@ -70,7 +75,9 @@ export function MobilePlayerGameView({
       <div className="flex-1 overflow-hidden">
         <Timeline
           songs={currentPlayer.timeline}
+          onCardClick={handleCardClick}
           onCardSelect={handleCardSelect}
+          isProcessingMove={false}
           currentSong={currentSong}
         />
       </div>

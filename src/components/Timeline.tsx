@@ -10,7 +10,7 @@ interface TimelineProps {
   currentSong?: Song;
 }
 
-export function Timeline({ songs, onCardClick, onCardSelect, isProcessingMove, currentSong }: TimelineProps) {
+export function Timeline({ songs, onCardClick, onCardSelect, isProcessingMove }: TimelineProps) {
   const handleCardClick = (song: Song, index: number) => {
     if (!isProcessingMove) {
       if (onCardSelect) {
