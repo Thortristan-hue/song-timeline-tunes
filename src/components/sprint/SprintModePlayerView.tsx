@@ -172,8 +172,9 @@ export function SprintModePlayerView({
             {currentSong ? (
               <>
                 <div className="text-center mb-3">
-                  <div className="text-lg font-bold text-white">{currentSong.deezer_title}</div>
-                  <div className="text-[#107793] font-semibold">{currentSong.deezer_artist}</div>
+                  <div className="text-2xl mb-2">🎵</div>
+                  <div className="text-[#d9e8dd] text-sm">Mystery song playing...</div>
+                  <div className="text-[#107793]/70 text-xs">Place it correctly to reveal details</div>
                 </div>
 
                 {/* Play/Pause Button */}

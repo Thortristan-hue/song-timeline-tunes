@@ -52,15 +52,8 @@ export function HostLobby({
     console.log('🧍 HostLobby: Players updated:', players);
     console.log('🧍 HostLobby: Player count:', players.length);
   }, [players]);
-
-  // Mock players for testing UI (when no real players are connected)
-  const mockPlayers = players.length === 0 ? [
-    { id: '1', name: 'Alice', character: 'char_fiona', color: '#FF3B30', timeline: [] },
-    { id: '2', name: 'Bob', character: 'char_dave', color: '#007AFF', timeline: [] },
-    { id: '3', name: 'Charlie', character: 'char_jessica', color: '#34C759', timeline: [] }
-  ] : [];
   
-  const displayPlayers = players.length > 0 ? players : mockPlayers;
+  const displayPlayers = players;
 
   const handleCreateRoom = useCallback(async () => {
     console.log('🏠 Creating room...');

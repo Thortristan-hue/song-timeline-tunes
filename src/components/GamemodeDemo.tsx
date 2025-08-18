@@ -22,88 +22,13 @@ const mockSong: Song = {
 
 const mockPlayers: Player[] = [
   {
-    id: 'player-1',
-    name: 'Alice',
+    id: 'demo-player',
+    name: 'Demo Player',
     color: '#4CC9F0',
     timelineColor: '#4CC9F0',
-    score: 85,
+    score: 0,
     character: 'char_alice',
-    timeline: [
-      {
-        id: 'song-1',
-        deezer_title: 'Let It Be',
-        deezer_artist: 'The Beatles',
-        deezer_album: 'Let It Be',
-        release_year: '1970',
-        genre: 'Rock',
-        cardColor: '#4CC9F0'
-      },
-      {
-        id: 'song-2',
-        deezer_title: 'Imagine',
-        deezer_artist: 'John Lennon',
-        deezer_album: 'Imagine',
-        release_year: '1971',
-        genre: 'Rock',
-        cardColor: '#107793'
-      }
-    ]
-  },
-  {
-    id: 'player-2',
-    name: 'Bob',
-    color: '#a53b8b',
-    timelineColor: '#a53b8b',
-    score: 72,
-    character: 'char_bob',
-    timeline: [
-      {
-        id: 'song-3',
-        deezer_title: 'Hotel California',
-        deezer_artist: 'Eagles',
-        deezer_album: 'Hotel California',
-        release_year: '1976',
-        genre: 'Rock',
-        cardColor: '#a53b8b'
-      }
-    ]
-  },
-  {
-    id: 'player-3',
-    name: 'Charlie',
-    color: '#107793',
-    timelineColor: '#107793',
-    score: 91,
-    character: 'char_charlie',
-    timeline: [
-      {
-        id: 'song-4',
-        deezer_title: 'Stairway to Heaven',
-        deezer_artist: 'Led Zeppelin',
-        deezer_album: 'Led Zeppelin IV',
-        release_year: '1971',
-        genre: 'Rock',
-        cardColor: '#107793'
-      },
-      {
-        id: 'song-5',
-        deezer_title: 'Sweet Child O Mine',
-        deezer_artist: 'Guns N Roses',
-        deezer_album: 'Appetite for Destruction',
-        release_year: '1987',
-        genre: 'Rock',
-        cardColor: '#4a4f5b'
-      },
-      {
-        id: 'song-6',
-        deezer_title: 'Smells Like Teen Spirit',
-        deezer_artist: 'Nirvana',
-        deezer_album: 'Nevermind',
-        release_year: '1991',
-        genre: 'Grunge',
-        cardColor: '#4CC9F0'
-      }
-    ]
+    timeline: []
   }
 ];
 
