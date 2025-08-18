@@ -174,8 +174,8 @@ export function HostGameView({
         <div className={`mb-8 transition-all duration-500 ${
           cardPlacementResult 
             ? cardPlacementResult.correct 
-              ? 'animate-enhanced-card-placement-success' 
-              : 'animate-card-placement-error'
+              ? 'animate-smooth-card-success' 
+              : 'animate-smooth-card-error'
             : ''
         }`}>
           <RecordMysteryCard
