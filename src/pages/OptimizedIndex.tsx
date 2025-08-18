@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useOptimizedGameRoom } from '@/hooks/useOptimizedGameRoom';
 import { useOptimizedGameLogic } from '@/hooks/useOptimizedGameLogic';
@@ -150,8 +151,8 @@ export default function OptimizedIndex() {
             }}
             setCustomSongs={() => {}}
             isLoading={isLoading}
-            createRoom={createRoom}
-            updateRoomGamemode={() => Promise.resolve()}
+            createRoom={() => Promise.resolve(true)}
+            updateRoomGamemode={() => Promise.resolve(true)}
           />
         </>
       );
@@ -188,3 +189,4 @@ export default function OptimizedIndex() {
     />
   );
 }
+
