@@ -263,58 +263,106 @@ export default function MobilePlayerGameView({
     return (
       <div 
         className={cn(
-          "fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-500",
+          "fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-700",
           "px-4 pt-safe-top pb-safe-bottom",
           isCorrect 
-            ? 'bg-gradient-to-br from-green-600 via-green-700 to-green-800' 
-            : 'bg-gradient-to-br from-red-600 via-red-700 to-red-800'
+            ? 'bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700' 
+            : 'bg-gradient-to-br from-red-500 via-rose-600 to-pink-700'
         )}
       >
-        <div className="text-center space-y-6 max-w-sm w-full animate-in slide-in-from-bottom-4 duration-500">
-          <div className="relative">
+        {/* Animated background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Floating particles */}
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "absolute w-2 h-2 rounded-full animate-bounce opacity-60",
+                isCorrect ? "bg-yellow-300" : "bg-red-300"
+              )}
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 3}s`
+              }}
+            />
+          ))}
+          
+          {/* Radial pulse effect */}
+          <div className={cn(
+            "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2",
+            "w-96 h-96 rounded-full opacity-20 animate-ping",
+            isCorrect ? "bg-white" : "bg-yellow-200"
+          )} />
+        </div>
+
+        <div className="relative text-center space-y-8 max-w-md w-full animate-in slide-in-from-bottom-8 duration-700">
+          {/* Large animated icon */}
+          <div className="relative mb-6">
             <div className={cn(
-              "text-6xl mb-4 font-light transition-all duration-500",
-              isCorrect ? 'text-white drop-shadow-lg' : 'text-white drop-shadow-lg'
+              "text-8xl mb-4 font-light transition-all duration-500 animate-in zoom-in-50",
+              "drop-shadow-2xl",
+              isCorrect ? 'text-yellow-200 animate-bounce' : 'text-red-200 animate-pulse'
+            )}>
+              {isCorrect ? '🎉' : '💔'}
+            </div>
+            <div className={cn(
+              "text-7xl font-black text-white drop-shadow-2xl animate-in slide-in-from-top-4 duration-500 delay-200",
+              isCorrect ? 'animate-pulse' : 'animate-bounce'
             )}>
               {isCorrect ? '✓' : '✗'}
             </div>
           </div>
           
+          {/* Result text with enhanced styling */}
           <div className={cn(
-            "text-3xl font-semibold text-white drop-shadow-lg transition-all duration-300"
+            "text-4xl font-black text-white drop-shadow-2xl transition-all duration-300 animate-in slide-in-from-left-4 delay-300",
+            isCorrect ? 'animate-pulse' : ''
           )}>
-            {isCorrect ? 'Correct!' : 'Incorrect'}
+            {isCorrect ? 'AMAZING!' : 'OOPS!'}
           </div>
           
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 border border-white/30 shadow-xl animate-in slide-in-from-bottom-2 duration-400 delay-150">
-            <div className="text-lg font-semibold text-gray-900 mb-2 leading-tight">
-              {cardPlacementResult.song.deezer_title}
+          {/* Enhanced song information card */}
+          <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-8 border-4 border-white/50 shadow-2xl animate-in slide-in-from-bottom-4 duration-500 delay-400">
+            <div className="text-xl font-black text-gray-900 mb-3 leading-tight">
+              🎵 {cardPlacementResult.song.deezer_title}
             </div>
-            <div className="text-base text-gray-700 mb-3 font-medium">
-              by {cardPlacementResult.song.deezer_artist}
+            <div className="text-lg text-gray-700 mb-4 font-bold">
+              🎤 by {cardPlacementResult.song.deezer_artist}
             </div>
             <div className={cn(
-              "inline-block text-white px-4 py-2 rounded-xl font-semibold text-lg shadow-md transition-all duration-200",
+              "inline-block text-white px-6 py-3 rounded-2xl font-black text-2xl shadow-2xl transition-all duration-200 border-4 border-white/30",
               isCorrect 
-                ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                : 'bg-gradient-to-r from-red-500 to-red-600'
+                ? 'bg-gradient-to-r from-emerald-500 to-green-600 animate-pulse' 
+                : 'bg-gradient-to-r from-red-500 to-rose-600'
             )}>
-              {cardPlacementResult.song.release_year}
+              📅 Released in {cardPlacementResult.song.release_year}
             </div>
+            
+            {/* Additional album info if available */}
+            {cardPlacementResult.song.deezer_album && (
+              <div className="text-sm text-gray-600 mt-3 font-semibold">
+                💿 from "{cardPlacementResult.song.deezer_album}"
+              </div>
+            )}
           </div>
           
+          {/* Enhanced feedback message */}
           <div className={cn(
-            "text-white text-lg font-medium transition-all duration-300"
+            "text-white text-xl font-black transition-all duration-300 animate-in slide-in-from-right-4 delay-500"
           )}>
             {isCorrect ? (
-              <div className="space-y-1">
-                <div className="text-xl">Perfect Placement!</div>
-                <div className="text-sm opacity-90">+1 Point for {currentPlayer.name}</div>
+              <div className="space-y-2">
+                <div className="text-3xl animate-bounce">🎯 PERFECT PLACEMENT!</div>
+                <div className="text-lg opacity-90 font-bold">+1 Point for {currentPlayer.name}</div>
+                <div className="text-base opacity-80">You're on fire! 🔥</div>
               </div>
             ) : (
-              <div className="space-y-1">
-                <div className="text-lg">Not quite right</div>
-                <div className="text-sm opacity-90">Try again next time</div>
+              <div className="space-y-2">
+                <div className="text-2xl">🎯 Not quite right</div>
+                <div className="text-lg opacity-90">Keep jamming, you've got this!</div>
+                <div className="text-base opacity-80">Music history is tricky! 🎵</div>
               </div>
             )}
           </div>

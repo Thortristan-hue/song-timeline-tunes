@@ -11,6 +11,7 @@ import { Crown, Users, Play, ArrowLeft, Copy, Check, Music2, Volume2, Radio, Hea
 import { Player, Song, GameRoom, GameMode, GameModeSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { getCharacterById, getDefaultCharacter } from '@/constants/characters';
 
 interface HostLobbyProps {
   room: GameRoom | null;
@@ -590,44 +591,52 @@ export function HostLobby({
                       </p>
                     </div>
                   ) : (
-                    players.map((player, index) => (
-                      <div
-                        key={player.id}
-                        className="flex items-center gap-3 p-3 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm group"
-                      >
-                        <div className="text-base font-bold text-[#4CC9F0] tracking-tight">
-                          {index + 1}
-                        </div>
-                        
-                        <div 
-                          className="w-4 h-4 rounded-full shadow-md border-2 border-white/20"
-                          style={{ backgroundColor: player.color }}
-                        />
-                        
-                        <div className="flex-1">
-                          <div className="text-white font-bold tracking-tight text-sm">
-                            {player.name}
+                    players.map((player, index) => {
+                      const character = getCharacterById(player.character || getDefaultCharacter().id);
+                      
+                      return (
+                        <div
+                          key={player.id}
+                          className="flex items-center gap-3 p-3 bg-[#1A1A2E]/50 border border-[#4a4f5b]/30 rounded-2xl transition-all duration-300 hover:bg-[#1A1A2E]/70 hover:scale-[1.02] shadow-md backdrop-blur-sm group"
+                        >
+                          <div className="text-base font-bold text-[#4CC9F0] tracking-tight">
+                            {index + 1}
                           </div>
-                          <div className="text-[#d9e8dd] text-xs font-medium">
-                            Ready to jam
+                          
+                          {/* Character Icon */}
+                          <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/20 shadow-md">
+                            <img
+                              src={character?.image || getDefaultCharacter().image}
+                              alt={character?.name || getDefaultCharacter().name}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
+                          
+                          <div className="flex-1">
+                            <div className="text-white font-bold tracking-tight text-sm">
+                              {player.name}
+                            </div>
+                            <div className="text-[#d9e8dd] text-xs font-medium">
+                              Ready to jam • {character?.name || getDefaultCharacter().name}
+                            </div>
+                          </div>
+                          
+                          <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
+                          
+                          {/* Kick Player Button */}
+                          {onKickPlayer && (
+                            <Button
+                              onClick={() => handleKickPlayer(player.id, player.name)}
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 text-red-400 hover:text-red-300 w-7 h-7 p-0 rounded-full transition-all duration-200"
+                              title={`Remove ${player.name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
-                        
-                        <div className="w-2 h-2 bg-[#4CC9F0] rounded-full animate-pulse" />
-                        
-                        {/* Kick Player Button */}
-                        {onKickPlayer && (
-                          <Button
-                            onClick={() => handleKickPlayer(player.id, player.name)}
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 bg-red-500/20 hover:bg-red-500/40 border border-red-500/30 text-red-400 hover:text-red-300 w-7 h-7 p-0 rounded-full transition-all duration-200"
-                            title={`Remove ${player.name}`}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </Card>

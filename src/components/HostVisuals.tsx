@@ -98,7 +98,51 @@ export function HostGameView({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <div className="flex flex-col items-center justify-start min-h-screen p-8 pt-20">
+        {/* Top Middle - Cassette Icon */}
+        <div className="mb-8">
+          <div className="relative">
+            <img 
+              src={assCassBg} 
+              alt="Control Panel Background" 
+              className="h-24 w-auto"
+            />
+            
+            {/* Control Buttons Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center space-x-4">
+              {/* Play/Pause Button */}
+              <button
+                onClick={handleRecordClick}
+                className="relative group transition-transform hover:scale-110 active:scale-95"
+                disabled={!currentSong}
+              >
+                <img 
+                  src={isPlaying ? assPause : assPlay}
+                  alt={isPlaying ? "Pause" : "Play"}
+                  className="h-8 w-8"
+                />
+              </button>
+              
+              {/* Stop Button */}
+              <button
+                onClick={() => {
+                  if (isPlaying) {
+                    onPlayPause(); // This will stop/pause the audio
+                  }
+                }}
+                className="relative group transition-transform hover:scale-110 active:scale-95"
+                disabled={!isPlaying}
+              >
+                <img 
+                  src={assStop}
+                  alt="Stop"
+                  className="h-8 w-8"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Center - Current Turn Player Timeline */}
         {currentTurnPlayer && (
           <div className="w-full max-w-6xl mb-8 flex flex-col items-center">
@@ -107,50 +151,6 @@ export function HostGameView({
               highlightedGapIndex={highlightedGapIndex}
               mobileViewport={mobileViewport}
             />
-            
-            {/* Cassette Icon above Sound Controls */}
-            <div className="mt-6">
-              <div className="relative">
-                <img 
-                  src={assCassBg} 
-                  alt="Control Panel Background" 
-                  className="h-20 w-auto"
-                />
-                
-                {/* Control Buttons Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center space-x-4">
-                  {/* Play/Pause Button */}
-                  <button
-                    onClick={handleRecordClick}
-                    className="relative group transition-transform hover:scale-110 active:scale-95"
-                    disabled={!currentSong}
-                  >
-                    <img 
-                      src={isPlaying ? assPause : assPlay}
-                      alt={isPlaying ? "Pause" : "Play"}
-                      className="h-8 w-8"
-                    />
-                  </button>
-                  
-                  {/* Stop Button */}
-                  <button
-                    onClick={() => {
-                      if (isPlaying) {
-                        onPlayPause(); // This will stop/pause the audio
-                      }
-                    }}
-                    className="relative group transition-transform hover:scale-110 active:scale-95"
-                    disabled={!isPlaying}
-                  >
-                    <img 
-                      src={assStop}
-                      alt="Stop"
-                      className="h-8 w-8"
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
