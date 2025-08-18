@@ -1,187 +1,184 @@
-import React, { useState, useEffect } from 'react';
-import { Player, Song } from '@/types/game';
-import { getCharacterById } from '@/constants/characters';
-import { AudioButton } from '@/components/AudioButton';
-import { DeezerAudioService } from '@/services/DeezerAudioService';
+import { Song, Player } from '@/types/game';
+import { cn } from '@/lib/utils';
+import { Play, Pause, Volume2 } from 'lucide-react';
 
-// Define the props for the component
 interface HostCurrentPlayerTimelineProps {
-  currentTurnPlayer: Player;
-  cardPlacementResult: { correct: boolean; song: Song } | null;
-  highlightedGapIndex: number | null;
-  isTransitioning: boolean;
+  player: Player;
+  currentTurn: number;
+  throwingCard: number | null;
+  confirmingPlacement: { song: Song; position: number } | null;
+  cardResult: { correct: boolean; song: Song } | null;
+  transitioningTurn: boolean;
+  currentSong: Song | null;
+  mysteryCardRevealed: boolean;
+  onCardPlacement?: (song: Song, position: number) => void;
+  onConfirmPlacement?: () => void;
+  onRejectPlacement?: () => void;
 }
 
-export function HostCurrentPlayerTimeline({ 
-  currentTurnPlayer, 
-  cardPlacementResult,
-  highlightedGapIndex,
-  isTransitioning
+export function HostCurrentPlayerTimeline({
+  player,
+  currentTurn,
+  throwingCard,
+  confirmingPlacement,
+  cardResult,
+  transitioningTurn,
+  currentSong,
+  mysteryCardRevealed,
+  onCardPlacement,
+  onConfirmPlacement,
+  onRejectPlacement
 }: HostCurrentPlayerTimelineProps) {
-  const [playingCardId, setPlayingCardId] = useState<string | null>(null);
-  const [cardPreviewUrls, setCardPreviewUrls] = useState<Record<string, string>>({});
-  const [loadingPreviews, setLoadingPreviews] = useState<Set<string>>(new Set());
-
-  // Get player timeline with fallback
-  const timeline = Array.isArray(currentTurnPlayer?.timeline) ? currentTurnPlayer.timeline as Song[] : [];
-  const character = getCharacterById(currentTurnPlayer?.character || 'char_dave');
-
-  // Fetch preview URLs for timeline cards
-  useEffect(() => {
-    const fetchPreviewUrls = async () => {
-      for (const song of timeline) {
-        if (!song.preview_url && !cardPreviewUrls[song.id] && !loadingPreviews.has(song.id)) {
-          setLoadingPreviews(prev => new Set([...prev, song.id]));
-          
-          try {
-            // Extract a mock Deezer ID from song data
-            const mockTrackId = Math.abs(song.id.split('').reduce((a, b) => {
-              a = ((a << 5) - a) + b.charCodeAt(0);
-              return a & a;
-            }, 0)) % 1000000;
-
-            const previewUrl = await DeezerAudioService.getPreviewUrl(mockTrackId);
-            setCardPreviewUrls(prev => ({ ...prev, [song.id]: previewUrl }));
-            console.log('[HostCurrentPlayerTimeline] Preview URL fetched for card:', song.deezer_title);
-          } catch (error) {
-            console.warn('[HostCurrentPlayerTimeline] Failed to fetch preview for card:', song.deezer_title, error);
-          } finally {
-            setLoadingPreviews(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(song.id);
-              return newSet;
-            });
-          }
-        }
-      }
-    };
-
-    if (timeline.length > 0) {
-      fetchPreviewUrls();
-    }
-  }, [timeline, cardPreviewUrls, loadingPreviews]);
-
-  const handleCardClick = async (song: Song) => {
-    const previewUrl = song.preview_url || cardPreviewUrls[song.id];
-    
-    if (!previewUrl) {
-      console.warn('[HostCurrentPlayerTimeline] No preview URL available for card:', song.deezer_title);
-      return;
-    }
-
-    try {
-      if (playingCardId === song.id) {
-        // Stop current preview
-        setPlayingCardId(null);
-      } else {
-        setPlayingCardId(song.id);
-      }
-    } catch (error) {
-      console.error('[HostCurrentPlayerTimeline] Error playing card preview:', error);
-      setPlayingCardId(null);
+  const handleCardClick = (song: Song, position: number) => {
+    if (onCardPlacement) {
+      onCardPlacement(song, position);
     }
   };
 
-  // Cleanup audio when component unmounts
-  useEffect(() => {
-    return () => {
-      setPlayingCardId(null);
-    };
-  }, []);
-
-  if (!currentTurnPlayer) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-600">No current player</div>
-      </div>
-    );
-  }
+  const hasPreview = !!currentSong?.preview_url;
+  const isPlaying = false;
+  const isLoadingPreview = false;
 
   return (
-    <div className="w-full max-w-6xl">
+    <div className="flex flex-col h-full">
       {/* Player Info Header */}
-      <div className="flex items-center justify-center mb-8">
-        <div className="flex items-center gap-4 bg-white/20 backdrop-blur-sm rounded-lg p-4">
-          {character ? (
-            <img 
-              src={character.image} 
-              alt={character.name}
-              className="w-12 h-12 object-contain"
-            />
-          ) : (
-            <div 
-              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
-              style={{ backgroundColor: currentTurnPlayer.color }}
-            >
-              {currentTurnPlayer.name.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">{currentTurnPlayer.name}</h3>
-            <p className="text-gray-600">Score: {currentTurnPlayer.score || 0}</p>
-          </div>
-        </div>
+      <div className="p-4 border-b border-gray-700/50">
+        <h3 className="text-lg font-semibold text-white">{player.name}'s Timeline</h3>
+        <p className="text-sm text-gray-400">Current Score: {player.score} points</p>
       </div>
 
-      {/* Timeline */}
-      <div className="flex items-center justify-center gap-6 overflow-x-auto pb-4">
-        {timeline.length === 0 ? (
-          <div className="text-gray-600 text-lg">No cards in timeline yet</div>
-        ) : (
-          timeline.map((song, index) => {
-            const isPlaying = playingCardId === song.id;
-            const hasPreview = !!(song.preview_url || cardPreviewUrls[song.id]);
-            const isLoadingPreview = loadingPreviews.has(song.id);
-            
+      {/* Timeline Display */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="relative">
+          {/* Vertical Timeline Line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-700/50 transform -translate-x-1/2"></div>
+
+          {/* Timeline Items */}
+          {player.timeline.map((song, index) => {
+            const isCurrent = index === currentTurn;
+            const isPlaceholder = index === player.timeline.length - 1 && player.timeline.length < 8;
+            const isHighlighted = confirmingPlacement?.position === index;
+            const isCorrect = cardResult?.correct && cardResult?.song.id === song.id;
+            const isIncorrect = cardResult && !cardResult.correct && cardResult.song.id === song.id;
+
             return (
-              <div
-                key={`${song.id}-${index}`}
-                className={`
-                  bg-white/90 rounded-lg p-4 min-w-[200px] shadow-lg transition-all duration-300
-                  hover:bg-white hover:shadow-xl hover:scale-105
-                  ${cardPlacementResult?.song.id === song.id ? 
-                    cardPlacementResult.correct ? 'ring-2 ring-green-500' : 'ring-2 ring-red-500' 
-                    : ''}
-                `}
-              >
-                <div className="space-y-2">
-                  <div className="font-semibold text-gray-900 text-sm line-clamp-2">
-                    {song.deezer_title || 'Unknown Title'}
+              <div key={song.id} className="mb-6 relative">
+                <div className="flex items-center">
+                  {/* Timeline Circle/Dot */}
+                  <div
+                    className={cn(
+                      "z-10 w-6 h-6 rounded-full bg-gradient-to-br flex items-center justify-center shadow-lg",
+                      isCurrent ? "from-purple-500 to-blue-500" : "from-gray-700 to-gray-800",
+                      isHighlighted && "from-green-500 to-green-600",
+                      isCorrect && "from-green-500 to-green-600",
+                      isIncorrect && "from-red-500 to-red-600"
+                    )}
+                  >
+                    {/* Inner Dot */}
+                    <div className="w-3 h-3 rounded-full bg-white/10"></div>
                   </div>
-                  <div className="text-gray-700 text-xs">
-                    {song.deezer_artist || 'Unknown Artist'}
-                  </div>
-                  <div className="text-gray-600 text-xs">
-                    {song.deezer_album || 'Unknown Album'}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="text-xl font-bold text-blue-600 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                      {song.release_year || 'Unknown'}
+
+                  {/* Timeline Content */}
+                  <div className="flex-1 ml-4">
+                    <div
+                      className={cn(
+                        "bg-gray-800/70 border border-gray-700/50 rounded-lg p-3 backdrop-blur-sm shadow-md transition-all duration-300",
+                        isCurrent && "scale-105",
+                        isHighlighted && "border-green-500",
+                        isCorrect && "border-green-500",
+                        isIncorrect && "border-red-500",
+                        isPlaceholder && "opacity-50"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-lg font-semibold text-white">{song.deezer_title}</h4>
+                        <span className="text-sm text-gray-400">{song.release_year}</span>
+                      </div>
+                      <p className="text-gray-400">{song.deezer_artist}</p>
+                      <p className="text-gray-500 text-sm">{song.deezer_album}</p>
+
+                      {/* Card Controls */}
+                      {isCurrent && currentSong && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleCardClick(song, index)}
+                              className="bg-purple-600 hover:bg-purple-700 text-white rounded-full px-3 py-1 text-sm transition-colors duration-200"
+                            >
+                              Place Card
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {hasPreview && (
+                              <>
+                                <button
+                                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-3 py-1 text-sm transition-colors duration-200"
+                                >
+                                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                </button>
+                                <Volume2 className="h-4 w-4 text-gray-400" />
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <AudioButton 
-                      previewUrl={song.preview_url || cardPreviewUrls[song.id]}
-                      size="sm"
-                      variant="ghost"
-                      showVolumeIcon={false}
-                    />
                   </div>
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
 
-      {/* Timeline Legend */}
-      {timeline.length > 0 && (
-        <div className="flex justify-center mt-4">
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg px-4 py-2">
-            <div className="text-sm text-gray-700">
-              Click on cards to preview songs • Timeline sorted by year: {timeline[0]?.release_year} - {timeline[timeline.length - 1]?.release_year}
-            </div>
-          </div>
+          {/* Placeholder Cards */}
+          {Array.from({ length: Math.max(0, 8 - player.timeline.length) }).map((_, index) => {
+            const placeholderIndex = player.timeline.length + index;
+            const isHighlighted = confirmingPlacement?.position === placeholderIndex;
+
+            return (
+              <div key={`placeholder-${index}`} className="mb-6 relative">
+                <div className="flex items-center">
+                  {/* Timeline Circle/Dot */}
+                  <div className="z-10 w-6 h-6 rounded-full bg-gray-700/50 flex items-center justify-center shadow-lg">
+                    {/* Inner Dot */}
+                    <div className="w-3 h-3 rounded-full bg-white/10"></div>
+                  </div>
+
+                  {/* Timeline Content */}
+                  <div className="flex-1 ml-4">
+                    <div
+                      className={cn(
+                        "bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 backdrop-blur-sm shadow-md opacity-50 transition-all duration-300",
+                        isHighlighted && "border-green-500"
+                      )}
+                    >
+                      <h4 className="text-lg font-semibold text-white/50">Empty Slot</h4>
+                      <p className="text-gray-500 text-sm">Waiting for card placement...</p>
+
+                      {/* Card Controls - Conditionally render based on confirmingPlacement */}
+                      {isHighlighted && confirmingPlacement && onConfirmPlacement && onRejectPlacement && (
+                        <div className="mt-3 flex items-center justify-between">
+                          <button
+                            onClick={onConfirmPlacement}
+                            className="bg-green-600 hover:bg-green-700 text-white rounded-full px-3 py-1 text-sm transition-colors duration-200"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={onRejectPlacement}
+                            className="bg-red-600 hover:bg-red-700 text-white rounded-full px-3 py-1 text-sm transition-colors duration-200"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

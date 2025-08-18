@@ -1,38 +1,35 @@
-
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Crown, Users } from 'lucide-react';
+import { GamePhase, GameMode } from '@/types/game';
+import { Clock, Users, Radio } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface HostHeaderProps {
-  roomCode: string;
-  playersCount: number;
+  phase: GamePhase;
+  gameMode: GameMode;
+  createdAt: string;
+  playerCount: number;
 }
 
-export function HostHeader({ roomCode, playersCount }: HostHeaderProps) {
-  return (
-    <div className="absolute top-6 left-4 right-4 z-40">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3 bg-slate-800/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-yellow-400/50 shadow-lg">
-          <Crown className="h-6 w-6 text-yellow-400" />
-          <div className="text-white">
-            <div className="font-bold text-lg">Host View</div>
-            <div className="text-sm text-yellow-200">Timeline Tunes</div>
-          </div>
-        </div>
+export function HostHeader({ phase, gameMode, createdAt, playerCount }: HostHeaderProps) {
+  const formattedDate = format(new Date(createdAt), 'MMM dd, yyyy HH:mm');
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 bg-slate-800/70 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-600/30 shadow-lg">
-            <Users className="h-5 w-5 text-blue-400" />
-            <div className="text-white">
-              <div className="text-sm text-slate-300">Players</div>
-              <div className="font-bold text-lg">{playersCount}</div>
-            </div>
-          </div>
-          
-          <Badge variant="outline" className="bg-purple-500/20 text-purple-200 border-purple-400 text-lg px-6 py-3 font-mono">
-            {roomCode}
-          </Badge>
-        </div>
+  return (
+    <div className="flex items-center justify-between p-4 bg-gray-900/30 backdrop-blur-sm border-b border-gray-800 text-white">
+      {/* Left: Game Phase and Mode */}
+      <div>
+        <div className="text-lg font-semibold">{phase}</div>
+        <div className="text-sm text-gray-400">Mode: {gameMode}</div>
+      </div>
+
+      {/* Middle: Game Creation Date */}
+      <div className="flex items-center gap-2 text-sm text-gray-400">
+        <Clock className="h-4 w-4" />
+        <span>Created: {formattedDate}</span>
+      </div>
+
+      {/* Right: Player Count */}
+      <div className="flex items-center gap-2">
+        <Users className="h-5 w-5 text-gray-400" />
+        <span className="text-sm">Players: {playerCount}</span>
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,10 +5,9 @@ import { Users } from "lucide-react";
 
 interface PlayerJoinFormProps {
   onJoin: (name: string) => void;
-  isDarkMode: boolean;
 }
 
-export function PlayerJoinForm({ onJoin, isDarkMode }: PlayerJoinFormProps) {
+export function PlayerJoinForm({ onJoin }: PlayerJoinFormProps) {
   const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
