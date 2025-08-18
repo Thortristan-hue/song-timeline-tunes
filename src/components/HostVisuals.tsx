@@ -5,6 +5,15 @@ import { RecordMysteryCard } from '@/components/RecordMysteryCard';
 import { HostCurrentPlayerTimeline } from '@/components/host/HostCurrentPlayerTimeline';
 import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@/constants/characters';
 
+// Import assets
+import assRythmy from '@/assets/ass_rythmy.png';
+import assRoomcode from '@/assets/ass_roomcode.png';
+import assSpeaker from '@/assets/ass_speaker.png';
+import assCassBg from '@/assets/ass_cass_bg.png';
+import assPlay from '@/assets/ass_play.png';
+import assPause from '@/assets/ass_pause.png';
+import assStop from '@/assets/ass_stop.png';
+
 interface HostGameViewProps {
   currentTurnPlayer: Player | null;
   currentSong: Song | null;
@@ -48,7 +57,7 @@ export function HostGameView({
       {/* Top Left - RYTHMY Logo */}
       <div className="absolute top-4 left-4 z-10">
         <img 
-          src="/src/assets/ass_rythmy.png" 
+          src={assRythmy} 
           alt="RYTHMY" 
           className="h-12 w-auto"
         />
@@ -58,7 +67,7 @@ export function HostGameView({
       <div className="absolute top-4 right-4 z-10">
         <div className="relative">
           <img 
-            src="/src/assets/ass_roomcode.png" 
+            src={assRoomcode} 
             alt="Room Code Background" 
             className="h-12 w-auto"
           />
@@ -73,7 +82,7 @@ export function HostGameView({
       {/* Bottom Left Speaker */}
       <div className="absolute bottom-4 left-4 z-10">
         <img 
-          src="/src/assets/ass_speaker.png" 
+          src={assSpeaker} 
           alt="Speaker" 
           className="h-16 w-auto opacity-80"
         />
@@ -82,7 +91,7 @@ export function HostGameView({
       {/* Bottom Right Speaker */}
       <div className="absolute bottom-4 right-4 z-10">
         <img 
-          src="/src/assets/ass_speaker.png" 
+          src={assSpeaker} 
           alt="Speaker" 
           className="h-16 w-auto opacity-80 scale-x-[-1]"
         />
@@ -90,63 +99,69 @@ export function HostGameView({
 
       {/* Main Content Area */}
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Top - Control Panel (moved from middle to top) */}
-        <div className="mb-8">
-          <div className="relative">
-            <img 
-              src="/src/assets/ass_cass_bg.png" 
-              alt="Control Panel Background" 
-              className="h-20 w-auto"
-            />
-            
-            {/* Control Buttons Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center space-x-4">
-              {/* Play/Pause Button */}
-              <button
-                onClick={handleRecordClick}
-                className="relative group transition-transform hover:scale-110"
-                disabled={!currentSong}
-              >
-                <img 
-                  src={isPlaying ? "/src/assets/ass_pause.png" : "/src/assets/ass_play.png"}
-                  alt={isPlaying ? "Pause" : "Play"}
-                  className="h-8 w-8"
-                />
-              </button>
-              
-              {/* Stop Button */}
-              <button
-                onClick={() => {
-                  if (isPlaying) {
-                    onPlayPause(); // This will stop/pause the audio
-                  }
-                }}
-                className="relative group transition-transform hover:scale-110"
-                disabled={!isPlaying}
-              >
-                <img 
-                  src="/src/assets/ass_stop.png"
-                  alt="Stop"
-                  className="h-8 w-8"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Center - Current Turn Player Timeline (moved from top to center) */}
+        {/* Center - Current Turn Player Timeline */}
         {currentTurnPlayer && (
-          <div className="w-full max-w-6xl mb-8">
+          <div className="w-full max-w-6xl mb-8 flex flex-col items-center">
             <HostCurrentPlayerTimeline 
               currentTurnPlayer={currentTurnPlayer}
               highlightedGapIndex={highlightedGapIndex}
               mobileViewport={mobileViewport}
             />
+            
+            {/* Cassette Icon above Sound Controls */}
+            <div className="mt-6">
+              <div className="relative">
+                <img 
+                  src={assCassBg} 
+                  alt="Control Panel Background" 
+                  className="h-20 w-auto"
+                />
+                
+                {/* Control Buttons Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center space-x-4">
+                  {/* Play/Pause Button */}
+                  <button
+                    onClick={handleRecordClick}
+                    className="relative group transition-transform hover:scale-110 active:scale-95"
+                    disabled={!currentSong}
+                  >
+                    <img 
+                      src={isPlaying ? assPause : assPlay}
+                      alt={isPlaying ? "Pause" : "Play"}
+                      className="h-8 w-8"
+                    />
+                  </button>
+                  
+                  {/* Stop Button */}
+                  <button
+                    onClick={() => {
+                      if (isPlaying) {
+                        onPlayPause(); // This will stop/pause the audio
+                      }
+                    }}
+                    className="relative group transition-transform hover:scale-110 active:scale-95"
+                    disabled={!isPlaying}
+                  >
+                    <img 
+                      src={assStop}
+                      alt="Stop"
+                      className="h-8 w-8"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Mystery Card (moved lower) */}
-        <div className="mb-8">
+        <div className={`mb-8 transition-all duration-500 ${
+          cardPlacementResult 
+            ? cardPlacementResult.correct 
+              ? 'animate-card-placement-success' 
+              : 'animate-card-placement-error'
+            : ''
+        }`}>
           <RecordMysteryCard
             song={currentSong}
             isRevealed={isCardRevealed}
@@ -164,11 +179,11 @@ export function HostGameView({
               return (
                 <div
                   key={player.id}
-                  className={`relative transition-all duration-300 ${
+                  className={`relative transition-all duration-500 ${
                     isCurrentPlayer 
-                      ? 'scale-110 z-10' 
+                      ? 'scale-110 z-10 animate-player-highlight-pulse' 
                       : 'scale-100 opacity-75'
-                  }`}
+                  } ${transitioning ? 'animate-turn-transition-fadeout' : ''}`}
                 >
                   <div className="flex flex-col items-center space-y-2">
                     {/* Character Image */}
