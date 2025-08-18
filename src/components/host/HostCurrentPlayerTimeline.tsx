@@ -94,27 +94,27 @@ export function HostCurrentPlayerTimeline({
   }, [cardPlacementResult]);
 
   return (
-    <div className="flex justify-center items-center w-full z-20">
-      <div className="flex gap-2 items-center overflow-x-auto pb-2">
+    <div className="flex justify-center items-center w-full z-20 h-full">
+      <div className="flex gap-2 items-center overflow-hidden max-w-full">
         {currentTurnPlayer.timeline.length === 0 ? (
           <div className="text-white/60 text-lg italic py-8 text-center w-full flex items-center justify-center gap-3">
             <Music className="h-8 w-8 opacity-50" />
             <span>Waiting for {currentTurnPlayer.name} to place their first card...</span>
           </div>
         ) : (
-          <>
+          <div className="flex items-center gap-1 overflow-x-auto max-w-full pb-2 justify-center">
             {/* Gap before first card */}
             <div 
-              className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+              className={`w-2 h-28 flex items-center justify-center transition-all duration-300 rounded-xl flex-shrink-0 ${
                 highlightedGapIndex === 0 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
               }`}
             />
             
             {currentTurnPlayer.timeline.map((song, index) => (
               <React.Fragment key={`${song.deezer_title}-${index}`}>
-                {/* Song card with enhanced animations */}
+                {/* Song card with responsive sizing */}
                 <div
-                  className={`min-w-36 h-36 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-4 ${
+                  className={`min-w-28 max-w-32 h-28 rounded-2xl flex flex-col items-center justify-between text-white shadow-lg border border-white/20 transform transition-all duration-500 hover:scale-105 relative p-2 flex-shrink-0 ${
                     newlyPlacedCardIndex === index ? 'animate-card-slide-in' : ''
                   } ${
                     cardsShifting && index < (newlyPlacedCardIndex || 0) ? 'animate-card-shift-left' : ''
@@ -145,23 +145,23 @@ export function HostCurrentPlayerTimeline({
                   
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl" />
                   
-                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-2">
-                    {/* Artist name - medium, white, wrapped, max 20 letters per line */}
-                    <div className="text-sm font-medium text-white leading-tight overflow-hidden">
+                  <div className="text-center relative z-10 space-y-1 w-full flex flex-col justify-between h-full py-1">
+                    {/* Artist name - small, white, wrapped */}
+                    <div className="text-xs font-medium text-white leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_artist, 20)}
+                        {truncateText(song.deezer_artist, 15)}
                       </div>
                     </div>
                     
                     {/* Song release year - large, white */}
-                    <div className="text-4xl font-black text-white flex-1 flex items-center justify-center">
+                    <div className="text-2xl font-black text-white flex-1 flex items-center justify-center">
                       {song.release_year}
                     </div>
                     
-                    {/* Song title - small, italic, white, wrapped, max 20 letters per line */}
+                    {/* Song title - small, italic, white, wrapped */}
                     <div className="text-xs italic text-white opacity-90 leading-tight overflow-hidden">
                       <div className="break-words">
-                        {truncateText(song.deezer_title, 20)}
+                        {truncateText(song.deezer_title, 15)}
                       </div>
                     </div>
                   </div>
@@ -169,13 +169,13 @@ export function HostCurrentPlayerTimeline({
                 
                 {/* Gap after this card */}
                 <div 
-                  className={`w-2 h-36 flex items-center justify-center transition-all duration-300 rounded-xl ${
+                  className={`w-2 h-28 flex items-center justify-center transition-all duration-300 rounded-xl flex-shrink-0 ${
                     highlightedGapIndex === index + 1 ? 'bg-green-400/30 border-2 border-green-400/60 animate-pulse' : ''
                   }`}
                 />
               </React.Fragment>
             ))}
-          </>
+          </div>
         )}
       </div>
 

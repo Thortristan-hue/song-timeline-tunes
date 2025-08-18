@@ -92,7 +92,7 @@ export const CassettePlayerDisplay = ({
                   isCurrent 
                     ? 'scale-130 player-elevate' 
                     : 'scale-100 hover:scale-105 hover-lift'
-                } ${isCurrent ? 'character-bounce' : ''}`}
+                }`}
                 onClick={() => setExpandedPlayer(prev => prev === player.id ? null : player.id)}
               >
                 {/* Always use character-style display now */}
@@ -100,7 +100,7 @@ export const CassettePlayerDisplay = ({
                   {/* Player name at top */}
                   <div className="mb-1 text-center">
                     <div className={`bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 ${
-                      isCurrent ? 'animate-pulse border border-[#494252]/50' : ''
+                      isCurrent ? 'border border-[#494252]/50' : ''
                     }`}>
                       <div className="text-white font-bold text-xs truncate max-w-16">
                         {player.name}
@@ -127,9 +127,7 @@ export const CassettePlayerDisplay = ({
                     
                     {/* Card count badge */}
                     <div className="absolute -bottom-1 -right-1">
-                      <div className={`bg-yellow-500 text-black font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center border border-white ${
-                        isCurrent ? 'animate-bounce' : ''
-                      }`}>
+                      <div className={`bg-yellow-500 text-black font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center border border-white`}>
                         {player.timeline.length}
                       </div>
                     </div>
@@ -137,7 +135,7 @@ export const CassettePlayerDisplay = ({
                 </div>
 
                 {isCurrent && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white animate-pulse glow-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white glow-pulse"></div>
                 )}
               </div>
 
@@ -175,23 +173,7 @@ export const CassettePlayerDisplay = ({
         })}
       </div>
       
-      <style>{`
-        @keyframes character-bounce {
-          0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0) scale(1.05);
-          }
-          40% {
-            transform: translateY(-8px) scale(1.08);
-          }
-          60% {
-            transform: translateY(-4px) scale(1.06);
-          }
-        }
-        
-        .character-bounce {
-          animation: character-bounce 2s ease-in-out infinite;
-        }
-        
+      <style>{`        
         .scale-130 {
           transform: scale(1.3);
         }
