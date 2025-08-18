@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
 import { useToast } from '@/components/ui/use-toast';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface GameLogicState {
   phase: 'loading' | 'ready' | 'playing' | 'finished';
@@ -28,6 +29,8 @@ export function useGameLogic(
   roomData: GameRoom | null = null,
   onSetCurrentSong?: (Song: Song) => Promise<void>
 ) {
+  suppressUnused(roomId, onSetCurrentSong); // Suppress unused parameters
+  
   const { toast } = useToast();
   const [gameState, setGameState] = useState<GameLogicState>({
     phase: 'loading',

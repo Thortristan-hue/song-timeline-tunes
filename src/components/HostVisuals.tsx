@@ -1,575 +1,205 @@
-import React, { useState, useEffect } from 'react';
-import { Music, AlertTriangle } from 'lucide-react';
-import { Song, Player } from '@/types/game';
-import { HostCurrentPlayerTimeline } from './host/HostCurrentPlayerTimeline';
-import { getActualPlayers, findCurrentPlayer } from '@/utils/playerUtils';
-import { getCharacterById } from '@/constants/characters';
-import { DeezerAudioService } from '@/services/DeezerAudioService';
-
-// Import required assets
-import logoImage from '@/assets/ass_rythmy.png';
-import { AudioButton } from '@/components/AudioButton';
-
-// Import all cassette colors for randomization
-import cassettePurple from '@/assets/cassette-purple.png';
-import cassetteBlue from '@/assets/cassette-blue.png';
-import cassetteGreen from '@/assets/cassette-green.png';
-import cassettePink from '@/assets/cassette-pink.png';
-import cassetteYellow from '@/assets/cassette-yellow.png';
-import cassetteOrange from '@/assets/cassette-orange.png';
-import cassetteLightblue from '@/assets/cassette-lightblue.png';
-import cassetteRed from '@/assets/cassetee-red.png';
-
-// Cassette colors array for randomization
-const CASSETTE_COLORS = [
-  cassettePurple,
-  cassetteBlue,
-  cassetteGreen,
-  cassettePink,
-  cassetteYellow,
-  cassetteOrange,
-  cassetteLightblue,
-  cassetteRed,
-];
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Song, Player, GameRoom } from '@/types/game';
+import { AudioPlayer } from './AudioPlayer';
+import { Timeline } from './Timeline';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { suppressUnused } from '@/utils/suppressUnused';
 
 interface HostVisualsProps {
-  room: {
-    id: string;
-    phase: string;
-    lobby_code: string;
-    current_player_id?: string;
-    host_id?: string;
-  };
+  room: GameRoom | null;
   players: Player[];
-  mysteryCard: Song | null;
+  currentPlayer: Player | null;
   isHost: boolean;
+  customSongs: Song[];
+  onSetCurrentSong: (song: Song) => Promise<void>;
+  connectionStatus: {
+    isConnected: boolean;
+    isReconnecting: boolean;
+    lastError: string | null;
+    retryCount: number;
+  };
 }
 
-export function HostVisuals({ room, players, mysteryCard, isHost }: HostVisualsProps) {
-  console.log("Rendering Host Screen 0.2.2");
-  const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
-  const [mysteryPreviewUrl, setMysteryPreviewUrl] = useState<string | null>(null);
+export function HostVisuals({ 
+  room, 
+  players, 
+  currentPlayer, 
+  isHost, 
+  customSongs,
+  onSetCurrentSong,
+  connectionStatus
+}: HostVisualsProps) {
+  const { toast } = useToast();
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  
-  // Generate a random cassette color for the current mystery card
-  const cassetteImage = React.useMemo(() => {
-    if (!mysteryCard) return CASSETTE_COLORS[0];
-    // Use the song ID or title to ensure consistent color per song
-    const songId = mysteryCard.id || mysteryCard.deezer_title || 'default';
-    const hash = songId.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    const index = Math.abs(hash) % CASSETTE_COLORS.length;
-    return CASSETTE_COLORS[index];
-  }, [mysteryCard]);
-  
-  // Enhanced debugging and player filtering
-  const actualPlayers = React.useMemo(() => {
-    console.log('[HostVisuals] Input players:', players);
-    console.log('[HostVisuals] Room host_id:', room?.host_id);
-    
-    const filtered = getActualPlayers(players, room?.host_id);
-    console.log('[HostVisuals] Filtered actual players:', filtered);
-    
-    return filtered;
-  }, [players, room?.host_id]);
-  
-  // Find current player using the utility function
-  const currentPlayer = React.useMemo(() => {
-    const player = findCurrentPlayer(actualPlayers, room?.current_player_id, currentTurnIndex);
-    console.log('[HostVisuals] Current player calculation:', {
-      actualPlayersCount: actualPlayers.length,
-      currentPlayerId: room?.current_player_id,
-      currentTurnIndex,
-      foundPlayer: player?.name || 'None'
-    });
-    return player;
-  }, [actualPlayers, room?.current_player_id, currentTurnIndex]);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [audioPlayerKey, setAudioPlayerKey] = useState(0);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
-  // Comprehensive debug logging
+  // Load the first song when customSongs changes
   useEffect(() => {
-    console.log('[HostVisuals] Complete state debug:', {
-      isHost,
-      roomPhase: room?.phase,
-      roomLobbyCode: room?.lobby_code,
-      totalInputPlayers: players.length,
-      actualPlayersCount: actualPlayers.length,
-      currentPlayerId: room?.current_player_id,
-      currentTurnIndex,
-      currentPlayerFound: !!currentPlayer,
-      currentPlayerName: currentPlayer?.name,
-      mysteryCard: mysteryCard?.deezer_title,
-      roomData: room ? {
-        id: room.id,
-        phase: room.phase,
-        current_player_id: room.current_player_id
-      } : 'No room data'
-    });
-  }, [players.length, actualPlayers.length, room, currentTurnIndex, currentPlayer, isHost, mysteryCard]);
-
-  // Update current turn index when room's current_player_id changes
-  useEffect(() => {
-    if (room?.current_player_id && actualPlayers.length > 0) {
-      const playerIndex = actualPlayers.findIndex(p => p.id === room.current_player_id);
-      if (playerIndex >= 0) {
-        console.log('[HostVisuals] Updating turn index from', currentTurnIndex, 'to', playerIndex);
-        setCurrentTurnIndex(playerIndex);
-      }
+    if (customSongs.length > 0) {
+      setPreviewUrl(customSongs[0].preview_url || null);
     }
-  }, [room?.current_player_id, actualPlayers, currentTurnIndex]);
+  }, [customSongs]);
 
-  // Fetch preview URL for mystery card when it changes
+  // Update preview URL when current song changes
   useEffect(() => {
-    const fetchPreviewUrl = async () => {
-      if (!mysteryCard?.id) {
-        setMysteryPreviewUrl(null);
-        return;
-      }
+    if (room?.current_song) {
+      setPreviewUrl(room.current_song.preview_url || null);
+    }
+  }, [room?.current_song]);
 
-      // Check if we already have a preview URL
-      if (mysteryCard.preview_url) {
-        setMysteryPreviewUrl(mysteryCard.preview_url);
-        return;
-      }
+  // Function to play the audio preview
+  const playPreview = useCallback(async () => {
+    if (!previewUrl) {
+      toast({
+        title: "No Preview Available",
+        description: "This song does not have an audio preview.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      try {
-        setIsLoadingPreview(true);
-        console.log('[HostVisuals] Fetching preview URL for mystery card:', mysteryCard.deezer_title);
-        
-        // Extract Deezer track ID from the song data
-        // For now, we'll use a mock implementation since we don't have real Deezer IDs
-        const mockTrackId = Math.abs(mysteryCard.id.split('').reduce((a, b) => {
-          a = ((a << 5) - a) + b.charCodeAt(0);
-          return a & a;
-        }, 0)) % 1000000;
+    setIsLoadingPreview(true);
+    setAudioError(null);
 
-        const previewUrl = await DeezerAudioService.getPreviewUrl(mockTrackId);
-        setMysteryPreviewUrl(previewUrl);
-        console.log('[HostVisuals] Preview URL fetched:', previewUrl);
-      } catch (error) {
-        console.warn('[HostVisuals] Failed to fetch preview URL:', error);
-        setMysteryPreviewUrl(null);
-      } finally {
-        setIsLoadingPreview(false);
-      }
-    };
+    try {
+      // Reset audio player by updating the key
+      setAudioPlayerKey(prevKey => prevKey + 1);
+      setIsPlayingPreview(true);
+    } catch (error: any) {
+      console.error("Error playing preview:", error);
+      handleAudioError(error.message || 'Failed to play audio');
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, [previewUrl, toast, handleAudioError]);
 
-    fetchPreviewUrl();
-  }, [mysteryCard?.id]);
+  // Function to stop the audio preview
+  const stopPreview = useCallback(() => {
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+    }
+    setIsPlayingPreview(false);
+    setIsLoadingPreview(false);
+  }, []);
 
-  // Audio state is now managed by AudioButton component
+  // Toggle play/pause
+  const togglePlayPause = useCallback(() => {
+    if (isPlayingPreview) {
+      stopPreview();
+    } else {
+      playPreview();
+    }
+  }, [isPlayingPreview, stopPreview, playPreview]);
 
-  // Audio cleanup is now handled by AudioButton component
+  // Handle audio ended event
+  const handleAudioEnded = useCallback(() => {
+    setIsPlayingPreview(false);
+  }, []);
 
-  // Handle room not loaded - use new layout structure
-  if (!room) {
-    return (
-      <div 
-        className="text-white relative overflow-hidden fixed inset-0"
-        style={{
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: '#f0f0f0',
-          display: 'grid',
-          gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"',
-          margin: 0,
-          padding: 0
-        }}
-      >
-        {/* Top Bar */}
-        <div 
-          style={{ gridArea: 'header' }}
-          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
-        >
-          {/* Top-Left: Logo */}
-          <div className="flex items-center">
-            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
-          </div>
+  // Handle audio load error
+  const handleAudioLoadError = useCallback((e: any) => {
+    console.error('Failed to load audio:', e);
+    handleAudioError('Failed to load audio');
+    setIsPlayingPreview(false);
+    setIsLoadingPreview(false);
+  }, [handleAudioError]);
 
-          {/* Top-Center: Loading indicator */}
-          <div className="flex flex-col items-center gap-4">
-            <AlertTriangle className="h-16 w-16 text-yellow-600" />
-          </div>
+  const handleSetCurrentSong = useCallback(async (song: Song) => {
+    if (!isHost || !room) return;
 
-          {/* Top-Right: Empty space for consistency */}
-          <div className="w-24"></div>
-        </div>
+    try {
+      await onSetCurrentSong(song);
+    } catch (error) {
+      console.error('Failed to set current song:', error);
+      toast({
+        title: "Set Current Song Failed",
+        description: "Unable to set the current song. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [isHost, room, onSetCurrentSong, toast]);
 
-        {/* Middle Section: Error message */}
-        <div 
-          style={{ gridArea: 'main' }}
-          className="flex flex-col items-center justify-center p-8"
-        >
-          <h2 className="text-2xl font-bold mb-2 text-gray-800">Room Not Found</h2>
-          <p className="text-lg text-gray-600">Unable to load room data.</p>
-        </div>
-
-        {/* Bottom Bar: Empty for consistency */}
-        <div 
-          style={{ gridArea: 'footer' }}
-          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
-        >
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading state if we're in playing phase but have no players - use new layout structure
-  if (room.phase === 'playing' && actualPlayers.length === 0) {
-    return (
-      <div 
-        className="text-white relative overflow-hidden fixed inset-0"
-        style={{
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: '#f0f0f0',
-          display: 'grid',
-          gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"',
-          margin: 0,
-          padding: 0
-        }}
-      >
-        {/* Top Bar */}
-        <div 
-          style={{ gridArea: 'header' }}
-          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
-        >
-          {/* Top-Left: Logo */}
-          <div className="flex items-center">
-            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
-          </div>
-
-          {/* Top-Center: Loading indicator */}
-          <div className="flex flex-col items-center gap-4">
-            <Music className="h-16 w-16 animate-pulse" />
-          </div>
-
-          {/* Top-Right: Room Code */}
-          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
-            <div className="text-purple-800 font-mono text-lg font-bold">
-              {room.lobby_code}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Section: Loading message */}
-        <div 
-          style={{ gridArea: 'main' }}
-          className="flex flex-col items-center justify-center p-8"
-        >
-          <h2 className="text-2xl font-bold mb-2 text-gray-800">Loading Players...</h2>
-          <p className="text-lg text-gray-600">Synchronizing player data...</p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Room: {room.lobby_code}</p>
-            <p>Phase: {room.phase}</p>
-            <p>Total Input Players: {players.length}</p>
-          </div>
-        </div>
-
-        {/* Bottom Bar: Empty for consistency */}
-        <div 
-          style={{ gridArea: 'footer' }}
-          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
-        >
-        </div>
-      </div>
-    );
-  }
-
-  // Show waiting state if no players joined yet - use new layout structure
-  if (actualPlayers.length === 0) {
-    return (
-      <div 
-        className="text-white relative overflow-hidden fixed inset-0"
-        style={{
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: '#f0f0f0',
-          display: 'grid',
-          gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"',
-          margin: 0,
-          padding: 0
-        }}
-      >
-        {/* Top Bar */}
-        <div 
-          style={{ gridArea: 'header' }}
-          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
-        >
-          {/* Top-Left: Logo */}
-          <div className="flex items-center">
-            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
-          </div>
-
-          {/* Top-Center: Waiting indicator */}
-          <div className="flex flex-col items-center gap-4">
-            <Music className="h-16 w-16 animate-pulse" />
-          </div>
-
-          {/* Top-Right: Room Code */}
-          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
-            <div className="text-purple-800 font-mono text-lg font-bold">
-              {room.lobby_code}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Section: Waiting message */}
-        <div 
-          style={{ gridArea: 'main' }}
-          className="flex flex-col items-center justify-center p-8"
-        >
-          <h2 className="text-2xl font-bold mb-2 text-gray-800">Waiting for Players...</h2>
-          <p className="text-lg text-gray-600">The game will start once players join the lobby.</p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Room: {room.lobby_code}</p>
-            <p>Phase: {room.phase}</p>
-            <p>Host ID: {room.host_id}</p>
-          </div>
-        </div>
-
-        {/* Bottom Bar: Empty for consistency */}
-        <div 
-          style={{ gridArea: 'footer' }}
-          className="bg-white/10 backdrop-blur-sm border-t border-gray-300 p-4"
-        >
-        </div>
-      </div>
-    );
-  }
-
-  // Show game setup state if no current player determined yet - use new layout structure
-  if (room.phase === 'playing' && !currentPlayer) {
-    return (
-      <div 
-        className="text-white relative overflow-hidden fixed inset-0"
-        style={{
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: '#f0f0f0',
-          display: 'grid',
-          gridTemplateRows: 'auto 1fr auto',
-          gridTemplateAreas: '"header" "main" "footer"',
-          margin: 0,
-          padding: 0
-        }}
-      >
-        {/* Top Bar */}
-        <div 
-          style={{ gridArea: 'header' }}
-          className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
-        >
-          {/* Top-Left: Logo */}
-          <div className="flex items-center">
-            <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
-          </div>
-
-          {/* Top-Center: Setup indicator */}
-          <div className="flex flex-col items-center gap-4">
-            <Music className="h-16 w-16 animate-spin" />
-          </div>
-
-          {/* Top-Right: Room Code */}
-          <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
-            <div className="text-purple-800 font-mono text-lg font-bold">
-              {room.lobby_code}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Section: Setup message */}
-        <div 
-          style={{ gridArea: 'main' }}
-          className="flex flex-col items-center justify-center p-8"
-        >
-          <h2 className="text-2xl font-bold mb-2 text-gray-800">Setting Up Game...</h2>
-          <p className="text-lg text-gray-600">Determining player turns...</p>
-          <div className="mt-4 text-sm text-gray-500 space-y-1">
-            <p>Players Ready: {actualPlayers.length}</p>
-            <p>Current Player ID: {room.current_player_id || 'Not set'}</p>
-            <p>Current Turn Index: {currentTurnIndex}</p>
-            <p>Available Players: {actualPlayers.map(p => p.name).join(', ')}</p>
-          </div>
-        </div>
-
-        {/* Bottom Bar: Show available players if any */}
-        <div 
-          style={{ gridArea: 'footer' }}
-          className="bg-white/10 backdrop-blur-sm border-t border-gray-300"
-        >
-          {actualPlayers.length > 0 && (
-            <div className="p-4">
-              <div className="flex justify-center items-center gap-6">
-                {actualPlayers.map(player => {
-                  const character = getCharacterById(player.character || 'char_dave');
-                  return (
-                    <div 
-                      key={player.id} 
-                      className="flex flex-col items-center p-3 rounded-lg bg-white/20"
-                    >
-                      <span className="text-gray-800 text-sm font-medium mb-2">{player.name}</span>
-                      {character ? (
-                        <img 
-                          src={character.image} 
-                          alt={character.name}
-                          className="w-16 h-16 object-contain"
-                        />
-                      ) : (
-                        <div 
-                          className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                          style={{ backgroundColor: player.color }}
-                        >
-                          {player.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-gray-600 text-xs mt-2">Setting up...</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const handleAudioError = useCallback((error: string) => {
+    console.error('Audio error in HostVisuals:', error);
+    setAudioError(error);
+    setIsLoadingPreview(false); // Use setIsLoadingPreview instead of setIsPlayingPreview
+    suppressUnused(error); // Suppress the unused error parameter
+    
+    toast({
+      title: "Audio Error",
+      description: "Failed to load audio preview",
+      variant: "destructive",
+    });
+  }, [toast]);
 
   return (
-    <div 
-      className="text-white relative overflow-hidden fixed inset-0"
-      style={{
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: '#f0f0f0',
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr auto',
-        gridTemplateAreas: '"header" "main" "footer"',
-        margin: 0,
-        padding: 0
-      }}
-    >
-      {/* Top Bar */}
-      <div 
-        style={{ gridArea: 'header' }}
-        className="flex items-center justify-between px-8 py-4 bg-white/10 backdrop-blur-sm"
-      >
-        {/* Top-Left: Logo */}
-        <div className="flex items-center">
-          <img src={logoImage} alt="Rhythmi Logo" className="h-12 w-auto" />
-        </div>
-
-        {/* Top-Center: Mystery Card Cassette and Play/Pause Controls */}
-        <div className="flex flex-col items-center gap-4">
-          {/* Mystery Card Cassette - NO song title or artist shown */}
-          {mysteryCard && (
-            <div className="flex flex-col items-center">
-              <img src={cassetteImage} alt="Mystery Cassette" className="h-16 w-auto" />
-            </div>
-          )}
-          
-          {/* Play/Pause Controls */}
-          <div className="flex items-center gap-4">
-            {mysteryCard && (mysteryPreviewUrl || mysteryCard.preview_url) && (
-              <AudioButton 
-                previewUrl={mysteryPreviewUrl || undefined}
-                size="lg" 
-                variant="ghost"
-                className="p-2 rounded-full hover:bg-white/10"
-                onStateChange={(isPlaying, isLoading, error) => {
-                  setIsPlayingPreview(isPlaying);
-                  setIsLoadingPreview(isLoading);
-                }}
-              />
-            )}
-            {mysteryCard && !mysteryPreviewUrl && !mysteryCard.preview_url && !isLoadingPreview && (
-              <div className="flex items-center justify-center h-12 w-12 bg-gray-500/50 rounded-full">
-                <Music className="h-6 w-6 text-gray-400" />
-              </div>
-            )}
-            {isLoadingPreview && (
-              <div className="flex items-center justify-center h-12 w-12">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Top-Right: Room Code */}
-        <div className="bg-purple-600/20 backdrop-blur-sm border border-purple-400 px-6 py-2 rounded-lg">
-          <div className="text-purple-800 font-mono text-lg font-bold">
-            {room.lobby_code}
-          </div>
-        </div>
-      </div>
-
-      {/* Middle Section: Song Timeline */}
-      <div 
-        style={{ gridArea: 'main' }}
-        className="flex flex-col items-center justify-center p-8"
-      >
-        {/* Current Player Timeline - Centered */}
-        {currentPlayer && (
-          <div className="flex-1 flex items-center justify-center w-full">
-            <HostCurrentPlayerTimeline 
-              currentTurnPlayer={currentPlayer}
-              cardPlacementResult={null}
-              highlightedGapIndex={null}
-              isTransitioning={false}
-            />
-          </div>
+    <div className="flex flex-col h-full">
+      {/* Connection Status */}
+      <div className="mb-4">
+        {connectionStatus.isConnected ? (
+          <span className="text-green-500">Connected</span>
+        ) : (
+          <span className="text-red-500">
+            {connectionStatus.isReconnecting ? 'Reconnecting...' : 'Disconnected'}
+          </span>
+        )}
+        {connectionStatus.lastError && (
+          <span className="text-red-500 ml-2">Error: {connectionStatus.lastError}</span>
         )}
       </div>
 
-      {/* Bottom Bar: Player Characters */}
-      <div 
-        style={{ gridArea: 'footer' }}
-        className="bg-white/10 backdrop-blur-sm border-t border-gray-300"
-      >
-        <div className="p-4">
-          <div className="flex justify-center items-center gap-6">
-            {actualPlayers.map(player => {
-              const character = getCharacterById(player.character || 'char_dave');
-              return (
-                <div 
-                  key={player.id} 
-                  className={`flex flex-col items-center p-3 rounded-lg transition-all ${
-                    currentPlayer?.id === player.id 
-                      ? 'bg-yellow-300/30 ring-2 ring-yellow-500' 
-                      : 'bg-white/20'
-                  }`}
-                >
-                  {/* Player name above avatar */}
-                  <span className="text-gray-800 text-sm font-medium mb-2">{player.name}</span>
-                  
-                  {/* Full character avatar (uncropped) */}
-                  {character ? (
-                    <img 
-                      src={character.image} 
-                      alt={character.name}
-                      className="w-16 h-16 object-contain"
-                    />
-                  ) : (
-                    <div 
-                      className="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                      style={{ backgroundColor: player.color }}
-                    >
-                      {player.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  
-                  {/* Score below avatar */}
-                  <span className="text-gray-600 text-xs mt-2">Score: {player.score || 0}</span>
-                  {currentPlayer?.id === player.id && (
-                    <div className="text-yellow-600 text-xs mt-1 font-bold">Current Turn</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+      {/* Current Player Timeline */}
+      {currentPlayer && (
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">
+            {currentPlayer.name}'s Timeline
+          </h2>
+          <Timeline songs={currentPlayer.timeline} />
+        </div>
+      )}
+
+      {/* Audio Player Controls */}
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold mb-2">Audio Preview</h3>
+        {previewUrl ? (
+          <>
+            <AudioPlayer
+              key={audioPlayerKey}
+              src={previewUrl}
+              isPlaying={isPlayingPreview}
+              onEnded={handleAudioEnded}
+              onError={handleAudioLoadError}
+              audioRef={audioElementRef}
+            />
+            <Button onClick={togglePlayPause} disabled={isLoadingPreview}>
+              {isLoadingPreview ? 'Loading...' : (isPlayingPreview ? 'Pause' : 'Play')}
+            </Button>
+            {audioError && <p className="text-red-500">{audioError}</p>}
+          </>
+        ) : (
+          <p>No audio preview available.</p>
+        )}
+      </div>
+
+      {/* Song Selection */}
+      <div>
+        <h3 className="text-lg font-semibold mb-2">Available Songs</h3>
+        <div className="flex flex-wrap">
+          {customSongs.map((song) => (
+            <Button
+              key={song.id}
+              className="mr-2 mb-2"
+              onClick={() => handleSetCurrentSong(song)}
+            >
+              {song.deezer_title}
+            </Button>
+          ))}
         </div>
       </div>
     </div>

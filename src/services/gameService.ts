@@ -4,6 +4,38 @@ import { Song, Player, GameRoom } from '@/types/game';
 import { IGameService } from './IGameService';
 import { suppressUnused } from '@/utils/suppressUnused';
 
+// Helper function to convert database GameRoom to our GameRoom interface
+const convertDatabaseRoom = (dbRoom: any): GameRoom => {
+  return {
+    id: dbRoom.id,
+    lobby_code: dbRoom.lobby_code,
+    host_id: dbRoom.host_id,
+    host_name: dbRoom.host_name || '', // Handle null values
+    phase: dbRoom.phase || 'lobby',
+    gamemode: dbRoom.gamemode || 'classic',
+    gamemode_settings: dbRoom.gamemode_settings || {},
+    songs: Array.isArray(dbRoom.songs) ? dbRoom.songs : [],
+    created_at: dbRoom.created_at,
+    updated_at: dbRoom.updated_at,
+    current_turn: dbRoom.current_turn || 0,
+    current_song: dbRoom.current_song || null,
+    current_player_id: dbRoom.current_player_id || null
+  };
+};
+
+// Helper function to convert database Player to our Player interface
+const convertDatabasePlayer = (dbPlayer: any): Player => {
+  return {
+    id: dbPlayer.id,
+    name: dbPlayer.name || 'Unknown Player',
+    color: dbPlayer.color || '#007AFF',
+    timelineColor: dbPlayer.timeline_color || dbPlayer.color || '#007AFF', // Map timeline_color to timelineColor
+    score: dbPlayer.score || 0,
+    timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline : [],
+    character: dbPlayer.character || 'char_dave'
+  };
+};
+
 export class GameService implements IGameService {
   // Room and Player Management
   async getRoomDetails(roomId: string): Promise<GameRoom | null> {
@@ -19,7 +51,7 @@ export class GameService implements IGameService {
         return null;
       }
 
-      return data;
+      return data ? convertDatabaseRoom(data) : null;
     } catch (error) {
       console.error('Failed to get room details:', error);
       return null;
@@ -39,7 +71,7 @@ export class GameService implements IGameService {
         return null;
       }
 
-      return data;
+      return data ? convertDatabasePlayer(data) : null;
     } catch (error) {
       console.error('Failed to get player:', error);
       return null;
@@ -119,7 +151,7 @@ export class GameService implements IGameService {
         .from('players')
         .update({
           timeline: newTimeline as unknown as any,
-          score: isCorrect ? player.score + 1 : player.score
+          score: isCorrect ? (player.score || 0) + 1 : (player.score || 0)
         })
         .eq('id', playerId);
 
@@ -203,7 +235,7 @@ export class GameService implements IGameService {
         .select('score')
         .eq('room_id', roomId);
 
-      return players?.some(player => player.score >= 10) || false;
+      return players?.some(player => (player.score || 0) >= 10) || false;
     } catch (error) {
       console.error('Failed to check if game ended:', error);
       return false;
@@ -219,7 +251,7 @@ export class GameService implements IGameService {
         .order('score', { ascending: false })
         .limit(1);
 
-      return players?.[0] || null;
+      return players?.[0] ? convertDatabasePlayer(players[0]) : null;
     } catch (error) {
       console.error('Failed to determine winner:', error);
       return null;
@@ -242,7 +274,7 @@ export class GameService implements IGameService {
       await supabase
         .from('players')
         .update({
-          score: player.score + points
+          score: (player.score || 0) + points
         })
         .eq('id', playerId);
     } catch (error) {
@@ -251,6 +283,7 @@ export class GameService implements IGameService {
   }
 
   async revertTimeline(roomId: string, playerId: string, position: number): Promise<void> {
+    suppressUnused(roomId);
     try {
       const player = await this.getPlayer(playerId);
       if (!player || !player.timeline) return;
@@ -325,7 +358,7 @@ export class GameService implements IGameService {
         return { success: false, error: 'Failed to join room' };
       }
 
-      return { success: true, data: { room, player } };
+      return { success: true, data: { room: convertDatabaseRoom(room), player: convertDatabasePlayer(player) } };
     } catch (error) {
       return { success: false, error: 'Failed to join room' };
     }
@@ -335,7 +368,14 @@ export class GameService implements IGameService {
     try {
       const { error } = await supabase
         .from('players')
-        .update(updates)
+        .update({
+          name: updates.name,
+          color: updates.color,
+          timeline_color: updates.timelineColor, // Map timelineColor to timeline_color
+          score: updates.score,
+          timeline: updates.timeline as any,
+          character: updates.character
+        })
         .eq('id', playerId);
 
       if (error) {
@@ -352,7 +392,7 @@ export class GameService implements IGameService {
     try {
       const { error } = await supabase
         .from('game_rooms')
-        .update(updates)
+        .update(updates as any)
         .eq('id', roomId);
 
       if (error) {
@@ -408,7 +448,13 @@ export class GameService implements IGameService {
         return { success: false, error: playersError.message };
       }
 
-      return { success: true, data: { room, players } };
+      return { 
+        success: true, 
+        data: { 
+          room: room ? convertDatabaseRoom(room) : null, 
+          players: players ? players.map(convertDatabasePlayer) : [] 
+        } 
+      };
     } catch (error) {
       return { success: false, error: 'Failed to get room state' };
     }

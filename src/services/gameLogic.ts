@@ -1,34 +1,45 @@
+import { Song, Player } from '@/types/game';
+import { gameService } from './gameService';
+import { suppressUnused } from '@/utils/suppressUnused';
 
-import { GameRoom, Player, Song } from '@/types/game';
-
-export class GameLogic {
-  private room: GameRoom;
-  private players: Player[];
-  private currentPlayer: Player;
-
-  constructor(room: GameRoom, players: Player[], currentPlayer: Player) {
-    this.room = room;
-    this.players = players;
-    this.currentPlayer = currentPlayer;
+export async function validateCardPlacement(
+  song: Song, 
+  timeline: Song[], 
+  position: number,
+  currentPlayer: Player
+): Promise<boolean> {
+  suppressUnused(currentPlayer); // Suppress unused parameter
+  
+  if (!song || !timeline) {
+    console.warn('Missing song or timeline data for validation');
+    return false;
   }
 
-  get availableSongs(): Song[] {
-    return this.room.songs || [];
+  if (position < 0 || position > timeline.length) {
+    console.warn('Invalid position for card placement');
+    return false;
   }
 
-  get isGameOver(): boolean {
-    return this.room.phase === 'finished';
+  // Edge case: empty timeline
+  if (timeline.length === 0) {
+    return true;
   }
 
-  getRandomAvailableSong(): Song | null {
-    const available = this.availableSongs;
-    if (available.length === 0) return null;
-    return available[Math.floor(Math.random() * available.length)];
+  // Edge case: placing at the beginning
+  if (position === 0) {
+    const nextSong = timeline[0];
+    return song.release_year <= nextSong.release_year;
   }
 
-  checkWinCondition(): Player | null {
-    // Simple win condition: first player to reach 10 points
-    const winner = this.players.find(player => player.score >= 10);
-    return winner || null;
+  // Edge case: placing at the end
+  if (position === timeline.length) {
+    const prevSong = timeline[position - 1];
+    return song.release_year >= prevSong.release_year;
   }
+
+  // General case: placing in the middle
+  const prevSong = timeline[position - 1];
+  const nextSong = timeline[position];
+
+  return song.release_year >= prevSong.release_year && song.release_year <= nextSong.release_year;
 }

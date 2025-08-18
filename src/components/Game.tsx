@@ -8,7 +8,7 @@ import { GamePlay } from './GamePlay';
 import { HostMusicController } from './HostMusicController';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { GameService, gameService } from '@/services/gameService';
+import { gameService } from '@/services/gameService';
 import { suppressUnused } from '@/utils/suppressUnused';
 
 export function Game() {
