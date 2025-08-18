@@ -68,10 +68,10 @@ export default function OptimizedIndex() {
   if (gameState.winner) {
     return isMobile ? (
       <MobileVictoryScreen 
-        winner={gameState.winner} 
-        players={players}
-        onPlayAgain={() => window.location.reload()}
-        onBackToMenu={() => window.location.reload()}
+        winningPlayer={gameState.winner}
+        allPlayers={players}
+        onReplay={() => window.location.reload()}
+        roomCode={room?.lobby_code || ''}
       />
     ) : (
       <VictoryScreen 
@@ -89,9 +89,8 @@ export default function OptimizedIndex() {
       return (
         <MobilePlayerGameView
           currentPlayer={currentPlayer}
-          room={room}
           onPlaceCard={placeCard}
-          setIsPlaying={setIsPlaying}
+          gameRoom={room}
         />
       );
     }
@@ -104,7 +103,6 @@ export default function OptimizedIndex() {
         isHost={isHost}
         onSetCurrentSong={() => Promise.resolve()}
         onPlaceCard={placeCard}
-        setIsPlaying={setIsPlaying}
         getCurrentPlayer={getCurrentPlayer}
       />
     );
@@ -122,10 +120,9 @@ export default function OptimizedIndex() {
           <HostLobby
             room={room}
             players={players}
-            onStartGame={() => {
-              initializeGame().then(() => {
-                startGame();
-              });
+            onStartGame={async () => {
+              await initializeGame();
+              await startGame();
             }}
             onLeaveRoom={leaveRoom}
             initializeGame={initializeGame}
@@ -143,7 +140,6 @@ export default function OptimizedIndex() {
             room={room}
             currentPlayer={currentPlayer}
             players={players}
-            onLeaveRoom={leaveRoom}
           />
         </>
       );
@@ -153,8 +149,13 @@ export default function OptimizedIndex() {
   // Main menu
   return (
     <MainMenu
-      onCreateRoom={(hostName: string) => createRoom(hostName)}
-      onJoinRoom={(lobbyCode: string, playerName: string) => joinRoom(lobbyCode, playerName)}
+      onCreateRoom={async (hostName: string) => {
+        const code = await createRoom(hostName);
+        return code || '';
+      }}
+      onJoinRoom={async (lobbyCode: string, playerName: string) => {
+        return await joinRoom(lobbyCode, playerName);
+      }}
       isLoading={isLoading}
     />
   );

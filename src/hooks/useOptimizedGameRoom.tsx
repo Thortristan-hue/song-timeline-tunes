@@ -206,13 +206,13 @@ export function useOptimizedGameRoom() {
 
       setRoom(newRoom);
       setCurrentPlayer({
-        id: playerData.id,
-        name: playerData.name,
-        color: playerData.color,
-        timelineColor: playerData.timeline_color,
-        score: playerData.score || 0,
+        id: (playerData as DatabasePlayer).id,
+        name: (playerData as DatabasePlayer).name,
+        color: (playerData as DatabasePlayer).color,
+        timelineColor: (playerData as DatabasePlayer).timeline_color,
+        score: (playerData as DatabasePlayer).score || 0,
         timeline: [],
-        character: playerData.character || getDefaultCharacter().id
+        character: (playerData as DatabasePlayer).character || getDefaultCharacter().id
       });
       setIsHost(false);
 
