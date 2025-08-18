@@ -60,6 +60,9 @@ export const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({
         } finally {
           setIsLoadingPreview(false);
         }
+      } else if (!src && !trackId) {
+        console.log('⚠️ AudioPlayer: No src or trackId provided');
+        setActualSrc(null);
       }
     };
 

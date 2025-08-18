@@ -88,62 +88,9 @@ export function HostGameView({
         />
       </div>
 
-      {/* Center Top - Control Panel (moved to top) */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-        <div className="relative">
-          <img 
-            src="/src/assets/ass_cass_bg.png" 
-            alt="Control Panel Background" 
-            className="h-20 w-auto"
-          />
-          
-          {/* Control Buttons Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center space-x-4">
-            {/* Play/Pause Button */}
-            <button
-              onClick={handleRecordClick}
-              className="relative group transition-transform hover:scale-110"
-              disabled={!currentSong}
-            >
-              <img 
-                src={isPlaying ? "/src/assets/ass_pause.png" : "/src/assets/ass_play.png"}
-                alt={isPlaying ? "Pause" : "Play"}
-                className="h-8 w-8"
-              />
-            </button>
-            
-            {/* Stop Button */}
-            <button
-              onClick={() => {
-                if (isPlaying) {
-                  onPlayPause(); // This will stop/pause the audio
-                }
-              }}
-              className="relative group transition-transform hover:scale-110"
-              disabled={!isPlaying}
-            >
-              <img 
-                src="/src/assets/ass_stop.png"
-                alt="Stop"
-                className="h-8 w-8"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        {/* Mystery Card (moved higher up) */}
-        <div className="mb-8">
-          <RecordMysteryCard
-            song={currentSong}
-            isRevealed={isCardRevealed}
-            isDestroyed={cardPlacementResult?.correct === false}
-          />
-        </div>
-
-        {/* Current Turn Player Timeline (moved to center) */}
+        {/* Current Turn Player Timeline (moved to center top) */}
         {currentTurnPlayer && (
           <div className="w-full max-w-6xl mb-8">
             <HostCurrentPlayerTimeline 
@@ -153,6 +100,59 @@ export function HostGameView({
             />
           </div>
         )}
+
+        {/* Center - Control Panel (moved to middle) */}
+        <div className="mb-8">
+          <div className="relative">
+            <img 
+              src="/src/assets/ass_cass_bg.png" 
+              alt="Control Panel Background" 
+              className="h-20 w-auto"
+            />
+            
+            {/* Control Buttons Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center space-x-4">
+              {/* Play/Pause Button */}
+              <button
+                onClick={handleRecordClick}
+                className="relative group transition-transform hover:scale-110"
+                disabled={!currentSong}
+              >
+                <img 
+                  src={isPlaying ? "/src/assets/ass_pause.png" : "/src/assets/ass_play.png"}
+                  alt={isPlaying ? "Pause" : "Play"}
+                  className="h-8 w-8"
+                />
+              </button>
+              
+              {/* Stop Button */}
+              <button
+                onClick={() => {
+                  if (isPlaying) {
+                    onPlayPause(); // This will stop/pause the audio
+                  }
+                }}
+                className="relative group transition-transform hover:scale-110"
+                disabled={!isPlaying}
+              >
+                <img 
+                  src="/src/assets/ass_stop.png"
+                  alt="Stop"
+                  className="h-8 w-8"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mystery Card (moved lower) */}
+        <div className="mb-8">
+          <RecordMysteryCard
+            song={currentSong}
+            isRevealed={isCardRevealed}
+            isDestroyed={cardPlacementResult?.correct === false}
+          />
+        </div>
 
         {/* Player Characters Display (moved to bottom) */}
         <div className="w-full max-w-6xl">

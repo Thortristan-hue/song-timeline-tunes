@@ -383,7 +383,7 @@ export default function MobilePlayerGameView({
           
           {/* Waiting screen */}
           {!isMyTurn && !gameEnded && (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center">
               <div className="text-center space-y-6">
                 <div className="w-20 h-20 mx-auto bg-white/15 backdrop-blur-2xl rounded-full flex items-center justify-center border-2 border-white/30">
                   <Music className="w-10 h-10 text-white/90 animate-pulse" />
@@ -394,6 +394,24 @@ export default function MobilePlayerGameView({
                   </div>
                   <div className="text-white/70 text-lg bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
                     Wait for your turn
+                  </div>
+                </div>
+              </div>
+              
+              {/* Character Display while waiting */}
+              <div className="mt-8">
+                <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
+                  <img
+                    src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
+                    alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
+                    className="h-10 w-10 rounded-full border-2"
+                    style={{ borderColor: currentPlayer.color }}
+                  />
+                  <div className="text-white text-base font-semibold">
+                    {currentPlayer.name}
+                  </div>
+                  <div className="text-white/70 text-sm">
+                    Score: {currentPlayer.score || 0}
                   </div>
                 </div>
               </div>
@@ -561,18 +579,21 @@ export default function MobilePlayerGameView({
         )}
 
         {/* Footer with Character and Debug Menu */}
-        <div className="flex-shrink-0 py-2">
-          {/* Character Display */}
-          <div className="flex justify-center mb-2">
-            <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-xl rounded-xl px-4 py-2 border border-white/20">
+        <div className="flex-shrink-0 py-4">
+          {/* Character Display - moved to more prominent position */}
+          <div className="flex justify-center mb-4">
+            <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-xl rounded-xl px-6 py-3 border border-white/30 shadow-lg">
               <img
                 src={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.image || getDefaultCharacter().image}
                 alt={getCharacterByIdUtil(currentPlayer.character || getDefaultCharacter().id)?.name || getDefaultCharacter().name}
-                className="h-8 w-8 rounded-full border-2"
+                className="h-10 w-10 rounded-full border-2"
                 style={{ borderColor: currentPlayer.color }}
               />
-              <div className="text-white text-sm font-medium">
+              <div className="text-white text-base font-semibold">
                 {currentPlayer.name}
+              </div>
+              <div className="text-white/70 text-sm">
+                Score: {currentPlayer.score || 0}
               </div>
             </div>
           </div>
