@@ -10,21 +10,22 @@ import { useGameStore } from '@/stores/gameStore';
 import { useClassicGameLogic } from './useClassicGameLogic';
 import { useSprintGameLogic } from './useSprintGameLogic';
 
-// Database-specific types
+// Database-specific types - match actual Supabase response
 interface DbGameRoom {
   id: string;
   lobby_code: string;
   host_id: string;
   host_name: string;
-  phase: 'lobby' | 'playing' | 'finished';
-  gamemode: 'classic' | 'fiend' | 'sprint';
-  gamemode_settings: GameModeSettings;
-  songs: Song[] | null;
+  phase: string; // Database stores as string, we'll cast it
+  gamemode: string; // Database stores as string, we'll cast it
+  gamemode_settings: any; // JSON type from database
+  songs: any; // JSON type from database
   created_at: string;
   updated_at: string;
   current_turn?: number;
-  current_song?: Song | null;
+  current_song?: any; // JSON type from database
   current_player_id?: string;
+  current_song_index?: number;
 }
 
 interface UseGameRoomReturn {
@@ -97,14 +98,43 @@ export function useGameRoom(): UseGameRoomReturn {
   const classicGameLogic = useClassicGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
   const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
 
+  // Helper function to convert database phase to application GamePhase
+  const mapDbPhaseToGamePhase = useCallback((dbPhase: string): GamePhase => {
+    switch (dbPhase) {
+      case 'lobby':
+        return 'hostLobby';
+      case 'playing':
+        return 'playing';
+      case 'finished':
+        return 'finished';
+      default:
+        return 'hostLobby';
+    }
+  }, []);
+
+  // Helper function to convert application GamePhase to database phase
+  const mapGamePhaseToDbPhase = useCallback((gamePhase: GamePhase): 'lobby' | 'playing' | 'finished' => {
+    switch (gamePhase) {
+      case 'hostLobby':
+      case 'mobileLobby':
+        return 'lobby';
+      case 'playing':
+        return 'playing';
+      case 'finished':
+        return 'finished';
+      default:
+        return 'lobby';
+    }
+  }, []);
+
   // Helper function to convert database GameRoom to application GameRoom
   const mapDbGameRoomToGameRoom = useCallback((dbRoom: DbGameRoom): GameRoom => ({
     id: dbRoom.id,
     lobby_code: dbRoom.lobby_code,
     host_id: dbRoom.host_id,
     host_name: dbRoom.host_name || '',
-    phase: dbRoom.phase as GamePhase, // Cast to broader type for application use
-    gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
+    phase: mapDbPhaseToGamePhase(dbRoom.phase),
+    gamemode: dbRoom.gamemode as GameMode,
     gamemode_settings: dbRoom.gamemode_settings || {},
     songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
     created_at: dbRoom.created_at,
@@ -112,7 +142,7 @@ export function useGameRoom(): UseGameRoomReturn {
     current_turn: dbRoom.current_turn,
     current_song: dbRoom.current_song as Song | null,
     current_player_id: dbRoom.current_player_id
-  }), []);
+  }), [mapDbPhaseToGamePhase]);
 
   // Helper function to convert database Player to application Player
   const mapDbPlayerToPlayer = useCallback((dbPlayer: any): Player => ({
@@ -145,7 +175,7 @@ export function useGameRoom(): UseGameRoomReturn {
           throw new Error('Room not found');
         }
 
-        const mappedRoom = mapDbGameRoomToGameRoom(room);
+        const mappedRoom = mapDbGameRoomToGameRoom(room as DbGameRoom);
         setRoomData(mappedRoom);
         setPhase(mappedRoom.phase);
 
