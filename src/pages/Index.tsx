@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -6,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
 import { GameMode, GameModeSettings } from '@/types/game';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { CharacterSelect } from '@/components/CharacterSelect';
@@ -24,35 +24,24 @@ const RoomForm: React.FC<RoomFormProps> = ({ onCreateRoom, onJoinRoom, isLoading
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [joiningRoom, setJoiningRoom] = useState(false);
 
-  const handleCreateRoom = async (gamemode: GameMode, settings: GameModeSettings) => {
+  const handleCreateRoom = async (gamemode: GameMode, gameModeSettings: GameModeSettings) => {
     if (!playerName) {
-      toast({
-        title: "Error",
-        description: "Please enter your name to create a room.",
-        variant: "destructive",
-      });
+      toast.error("Please enter your name to create a room.");
       return;
     }
 
     setCreatingRoom(true);
-    const success = await onCreateRoom(gamemode, settings);
+    const success = await onCreateRoom(gamemode, gameModeSettings);
     setCreatingRoom(false);
 
     if (success) {
-      toast({
-        title: "Success",
-        description: "Room created successfully!",
-      });
+      toast.success("Room created successfully!");
     }
   };
 
   const handleJoinRoom = async () => {
     if (!playerName || !lobbyCode) {
-      toast({
-        title: "Error",
-        description: "Please enter your name and lobby code to join a room.",
-        variant: "destructive",
-      });
+      toast.error("Please enter your name and lobby code to join a room.");
       return;
     }
 
@@ -61,10 +50,7 @@ const RoomForm: React.FC<RoomFormProps> = ({ onCreateRoom, onJoinRoom, isLoading
     setJoiningRoom(false);
 
     if (success) {
-      toast({
-        title: "Success",
-        description: "Joined room successfully!",
-      });
+      toast.success("Joined room successfully!");
     }
   };
 
@@ -101,9 +87,9 @@ const RoomForm: React.FC<RoomFormProps> = ({ onCreateRoom, onJoinRoom, isLoading
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="name">Your Name</Label>
+            <Label htmlFor="joinName">Your Name</Label>
             <Input
-              id="name"
+              id="joinName"
               placeholder="Enter your name"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
@@ -130,8 +116,6 @@ const RoomForm: React.FC<RoomFormProps> = ({ onCreateRoom, onJoinRoom, isLoading
 
 export default function Index() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [showMobileJoin, setShowMobileJoin] = useState(false);
 
   const {
     roomData,
@@ -154,9 +138,9 @@ export default function Index() {
     }
   }, [roomData, navigate]);
 
-  const handleCreateRoom = async (gamemode: GameMode, settings: GameModeSettings) => {
-    const settings = gamemode === 'sprint' ? { targetCards: 8 } : {};
-    return await createRoom(gamemode, settings);
+  const handleCreateRoom = async (gamemode: GameMode, settings: GameModeSettings): Promise<boolean> => {
+    const gameSettings = gamemode === 'sprint' ? { targetCards: 8 } : {};
+    return await createRoom(gamemode, gameSettings);
   };
 
   return (

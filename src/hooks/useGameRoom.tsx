@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { shallow } from 'zustand/shallow';
 
 import { supabase } from '@/integrations/supabase/client';
 import { GameRoom, Player, Song, GameMode, GameModeSettings } from '@/types/game';
@@ -68,31 +67,7 @@ export function useGameRoom(): UseGameRoomReturn {
     setGameEnded,
     highlightedGapIndex,
     setHighlightedGapIndex
-  } = useGameStore(
-    (state) => ({
-      phase: state.phase,
-      setPhase: state.setPhase,
-      currentSong: state.currentSong,
-      setCurrentSong: state.setCurrentSong,
-      isDarkMode: state.isDarkMode,
-      setIsDarkMode: state.setIsDarkMode,
-      isMuted: state.isMuted,
-      setIsMuted: state.setIsMuted,
-      cardPlacementPending: state.cardPlacementPending,
-      setCardPlacementPending: state.setCardPlacementPending,
-      cardPlacementConfirmed: state.cardPlacementConfirmed,
-      setCardPlacementConfirmed: state.setCardPlacementConfirmed,
-      cardPlacementCorrect: state.cardPlacementCorrect,
-      setCardPlacementCorrect: state.setCardPlacementCorrect,
-      mysteryCardRevealed: state.mysteryCardRevealed,
-      setMysteryCardRevealed: state.setMysteryCardRevealed,
-      gameEnded: state.gameEnded,
-      setGameEnded: state.setGameEnded,
-      highlightedGapIndex: state.highlightedGapIndex,
-      setHighlightedGapIndex: state.setHighlightedGapIndex
-    }),
-    shallow
-  );
+  } = useGameStore();
 
   // Initialize game logic based on game mode
   const classicGameLogic = useClassicGameLogic(roomData?.id || null, players, roomData, setCurrentSong);
