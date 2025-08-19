@@ -4,7 +4,7 @@ import { Song, Player, GameRoom, GameMode, GameModeSettings } from '@/types/game
 import { useToast } from '@/components/ui/use-toast';
 import { GameService } from '@/services/gameService';
 import { useRealtimeSubscription, SubscriptionConfig } from '@/hooks/useRealtimeSubscription';
-import { useWebSocketGameSync } from '@/hooks/useWebSocketGameSync';
+import { useSupabaseRealtimeSync } from '@/hooks/useSupabaseRealtimeSync';
 import { getDefaultCharacter } from '@/constants/characters';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -158,17 +158,17 @@ export function useGameRoom() {
     }
   }, [fetchPlayers]);
 
-  // Setup WebSocket sync
+  // Setup Supabase realtime sync
   const {
     syncState: wsState,
     broadcastPlayerUpdate,
     broadcastGameStart,
     broadcastCardPlaced,
     broadcastSongSet,
-    sendHostSetSongs,
+    broadcastGameStarted,
     setHostStatus,
     forceReconnect: wsReconnect
-  } = useWebSocketGameSync(
+  } = useSupabaseRealtimeSync(
     room?.id || null,
     (roomData) => {
       console.log('🔄 WebSocket room update:', roomData);
