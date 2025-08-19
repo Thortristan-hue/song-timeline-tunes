@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -113,7 +112,7 @@ export function useGameRoom(): UseGameRoomReturn {
   }, []);
 
   // Helper function to convert application GamePhase to database phase
-  const mapGamePhaseToDbPhase = useCallback((gamePhase: GamePhase): 'lobby' | 'playing' | 'finished' => {
+  const mapGamePhaseToDbPhase = useCallback((gamePhase: GamePhase): string => {
     switch (gamePhase) {
       case 'hostLobby':
       case 'mobileLobby':
