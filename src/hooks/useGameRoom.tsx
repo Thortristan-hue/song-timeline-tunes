@@ -166,6 +166,7 @@ export function useGameRoom() {
     broadcastCardPlaced,
     broadcastSongSet,
     broadcastGameStarted,
+    sendHostSetSongs,
     setHostStatus,
     forceReconnect: wsReconnect
   } = useSupabaseRealtimeSync(
@@ -568,7 +569,7 @@ export function useGameRoom() {
     try {
       console.log('🃏 Using correct GameService method for card placement');
       
-      const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position, availableSongs);
+      const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position);
       
       if (result.success) {
         console.log('✅ Card placed and turn advanced successfully');

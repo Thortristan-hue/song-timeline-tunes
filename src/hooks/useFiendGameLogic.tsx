@@ -139,7 +139,7 @@ export function useFiendGameLogic(
       const player = gameState.players.find(p => p.id === playerId);
       if (player) {
         const newScore = player.score + points;
-        await GameService.updatePlayerTimeline(playerId, player.timeline, newScore);
+        await GameService.updatePlayerTimeline(playerId, player.timeline);
       }
       
       // Store the guess result

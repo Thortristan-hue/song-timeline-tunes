@@ -300,7 +300,7 @@ export const GameService = {
     console.log('✅ Game initialized with', songs.length, 'songs');
   },
 
-  async placeCardAndAdvanceTurn(roomId: string, playerId: string, song: Song, position: number, mysteryCard: Song) {
+  async placeCardAndAdvanceTurn(roomId: string, playerId: string, song: Song, position: number) {
     console.log('🃏 Placing card and advancing turn');
     
     try {
@@ -314,14 +314,14 @@ export const GameService = {
       if (player.data) {
         const currentTimeline = Array.isArray(player.data.timeline) ? player.data.timeline : [];
         const newTimeline = [...currentTimeline];
-        newTimeline.splice(position, 0, song);
+        newTimeline.splice(position, 0, song as any);
         
-        // Update player timeline
-        await updatePlayer(playerId, { timeline: newTimeline });
+        // Update player timeline - convert Song to Json for database
+        await updatePlayer(playerId, { timeline: newTimeline as any });
       }
 
       // Record the move  
-      await recordMove(roomId, playerId, 'CARD_PLACED', { song, position });
+      await recordMove(roomId, playerId, 'CARD_PLACED', { song: song as any, position });
 
       // Check if placement is correct (simplified logic)
       const correct = Math.random() > 0.5; // Replace with actual logic
@@ -346,7 +346,7 @@ export const GameService = {
 
   async updatePlayerTimeline(playerId: string, timeline: Song[], correctOrder?: Song[]) {
     console.log('📋 Updating player timeline');
-    await updatePlayer(playerId, { timeline });
+    await updatePlayer(playerId, { timeline: timeline as any });
   },
 
   async setCurrentSong(roomId: string, song: Song) {

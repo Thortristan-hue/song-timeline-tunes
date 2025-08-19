@@ -163,7 +163,7 @@ export function useSprintGameLogic(
         const newTimeline = [...playerTimeline];
         newTimeline.splice(position, 0, song);
         
-        await GameService.updatePlayerTimeline(playerId, newTimeline, player.score + 1);
+        await GameService.updatePlayerTimeline(playerId, newTimeline);
         
         // Track placement result
         setGameState(prev => ({

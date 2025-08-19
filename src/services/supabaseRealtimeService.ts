@@ -89,7 +89,7 @@ export class SupabaseRealtimeService {
       // Subscribe to the channel
       const response = await this.channel.subscribe();
       
-      if (response === 'SUBSCRIBED') {
+      if (response === 'SUBSCRIBED' as any) {
         this.connectionStatus = 'connected';
         console.log('✅ Connected to realtime for room:', roomId);
         

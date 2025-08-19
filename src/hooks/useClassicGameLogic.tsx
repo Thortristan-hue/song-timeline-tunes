@@ -245,8 +245,7 @@ export function useClassicGameLogic(
         roomId,
         playerId,
         song,
-        position,
-        gameState.availableSongs
+        position
       );
 
       if (result.success) {
