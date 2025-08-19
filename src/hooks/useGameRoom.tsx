@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { toast } from 'react-hot-toast';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { shallow } from 'zustand/shallow';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -18,8 +17,8 @@ interface UseGameRoomReturn {
   isHost: boolean;
   isLoading: boolean;
   error: string | null;
-  createRoom: (gamemode: GameMode) => Promise<void>;
-  joinRoom: (playerName: string, character: string) => Promise<void>;
+  createRoom: (gamemode: GameMode) => Promise<string | null>;
+  joinRoom: (lobbyCode: string, playerName: string, character?: string) => Promise<boolean>;
   startGame: () => Promise<void>;
   placeCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean }>;
   leaveRoom: () => Promise<void>;
@@ -27,11 +26,20 @@ interface UseGameRoomReturn {
 }
 
 export function useGameRoom(): UseGameRoomReturn {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
   const lobbyCode = searchParams.get('lobby');
-  const { data: session } = useSession();
-  const playerSessionId = session?.user?.email || 'no-session';
+  
+  // Use a simple session ID based on timestamp and random number
+  const playerSessionId = useState(() => 
+    localStorage.getItem('playerSessionId') || 
+    (() => {
+      const id = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('playerSessionId', id);
+      return id;
+    })()
+  )[0];
 
   const [roomData, setRoomData] = useState<GameRoom | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -91,6 +99,34 @@ export function useGameRoom(): UseGameRoomReturn {
   const classicGameLogic = useClassicGameLogic(roomData?.id, players, roomData, setCurrentSong);
   const sprintGameLogic = useSprintGameLogic(roomData?.id, players, roomData, setCurrentSong);
 
+  // Helper function to convert database GameRoom to application GameRoom
+  const mapDbGameRoomToGameRoom = useCallback((dbRoom: any): GameRoom => ({
+    id: dbRoom.id,
+    lobby_code: dbRoom.lobby_code,
+    host_id: dbRoom.host_id,
+    host_name: dbRoom.host_name || '',
+    phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
+    gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
+    gamemode_settings: dbRoom.gamemode_settings || {},
+    songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
+    created_at: dbRoom.created_at,
+    updated_at: dbRoom.updated_at,
+    current_turn: dbRoom.current_turn,
+    current_song: dbRoom.current_song as Song | null,
+    current_player_id: dbRoom.current_player_id
+  }), []);
+
+  // Helper function to convert database Player to application Player
+  const mapDbPlayerToPlayer = useCallback((dbPlayer: any): Player => ({
+    id: dbPlayer.id,
+    name: dbPlayer.name,
+    color: dbPlayer.color,
+    timelineColor: dbPlayer.timeline_color,
+    score: dbPlayer.score || 0,
+    timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : [],
+    character: dbPlayer.character || 'char_dave'
+  }), []);
+
   // Fetch room and players data on lobby code change
   useEffect(() => {
     const fetchRoomAndPlayers = async () => {
@@ -111,8 +147,9 @@ export function useGameRoom(): UseGameRoomReturn {
           throw new Error('Room not found');
         }
 
-        setRoomData(room);
-        setPhase(room.phase);
+        const mappedRoom = mapDbGameRoomToGameRoom(room);
+        setRoomData(mappedRoom);
+        setPhase(mappedRoom.phase);
 
         // Fetch players data
         const { data: playersData, error: playersError } = await supabase
@@ -125,7 +162,8 @@ export function useGameRoom(): UseGameRoomReturn {
           throw new Error('Failed to fetch players');
         }
 
-        setPlayers(playersData || []);
+        const mappedPlayers = (playersData || []).map(mapDbPlayerToPlayer);
+        setPlayers(mappedPlayers);
         setIsHost(room.host_id === playerSessionId);
 
       } catch (err: any) {
@@ -137,7 +175,7 @@ export function useGameRoom(): UseGameRoomReturn {
     };
 
     fetchRoomAndPlayers();
-  }, [lobbyCode, playerSessionId, setPhase]);
+  }, [lobbyCode, playerSessionId, setPhase, mapDbGameRoomToGameRoom, mapDbPlayerToPlayer]);
 
   // Subscribe to room updates
   useEffect(() => {
@@ -148,10 +186,11 @@ export function useGameRoom(): UseGameRoomReturn {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomData.id}` },
         (payload) => {
           if (payload.new) {
-            setRoomData(payload.new as GameRoom);
-            setPhase(payload.new.phase);
-            if (payload.new.current_song) {
-              setCurrentSong(payload.new.current_song as Song);
+            const mappedRoom = mapDbGameRoomToGameRoom(payload.new);
+            setRoomData(mappedRoom);
+            setPhase(mappedRoom.phase);
+            if (mappedRoom.current_song) {
+              setCurrentSong(mappedRoom.current_song);
             }
           }
         })
@@ -160,7 +199,7 @@ export function useGameRoom(): UseGameRoomReturn {
     return () => {
       supabase.removeChannel(roomSubscription);
     };
-  }, [roomData?.id, setCurrentSong, setPhase]);
+  }, [roomData?.id, setCurrentSong, setPhase, mapDbGameRoomToGameRoom]);
 
   // Subscribe to player updates
   useEffect(() => {
@@ -180,7 +219,8 @@ export function useGameRoom(): UseGameRoomReturn {
               if (error) {
                 console.error('Failed to update players:', error);
               } else {
-                setPlayers(data || []);
+                const mappedPlayers = (data || []).map(mapDbPlayerToPlayer);
+                setPlayers(mappedPlayers);
               }
             });
         })
@@ -189,13 +229,13 @@ export function useGameRoom(): UseGameRoomReturn {
     return () => {
       supabase.removeChannel(playerSubscription);
     };
-  }, [roomData?.id]);
+  }, [roomData?.id, mapDbPlayerToPlayer]);
 
   // Get current player
-  const currentPlayer = players.find(player => player.player_session_id === playerSessionId) || null;
+  const currentPlayer = players.find(player => player.id.includes(playerSessionId)) || null;
 
   // Create room
-  const createRoom = useCallback(async (gamemode: GameMode) => {
+  const createRoom = useCallback(async (gamemode: GameMode): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
 
@@ -209,26 +249,28 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       if (room?.lobby_code) {
-        router.push(`/?lobby=${room.lobby_code}`);
+        navigate(`/?lobby=${room.lobby_code}`);
+        return room.lobby_code;
       } else {
         throw new Error('Failed to create room: Missing lobby code');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create room');
       toast.error(err.message || 'Failed to create room');
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [playerSessionId, router]);
+  }, [playerSessionId, navigate]);
 
   // Join room
-  const joinRoom = useCallback(async (playerName: string, character: string) => {
+  const joinRoom = useCallback(async (lobbyCode: string, playerName: string, character: string = 'char_dave'): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('join-game-room', {
-        body: { lobbyCode: lobbyCode?.toUpperCase(), playerName, playerSessionId, character }
+        body: { lobbyCode: lobbyCode.toUpperCase(), playerName, playerSessionId, character }
       });
 
       if (error) {
@@ -236,20 +278,25 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       if (data?.room?.lobby_code) {
-        setRoomData(data.room);
-        setPlayers(data.players);
+        const mappedRoom = mapDbGameRoomToGameRoom(data.room);
+        const mappedPlayers = (data.players || []).map(mapDbPlayerToPlayer);
+        
+        setRoomData(mappedRoom);
+        setPlayers(mappedPlayers);
         setIsHost(data.room.host_id === playerSessionId);
-        setPhase(data.room.phase);
+        setPhase(mappedRoom.phase);
+        return true;
       } else {
         throw new Error('Failed to join room: Missing lobby code');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to join room');
       toast.error(err.message || 'Failed to join room');
+      return false;
     } finally {
       setIsLoading(false);
     }
-  }, [lobbyCode, playerSessionId, setRoomData, setPlayers, setIsHost, setPhase]);
+  }, [playerSessionId, mapDbGameRoomToGameRoom, mapDbPlayerToPlayer, setPhase]);
 
   // Start game
   const startGame = useCallback(async () => {
@@ -274,10 +321,6 @@ export function useGameRoom(): UseGameRoomReturn {
         if (firstSong) {
           setCurrentSong(firstSong);
         }
-      } else if (roomData.gamemode === 'sprint') {
-        // No specific initialization needed for sprint mode
-      } else if (roomData.gamemode === 'fiend') {
-        // No specific initialization needed for fiend mode
       }
 
       // Start the game by updating the phase
@@ -321,14 +364,9 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       if (result.success && result.correct !== undefined) {
-        // Provide feedback based on correctness
         const isCorrect = result.correct;
         
-        toast({
-          title: isCorrect ? "Correct placement!" : "Incorrect placement!",
-          description: isCorrect ? "Great job!" : "Try again!",
-          variant: isCorrect ? "default" : "destructive",
-        });
+        toast(isCorrect ? "Correct placement! Great job!" : "Incorrect placement! Try again!");
 
         return { success: true, correct: isCorrect };
       } else if (result.success) {
@@ -340,15 +378,11 @@ export function useGameRoom(): UseGameRoomReturn {
       console.error('❌ Error placing card:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      toast({
-        title: "Error placing card",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(`Error placing card: ${errorMessage}`);
 
       return { success: false };
     }
-  }, [currentPlayer, roomData?.id, roomData?.gamemode, classicGameLogic, sprintGameLogic, toast]);
+  }, [currentPlayer, roomData?.id, roomData?.gamemode, classicGameLogic, sprintGameLogic]);
 
   // Leave room
   const leaveRoom = useCallback(async () => {
@@ -409,14 +443,14 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       // Redirect to home page
-      router.push('/');
+      navigate('/');
     } catch (err: any) {
       setError(err.message || 'Failed to leave room');
       toast.error(err.message || 'Failed to leave room');
     } finally {
       setIsLoading(false);
     }
-  }, [playerSessionId, roomData?.id, isHost, router]);
+  }, [playerSessionId, roomData?.id, isHost, navigate]);
 
   // Reset room
   const resetRoom = useCallback(async () => {

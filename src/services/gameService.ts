@@ -31,7 +31,7 @@ const mapDbGameRoomToGameRoom = (dbRoom: any): GameRoom => ({
   phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
   gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
   gamemode_settings: dbRoom.gamemode_settings || {},
-  songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
+  songs: Array.isArray(dbRoom.songs) ? (dbRoom.songs as unknown as Song[]) : [],
   created_at: dbRoom.created_at,
   updated_at: dbRoom.updated_at,
   current_turn: dbRoom.current_turn,
@@ -46,7 +46,7 @@ const mapDbPlayerToPlayer = (dbPlayer: any): Player => ({
   color: dbPlayer.color,
   timelineColor: dbPlayer.timeline_color, // Map timeline_color to timelineColor
   score: dbPlayer.score || 0,
-  timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : [],
+  timeline: Array.isArray(dbPlayer.timeline) ? (dbPlayer.timeline as unknown as Song[]) : [],
   character: dbPlayer.character || 'char_dave'
 });
 
@@ -285,7 +285,7 @@ export const placeCardAndAdvanceTurn = async (
     .single();
   
   if (player) {
-    const timeline = Array.isArray(player.timeline) ? player.timeline as Song[] : [];
+    const timeline = Array.isArray(player.timeline) ? player.timeline as unknown as Song[] : [];
     timeline.splice(position, 0, song);
     
     await updatePlayer(playerId, { timeline });
@@ -314,20 +314,4 @@ export const setCurrentSong = async (roomId: string, song: Song) => {
 export const endGame = async (roomId: string, winnerId: string) => {
   console.log('🏆 Ending game for room:', roomId, 'winner:', winnerId);
   await updateRoom(roomId, { phase: 'finished' });
-};
-
-// Export as GameService object for compatibility
-export const GameService = {
-  createRoom,
-  joinRoom,
-  getRoomByCode,
-  updateRoom,
-  getPlayersInRoom,
-  updatePlayer,
-  recordMove,
-  initializeGameWithStartingCards,
-  placeCardAndAdvanceTurn,
-  updatePlayerTimeline,
-  setCurrentSong,
-  endGame
 };
