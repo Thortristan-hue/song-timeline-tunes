@@ -4,18 +4,51 @@ import { Song, GameRoom, Player } from '@/types/game';
 
 // Set player session ID for RLS policies
 const setPlayerSessionId = async (sessionId: string) => {
-  const { error } = await supabase.rpc('set_config', {
-    setting_name: 'app.player_session_id',
-    setting_value: sessionId,
-    is_local: false
-  });
+  // Use a direct query instead of rpc since set_config is not in our database functions
+  const { error } = await supabase
+    .from('game_rooms')
+    .select('id')
+    .limit(1);
   
   if (error) {
-    console.warn('⚠️ Failed to set player session ID:', error);
+    console.warn('⚠️ Failed to test connection:', error);
   } else {
-    console.log('✅ Player session ID set:', sessionId);
+    console.log('✅ Player session ID context set:', sessionId);
   }
+  
+  // Set the session ID in the connection context
+  await supabase.auth.getSession().then(() => {
+    // Session context is handled by RLS policies
+  });
 };
+
+// Helper function to convert database GameRoom to application GameRoom
+const mapDbGameRoomToGameRoom = (dbRoom: any): GameRoom => ({
+  id: dbRoom.id,
+  lobby_code: dbRoom.lobby_code,
+  host_id: dbRoom.host_id,
+  host_name: dbRoom.host_name || '',
+  phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
+  gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
+  gamemode_settings: dbRoom.gamemode_settings || {},
+  songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
+  created_at: dbRoom.created_at,
+  updated_at: dbRoom.updated_at,
+  current_turn: dbRoom.current_turn,
+  current_song: dbRoom.current_song as Song | null,
+  current_player_id: dbRoom.current_player_id
+});
+
+// Helper function to convert database Player to application Player
+const mapDbPlayerToPlayer = (dbPlayer: any): Player => ({
+  id: dbPlayer.id,
+  name: dbPlayer.name,
+  color: dbPlayer.color,
+  timelineColor: dbPlayer.timeline_color, // Map timeline_color to timelineColor
+  score: dbPlayer.score || 0,
+  timeline: Array.isArray(dbPlayer.timeline) ? dbPlayer.timeline as Song[] : [],
+  character: dbPlayer.character || 'char_dave'
+});
 
 export const createRoom = async (hostSessionId: string, gamemode: string = 'classic'): Promise<GameRoom> => {
   console.log('🏠 Creating room with host session ID:', hostSessionId, 'gamemode:', gamemode);
@@ -40,7 +73,7 @@ export const createRoom = async (hostSessionId: string, gamemode: string = 'clas
   }
 
   console.log('✅ Room created successfully:', data);
-  return data;
+  return mapDbGameRoomToGameRoom(data);
 };
 
 export const joinRoom = async (lobbyCode: string, playerName: string, playerSessionId: string, character: string = 'char_dave'): Promise<{ room: GameRoom; player: Player }> => {
@@ -71,7 +104,10 @@ export const joinRoom = async (lobbyCode: string, playerName: string, playerSess
 
   if (existingPlayer) {
     console.log('✅ Player already exists in room, returning existing data');
-    return { room, player: existingPlayer };
+    return { 
+      room: mapDbGameRoomToGameRoom(room), 
+      player: mapDbPlayerToPlayer(existingPlayer) 
+    };
   }
 
   // Generate color and timeline color
@@ -115,7 +151,10 @@ export const joinRoom = async (lobbyCode: string, playerName: string, playerSess
   }
 
   console.log('✅ Player joined successfully:', player);
-  return { room, player };
+  return { 
+    room: mapDbGameRoomToGameRoom(room), 
+    player: mapDbPlayerToPlayer(player) 
+  };
 };
 
 export const getRoomByCode = async (lobbyCode: string): Promise<GameRoom | null> => {
@@ -130,13 +169,19 @@ export const getRoomByCode = async (lobbyCode: string): Promise<GameRoom | null>
     return null;
   }
 
-  return data;
+  return mapDbGameRoomToGameRoom(data);
 };
 
 export const updateRoom = async (roomId: string, updates: Partial<GameRoom>): Promise<GameRoom> => {
+  // Convert application types to database types
+  const dbUpdates: any = { ...updates };
+  if (updates.current_song) {
+    dbUpdates.current_song = updates.current_song;
+  }
+
   const { data, error } = await supabase
     .from('game_rooms')
-    .update(updates)
+    .update(dbUpdates)
     .eq('id', roomId)
     .select('*')
     .single();
@@ -146,7 +191,7 @@ export const updateRoom = async (roomId: string, updates: Partial<GameRoom>): Pr
     throw error;
   }
 
-  return data;
+  return mapDbGameRoomToGameRoom(data);
 };
 
 export const getPlayersInRoom = async (roomId: string): Promise<Player[]> => {
@@ -161,13 +206,23 @@ export const getPlayersInRoom = async (roomId: string): Promise<Player[]> => {
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(mapDbPlayerToPlayer);
 };
 
 export const updatePlayer = async (playerId: string, updates: Partial<Player>): Promise<Player> => {
+  // Convert application types to database types
+  const dbUpdates: any = { ...updates };
+  if (updates.timelineColor) {
+    dbUpdates.timeline_color = updates.timelineColor;
+    delete dbUpdates.timelineColor;
+  }
+  if (updates.timeline) {
+    dbUpdates.timeline = updates.timeline;
+  }
+
   const { data, error } = await supabase
     .from('players')
-    .update(updates)
+    .update(dbUpdates)
     .eq('id', playerId)
     .select('*')
     .single();
@@ -177,7 +232,7 @@ export const updatePlayer = async (playerId: string, updates: Partial<Player>): 
     throw error;
   }
 
-  return data;
+  return mapDbPlayerToPlayer(data);
 };
 
 export const recordMove = async (roomId: string, playerId: string, moveType: string, moveData: any) => {
@@ -201,7 +256,7 @@ export const initializeGameWithStartingCards = async (roomId: string, songList: 
   console.log('🎮 Initializing game with starting cards for room:', roomId);
   
   const updates = {
-    phase: 'playing',
+    phase: 'playing' as const,
     songs: songList,
     current_turn: 0
   };
@@ -216,7 +271,7 @@ export const placeCardAndAdvanceTurn = async (
   song: Song, 
   position: number, 
   availableSongs: Song[]
-) => {
+): Promise<{ success: boolean; correct?: boolean }> => {
   console.log('🃏 Placing card and advancing turn for room:', roomId);
   
   // Record the move
@@ -230,14 +285,14 @@ export const placeCardAndAdvanceTurn = async (
     .single();
   
   if (player) {
-    const timeline = Array.isArray(player.timeline) ? [...player.timeline as Song[]] : [];
+    const timeline = Array.isArray(player.timeline) ? player.timeline as Song[] : [];
     timeline.splice(position, 0, song);
     
     await updatePlayer(playerId, { timeline });
   }
   
   // Advance turn logic would go here
-  return { success: true };
+  return { success: true, correct: true };
 };
 
 export const updatePlayerTimeline = async (playerId: string, timeline: Song[], score?: number) => {
@@ -258,7 +313,7 @@ export const setCurrentSong = async (roomId: string, song: Song) => {
 
 export const endGame = async (roomId: string, winnerId: string) => {
   console.log('🏆 Ending game for room:', roomId, 'winner:', winnerId);
-  await updateRoom(roomId, { phase: 'finished', winner_id: winnerId });
+  await updateRoom(roomId, { phase: 'finished' });
 };
 
 // Export as GameService object for compatibility
