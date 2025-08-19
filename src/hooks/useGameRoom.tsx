@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,6 +9,23 @@ import { GameRoom, Player, Song, GameMode, GameModeSettings, GamePhase } from '@
 import { useGameStore } from '@/stores/gameStore';
 import { useClassicGameLogic } from './useClassicGameLogic';
 import { useSprintGameLogic } from './useSprintGameLogic';
+
+// Database-specific types
+interface DbGameRoom {
+  id: string;
+  lobby_code: string;
+  host_id: string;
+  host_name: string;
+  phase: 'lobby' | 'playing' | 'finished';
+  gamemode: 'classic' | 'fiend' | 'sprint';
+  gamemode_settings: GameModeSettings;
+  songs: Song[] | null;
+  created_at: string;
+  updated_at: string;
+  current_turn?: number;
+  current_song?: Song | null;
+  current_player_id?: string;
+}
 
 interface UseGameRoomReturn {
   roomData: GameRoom | null;
@@ -80,12 +98,12 @@ export function useGameRoom(): UseGameRoomReturn {
   const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
 
   // Helper function to convert database GameRoom to application GameRoom
-  const mapDbGameRoomToGameRoom = useCallback((dbRoom: any): GameRoom => ({
+  const mapDbGameRoomToGameRoom = useCallback((dbRoom: DbGameRoom): GameRoom => ({
     id: dbRoom.id,
     lobby_code: dbRoom.lobby_code,
     host_id: dbRoom.host_id,
     host_name: dbRoom.host_name || '',
-    phase: dbRoom.phase as GamePhase,
+    phase: dbRoom.phase as GamePhase, // Cast to broader type for application use
     gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
     gamemode_settings: dbRoom.gamemode_settings || {},
     songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
@@ -166,7 +184,7 @@ export function useGameRoom(): UseGameRoomReturn {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomData.id}` },
         (payload) => {
           if (payload.new) {
-            const mappedRoom = mapDbGameRoomToGameRoom(payload.new);
+            const mappedRoom = mapDbGameRoomToGameRoom(payload.new as DbGameRoom);
             setRoomData(mappedRoom);
             setPhase(mappedRoom.phase);
             if (mappedRoom.current_song) {
@@ -442,7 +460,7 @@ export function useGameRoom(): UseGameRoomReturn {
       const { error: resetError } = await supabase
         .from('game_rooms')
         .update({
-          phase: 'lobby' as GamePhase,
+          phase: 'lobby',
           current_song: null,
           current_turn: 0,
           songs: null
@@ -464,7 +482,7 @@ export function useGameRoom(): UseGameRoomReturn {
       }
 
       // Reset local state
-      setPhase('lobby');
+      setPhase('hostLobby');
       setCurrentSong(null);
 
     } catch (err: any) {
