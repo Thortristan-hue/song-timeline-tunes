@@ -81,16 +81,20 @@ const convertDbPlayer = (dbPlayer: DbPlayer): Player => {
   };
 };
 
-export const createRoom = async (hostSessionId: string, gamemode: string = 'classic'): Promise<GameRoom> => {
-  console.log('🏠 Creating room with host session ID:', hostSessionId, 'gamemode:', gamemode);
-  
-  // Set the session ID for RLS policies
-  await setPlayerSessionId(hostSessionId);
-  
+export const createRoom = async (gamemode: string = 'classic'): Promise<GameRoom> => {
+  console.log('🏠 Creating room with gamemode:', gamemode);
+
+  // Get the logged-in Supabase user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    console.error('❌ Failed to get Supabase user:', userError?.message);
+    throw userError ?? new Error("No authenticated user found");
+  }
+
   const { data, error } = await supabase
     .from('game_rooms')
     .insert({
-      host_id: hostSessionId,
+      host_id: user.id,
       gamemode,
       phase: 'lobby',
       gamemode_settings: gamemode === 'sprint' ? { target_score: 10 } : {}
@@ -106,8 +110,7 @@ export const createRoom = async (hostSessionId: string, gamemode: string = 'clas
   console.log('✅ Room created successfully:', data);
   return convertDbRoom(data);
 };
-
-export const joinRoom = async (lobbyCode: string, playerName: string, playerSessionId: string, character: string = 'char_dave'): Promise<{ room: GameRoom; player: Player }> => {
+export const joinRoom = async (lobbyCode: string, playerName: string, playerSessionId: string): Promise<{ room: GameRoom; player: Player }> => {
   console.log('🚪 Joining room with code:', lobbyCode, 'player:', playerName, 'session:', playerSessionId);
   
   // Set the session ID for RLS policies
