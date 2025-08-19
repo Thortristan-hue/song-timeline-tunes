@@ -15,7 +15,7 @@ interface DbGameRoom {
   lobby_code: string;
   host_id: string;
   host_name: string;
-  phase: string; // Database stores as string, we'll cast it
+  phase: 'lobby' | 'playing' | 'finished'; // Database stores only these three values
   gamemode: string; // Database stores as string, we'll cast it
   gamemode_settings: any; // JSON type from database
   songs: any; // JSON type from database
@@ -98,7 +98,7 @@ export function useGameRoom(): UseGameRoomReturn {
   const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
 
   // Helper function to convert database phase to application GamePhase
-  const mapDbPhaseToGamePhase = useCallback((dbPhase: string): GamePhase => {
+  const mapDbPhaseToGamePhase = useCallback((dbPhase: 'lobby' | 'playing' | 'finished'): GamePhase => {
     switch (dbPhase) {
       case 'lobby':
         return 'hostLobby';
@@ -112,7 +112,7 @@ export function useGameRoom(): UseGameRoomReturn {
   }, []);
 
   // Helper function to convert application GamePhase to database phase
-  const mapGamePhaseToDbPhase = useCallback((gamePhase: GamePhase): string => {
+  const mapGamePhaseToDbPhase = useCallback((gamePhase: GamePhase): 'lobby' | 'playing' | 'finished' => {
     switch (gamePhase) {
       case 'hostLobby':
       case 'mobileLobby':
