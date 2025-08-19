@@ -315,3 +315,19 @@ export const endGame = async (roomId: string, winnerId: string) => {
   console.log('🏆 Ending game for room:', roomId, 'winner:', winnerId);
   await updateRoom(roomId, { phase: 'finished' });
 };
+
+// Export as GameService object for compatibility
+export const GameService = {
+  createRoom,
+  joinRoom,
+  getRoomByCode,
+  updateRoom,
+  getPlayersInRoom,
+  updatePlayer,
+  recordMove,
+  initializeGameWithStartingCards,
+  placeCardAndAdvanceTurn,
+  updatePlayerTimeline,
+  setCurrentSong,
+  endGame
+};

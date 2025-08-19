@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { shallow } from 'zustand/shallow';
 
 import { supabase } from '@/integrations/supabase/client';
-import { GameRoom, Player, Song, GameMode } from '@/types/game';
+import { GameRoom, Player, Song, GameMode, GameModeSettings } from '@/types/game';
 import { useGameStore } from '@/stores/gameStore';
 import { useClassicGameLogic } from './useClassicGameLogic';
 import { useSprintGameLogic } from './useSprintGameLogic';
@@ -17,7 +16,7 @@ interface UseGameRoomReturn {
   isHost: boolean;
   isLoading: boolean;
   error: string | null;
-  createRoom: (gamemode: GameMode) => Promise<string | null>;
+  createRoom: (gamemode: GameMode, settings: GameModeSettings) => Promise<boolean>;
   joinRoom: (lobbyCode: string, playerName: string, character?: string) => Promise<boolean>;
   startGame: () => Promise<void>;
   placeCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean }>;
@@ -96,8 +95,8 @@ export function useGameRoom(): UseGameRoomReturn {
   );
 
   // Initialize game logic based on game mode
-  const classicGameLogic = useClassicGameLogic(roomData?.id, players, roomData, setCurrentSong);
-  const sprintGameLogic = useSprintGameLogic(roomData?.id, players, roomData, setCurrentSong);
+  const classicGameLogic = useClassicGameLogic(roomData?.id || null, players, roomData, setCurrentSong);
+  const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, setCurrentSong);
 
   // Helper function to convert database GameRoom to application GameRoom
   const mapDbGameRoomToGameRoom = useCallback((dbRoom: any): GameRoom => ({
@@ -235,13 +234,13 @@ export function useGameRoom(): UseGameRoomReturn {
   const currentPlayer = players.find(player => player.id.includes(playerSessionId)) || null;
 
   // Create room
-  const createRoom = useCallback(async (gamemode: GameMode): Promise<string | null> => {
+  const createRoom = useCallback(async (gamemode: GameMode, settings: GameModeSettings): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
     try {
       const { data: room, error: roomError } = await supabase.functions.invoke('create-game-room', {
-        body: { hostSessionId: playerSessionId, gamemode }
+        body: { hostSessionId: playerSessionId, gamemode, settings }
       });
 
       if (roomError) {
@@ -250,14 +249,14 @@ export function useGameRoom(): UseGameRoomReturn {
 
       if (room?.lobby_code) {
         navigate(`/?lobby=${room.lobby_code}`);
-        return room.lobby_code;
+        return true;
       } else {
         throw new Error('Failed to create room: Missing lobby code');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create room');
       toast.error(err.message || 'Failed to create room');
-      return null;
+      return false;
     } finally {
       setIsLoading(false);
     }
