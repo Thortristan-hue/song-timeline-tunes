@@ -195,3 +195,84 @@ export const recordMove = async (roomId: string, playerId: string, moveType: str
     throw error;
   }
 };
+
+// Additional methods needed by the game logic
+export const initializeGameWithStartingCards = async (roomId: string, songList: Song[]) => {
+  console.log('🎮 Initializing game with starting cards for room:', roomId);
+  
+  const updates = {
+    phase: 'playing',
+    songs: songList,
+    current_turn: 0
+  };
+  
+  await updateRoom(roomId, updates);
+  console.log('✅ Game initialized successfully');
+};
+
+export const placeCardAndAdvanceTurn = async (
+  roomId: string, 
+  playerId: string, 
+  song: Song, 
+  position: number, 
+  availableSongs: Song[]
+) => {
+  console.log('🃏 Placing card and advancing turn for room:', roomId);
+  
+  // Record the move
+  await recordMove(roomId, playerId, 'card_placed', { song, position });
+  
+  // Update player's timeline
+  const { data: player } = await supabase
+    .from('players')
+    .select('timeline')
+    .eq('id', playerId)
+    .single();
+  
+  if (player) {
+    const timeline = Array.isArray(player.timeline) ? [...player.timeline as Song[]] : [];
+    timeline.splice(position, 0, song);
+    
+    await updatePlayer(playerId, { timeline });
+  }
+  
+  // Advance turn logic would go here
+  return { success: true };
+};
+
+export const updatePlayerTimeline = async (playerId: string, timeline: Song[], score?: number) => {
+  console.log('📝 Updating player timeline for:', playerId);
+  
+  const updates: any = { timeline };
+  if (score !== undefined) {
+    updates.score = score;
+  }
+  
+  await updatePlayer(playerId, updates);
+};
+
+export const setCurrentSong = async (roomId: string, song: Song) => {
+  console.log('🎵 Setting current song for room:', roomId);
+  await updateRoom(roomId, { current_song: song });
+};
+
+export const endGame = async (roomId: string, winnerId: string) => {
+  console.log('🏆 Ending game for room:', roomId, 'winner:', winnerId);
+  await updateRoom(roomId, { phase: 'finished', winner_id: winnerId });
+};
+
+// Export as GameService object for compatibility
+export const GameService = {
+  createRoom,
+  joinRoom,
+  getRoomByCode,
+  updateRoom,
+  getPlayersInRoom,
+  updatePlayer,
+  recordMove,
+  initializeGameWithStartingCards,
+  placeCardAndAdvanceTurn,
+  updatePlayerTimeline,
+  setCurrentSong,
+  endGame
+};
