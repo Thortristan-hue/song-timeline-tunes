@@ -1,6 +1,6 @@
 
 import { useEffect, useCallback, useState } from 'react';
-import { supabaseRealtimeService } from '@/services/supabaseRealtimeService';
+import { reliableWebSocketService } from '@/services/reliableWebSocketService';
 import { connectionManager, ConnectionState } from '@/services/connectionManager';
 import { Song, Player, GameRoom } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
@@ -39,23 +39,23 @@ export function useWebSocketGameSync(
   // Connect when room ID is available
   useEffect(() => {
     if (!roomId) {
-      supabaseRealtimeService.disconnect();
+      reliableWebSocketService.disconnect();
       return;
     }
 
     const connectToRoom = async () => {
       try {
-        await supabaseRealtimeService.connect(roomId);
-        console.log('🔗 Supabase real-time sync established for room:', roomId);
+        await reliableWebSocketService.connect(roomId);
+        console.log('🔗 WebSocket sync established for room:', roomId);
       } catch (error) {
-        console.error('❌ Failed to establish Supabase real-time sync:', error);
+        console.error('❌ Failed to establish WebSocket sync:', error);
       }
     };
 
     connectToRoom();
 
     return () => {
-      supabaseRealtimeService.disconnect();
+      reliableWebSocketService.disconnect();
     };
   }, [roomId]);
 
@@ -90,13 +90,13 @@ export function useWebSocketGameSync(
 
     // Register all handlers
     Object.entries(handlers).forEach(([event, handler]) => {
-      supabaseRealtimeService.on(event, handler);
+      reliableWebSocketService.on(event, handler);
     });
 
     return () => {
       // Cleanup all handlers
       Object.entries(handlers).forEach(([event, handler]) => {
-        supabaseRealtimeService.off(event, handler);
+        reliableWebSocketService.off(event, handler);
       });
     };
   }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted]);
@@ -107,7 +107,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    supabaseRealtimeService.broadcastMessage({
+    reliableWebSocketService.sendMessage({
       type: 'PLAYER_UPDATE',
       roomId,
       data: players
@@ -120,7 +120,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    supabaseRealtimeService.broadcastMessage({
+    reliableWebSocketService.sendMessage({
       type: 'GAME_START',
       roomId,
       data: { timestamp: Date.now() }
@@ -133,7 +133,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    supabaseRealtimeService.broadcastMessage({
+    reliableWebSocketService.sendMessage({
       type: 'CARD_PLACED',
       roomId,
       data: cardData
@@ -146,7 +146,7 @@ export function useWebSocketGameSync(
       return;
     }
     
-    supabaseRealtimeService.broadcastMessage({
+    reliableWebSocketService.sendMessage({
       type: 'SONG_SET',
       roomId,
       data: song
@@ -160,17 +160,17 @@ export function useWebSocketGameSync(
     }
     
     console.log('📦 Sending HOST_SET_SONGS with', songList.length, 'songs');
-    supabaseRealtimeService.sendHostSetSongs(roomId, songList, hostId);
+    reliableWebSocketService.sendHostSetSongs(roomId, songList, hostId);
   }, [roomId, syncState.isReady]);
 
   const setHostStatus = useCallback((isHost: boolean) => {
-    supabaseRealtimeService.setHostStatus(isHost);
+    reliableWebSocketService.setHostStatus(isHost);
   }, []);
 
   const forceReconnect = useCallback(() => {
     if (roomId) {
       connectionManager.resetRetries();
-      supabaseRealtimeService.connect(roomId);
+      reliableWebSocketService.connect(roomId);
     }
   }, [roomId]);
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Song, Player, GameRoom } from '@/types/game';
 import { defaultPlaylistService } from '@/services/defaultPlaylistService';
@@ -261,6 +262,15 @@ export function useClassicGameLogic(
             ...prev,
             currentSong: nextSong,
             usedSongs: [...prev.usedSongs, song]
+          }));
+        }
+
+        // Check if game ended
+        if (result.gameEnded && result.winner) {
+          setGameState(prev => ({
+            ...prev,
+            winner: result.winner!,
+            phase: 'finished'
           }));
         }
 
