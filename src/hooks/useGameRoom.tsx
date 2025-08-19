@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { supabase } from '@/integrations/supabase/client';
-import { GameRoom, Player, Song, GameMode, GameModeSettings } from '@/types/game';
+import { GameRoom, Player, Song, GameMode, GameModeSettings, GamePhase } from '@/types/game';
 import { useGameStore } from '@/stores/gameStore';
 import { useClassicGameLogic } from './useClassicGameLogic';
 import { useSprintGameLogic } from './useSprintGameLogic';
@@ -69,9 +70,14 @@ export function useGameRoom(): UseGameRoomReturn {
     setHighlightedGapIndex
   } = useGameStore();
 
+  // Create async wrapper for setCurrentSong
+  const asyncSetCurrentSong = useCallback(async (song: Song): Promise<void> => {
+    setCurrentSong(song);
+  }, [setCurrentSong]);
+
   // Initialize game logic based on game mode
-  const classicGameLogic = useClassicGameLogic(roomData?.id || null, players, roomData, setCurrentSong);
-  const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, setCurrentSong);
+  const classicGameLogic = useClassicGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
+  const sprintGameLogic = useSprintGameLogic(roomData?.id || null, players, roomData, asyncSetCurrentSong);
 
   // Helper function to convert database GameRoom to application GameRoom
   const mapDbGameRoomToGameRoom = useCallback((dbRoom: any): GameRoom => ({
@@ -79,7 +85,7 @@ export function useGameRoom(): UseGameRoomReturn {
     lobby_code: dbRoom.lobby_code,
     host_id: dbRoom.host_id,
     host_name: dbRoom.host_name || '',
-    phase: dbRoom.phase as 'lobby' | 'playing' | 'finished',
+    phase: dbRoom.phase as GamePhase,
     gamemode: dbRoom.gamemode as 'classic' | 'fiend' | 'sprint',
     gamemode_settings: dbRoom.gamemode_settings || {},
     songs: Array.isArray(dbRoom.songs) ? dbRoom.songs as Song[] : [],
@@ -436,7 +442,7 @@ export function useGameRoom(): UseGameRoomReturn {
       const { error: resetError } = await supabase
         .from('game_rooms')
         .update({
-          phase: 'lobby',
+          phase: 'lobby' as GamePhase,
           current_song: null,
           current_turn: 0,
           songs: null
