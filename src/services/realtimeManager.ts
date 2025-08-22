@@ -82,10 +82,10 @@ export class RealtimeManager {
               break;
               
             case 'CHANNEL_ERROR': {
-              console.error('❌ Realtime channel error:', err);
               // Safely handle error object to prevent cyclic reference issues
               const errorMessage = err instanceof Error ? err.message : 
                                    (typeof err === 'string' ? err : 'Channel error');
+              console.error('❌ Realtime channel error:', errorMessage);
               reject(new Error(errorMessage));
               break;
             }

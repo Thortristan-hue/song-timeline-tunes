@@ -184,8 +184,11 @@ export class ReliableWebSocketService {
   }
 
   private handleError(error: Event) {
-    console.error('❌ WebSocket error:', error);
-    this.handleConnectionError('WebSocket error occurred');
+    // Safely handle error to prevent cyclic reference issues
+    const errorMessage = error instanceof ErrorEvent ? 
+      (error.message || 'WebSocket connection error') : 'WebSocket error occurred';
+    console.error('❌ WebSocket error:', errorMessage);
+    this.handleConnectionError(errorMessage);
   }
 
   private handleConnectionError(message: string) {
