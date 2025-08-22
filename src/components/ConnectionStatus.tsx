@@ -40,7 +40,13 @@ export function ConnectionStatus({
   }
 
   const isAnyReconnecting = isReconnecting || wsReconnecting;
-  const primaryError = wsError || lastError;
+  
+  // Safely handle primary error to prevent cyclic reference issues
+  const rawPrimaryError = wsError || lastError;
+  const primaryError = rawPrimaryError ? 
+    (typeof rawPrimaryError === 'string' ? rawPrimaryError : 
+     rawPrimaryError instanceof Error ? rawPrimaryError.message : 
+     'Connection error') : null;
 
   return (
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">
@@ -58,7 +64,7 @@ export function ConnectionStatus({
               </span>
             ) : (
               <span>
-                Connection lost. {primaryError && `${primaryError}`}
+                Connection lost.{primaryError && ` ${primaryError}`}
               </span>
             )}
           </AlertDescription>

@@ -81,10 +81,14 @@ export class RealtimeManager {
               connectionManager.updateState({ isConnected: false });
               break;
               
-            case 'CHANNEL_ERROR':
+            case 'CHANNEL_ERROR': {
               console.error('❌ Realtime channel error:', err);
-              reject(err || new Error('Channel error'));
+              // Safely handle error object to prevent cyclic reference issues
+              const errorMessage = err instanceof Error ? err.message : 
+                                   (typeof err === 'string' ? err : 'Channel error');
+              reject(new Error(errorMessage));
               break;
+            }
           }
         });
       });
@@ -93,7 +97,10 @@ export class RealtimeManager {
       
     } catch (error) {
       console.error('❌ Failed to setup realtime subscriptions:', error);
-      connectionManager.setError(error instanceof Error ? error.message : 'Realtime connection failed');
+      // Safely extract error message to prevent cyclic reference issues
+      const errorMessage = error instanceof Error ? error.message : 
+                           (typeof error === 'string' ? error : 'Realtime connection failed');
+      connectionManager.setError(errorMessage);
       
       // Schedule reconnect
       this.scheduleReconnect();
