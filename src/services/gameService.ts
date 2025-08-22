@@ -133,7 +133,23 @@ export const joinRoom = async (lobbyCode: string, playerName: string, playerSess
     .single();
 
   if (existingPlayer) {
-  console.log('✅ Player already exists in room, returning existing data');
+    console.log('✅ Player already exists in room, checking character:', existingPlayer.character);
+    
+    // Update character if it's different from what's stored
+    if (existingPlayer.character !== character) {
+      console.log('🔄 Updating existing player character from', existingPlayer.character, 'to', character);
+      const { data: updatedPlayer, error: updateError } = await supabase
+        .from('players')
+        .update({ character })
+        .eq('id', existingPlayer.id)
+        .select('*')
+        .single();
+      
+      if (!updateError && updatedPlayer) {
+        return { room: convertDbRoom(room), player: convertDbPlayer(updatedPlayer) };
+      }
+    }
+    
     return { room: convertDbRoom(room), player: convertDbPlayer(existingPlayer) };
   }
 

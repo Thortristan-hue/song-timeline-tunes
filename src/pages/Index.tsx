@@ -145,13 +145,16 @@ function Index() {
         setPlayerName(name);
         
         // If character was selected during setup, update the player with character info
+        // Set character after successful join - use a timeout to ensure player is created first
         if (characterId) {
-          try {
-            await handleUpdatePlayer(name, characterId);
-            console.log('✅ Character set during join:', characterId);
-          } catch (error) {
-            console.warn('⚠️ Failed to set character during join, can be set later:', error);
-          }
+          setTimeout(async () => {
+            try {
+              await handleUpdatePlayer(name, characterId);
+              console.log('✅ Character set during join:', characterId);
+            } catch (error) {
+              console.warn('⚠️ Failed to set character during join, can be set later:', error);
+            }
+          }, 500);
         }
         
         setGamePhase('mobileLobby');

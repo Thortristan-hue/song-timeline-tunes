@@ -89,7 +89,9 @@ export class SupabaseRealtimeService {
       // Subscribe to the channel
       const response = await this.channel.subscribe();
       
-      if (response === 'SUBSCRIBED' as any) {
+      console.log('📡 Subscription response:', response);
+      
+      if ((response as any) === 'SUBSCRIBED') {
         this.connectionStatus = 'connected';
         console.log('✅ Connected to realtime for room:', roomId);
         
@@ -100,7 +102,8 @@ export class SupabaseRealtimeService {
           is_host: this.isHost
         });
       } else {
-        throw new Error(`Failed to subscribe: ${response}`);
+        console.error('❌ Failed to subscribe to channel:', response);
+        throw new Error(`Failed to subscribe to realtime channel. Status: ${JSON.stringify(response)}`);
       }
 
     } catch (error) {
