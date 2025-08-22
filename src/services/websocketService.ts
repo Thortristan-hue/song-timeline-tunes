@@ -117,9 +117,12 @@ export class WebSocketService {
         };
 
         this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
+          // Safely handle error to prevent cyclic reference issues
+          const errorMessage = error instanceof ErrorEvent ? 
+            (error.message || 'WebSocket connection error') : 'WebSocket error';
+          console.error('❌ WebSocket error:', errorMessage);
           this.isConnecting = false;
-          reject(error);
+          reject(new Error(errorMessage));
         };
 
       } catch (error) {

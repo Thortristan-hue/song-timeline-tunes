@@ -107,9 +107,12 @@ export class SupabaseRealtimeService {
       }
 
     } catch (error) {
-      console.error('❌ Failed to connect to realtime:', error);
+      // Safely handle error to prevent cyclic reference issues
+      const errorMessage = error instanceof Error ? error.message : 
+                           (typeof error === 'string' ? error : 'Failed to connect to realtime');
+      console.error('❌ Failed to connect to realtime:', errorMessage);
       this.connectionStatus = 'disconnected';
-      throw error;
+      throw new Error(errorMessage);
     }
   }
 
