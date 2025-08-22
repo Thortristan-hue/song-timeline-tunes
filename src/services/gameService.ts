@@ -81,20 +81,16 @@ const convertDbPlayer = (dbPlayer: DbPlayer): Player => {
   };
 };
 
-export const createRoom = async (gamemode: string = 'classic'): Promise<GameRoom> => {
-  console.log('🏠 Creating room with gamemode:', gamemode);
-
-  // Get the logged-in Supabase user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    console.error('❌ Failed to get Supabase user:', userError?.message);
-    throw userError ?? new Error("No authenticated user found");
-  }
-
+export const createRoom = async (hostSessionId: string, gamemode: string = 'classic'): Promise<GameRoom> => {
+  console.log('🏠 Creating room with host session ID:', hostSessionId, 'gamemode:', gamemode);
+  
+  // Set the session ID for RLS policies
+  await setPlayerSessionId(hostSessionId);
+  
   const { data, error } = await supabase
     .from('game_rooms')
     .insert({
-      host_id: user.id,
+      host_id: hostSessionId,
       gamemode,
       phase: 'lobby',
       gamemode_settings: gamemode === 'sprint' ? { target_score: 10 } : {}
@@ -110,7 +106,7 @@ export const createRoom = async (gamemode: string = 'classic'): Promise<GameRoom
   console.log('✅ Room created successfully:', data);
   return convertDbRoom(data);
 };
-export const joinRoom = async (lobbyCode: string, playerName: string, playerSessionId: string): Promise<{ room: GameRoom; player: Player }> => {
+export const joinRoom = async (lobbyCode: string, playerName: string, playerSessionId: string, character: string = 'char_dave'): Promise<{ room: GameRoom; player: Player }> => {
   console.log('🚪 Joining room with code:', lobbyCode, 'player:', playerName, 'session:', playerSessionId);
   
   // Set the session ID for RLS policies
@@ -246,6 +242,9 @@ export const updatePlayer = async (playerId: string, updates: Partial<Player>): 
   if (updates.timelineColor) {
     dbUpdates.timeline_color = updates.timelineColor;
     delete dbUpdates.timelineColor;
+  }
+  if (updates.character) {
+    dbUpdates.character = updates.character;
   }
 
   const { data, error } = await supabase
