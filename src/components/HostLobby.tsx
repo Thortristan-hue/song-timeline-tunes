@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -151,12 +151,13 @@ export function HostLobby({
     }
   };
 
-  // Play sound when players join
+  // Play sound when new players join (debounced)
+  const previousPlayerCount = useMemo(() => players.length, []);
   useEffect(() => {
-    if (players.length > 0) {
+    if (players.length > previousPlayerCount && previousPlayerCount > 0) {
       soundEffects.playPlayerJoin();
     }
-  }, [players.length, soundEffects]);
+  }, [players.length, previousPlayerCount, soundEffects]);
 
   if (false && (!roomCreated || isLoading)) { // Temporarily disabled for testing
     return (
@@ -227,8 +228,11 @@ export function HostLobby({
     );
   }
 
-  const gameUrl = `${window.location.origin}?join=${lobbyCode || 'TEST123'}`;
-  console.log('🔗 Generated QR code URL:', gameUrl);
+  const gameUrl = useMemo(() => {
+    const url = `${window.location.origin}?join=${lobbyCode || 'TEST123'}`;
+    console.log('🔗 Generated QR code URL:', url);
+    return url;
+  }, [lobbyCode]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#161616] to-[#0e0e0e] relative overflow-hidden">

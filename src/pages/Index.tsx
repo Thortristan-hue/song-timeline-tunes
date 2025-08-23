@@ -46,18 +46,20 @@ function Index() {
     kickPlayer
   } = useGameRoom();
 
-  // Enhanced debugging for phase transitions
-  console.log('📱 Index render - Phase transition debug:', {
-    gamePhase,
-    roomPhase: room?.phase,
-    isHost,
-    playersCount: players.length,
-    currentPlayer: currentPlayer?.name,
-    autoJoinCode,
-    gameInitialized,
-    isLoading,
-    wsReady: wsState.isReady
-  });
+  // Reduced debug logging to prevent console spam
+  useEffect(() => {
+    const debugInterval = setInterval(() => {
+      console.log('📱 Index debug - Phase status:', {
+        gamePhase,
+        roomPhase: room?.phase,
+        isHost,
+        playersCount: players.length,
+        wsReady: wsState.isReady
+      });
+    }, 5000); // Only log every 5 seconds
+
+    return () => clearInterval(debugInterval);
+  }, [gamePhase, room?.phase, isHost, players.length, wsState.isReady]);
 
   // Enhanced auto-join from URL parameters (QR code)
   useEffect(() => {
@@ -171,11 +173,17 @@ function Index() {
   const handleStartGame = async () => {
     try {
       console.log('🎮 Host starting game...');
-      await startGame();
-      // Note: Phase transition will be handled by the room phase listener
-      soundEffects.playGameStart();
+      const success = await startGame();
+      if (success) {
+        // Note: Phase transition will be handled by the room phase listener
+        soundEffects.playGameStart();
+        console.log('✅ Game started successfully from host lobby');
+      } else {
+        console.error('❌ Game start returned false');
+      }
     } catch (error) {
-      console.error('Failed to start game:', error);
+      console.error('❌ Failed to start game:', error);
+      // Error handling is done in the startGame function
     }
   };
 

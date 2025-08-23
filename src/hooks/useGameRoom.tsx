@@ -552,6 +552,7 @@ export function useGameRoom() {
       }
       
       console.log('✅ Game start process initiated');
+      setIsLoading(false);
       return true;
     } catch (error) {
       console.error('❌ Failed to start game:', error);
