@@ -151,13 +151,14 @@ export function HostLobby({
     }
   };
 
-  // Play sound when new players join (debounced)
-  const previousPlayerCount = useMemo(() => players.length, []);
+  // Fixed: Properly track previous player count to prevent spam
+  const [prevPlayerCount, setPrevPlayerCount] = useState(0);
   useEffect(() => {
-    if (players.length > previousPlayerCount && previousPlayerCount > 0) {
+    if (players.length > prevPlayerCount && prevPlayerCount > 0) {
       soundEffects.playPlayerJoin();
     }
-  }, [players.length, previousPlayerCount, soundEffects]);
+    setPrevPlayerCount(players.length);
+  }, [players.length, prevPlayerCount, soundEffects]);
 
   if (false && (!roomCreated || isLoading)) { // Temporarily disabled for testing
     return (
@@ -228,9 +229,9 @@ export function HostLobby({
     );
   }
 
-  const gameUrl = useMemo(() => {
-    const url = `${window.location.origin}?join=${lobbyCode || 'TEST123'}`;
-    console.log('🔗 Generated QR code URL:', url);
+  const gameUrl = React.useMemo(() => {
+    if (!lobbyCode) return `${window.location.origin}?join=TEST123`;
+    const url = `${window.location.origin}?join=${lobbyCode}`;
     return url;
   }, [lobbyCode]);
 
@@ -557,10 +558,15 @@ export function HostLobby({
             <div className="flex flex-col">
               {/* Start Game Button - Moved to top */}
               <Button
-                onClick={() => {
-                  console.log('🎮 Starting game with players:', players);
+                onClick={async () => {
+                  console.log('🎮 Start button clicked with players:', players.length);
                   soundEffects.playGameStart();
-                  onStartGame();
+                  try {
+                    await onStartGame();
+                    console.log('✅ onStartGame completed');
+                  } catch (error) {
+                    console.error('❌ onStartGame failed:', error);
+                  }
                 }}
                 disabled={displayPlayers.length < 1}
                 className="w-full bg-gradient-to-r from-[#a53b8b] to-[#4a4f5b] text-white h-14 text-lg font-semibold rounded-xl transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 border-0 tracking-tight relative overflow-hidden group mb-4"

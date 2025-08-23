@@ -520,46 +520,24 @@ export function useGameRoom() {
         console.log(`🎯 RESILIENT RESULT: ${songsToUse.length} songs with previews after processing`);
       }
       
-      // NEW FLOW: Send songs to "server" via WebSocket first
-      if (songsToUse && songsToUse.length > 0) {
-        console.log('📦 HOST: Sending songs to server via WebSocket...');
-        
-        // Send HOST_SET_SONGS event - this will trigger server simulation
-        sendHostSetSongs(songsToUse, hostSessionId.current || '');
-        
-        // The server simulation will store songs and broadcast GAME_STARTED
-        // All clients (including host) will receive GAME_STARTED and update their state
-        console.log('✅ HOST_SET_SONGS sent, waiting for server response...');
-        
-        // Store songs in database as backup/persistence (but don't change phase here)
-        const { error: songsError } = await supabase
-          .from('game_rooms')
-          .update({ 
-            songs: songsToUse as unknown as Json
-          })
-          .eq('id', room.id);
-
-        if (songsError) {
-          console.error('❌ Failed to store songs in database:', songsError);
-          // Continue anyway since WebSocket sync is primary
-        }
-        
-        // REMOVED: Client-side game initialization - let WebSocket server handle it
-        // The server will call GameService.initializeGameWithStartingCards and set phase to 'playing'
-      } else {
-        console.log('⚠️ No songs available, cannot start game');
-        throw new Error('No songs available for game start');
-      }
+      // FIXED: Directly call GameService to start the game instead of relying on WebSocket simulation
+      console.log('🎯 Starting game directly with GameService...');
       
-      console.log('✅ Game start process initiated');
+      await GameService.initializeGameWithStartingCards(room.id, songsToUse);
+      
+      // Update the local room state to playing
+      setRoom(prev => prev ? { ...prev, phase: 'playing', songs: songsToUse } : null);
+      setGameInitialized(true);
+      console.log('✅ Game started successfully via GameService');
       setIsLoading(false);
       return true;
+      
     } catch (error) {
       console.error('❌ Failed to start game:', error);
       setIsLoading(false);
       throw error; // Re-throw to let caller handle the error
     }
-  }, [room, isHost, sendHostSetSongs, hostSessionId]);
+  }, [room, isHost]);
 
   const placeCard = useCallback(async (song: Song, position: number, availableSongs: Song[] = []): Promise<{ success: boolean; correct?: boolean }> => {
     if (!currentPlayer || !room) {

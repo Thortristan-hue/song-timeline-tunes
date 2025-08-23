@@ -172,18 +172,17 @@ function Index() {
 
   const handleStartGame = async () => {
     try {
-      console.log('🎮 Host starting game...');
+      console.log('🎮 Host handleStartGame called');
+      console.log('🎮 Room state:', { roomId: room?.id, isHost, playersCount: players.length });
       const success = await startGame();
       if (success) {
-        // Note: Phase transition will be handled by the room phase listener
+        console.log('✅ startGame() returned success');
         soundEffects.playGameStart();
-        console.log('✅ Game started successfully from host lobby');
       } else {
-        console.error('❌ Game start returned false');
+        console.error('❌ startGame() returned false');
       }
     } catch (error) {
-      console.error('❌ Failed to start game:', error);
-      // Error handling is done in the startGame function
+      console.error('❌ handleStartGame error:', error);
     }
   };
 
