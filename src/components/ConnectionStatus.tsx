@@ -45,8 +45,8 @@ export function ConnectionStatus({
   const rawPrimaryError = wsError || lastError;
   const primaryError = rawPrimaryError ? 
     (typeof rawPrimaryError === 'string' ? rawPrimaryError : 
-     rawPrimaryError instanceof Error ? rawPrimaryError.message : 
-     'Connection error') : null;
+     (rawPrimaryError && typeof rawPrimaryError === 'object' && 'message' in rawPrimaryError ? 
+      (rawPrimaryError as any).message : 'Connection error')) : null;
 
   return (
     <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4">

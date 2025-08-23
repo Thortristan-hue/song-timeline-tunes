@@ -86,24 +86,40 @@ export class SupabaseRealtimeService {
           console.log('👋 Player left:', key, leftPresences);
         });
 
-      // Subscribe to the channel
-      const response = await this.channel.subscribe();
+      // Subscribe to the channel with proper callback handling
+      const subscribePromise = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Subscription timeout after 10 seconds'));
+        }, 10000);
+
+        this.channel?.subscribe((status, err) => {
+          clearTimeout(timeout);
+          console.log('📡 Subscription status:', status, err);
+          
+          if (status === 'SUBSCRIBED') {
+            this.connectionStatus = 'connected';
+            console.log('✅ Connected to realtime for room:', roomId);
+            resolve();
+          } else if (status === 'TIMED_OUT') {
+            reject(new Error('Subscription timed out'));
+          } else if (status === 'CLOSED') {
+            reject(new Error('Channel closed'));
+          } else if (status === 'CHANNEL_ERROR') {
+            const errorMsg = err ? (typeof err === 'string' ? err : JSON.stringify(err)) : 'Channel error';
+            reject(new Error(errorMsg));
+          }
+        });
+      });
+
+      await subscribePromise;
       
-      console.log('📡 Subscription response:', response);
-      
-      if ((response as any) === 'SUBSCRIBED') {
-        this.connectionStatus = 'connected';
-        console.log('✅ Connected to realtime for room:', roomId);
-        
-        // Track our presence
+      // Track our presence after successful connection
+      if (this.channel) {
         await this.channel.track({
           user_id: `user-${Date.now()}`,
           online_at: new Date().toISOString(),
           is_host: this.isHost
         });
-      } else {
-        console.error('❌ Failed to subscribe to channel:', response);
-        throw new Error(`Failed to subscribe to realtime channel. Status: ${JSON.stringify(response)}`);
       }
 
     } catch (error) {
@@ -138,7 +154,7 @@ export class SupabaseRealtimeService {
 
   async sendMessage(message: Partial<GameMessage>): Promise<RealtimeChannelSendResponse> {
     if (!this.channel || this.connectionStatus !== 'connected') {
-      console.warn('⚠️ Cannot send message - not connected');
+      console.warn('⚠️ Cannot send message - not connected, status:', this.connectionStatus);
       return 'error';
     }
 
@@ -155,7 +171,7 @@ export class SupabaseRealtimeService {
       sender: this.isHost ? 'host' : 'player'
     };
 
-    console.log('📤 Sending realtime message:', fullMessage);
+    console.log('📤 Sending realtime message:', fullMessage.type, 'to room:', this.currentRoomId);
 
     try {
       const response = await this.channel.send({
@@ -163,6 +179,12 @@ export class SupabaseRealtimeService {
         event: 'game-message',
         payload: fullMessage
       });
+
+      if (response === 'ok') {
+        console.log('✅ Message sent successfully');
+      } else {
+        console.warn('⚠️ Message send response:', response);
+      }
 
       return response;
     } catch (error) {
