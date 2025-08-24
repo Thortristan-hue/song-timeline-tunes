@@ -9,6 +9,7 @@ import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
 import { AudioPlayer } from '@/components/AudioPlayer';
+import { Music2 } from 'lucide-react';
 
 interface GamePlayProps {
   room: GameRoom;
@@ -173,7 +174,17 @@ export function GamePlay({
   };
 
   if (!gameLogic) {
-    return <div>Loading game...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-secondary/20 flex items-center justify-center">
+        <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl text-center space-y-4">
+          <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-primary/60 rounded-full animate-spin-slow flex items-center justify-center">
+            <Music2 className="w-8 h-8 text-primary-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold">Loading Game...</h2>
+          <p className="text-muted-foreground">Setting up your timeline experience</p>
+        </div>
+      </div>
+    );
   }
 
   // Show victory screen

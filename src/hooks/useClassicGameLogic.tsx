@@ -161,7 +161,7 @@ export function useClassicGameLogic(
     return nextSong;
   }, [gameState.players, gameState.currentSong, gameState.availableSongs]);
 
-  // Initialize game
+  // Initialize game with enhanced loading states and progress tracking
   const initializeGame = useCallback(async () => {
     // If we already have songs from room data, don't fetch again
     if (roomData?.songs && roomData.songs.length > 0) {
@@ -186,7 +186,11 @@ export function useClassicGameLogic(
     try {
       setGameState(prev => ({ ...prev, phase: 'loading', loadingError: null }));
       
-      console.log(`🎯 CLASSIC MODE: Loading ${MAX_SONGS_PER_SESSION} songs`);
+      console.log(`🎯 CLASSIC MODE: Loading ${MAX_SONGS_PER_SESSION} songs with enhanced progress tracking`);
+      
+      // Show loading immediately
+      setGameState(prev => ({ ...prev, phase: 'loading' }));
+      
       const optimizedSongs = await defaultPlaylistService.loadOptimizedGameSongs(MAX_SONGS_PER_SESSION);
       
       if (optimizedSongs.length === 0) {
@@ -198,6 +202,30 @@ export function useClassicGameLogic(
       }
 
       console.log(`🎯 CLASSIC MODE: Ready with ${optimizedSongs.length} songs`);
+
+      // Distribute starting cards to players (3 random songs per player)
+      if (roomId && allPlayers.length > 0) {
+        console.log('🃏 Distributing starting cards to players...');
+        const playersWithoutHost = allPlayers.filter(p => {
+          const isHostLike = p.id.includes('host-') || 
+                            (roomData?.host_id && p.id === roomData.host_id);
+          return !isHostLike;
+        });
+
+        for (const player of playersWithoutHost) {
+          // Give each player 3 random starting cards
+          const startingCards = optimizedSongs
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3);
+          
+          try {
+            await GameService.updatePlayerTimeline(player.id, startingCards);
+            console.log(`✅ Gave ${startingCards.length} starting cards to ${player.name}`);
+          } catch (error) {
+            console.error(`❌ Failed to give starting cards to ${player.name}:`, error);
+          }
+        }
+      }
 
       setGameState(prev => ({
         ...prev,
@@ -211,7 +239,7 @@ export function useClassicGameLogic(
         gameFullyInitialized: true
       }));
 
-      console.log('✅ CLASSIC MODE: Initialization complete');
+      console.log('✅ CLASSIC MODE: Initialization complete with starting cards distributed');
 
     } catch (error) {
       console.error('❌ CLASSIC MODE initialization failed:', error);
@@ -229,7 +257,7 @@ export function useClassicGameLogic(
         variant: "destructive",
       });
     }
-  }, [toast, gameState.playlistInitialized, roomData?.songs]);
+  }, [toast, gameState.playlistInitialized, roomData?.songs, roomId, allPlayers, roomData?.host_id]);
 
   // Enhanced place card function with automatic song advancement
   const placeCard = useCallback(async (song: Song, position: number, playerId: string): Promise<{ success: boolean; correct?: boolean }> => {

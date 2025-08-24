@@ -525,10 +525,29 @@ export function useGameRoom() {
       
       await GameService.initializeGameWithStartingCards(room.id, songsToUse);
       
+      // Distribute starting cards to all non-host players
+      console.log('🃏 Distributing starting cards to players...');
+      const nonHostPlayers = players.filter(p => 
+        !p.id.includes('host-') && p.id !== room.host_id
+      );
+      
+      for (const player of nonHostPlayers) {
+        const startingCards = songsToUse
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3);
+        
+        try {
+          await GameService.updatePlayerTimeline(player.id, startingCards);
+          console.log(`✅ Gave ${startingCards.length} starting cards to ${player.name}`);
+        } catch (error) {
+          console.error(`❌ Failed to give starting cards to ${player.name}:`, error);
+        }
+      }
+      
       // Update the local room state to playing
       setRoom(prev => prev ? { ...prev, phase: 'playing', songs: songsToUse } : null);
       setGameInitialized(true);
-      console.log('✅ Game started successfully via GameService');
+      console.log('✅ Game started successfully via GameService with starting cards distributed');
       setIsLoading(false);
       return true;
       

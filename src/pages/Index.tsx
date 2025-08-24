@@ -9,6 +9,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GameErrorBoundary } from '@/components/GameErrorBoundary';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
+import { LoadingScreen, GameLoadingScreen } from '@/components/LoadingScreen';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Song, GamePhase, Player } from '@/types/game';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -315,27 +316,36 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
-            <GamePlay
-              room={room}
-              players={players}
-              currentPlayer={currentPlayer}
-              isHost={isHost}
-              onPlaceCard={handlePlaceCard}
-              onSetCurrentSong={setCurrentSong}
-              customSongs={customSongs}
-              connectionStatus={{
-                isConnected: connectionStatus.isConnected && wsState.isConnected,
-                isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
-                lastError: connectionStatus.lastError || wsState.lastError,
-                retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
-              }}
-              onReconnect={() => {
-                forceReconnect();
-                wsReconnect();
-              }}
-              onReplayGame={handlePlayAgain}
-            />
+          {gamePhase === 'playing' && (
+            <>
+              {/* Show loading screen if game is starting but not ready */}
+              {isLoading && !gameInitialized ? (
+                <GameLoadingScreen />
+              ) : room && currentPlayer ? (
+                <GamePlay
+                  room={room}
+                  players={players}
+                  currentPlayer={currentPlayer}
+                  isHost={isHost}
+                  onPlaceCard={handlePlaceCard}
+                  onSetCurrentSong={setCurrentSong}
+                  customSongs={customSongs}
+                  connectionStatus={{
+                    isConnected: connectionStatus.isConnected && wsState.isConnected,
+                    isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
+                    lastError: connectionStatus.lastError || wsState.lastError,
+                    retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
+                  }}
+                  onReconnect={() => {
+                    forceReconnect();
+                    wsReconnect();
+                  }}
+                  onReplayGame={handlePlayAgain}
+                />
+              ) : (
+                <GameLoadingScreen />
+              )}
+            </>
           )}
 
           {gamePhase === 'finished' && winner && (
