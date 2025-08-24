@@ -175,15 +175,22 @@ function Index() {
     try {
       console.log('🎮 Host handleStartGame called');
       console.log('🎮 Room state:', { roomId: room?.id, isHost, playersCount: players.length });
+      
+      // Show loading immediately and transition to playing phase to show loading screen
+      setGamePhase('playing');
+      
       const success = await startGame();
       if (success) {
         console.log('✅ startGame() returned success');
         soundEffects.playGameStart();
+        // gamePhase is already set to 'playing' above
       } else {
-        console.error('❌ startGame() returned false');
+        console.error('❌ startGame() returned false - returning to lobby');
+        setGamePhase('hostLobby');
       }
     } catch (error) {
       console.error('❌ handleStartGame error:', error);
+      setGamePhase('hostLobby');
     }
   };
 

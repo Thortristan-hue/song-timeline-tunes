@@ -307,15 +307,30 @@ export const GameService = {
   // Additional methods for game logic
   async initializeGameWithStartingCards(roomId: string, songs: Song[]) {
     console.log('🎮 Initializing game with starting cards for room:', roomId);
+    console.log('🎵 Available songs for game:', songs.length);
     
-    // Update room phase to playing and set songs
-    await updateRoom(roomId, {
-      phase: 'playing',
-      songs: songs,
-      current_turn: 0
-    });
+    // First set a mystery card from the available songs
+    if (songs.length > 0) {
+      const mysteryCard = songs[Math.floor(Math.random() * songs.length)];
+      console.log('🎵 Setting initial mystery card:', mysteryCard.deezer_title);
+      
+      // Update room with mystery card and playing state
+      await updateRoom(roomId, {
+        phase: 'playing',
+        songs: songs,
+        current_turn: 0,
+        current_song: mysteryCard
+      });
+    } else {
+      // Just update to playing without mystery card
+      await updateRoom(roomId, {
+        phase: 'playing',
+        songs: songs,
+        current_turn: 0
+      });
+    }
     
-    console.log('✅ Game initialized with', songs.length, 'songs');
+    console.log('✅ Game initialized with', songs.length, 'songs and mystery card set');
   },
 
   async placeCardAndAdvanceTurn(roomId: string, playerId: string, song: Song, position: number) {
@@ -363,8 +378,15 @@ export const GameService = {
   },
 
   async updatePlayerTimeline(playerId: string, timeline: Song[], correctOrder?: Song[]) {
-    console.log('📋 Updating player timeline');
-    await updatePlayer(playerId, { timeline: timeline as any });
+    console.log('📋 Updating player timeline for player:', playerId, 'with', timeline.length, 'songs');
+    try {
+      const result = await updatePlayer(playerId, { timeline: timeline as any });
+      console.log('✅ Player timeline updated successfully');
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to update player timeline:', error);
+      throw error;
+    }
   },
 
   async setCurrentSong(roomId: string, song: Song) {
