@@ -605,13 +605,15 @@ export function useGameRoom() {
 
     try {
       console.log('🃏 Using correct GameService method for card placement');
+      console.log('🎵 Placing song:', song.deezer_title, 'at position:', position);
       
       const result = await GameService.placeCardAndAdvanceTurn(room.id, currentPlayer.id, song, position);
       
       if (result.success) {
         console.log('✅ Card placed and turn advanced successfully');
+        console.log('🎯 Placement was:', result.correct ? 'CORRECT' : 'INCORRECT');
         
-        // Force refresh room data to get updated mystery song
+        // CRITICAL FIX: Force refresh room data to get updated mystery song and state
         console.log('🔄 Refreshing room data to sync mystery song...');
         await fetchRoomState(room.id);
         
@@ -619,7 +621,19 @@ export function useGameRoom() {
         await fetchPlayers(room.id, true);
         
         // Broadcast card placement via WebSocket
-        broadcastCardPlaced({ playerId: currentPlayer.id, song, position, correct: result.correct });
+        broadcastCardPlaced({ 
+          playerId: currentPlayer.id, 
+          song, 
+          position, 
+          correct: result.correct 
+        });
+        
+        // Check for game end condition
+        if (result.gameEnded) {
+          console.log('🏁 Game ended - no more mystery songs available');
+          setRoom(prev => prev ? { ...prev, phase: 'finished' } : null);
+        }
+        
         return { success: true, correct: result.correct };
       } else {
         console.error('❌ Card placement failed:', result.error);
@@ -629,7 +643,7 @@ export function useGameRoom() {
       console.error('Failed to place card:', error);
       return { success: false };
     }
-  }, [currentPlayer, room, fetchRoomState, fetchPlayers]);
+  }, [currentPlayer, room, fetchRoomState, fetchPlayers, broadcastCardPlaced]);
 
   const updatePlayer = useCallback(async (updates: Partial<Player>): Promise<boolean> => {
     if (!currentPlayer) return false;
@@ -730,7 +744,10 @@ export function useGameRoom() {
   }, [currentPlayer, isHost]);
 
   const setCurrentSong = useCallback(async (song: Song): Promise<void> => {
-    if (!room || !isHost) return;
+    if (!room || !isHost) {
+      console.warn('⚠️ Cannot set current song: not host or no room');
+      return;
+    }
 
     try {
       // Validate song object exists and has required properties
@@ -740,14 +757,22 @@ export function useGameRoom() {
       }
 
       console.log('🎵 Host setting synchronized mystery card:', song.deezer_title);
+      
+      // Set the song in the database
       await GameService.setCurrentSong(room.id, song);
+      
+      // Update local state immediately for responsiveness
+      setRoom(prev => prev ? { ...prev, current_song: song } : null);
+      
       // Broadcast song set via WebSocket
       broadcastSongSet(song);
+      
+      console.log('✅ Mystery card set successfully');
     } catch (error) {
-      console.error('Failed to set current song:', error);
+      console.error('❌ Failed to set current song:', error);
       // Continue gracefully - don't let song setting errors break the game
     }
-  }, [room, isHost]);
+  }, [room, isHost, broadcastSongSet]);
 
   const assignStartingCards = useCallback(async (availableSongs: Song[]): Promise<void> => {
     if (!room || !isHost || !availableSongs.length) {

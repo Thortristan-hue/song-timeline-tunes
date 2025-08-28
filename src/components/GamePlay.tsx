@@ -152,18 +152,46 @@ export function GamePlay({
 
     setIsProcessingMove(true);
     try {
-      const song = gameLogic.getRandomAvailableSong();
-      if (song) {
+      // Check if game should end first
+      if (gameLogic.shouldEndGame()) {
+        console.log('🏁 No more songs available - ending game');
+        toast({
+          title: "Game Complete",
+          description: "All songs have been used! The game will end.",
+          variant: "default",
+        });
+        
+        // End the game
+        setWinner(gameLogic.checkWinCondition());
+        setShowVictoryScreen(true);
+        return;
+      }
+      
+      // Use improved song selection
+      const availableForMystery = gameLogic.getAvailableForMystery();
+      if (availableForMystery.length > 0) {
+        // Use Fisher-Yates shuffle for better randomization
+        const shuffled = [...availableForMystery];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        
+        const song = shuffled[0];
         console.log('🎵 Setting mystery card:', song.deezer_title);
         await onSetCurrentSong(song);
         setMysteryCardRevealed(true);
       } else {
-        console.warn('No available songs to set as mystery card');
+        console.warn('⚠️ No available songs to set as mystery card');
         toast({
-          title: "No songs available",
-          description: "Please add more songs to the playlist",
-          variant: "destructive",
+          title: "Game Complete",
+          description: "No more songs available! The game will end.",
+          variant: "default",
         });
+        
+        // End the game
+        setWinner(gameLogic.checkWinCondition());
+        setShowVictoryScreen(true);
       }
     } catch (error) {
       console.error('❌ Failed to set mystery card:', error);

@@ -70,4 +70,5 @@ export interface GameRoom {
   current_turn?: number;
   current_song?: Song | null;
   current_player_id?: string;
+  remaining_song_deck?: Song[]; // Added for deck management
 }

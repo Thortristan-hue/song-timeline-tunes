@@ -11,6 +11,11 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { GamemodeDemo } from "./components/GamemodeDemo";
 
+// Import test runner for development
+if (import.meta.env.DEV) {
+  import('./test/testRunner');
+}
+
 const queryClient = new QueryClient();
 
 function App() {
