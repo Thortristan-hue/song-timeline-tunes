@@ -8,6 +8,7 @@ import { VictoryScreen } from '@/components/VictoryScreen';
 import { useConfettiStore } from '@/stores/useConfettiStore';
 import { HostGameView } from '@/components/HostVisuals';
 import MobilePlayerGameView from '@/components/player/MobilePlayerGameView';
+import { HostTurnFeedback } from '@/components/HostTurnFeedback';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { Music2 } from 'lucide-react';
 
@@ -50,6 +51,8 @@ export function GamePlay({
   const [isPlaying, setIsPlaying] = useState(false);
   const [mysteryCardRevealed, setMysteryCardRevealed] = useState(false);
   const [cardPlacementResult, setCardPlacementResult] = useState<{ correct: boolean; song: Song } | null>(null);
+  const [showHostFeedback, setShowHostFeedback] = useState(false);
+  const [hostFeedbackData, setHostFeedbackData] = useState<{ player: Player; song: Song; isCorrect: boolean } | null>(null);
   const { fire } = useConfettiStore();
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -95,12 +98,24 @@ export function GamePlay({
             correct: result.correct,
             song: song
           });
+
+          // Show host feedback if host
+          if (isHost) {
+            setHostFeedbackData({
+              player: currentPlayer,
+              song: song,
+              isCorrect: result.correct
+            });
+            setShowHostFeedback(true);
+          }
           
           // Auto-hide feedback after delay
           setTimeout(() => {
             setFeedback({ show: false, correct: false, song: null });
             setCardPlacementResult(null);
-          }, 3000);
+            setShowHostFeedback(false);
+            setHostFeedbackData(null);
+          }, 4000);
         }
         
         // Check for game end
@@ -246,6 +261,20 @@ export function GamePlay({
           highlightedGapIndex={null}
           mobileViewport={null}
         />
+        
+        {/* Host feedback overlay */}
+        {showHostFeedback && hostFeedbackData && (
+          <HostTurnFeedback
+            isVisible={showHostFeedback}
+            player={hostFeedbackData.player}
+            song={hostFeedbackData.song}
+            isCorrect={hostFeedbackData.isCorrect}
+            onComplete={() => {
+              setShowHostFeedback(false);
+              setHostFeedbackData(null);
+            }}
+          />
+        )}
       </>
     );
   }

@@ -309,64 +309,102 @@ export const GameService = {
     console.log('🎮 Initializing game with starting cards for room:', roomId);
     console.log('🎵 Available songs for game:', songs.length);
     
-    // First set a mystery card from the available songs
-    if (songs.length > 0) {
-      const mysteryCard = songs[Math.floor(Math.random() * songs.length)];
-      console.log('🎵 Setting initial mystery card:', mysteryCard.deezer_title);
+    // Get all players in the room (excluding host)
+    const allPlayers = await getPlayersInRoom(roomId);
+    const playersToSetup = allPlayers.filter(p => !p.id.includes('host-'));
+    
+    console.log('👥 Setting up starting cards for', playersToSetup.length, 'players');
+    
+    // Give each player 1 starting card on their timeline
+    for (const player of playersToSetup) {
+      const startingCard = songs[Math.floor(Math.random() * songs.length)];
+      console.log(`🃏 Giving starting card "${startingCard.deezer_title}" to ${player.name}`);
       
-      // Update room with mystery card and playing state
-      await updateRoom(roomId, {
-        phase: 'playing',
-        songs: songs,
-        current_turn: 0,
-        current_song: mysteryCard
-      });
-    } else {
-      // Just update to playing without mystery card
-      await updateRoom(roomId, {
-        phase: 'playing',
-        songs: songs,
-        current_turn: 0
-      });
+      try {
+        await updatePlayer(player.id, { timeline: [startingCard] });
+        console.log(`✅ Starting card set for ${player.name}`);
+      } catch (error) {
+        console.error(`❌ Failed to set starting card for ${player.name}:`, error);
+      }
     }
     
-    console.log('✅ Game initialized with', songs.length, 'songs and mystery card set');
+    // Set mystery card from the available songs (different from starting cards)
+    const usedSongs = new Set(playersToSetup.map(p => songs[Math.floor(Math.random() * songs.length)].id));
+    const availableForMystery = songs.filter(s => !usedSongs.has(s.id));
+    const mysteryCard = availableForMystery.length > 0 ? availableForMystery[0] : songs[0];
+    
+    console.log('🎵 Setting initial mystery card:', mysteryCard.deezer_title);
+    
+    // Update room with mystery card and playing state
+    await updateRoom(roomId, {
+      phase: 'playing',
+      songs: songs,
+      current_turn: 0,
+      current_song: mysteryCard
+    });
+    
+    console.log('✅ Game initialized with', songs.length, 'songs, starting cards distributed, and mystery card set');
   },
 
   async placeCardAndAdvanceTurn(roomId: string, playerId: string, song: Song, position: number) {
-    console.log('🃏 Placing card and advancing turn');
+    console.log('🃏 Placing card and advancing turn for player:', playerId);
     
     try {
-      // Get current player
-      const player = await supabase
-        .from('players')
-        .select('timeline')
-        .eq('id', playerId)
-        .single();
+      // Get current player and room data
+      const [playerResponse, roomResponse] = await Promise.all([
+        supabase.from('players').select('timeline').eq('id', playerId).single(),
+        supabase.from('game_rooms').select('songs, current_turn').eq('id', roomId).single()
+      ]);
       
-      if (player.data) {
-        const currentTimeline = Array.isArray(player.data.timeline) ? player.data.timeline : [];
-        const newTimeline = [...currentTimeline];
-        newTimeline.splice(position, 0, song as any);
-        
-        // Update player timeline - convert Song to Json for database
-        await updatePlayer(playerId, { timeline: newTimeline as any });
+      if (!playerResponse.data || !roomResponse.data) {
+        throw new Error('Failed to get player or room data');
       }
 
-      // Record the move  
-      await recordMove(roomId, playerId, 'CARD_PLACED', { song: song as any, position });
+      const currentTimeline = Array.isArray(playerResponse.data.timeline) ? playerResponse.data.timeline : [];
+      const newTimeline = [...currentTimeline];
+      newTimeline.splice(position, 0, song as any);
+      
+      // Sort timeline by release year to check if placement is correct
+      const sortedTimeline = [...newTimeline].sort((a: any, b: any) => parseInt(a.release_year) - parseInt(b.release_year));
+      const isCorrect = JSON.stringify(newTimeline) === JSON.stringify(sortedTimeline);
+      
+      console.log('🎯 Card placement result:', isCorrect ? 'CORRECT' : 'INCORRECT');
+      
+      // Update player timeline
+      await updatePlayer(playerId, { timeline: newTimeline as any });
 
-      // Check if placement is correct (simplified logic)
-      const correct = Math.random() > 0.5; // Replace with actual logic
+      // Record the move  
+      await recordMove(roomId, playerId, 'CARD_PLACED', { 
+        song: song as any, 
+        position, 
+        correct: isCorrect 
+      });
+
+      // Get next song for mystery card (excluding used songs)
+      const allSongs = Array.isArray(roomResponse.data.songs) ? roomResponse.data.songs : [];
+      const usedSongIds = new Set(newTimeline.map((s: any) => s.id));
+      const availableSongs = allSongs.filter((s: any) => !usedSongIds.has(s.id));
+      
+      if (availableSongs.length > 0) {
+        const nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)] as unknown as Song;
+        console.log('🎵 Setting next mystery card:', nextMysteryCard.deezer_title);
+        
+        // Update room with next mystery card and advance turn
+        await updateRoom(roomId, {
+          current_song: nextMysteryCard,
+          current_turn: (roomResponse.data.current_turn || 0) + 1
+        });
+      }
       
       return {
         success: true,
-        correct,
+        correct: isCorrect,
         error: null,
         gameEnded: false,
         winner: null
       };
     } catch (error) {
+      console.error('❌ Failed to place card:', error);
       return {
         success: false,
         correct: false,
