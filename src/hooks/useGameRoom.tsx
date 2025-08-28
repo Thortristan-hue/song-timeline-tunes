@@ -65,6 +65,45 @@ export function useGameRoom() {
     };
   }, []);
 
+  // Fetch room state to get updated mystery song and other room data
+  const fetchRoomState = useCallback(async (roomId: string) => {
+    try {
+      console.log('🏠 Fetching updated room state for room:', roomId);
+      
+      const { data: roomData, error } = await supabase
+        .from('game_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching room state:', error);
+        return;
+      }
+
+      if (roomData) {
+        console.log('🔄 Room state fetched, updating current_song:', roomData.current_song);
+        
+        // Update room state with fresh data from database
+        setRoom(prevRoom => {
+          if (!prevRoom) return null;
+          
+          return {
+            ...prevRoom,
+            current_song: roomData.current_song ? roomData.current_song as unknown as Song : null,
+            current_turn: roomData.current_turn ?? prevRoom.current_turn,
+            current_player_id: roomData.current_player_id ?? prevRoom.current_player_id,
+            updated_at: roomData.updated_at
+          };
+        });
+        
+        console.log('✅ Room state updated with mystery song:', roomData.current_song?.deezer_title || 'none');
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch room state:', error);
+    }
+  }, []);
+
   // Fetch players for a room (ONLY non-host players) with improved debouncing
   const fetchPlayers = useCallback(async (roomId: string, forceUpdate = false) => {
     const now = Date.now();
@@ -574,7 +613,10 @@ export function useGameRoom() {
         
         // Force refresh room data to get updated mystery song
         console.log('🔄 Refreshing room data to sync mystery song...');
-        await fetchPlayers(room.id);
+        await fetchRoomState(room.id);
+        
+        // Also refresh players for updated timelines
+        await fetchPlayers(room.id, true);
         
         // Broadcast card placement via WebSocket
         broadcastCardPlaced({ playerId: currentPlayer.id, song, position, correct: result.correct });
@@ -587,7 +629,7 @@ export function useGameRoom() {
       console.error('Failed to place card:', error);
       return { success: false };
     }
-  }, [currentPlayer, room, fetchPlayers]);
+  }, [currentPlayer, room, fetchRoomState, fetchPlayers]);
 
   const updatePlayer = useCallback(async (updates: Partial<Player>): Promise<boolean> => {
     if (!currentPlayer) return false;
