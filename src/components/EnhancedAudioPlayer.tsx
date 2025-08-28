@@ -212,7 +212,7 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
         />
       </div>
 
-      {/* Cassette Player - 1.2x larger with controls moved lower */}
+      {/* Cassette Player - 1.2x larger with controls moved higher for better background visibility */}
       <div className="relative flex justify-center">
         <img 
           src={assCassBg} 
@@ -229,8 +229,8 @@ export const EnhancedAudioPlayer = forwardRef<HTMLAudioElement, EnhancedAudioPla
           </div>
         )}
         
-        {/* Controls positioned lower on the cassette */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-6">
+        {/* Controls positioned higher on the cassette for background visibility */}
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex items-center gap-6">
           {/* Play Button */}
           <button
             onClick={handlePlayPauseClick}

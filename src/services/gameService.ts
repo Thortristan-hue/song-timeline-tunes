@@ -380,11 +380,32 @@ export const GameService = {
         correct: isCorrect 
       });
 
-      // Get next song for mystery card (excluding used songs)
+      // Get next song for mystery card (excluding songs used by ALL players)
       const allSongs = Array.isArray(roomResponse.data.songs) ? roomResponse.data.songs : [];
-      const usedSongIds = new Set(newTimeline.map((s: any) => s.id));
+      
+      // Get all players' timelines to determine which songs are already used
+      const allPlayersResponse = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('room_id', roomId);
+      
+      const usedSongIds = new Set();
+      if (allPlayersResponse.data) {
+        // Collect all song IDs from all players' timelines
+        allPlayersResponse.data.forEach(player => {
+          if (Array.isArray(player.timeline)) {
+            player.timeline.forEach((song: any) => {
+              if (song && song.id) {
+                usedSongIds.add(song.id);
+              }
+            });
+          }
+        });
+      }
+      
       const availableSongs = allSongs.filter((s: any) => !usedSongIds.has(s.id));
       
+      console.log(`🎵 Song selection: ${allSongs.length} total, ${usedSongIds.size} used, ${availableSongs.length} available`);
       
       if (availableSongs.length > 0) {
         const nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)] as unknown as Song;
