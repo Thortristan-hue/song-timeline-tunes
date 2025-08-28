@@ -21,6 +21,10 @@ function Index() {
   const [playerName, setPlayerName] = useState('');
   const [winner, setWinner] = useState<Player | null>(null);
   const [autoJoinCode, setAutoJoinCode] = useState<string>('');
+  
+  // Part 2.1: Add new state variables for mystery song and player cards
+  const [mysterySong, setMysterySong] = useState<Song | null>(null);
+  const [playerCards, setPlayerCards] = useState<Song[]>([]);
 
   const {
     room,
@@ -45,7 +49,11 @@ function Index() {
     setCurrentSong,
     assignStartingCards,
     kickPlayer
-  } = useGameRoom();
+  } = useGameRoom(
+    handlePlayerCardDealt,
+    handleGameStartedMessage,
+    handleNewMysterySong
+  );
 
   // Reduced debug logging to prevent console spam
   useEffect(() => {
@@ -124,6 +132,30 @@ function Index() {
       soundEffects.playGameStart(); // Victory sound
     }
   }, [players, winner, soundEffects]);
+
+  // Part 2.2: Add new WebSocket message handlers
+  const handlePlayerCardDealt = useCallback((data: { card: Song }) => {
+    console.log('🃏 PLAYER_CARD_DEALT received:', data);
+    // Update playerCards state by appending the new card
+    setPlayerCards(prev => [...prev, data.card]);
+    soundEffects.playButtonClick();
+  }, [soundEffects]);
+
+  const handleGameStartedMessage = useCallback((data: { gamePhase: string; mysterySong: Song }) => {
+    console.log('🎮 GAME_STARTED received:', data);
+    // Set gamePhase and mysterySong from server
+    if (data.gamePhase === 'playing') {
+      setGamePhase('playing');
+    }
+    setMysterySong(data.mysterySong);
+    soundEffects.playGameStart();
+  }, [soundEffects]);
+
+  const handleNewMysterySong = useCallback((data: { mysterySong: Song }) => {
+    console.log('🎵 NEW_MYSTERY_SONG received:', data);
+    // Update mysterySong state
+    setMysterySong(data.mysterySong);
+  }, []);
 
   const handleCreateRoom = async (): Promise<boolean> => {
     try {
@@ -329,26 +361,59 @@ function Index() {
               {isLoading && !gameInitialized ? (
                 <GameLoadingScreen />
               ) : room && currentPlayer ? (
-                <GamePlay
-                  room={room}
-                  players={players}
-                  currentPlayer={currentPlayer}
-                  isHost={isHost}
-                  onPlaceCard={handlePlaceCard}
-                  onSetCurrentSong={setCurrentSong}
-                  customSongs={customSongs}
-                  connectionStatus={{
-                    isConnected: connectionStatus.isConnected && wsState.isConnected,
-                    isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
-                    lastError: connectionStatus.lastError || wsState.lastError,
-                    retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
-                  }}
-                  onReconnect={() => {
-                    forceReconnect();
-                    wsReconnect();
-                  }}
-                  onReplayGame={handlePlayAgain}
-                />
+                <>
+                  {/* Part 2.3: Simple debug display for mystery song and player cards */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div className="fixed top-4 left-4 bg-black/80 text-white p-4 rounded-lg z-50 max-w-sm">
+                      <h3 className="font-bold mb-2">Debug: New Game State</h3>
+                      <div className="mb-2">
+                        <strong>Mystery Song:</strong> {mysterySong ? 
+                          `${mysterySong.deezer_title} by ${mysterySong.deezer_artist} (${mysterySong.release_year})` : 
+                          'None'
+                        }
+                      </div>
+                      <div className="mb-2">
+                        <strong>Player Cards ({playerCards.length}):</strong>
+                        {playerCards.length > 0 ? (
+                          <ul className="text-xs ml-2">
+                            {playerCards.map((card, i) => (
+                              <li key={i}>{card.deezer_title} ({card.release_year})</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-400"> None</span>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => console.log('🎮 Make Guess clicked')}
+                        className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                      >
+                        Make Guess (Debug)
+                      </button>
+                    </div>
+                  )}
+                  
+                  <GamePlay
+                    room={room}
+                    players={players}
+                    currentPlayer={currentPlayer}
+                    isHost={isHost}
+                    onPlaceCard={handlePlaceCard}
+                    onSetCurrentSong={setCurrentSong}
+                    customSongs={customSongs}
+                    connectionStatus={{
+                      isConnected: connectionStatus.isConnected && wsState.isConnected,
+                      isReconnecting: connectionStatus.isReconnecting || wsState.isConnecting,
+                      lastError: connectionStatus.lastError || wsState.lastError,
+                      retryCount: Math.max(connectionStatus.retryCount, wsState.reconnectAttempts)
+                    }}
+                    onReconnect={() => {
+                      forceReconnect();
+                      wsReconnect();
+                    }}
+                    onReplayGame={handlePlayAgain}
+                  />
+                </>
               ) : (
                 <GameLoadingScreen />
               )}

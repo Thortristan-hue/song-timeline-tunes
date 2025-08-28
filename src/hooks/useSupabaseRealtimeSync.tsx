@@ -19,7 +19,9 @@ export function useSupabaseRealtimeSync(
   onCardPlaced?: (data: any) => void,
   onSongSet?: (song: Song) => void,
   onGameStarted?: (data: any) => void,
-  onTurnTransition?: (data: any) => void
+  onTurnTransition?: (data: any) => void,
+  onPlayerCardDealt?: (data: any) => void,
+  onNewMysterySong?: (data: any) => void
 ) {
   const { toast } = useToast();
   const [syncState, setSyncState] = useState<RealtimeSyncState>({
@@ -115,6 +117,14 @@ export function useSupabaseRealtimeSync(
       TURN_TRANSITION: (data: any) => {
         console.log('🔄 Turn transition received:', data);
         onTurnTransition?.(data);
+      },
+      PLAYER_CARD_DEALT: (data: any) => {
+        console.log('🃏 Player card dealt received:', data);
+        onPlayerCardDealt?.(data);
+      },
+      NEW_MYSTERY_SONG: (data: any) => {
+        console.log('🎵 New mystery song received:', data);
+        onNewMysterySong?.(data);
       }
     };
 
@@ -129,7 +139,7 @@ export function useSupabaseRealtimeSync(
         supabaseRealtimeService.off(event, handler);
       });
     };
-  }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted, onTurnTransition]);
+  }, [onRoomUpdate, onPlayerUpdate, onGameStart, onCardPlaced, onSongSet, onGameStarted, onTurnTransition, onPlayerCardDealt, onNewMysterySong]);
 
   // Broadcast methods
   const broadcastPlayerUpdate = useCallback((players: Player[]) => {

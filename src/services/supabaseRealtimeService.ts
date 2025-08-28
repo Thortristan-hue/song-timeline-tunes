@@ -3,7 +3,7 @@ import { RealtimeChannel, RealtimeChannelSendResponse } from '@supabase/supabase
 import { Song, Player, GameRoom } from '@/types/game';
 
 export interface GameMessage {
-  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'SONG_SET' | 'GAME_STARTED' | 'TURN_TRANSITION';
+  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'SONG_SET' | 'GAME_STARTED' | 'TURN_TRANSITION' | 'PLAYER_CARD_DEALT' | 'NEW_MYSTERY_SONG';
   roomId: string;
   data: any;
   timestamp: number;

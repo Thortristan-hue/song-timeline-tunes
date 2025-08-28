@@ -1,7 +1,7 @@
 import { Song, Player, GameRoom } from '@/types/game';
 
 export interface GameStateMessage {
-  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM' | 'HOST_SET_SONGS' | 'GAME_STARTED';
+  type: 'ROOM_UPDATE' | 'PLAYER_UPDATE' | 'GAME_START' | 'CARD_PLACED' | 'TURN_CHANGE' | 'SONG_SET' | 'JOIN_ROOM' | 'HOST_SET_SONGS' | 'GAME_STARTED' | 'PLAYER_CARD_DEALT' | 'NEW_MYSTERY_SONG';
   roomId: string;
   data: any;
   timestamp: number;
