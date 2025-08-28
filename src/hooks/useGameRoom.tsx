@@ -571,6 +571,11 @@ export function useGameRoom() {
       
       if (result.success) {
         console.log('✅ Card placed and turn advanced successfully');
+        
+        // Force refresh room data to get updated mystery song
+        console.log('🔄 Refreshing room data to sync mystery song...');
+        await fetchPlayers(room.id);
+        
         // Broadcast card placement via WebSocket
         broadcastCardPlaced({ playerId: currentPlayer.id, song, position, correct: result.correct });
         return { success: true, correct: result.correct };
@@ -582,7 +587,7 @@ export function useGameRoom() {
       console.error('Failed to place card:', error);
       return { success: false };
     }
-  }, [currentPlayer, room]);
+  }, [currentPlayer, room, fetchPlayers]);
 
   const updatePlayer = useCallback(async (updates: Partial<Player>): Promise<boolean> => {
     if (!currentPlayer) return false;

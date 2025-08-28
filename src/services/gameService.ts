@@ -385,6 +385,7 @@ export const GameService = {
       const usedSongIds = new Set(newTimeline.map((s: any) => s.id));
       const availableSongs = allSongs.filter((s: any) => !usedSongIds.has(s.id));
       
+      
       if (availableSongs.length > 0) {
         const nextMysteryCard = availableSongs[Math.floor(Math.random() * availableSongs.length)] as unknown as Song;
         console.log('🎵 Setting next mystery card:', nextMysteryCard.deezer_title);
@@ -394,6 +395,10 @@ export const GameService = {
           current_song: nextMysteryCard,
           current_turn: (roomResponse.data.current_turn || 0) + 1
         });
+        
+        console.log('✅ Mystery card updated successfully');
+      } else {
+        console.warn('⚠️ No more available songs for mystery card');
       }
       
       return {

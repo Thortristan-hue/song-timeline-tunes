@@ -171,6 +171,9 @@ export default function MobilePlayerGameView({
       
       if (!result.success) {
         setError('Failed to place card. Please try again.');
+      } else {
+        // Card placed successfully - clear any errors
+        setError(null);
       }
     } catch (err) {
       console.error('Card placement error:', err);
