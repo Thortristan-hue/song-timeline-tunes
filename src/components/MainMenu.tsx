@@ -369,14 +369,6 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
                 </div>
               </div>
             </div>
-            
-            <div className="text-center">
-              <div className="bg-gradient-to-r from-[#107793]/20 to-[#a53b8b]/20 backdrop-blur-sm p-4 rounded-xl border border-[#107793]/30">
-                <p className="text-[#d9e8dd] text-sm italic">
-                  <span className="text-[#4CC9F0] font-semibold">💡 Pro Tip:</span> The closer your guess, the better your chances of keeping the song in your timeline!
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
