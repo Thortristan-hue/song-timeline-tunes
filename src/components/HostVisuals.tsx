@@ -118,16 +118,16 @@ export function HostGameView({
               />
             </div>
             
-            {/* Cassette Background */}
+            {/* Cassette Background - positioned higher to be visible */}
             <div className="relative">
               <img 
                 src={assCassBg} 
                 alt="Cassette Player" 
-                className="h-32 w-auto drop-shadow-lg"
+                className="h-40 w-auto drop-shadow-lg transform translate-y-4"
               />
               
-              {/* Audio Controls positioned ON the cassette */}
-              <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+              {/* Audio Controls positioned higher on the cassette */}
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2">
                 <div className="flex items-center justify-center space-x-4">
                   {/* Play/Pause Button */}
                   <button
