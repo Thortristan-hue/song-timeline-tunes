@@ -73,7 +73,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
         setCurrentTip((prev) => (prev + 1) % shuffledTips.length);
         setTipChanging(false);
       }, 400);
-    }, 10000); // Increased from 5000ms to 10000ms (10 seconds)
+    }, 10000); 
     
     return () => {
       if (tipIntervalRef.current) {
@@ -280,7 +280,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
               <Card className={`bg-[#1A1A2E] border border-[#4CC9F0]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-1')}`}>
                 <Monitor className="h-8 w-8 text-[#4CC9F0] mx-auto mb-3 animate-pulse" />
                 <h4 className="text-white font-semibold text-sm mb-2">Host PC</h4>
-                <p className="text-[#4CC9F0] text-xs">Computer or laptop to host the game and display the main screen</p>
+                <p className="text-[#4CC9F0] text-xs">Computer or laptop to host the game and display the main game table</p>
               </Card>
               
               <Card className={`bg-[#1A1A2E] border border-[#F72585]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-2')}`}>
@@ -292,7 +292,7 @@ export function MainMenu({ onCreateRoom, onJoinRoom }: MainMenuProps) {
               <Card className={`bg-[#1A1A2E] border border-[#7209B7]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-3')}`}>
                 <Radio className="h-8 w-8 text-[#7209B7] mx-auto mb-3 animate-bounce" />
                 <h4 className="text-white font-semibold text-sm mb-2">Spotify Playlist</h4>
-                <p className="text-[#7209B7] text-xs">Public playlist with diverse songs from different decades</p>
+                <p className="text-[#7209B7] text-xs">Public playlist with at least 20 songs</p>
               </Card>
               
               <Card className={`bg-[#1A1A2E] border border-[#FF6B35]/20 p-4 text-center rounded-xl backdrop-blur-sm hover-lift transition-all duration-300 ${getAnimationClass('stagger-fade-in', 'stagger-4')}`}>
