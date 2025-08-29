@@ -9,7 +9,6 @@ import { getDefaultCharacter, getCharacterById as getCharacterByIdUtil } from '@
 import assRythmy from '@/assets/ass_rythmy.png';
 import assRoomcode from '@/assets/ass_roomcode.png';
 import assSpeaker from '@/assets/ass_speaker.png';
-import assCassBg from '@/assets/ass_cass_bg.png';
 import assPlay from '@/assets/ass_play.png';
 import assPause from '@/assets/ass_pause.png';
 import assStop from '@/assets/ass_stop.png';
@@ -100,7 +99,7 @@ export function HostGameView({
       {/* Main Content Area - Reorganized Layout */}
       <div className="flex flex-col items-center justify-start min-h-screen p-8 pt-20">
         
-        {/* TOP MIDDLE - Cassette Player with integrated controls and Mystery Card */}
+        {/* TOP MIDDLE - Mystery Card with audio controls below */}
         <div className="mb-8">
           <div className="relative flex flex-col items-center">
             {/* Mystery Card positioned on top of cassette */}
@@ -118,49 +117,40 @@ export function HostGameView({
               />
             </div>
             
-            {/* Cassette Background - positioned higher to be visible */}
-            <div className="relative">
-              <img 
-                src={assCassBg} 
-                alt="Cassette Player" 
-                className="h-40 w-auto drop-shadow-lg transform translate-y-4"
-              />
-              
-              {/* Audio Controls positioned higher on the cassette */}
-              <div className="absolute top-6 left-1/2 transform -translate-x-1/2">
-                <div className="flex items-center justify-center space-x-4">
-                  {/* Play/Pause Button */}
-                  <button
-                    onClick={handleRecordClick}
-                    className="relative group transition-transform hover:scale-110 active:scale-95"
-                    disabled={!currentSong}
-                  >
-                    <img 
-                      src={isPlaying ? assPause : assPlay}
-                      alt={isPlaying ? "Pause" : "Play"}
-                      className="h-8 w-8 drop-shadow-md"
-                    />
-                    <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                  
-                  {/* Stop Button */}
-                  <button
-                    onClick={() => {
-                      if (isPlaying) {
-                        onPlayPause(); // This will stop/pause the audio
-                      }
-                    }}
-                    className="relative group transition-transform hover:scale-110 active:scale-95"
-                    disabled={!isPlaying}
-                  >
-                    <img 
-                      src={assStop}
-                      alt="Stop"
-                      className="h-8 w-8 drop-shadow-md"
-                    />
-                    <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                </div>
+            {/* Audio Controls positioned right below the mystery card */}
+            <div className="mt-4">
+              <div className="flex items-center justify-center space-x-6">
+                {/* Play/Pause Button */}
+                <button
+                  onClick={handleRecordClick}
+                  className="relative group transition-transform hover:scale-110 active:scale-95"
+                  disabled={!currentSong}
+                >
+                  <img 
+                    src={isPlaying ? assPause : assPlay}
+                    alt={isPlaying ? "Pause" : "Play"}
+                    className="h-12 w-12 drop-shadow-md"
+                  />
+                  <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+                
+                {/* Stop Button */}
+                <button
+                  onClick={() => {
+                    if (isPlaying) {
+                      onPlayPause(); // This will stop/pause the audio
+                    }
+                  }}
+                  className="relative group transition-transform hover:scale-110 active:scale-95"
+                  disabled={!isPlaying}
+                >
+                  <img 
+                    src={assStop}
+                    alt="Stop"
+                    className="h-12 w-12 drop-shadow-md"
+                  />
+                  <div className="absolute inset-0 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
               </div>
             </div>
           </div>

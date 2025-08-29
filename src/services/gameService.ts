@@ -388,14 +388,34 @@ export const GameService = {
         throw new Error('Invalid song data');
       }
 
-      // Get current player and room data
+      // Get current player and room data with better error handling
+      console.log('🔍 Fetching player data for ID:', playerId);
+      console.log('🔍 Fetching room data for ID:', roomId);
+      
       const [playerResponse, roomResponse] = await Promise.all([
         supabase.from('players').select('timeline').eq('id', playerId).single(),
         supabase.from('game_rooms').select('songs, current_turn, remaining_song_deck, current_song').eq('id', roomId).single()
       ]);
       
-      if (!playerResponse.data || !roomResponse.data) {
-        throw new Error('Failed to get player or room data');
+      // Log detailed error information
+      if (playerResponse.error) {
+        console.error('❌ Player query error:', playerResponse.error);
+        throw new Error(`Failed to get player data: ${playerResponse.error.message}`);
+      }
+      
+      if (roomResponse.error) {
+        console.error('❌ Room query error:', roomResponse.error);
+        throw new Error(`Failed to get room data: ${roomResponse.error.message}`);
+      }
+      
+      if (!playerResponse.data) {
+        console.error('❌ No player data found for ID:', playerId);
+        throw new Error('Player not found');
+      }
+      
+      if (!roomResponse.data) {
+        console.error('❌ No room data found for ID:', roomId);
+        throw new Error('Room not found');
       }
 
       const currentTimeline = Array.isArray(playerResponse.data.timeline) ? playerResponse.data.timeline : [];
