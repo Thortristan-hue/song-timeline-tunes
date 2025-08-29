@@ -101,7 +101,7 @@ export function useGameRoom(
           };
         });
         
-        console.log('✅ Room state updated with mystery song:', roomData.current_song?.deezer_title || 'none');
+        console.log('✅ Room state updated with mystery song:', (roomData.current_song as any)?.deezer_title || 'none');
       }
     } catch (error) {
       console.error('❌ Failed to fetch room state:', error);

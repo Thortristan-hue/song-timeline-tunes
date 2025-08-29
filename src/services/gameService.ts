@@ -419,7 +419,7 @@ export const GameService = {
       });
 
       // IMPROVED: Use song deck management for reliable mystery card selection
-      const allSongs = Array.isArray(roomResponse.data.songs) ? roomResponse.data.songs : [];
+      const allSongs = Array.isArray((roomResponse.data as any).songs) ? (roomResponse.data as any).songs : [];
       
       // Get stored deck state or create new one
       let deckManager: SongDeckManager;
@@ -450,8 +450,8 @@ export const GameService = {
         }
         
         // Add current mystery song to used songs
-        if (roomResponse.data.current_song && songDeckUtils.isValidSong(roomResponse.data.current_song)) {
-          usedSongs.push(roomResponse.data.current_song);
+        if ((roomResponse.data as any).current_song && songDeckUtils.isValidSong((roomResponse.data as any).current_song)) {
+          usedSongs.push((roomResponse.data as any).current_song);
         }
         
         deckManager = SongDeckManager.createDeckExcluding(allSongs, usedSongs);
@@ -467,7 +467,7 @@ export const GameService = {
         // Update room with next mystery card, advance turn, and save deck state
         const updateData: any = {
           current_song: nextMysteryCard,
-          current_turn: (roomResponse.data.current_turn || 0) + 1
+          current_turn: ((roomResponse.data as any).current_turn || 0) + 1
         };
         
         // Only include remaining_song_deck if we have valid data
@@ -485,7 +485,7 @@ export const GameService = {
         // Game end condition - no more mystery cards
         await updateRoom(roomId, {
           phase: 'finished',
-          current_turn: (roomResponse.data.current_turn || 0) + 1,
+          current_turn: ((roomResponse.data as any).current_turn || 0) + 1,
           current_song: null
         });
         

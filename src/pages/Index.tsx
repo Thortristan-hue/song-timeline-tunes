@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MainMenu } from '@/components/MainMenu';
 import { HostLobby } from '@/components/HostLobby';
 import { MobileJoinFlow } from '@/components/MobileJoinFlow';
@@ -25,6 +25,30 @@ function Index() {
   // Part 2.1: Add new state variables for mystery song and player cards
   const [mysterySong, setMysterySong] = useState<Song | null>(null);
   const [playerCards, setPlayerCards] = useState<Song[]>([]);
+
+  // Part 2.2: Add new WebSocket message handlers
+  const handlePlayerCardDealt = useCallback((data: { card: Song }) => {
+    console.log('🃏 PLAYER_CARD_DEALT received:', data);
+    // Update playerCards state by appending the new card
+    setPlayerCards(prev => [...prev, data.card]);
+    soundEffects.playButtonClick();
+  }, [soundEffects]);
+
+  const handleGameStartedMessage = useCallback((data: { gamePhase: string; mysterySong: Song }) => {
+    console.log('🎮 GAME_STARTED received:', data);
+    // Set gamePhase and mysterySong from server
+    if (data.gamePhase === 'playing') {
+      setGamePhase('playing');
+    }
+    setMysterySong(data.mysterySong);
+    soundEffects.playGameStart();
+  }, [soundEffects]);
+
+  const handleNewMysterySong = useCallback((data: { mysterySong: Song }) => {
+    console.log('🎵 NEW_MYSTERY_SONG received:', data);
+    // Update mysterySong state
+    setMysterySong(data.mysterySong);
+  }, []);
 
   const {
     room,
@@ -133,29 +157,6 @@ function Index() {
     }
   }, [players, winner, soundEffects]);
 
-  // Part 2.2: Add new WebSocket message handlers
-  const handlePlayerCardDealt = useCallback((data: { card: Song }) => {
-    console.log('🃏 PLAYER_CARD_DEALT received:', data);
-    // Update playerCards state by appending the new card
-    setPlayerCards(prev => [...prev, data.card]);
-    soundEffects.playButtonClick();
-  }, [soundEffects]);
-
-  const handleGameStartedMessage = useCallback((data: { gamePhase: string; mysterySong: Song }) => {
-    console.log('🎮 GAME_STARTED received:', data);
-    // Set gamePhase and mysterySong from server
-    if (data.gamePhase === 'playing') {
-      setGamePhase('playing');
-    }
-    setMysterySong(data.mysterySong);
-    soundEffects.playGameStart();
-  }, [soundEffects]);
-
-  const handleNewMysterySong = useCallback((data: { mysterySong: Song }) => {
-    console.log('🎵 NEW_MYSTERY_SONG received:', data);
-    // Update mysterySong state
-    setMysterySong(data.mysterySong);
-  }, []);
 
   const handleCreateRoom = async (): Promise<boolean> => {
     try {
