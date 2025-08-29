@@ -358,21 +358,13 @@ export const GameService = {
     
     console.log('🎵 Setting initial mystery card:', mysteryCard.deezer_title);
     
-    // Update room with mystery card, playing state, and deck state
-    const updateData: any = {
+    // Update room with mystery card, playing state
+    await updateRoom(roomId, {
       phase: 'playing',
       songs: validSongs,
       current_turn: 0,
       current_song: mysteryCard
-    };
-    
-    // Only include remaining_song_deck if we have valid data
-    const remainingSongs = deckManager.getState().remainingSongs;
-    if (remainingSongs && remainingSongs.length > 0) {
-      updateData.remaining_song_deck = remainingSongs;
-    }
-    
-    await updateRoom(roomId, updateData);
+    });
     
     console.log('✅ Game initialized with', validSongs.length, 'songs, starting cards distributed, and mystery card set');
     console.log(`🎲 Song deck has ${deckManager.getRemainingCount()} remaining mystery cards`);
@@ -394,7 +386,7 @@ export const GameService = {
       
       const [playerResponse, roomResponse] = await Promise.all([
         supabase.from('players').select('timeline').eq('id', playerId).single(),
-        supabase.from('game_rooms').select('songs, current_turn, remaining_song_deck, current_song').eq('id', roomId).single()
+        supabase.from('game_rooms').select('songs, current_turn, current_song').eq('id', roomId).single()
       ]);
       
       // Log detailed error information
@@ -441,42 +433,32 @@ export const GameService = {
       // IMPROVED: Use song deck management for reliable mystery card selection
       const allSongs = Array.isArray((roomResponse.data as any).songs) ? (roomResponse.data as any).songs : [];
       
-      // Get stored deck state or create new one
-      let deckManager: SongDeckManager;
-      const storedDeck = (roomResponse.data as any).remaining_song_deck; // Use any to handle schema differences
+      // Create new deck excluding songs already in play
+      const allPlayersResponse = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('room_id', roomId);
       
-      if (storedDeck && Array.isArray(storedDeck) && storedDeck.length > 0) {
-        // Restore deck from stored state 
-        deckManager = new SongDeckManager(storedDeck as Song[]);
-        console.log('🔄 Restored song deck from database');
-      } else {
-        // Create new deck excluding songs already in play
-        const allPlayersResponse = await supabase
-          .from('players')
-          .select('timeline')
-          .eq('room_id', roomId);
-        
-        const usedSongs: Song[] = [];
-        if (allPlayersResponse.data) {
-          allPlayersResponse.data.forEach(player => {
-            if (Array.isArray(player.timeline)) {
-              player.timeline.forEach((s: any) => {
-                if (songDeckUtils.isValidSong(s)) {
-                  usedSongs.push(s);
-                }
-              });
-            }
-          });
-        }
-        
-        // Add current mystery song to used songs
-        if ((roomResponse.data as any).current_song && songDeckUtils.isValidSong((roomResponse.data as any).current_song)) {
-          usedSongs.push((roomResponse.data as any).current_song);
-        }
-        
-        deckManager = SongDeckManager.createDeckExcluding(allSongs, usedSongs);
-        console.log('🆕 Created new song deck');
+      const usedSongs: Song[] = [];
+      if (allPlayersResponse.data) {
+        allPlayersResponse.data.forEach(player => {
+          if (Array.isArray(player.timeline)) {
+            player.timeline.forEach((s: any) => {
+              if (songDeckUtils.isValidSong(s)) {
+                usedSongs.push(s);
+              }
+            });
+          }
+        });
       }
+      
+      // Add current mystery song to used songs
+      if ((roomResponse.data as any).current_song && songDeckUtils.isValidSong((roomResponse.data as any).current_song)) {
+        usedSongs.push((roomResponse.data as any).current_song);
+      }
+      
+      const deckManager = SongDeckManager.createDeckExcluding(allSongs, usedSongs);
+      console.log('🆕 Created new song deck with', deckManager.getRemainingCount(), 'songs');
       
       // Get next mystery card from deck
       const nextMysteryCard = deckManager.getNextMysterySong();
@@ -484,19 +466,11 @@ export const GameService = {
       if (nextMysteryCard) {
         console.log('🎵 Setting next mystery card:', nextMysteryCard.deezer_title);
         
-        // Update room with next mystery card, advance turn, and save deck state
-        const updateData: any = {
+        // Update room with next mystery card and advance turn
+        await updateRoom(roomId, {
           current_song: nextMysteryCard,
           current_turn: ((roomResponse.data as any).current_turn || 0) + 1
-        };
-        
-        // Only include remaining_song_deck if we have valid data
-        const remainingSongs = deckManager.getState().remainingSongs;
-        if (remainingSongs && remainingSongs.length > 0) {
-          updateData.remaining_song_deck = remainingSongs;
-        }
-        
-        await updateRoom(roomId, updateData);
+        });
         
         console.log('✅ Mystery card updated successfully');
       } else {
