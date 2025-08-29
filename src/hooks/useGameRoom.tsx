@@ -36,7 +36,11 @@ interface DatabaseGameRoom {
   updated_at: string;
 }
 
-export function useGameRoom() {
+export function useGameRoom(
+  onPlayerCardDealt?: (data: any) => void,
+  onGameStartedMessage?: (data: any) => void, 
+  onNewMysterySong?: (data: any) => void
+) {
   const { toast } = useToast();
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -232,7 +236,10 @@ export function useGameRoom() {
       console.log('🎵 WebSocket song set:', song);
       setRoom(prev => prev ? { ...prev, current_song: song } : null);
     },
-    handleGameStarted
+    onGameStartedMessage || handleGameStarted,
+    undefined, // onTurnTransition
+    onPlayerCardDealt,
+    onNewMysterySong
   );
 
   // Generate session ID
@@ -498,6 +505,42 @@ export function useGameRoom() {
 
       console.log('✅ Player created successfully:', playerData);
 
+      // Part 1.2: Give the newly joined player a unique starting card
+      try {
+        // Import the unique song service
+        const { getStartingCardForPlayer } = await import('@/services/uniqueSongService');
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        
+        // Get available songs
+        const availableSongs = await defaultPlaylistService.loadDefaultPlaylist();
+        
+        // Initialize or get the room's used song IDs (simulate server state)
+        const usedSongIds = new Set<string>();
+        
+        // Get starting card for the new player
+        const startingCard = getStartingCardForPlayer(availableSongs, usedSongIds);
+        
+        if (startingCard) {
+          console.log('🃏 Giving starting card to new player:', startingCard.deezer_title);
+          
+          // Update the player's timeline with the starting card
+          await GameService.updatePlayerTimeline(playerData.id, [startingCard]);
+          
+          // Send PLAYER_CARD_DEALT message to the newly connected player
+          // (This simulates the server sending the message)
+          if (onPlayerCardDealt) {
+            onPlayerCardDealt({ card: startingCard });
+          }
+          
+          console.log('✅ Starting card dealt to new player');
+        } else {
+          console.warn('⚠️ No starting card available for new player');
+        }
+      } catch (error) {
+        console.error('❌ Failed to deal starting card to new player:', error);
+        // Continue with room join even if starting card fails
+      }
+
       const newRoom = {
         id: roomData.id,
         lobby_code: roomData.lobby_code,
@@ -559,29 +602,40 @@ export function useGameRoom() {
         console.log(`🎯 RESILIENT RESULT: ${songsToUse.length} songs with previews after processing`);
       }
       
-      // FIXED: Directly call GameService to start the game instead of relying on WebSocket simulation
-      console.log('🎯 Starting game directly with GameService...');
+      // Part 1.2: Implement new START_GAME logic with mystery song
+      console.log('🎯 Starting game with unique song management...');
       
-      await GameService.initializeGameWithStartingCards(room.id, songsToUse);
+      // Import the unique song service
+      const { getFirstMysterySong, initializeUniqueRoom } = await import('@/services/uniqueSongService');
       
-      // Distribute starting cards to all non-host players
-      console.log('🃏 Distributing starting cards to players...');
-      const nonHostPlayers = players.filter(p => 
-        !p.id.includes('host-') && p.id !== room.host_id
-      );
+      // Initialize room with unique song tracking
+      const { usedSongIds, mysterySong } = initializeUniqueRoom();
       
-      for (const player of nonHostPlayers) {
-        const startingCards = songsToUse
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3);
-        
-        try {
-          await GameService.updatePlayerTimeline(player.id, startingCards);
-          console.log(`✅ Gave ${startingCards.length} starting cards to ${player.name}`);
-        } catch (error) {
-          console.error(`❌ Failed to give starting cards to ${player.name}:`, error);
-        }
+      // Get the first mystery song
+      const firstMysterySong = getFirstMysterySong(songsToUse, usedSongIds);
+      
+      if (!firstMysterySong) {
+        throw new Error('Failed to get initial mystery song');
       }
+      
+      console.log('🎵 Setting first mystery song:', firstMysterySong.deezer_title);
+      
+      // Update room state: gamePhase = 'playing', mysterySong = mysterySong
+      await GameService.updateRoom(room.id, {
+        phase: 'playing',
+        songs: songsToUse,
+        current_song: firstMysterySong
+      } as any);
+      
+      // Broadcast GAME_STARTED message to all players with gamePhase and mysterySong
+      if (onGameStartedMessage) {
+        onGameStartedMessage({
+          gamePhase: 'playing',
+          mysterySong: firstMysterySong
+        });
+      }
+      
+      console.log('✅ Game started with mystery song and phase updated');
       
       // Update the local room state to playing
       setRoom(prev => prev ? { ...prev, phase: 'playing', songs: songsToUse } : null);
@@ -616,6 +670,12 @@ export function useGameRoom() {
         // CRITICAL FIX: Force refresh room data to get updated mystery song and state
         console.log('🔄 Refreshing room data to sync mystery song...');
         await fetchRoomState(room.id);
+        
+        // Part 1.2: Broadcast NEW_MYSTERY_SONG after a player guess
+        if (room.current_song && onNewMysterySong) {
+          console.log('📤 Broadcasting NEW_MYSTERY_SONG:', room.current_song.deezer_title);
+          onNewMysterySong({ mysterySong: room.current_song });
+        }
         
         // Also refresh players for updated timelines
         await fetchPlayers(room.id, true);
