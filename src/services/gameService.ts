@@ -305,6 +305,62 @@ export const GameService = {
   updatePlayer,
   recordMove,
   
+  // Player card dealing functionality
+  async dealStartingCardToPlayer(roomId: string, playerId: string, songs: Song[]) {
+    console.log('🃏 Dealing starting card to player:', playerId);
+    
+    try {
+      // Find player
+      const { data: player, error: playerError } = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('id', playerId)
+        .single();
+        
+      if (playerError || !player) {
+        throw new Error('Player not found');
+      }
+      
+      // Filter available songs (exclude songs already in any player's timeline)
+      const { data: allPlayers } = await supabase
+        .from('players')
+        .select('timeline')
+        .eq('room_id', roomId);
+        
+      const usedSongs = new Set<string>();
+      allPlayers?.forEach(p => {
+        if (Array.isArray(p.timeline)) {
+          p.timeline.forEach((song: any) => {
+            if (song && song.id) {
+              usedSongs.add(song.id);
+            }
+          });
+        }
+      });
+      
+      // Find an unused song
+      const availableSongs = songs.filter(song => !usedSongs.has(song.id));
+      if (availableSongs.length === 0) {
+        throw new Error('No available songs for starting card');
+      }
+      
+      // Pick random song
+      const randomIndex = Math.floor(Math.random() * availableSongs.length);
+      const startingCard = availableSongs[randomIndex];
+      
+      // Add to player's timeline
+      const updatedTimeline = [...(Array.isArray(player.timeline) ? player.timeline : []), startingCard];
+      
+      await updatePlayer(playerId, { timeline: updatedTimeline as any });
+      
+      console.log('✅ Starting card dealt:', startingCard.deezer_title);
+      return startingCard;
+    } catch (error) {
+      console.error('❌ Failed to deal starting card:', error);
+      throw error;
+    }
+  },
+  
   // Additional methods for game logic
   async initializeGameWithStartingCards(roomId: string, songs: Song[]) {
     console.log('🎮 Initializing game with starting cards for room:', roomId);
@@ -358,7 +414,7 @@ export const GameService = {
     
     console.log('🎵 Setting initial mystery card:', mysteryCard.deezer_title);
     
-    // Update room with mystery card, playing state
+    // Update room with mystery card, playing state  
     await updateRoom(roomId, {
       phase: 'playing',
       songs: validSongs,

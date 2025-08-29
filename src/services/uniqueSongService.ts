@@ -1,81 +1,121 @@
-// Unique Song Fetching Service
-// Implements the server-side requirements from the problem statement
-// Adapted for TypeScript + Supabase architecture
-
 import { Song } from '@/types/game';
 
-/**
- * Helper function that takes a Set of song IDs and returns a unique song
- * This implements the requirement from Part 1.1 of the problem statement
- */
-export function fetchUniqueRandomSong(
-  availableSongs: Song[], 
-  usedSongIds: Set<string>
-): Song | null {
-  // Filter songs to get only ones whose IDs are NOT in the usedSongIds set
-  const availableUniqueSongs = availableSongs.filter(song => 
-    !usedSongIds.has(song.id)
-  );
-  
-  // Return null if no unique songs are left
-  if (availableUniqueSongs.length === 0) {
-    console.log('⚠️ No unique songs left in deck');
-    return null;
+export class UniqueSongService {
+  private usedSongIds: Set<string> = new Set();
+  private availableSongs: Song[] = [];
+
+  constructor(songs: Song[]) {
+    this.availableSongs = [...songs];
   }
+
+  /**
+   * Fetch a unique random song that hasn't been used yet
+   * @returns Song object or null if no unique songs are left
+   */
+  fetchUniqueRandomSong(): Song | null {
+    // Filter available songs to exclude used ones
+    const unusedSongs = this.availableSongs.filter(
+      song => !this.usedSongIds.has(song.id)
+    );
+
+    if (unusedSongs.length === 0) {
+      console.warn('⚠️ No more unique songs available');
+      return null;
+    }
+
+    // Pick a random song from unused ones
+    const randomIndex = Math.floor(Math.random() * unusedSongs.length);
+    const selectedSong = unusedSongs[randomIndex];
+
+    // Mark this song as used
+    this.usedSongIds.add(selectedSong.id);
+    
+    console.log(`🎵 Fetched unique song: "${selectedSong.deezer_title}" by ${selectedSong.deezer_artist}`);
+    console.log(`🎲 Remaining unique songs: ${unusedSongs.length - 1}`);
+
+    return selectedSong;
+  }
+
+  /**
+   * Get the number of remaining unique songs
+   */
+  getRemainingCount(): number {
+    return this.availableSongs.length - this.usedSongIds.size;
+  }
+
+  /**
+   * Get all used song IDs
+   */
+  getUsedSongIds(): string[] {
+    return Array.from(this.usedSongIds);
+  }
+
+  /**
+   * Reset the service to start fresh
+   */
+  reset(): void {
+    this.usedSongIds.clear();
+    console.log('🔄 UniqueSongService reset - all songs available again');
+  }
+
+  /**
+   * Initialize from existing used songs (for game restoration)
+   */
+  initializeFromUsedSongs(usedSongIds: string[]): void {
+    this.usedSongIds = new Set(usedSongIds);
+    console.log(`🔄 UniqueSongService initialized with ${usedSongIds.length} used songs`);
+  }
+
+  /**
+   * Check if any unique songs are left
+   */
+  hasUniqueSongsLeft(): boolean {
+    return this.getRemainingCount() > 0;
+  }
+}
+
+// Global instance for the current game
+let globalUniqueSongService: UniqueSongService | null = null;
+
+export const initializeUniqueSongService = (songs: Song[]): UniqueSongService => {
+  globalUniqueSongService = new UniqueSongService(songs);
+  return globalUniqueSongService;
+};
+
+export const getUniqueSongService = (): UniqueSongService | null => {
+  return globalUniqueSongService;
+};
+
+export const resetUniqueSongService = (): void => {
+  if (globalUniqueSongService) {
+    globalUniqueSongService.reset();
+  }
+};
+
+// Helper functions for integration with existing code
+export const getStartingCardForPlayer = (songs: Song[], usedSongIds: Set<string>): Song | null => {
+  const availableSongs = songs.filter(song => !usedSongIds.has(song.id));
+  if (availableSongs.length === 0) return null;
   
-  // Pick a random song from the available ones
-  const randomIndex = Math.floor(Math.random() * availableUniqueSongs.length);
-  const selectedSong = availableUniqueSongs[randomIndex];
-  
-  // Crucially, add the new song's ID to the usedSongIds set before returning
+  const randomIndex = Math.floor(Math.random() * availableSongs.length);
+  const selectedSong = availableSongs[randomIndex];
   usedSongIds.add(selectedSong.id);
   
-  console.log('🎵 Selected unique song:', selectedSong.deezer_title, 'from', availableUniqueSongs.length, 'available');
-  console.log('📦 Used songs count:', usedSongIds.size);
+  return selectedSong;
+};
+
+export const getFirstMysterySong = (songs: Song[], usedSongIds: Set<string>): Song | null => {
+  const availableSongs = songs.filter(song => !usedSongIds.has(song.id));
+  if (availableSongs.length === 0) return null;
+  
+  const randomIndex = Math.floor(Math.random() * availableSongs.length);
+  const selectedSong = availableSongs[randomIndex];
+  usedSongIds.add(selectedSong.id);
   
   return selectedSong;
-}
+};
 
-/**
- * Initialize a room with unique song tracking
- * Returns an object with the initial state needed for unique song management
- */
-export function initializeUniqueRoom() {
-  return {
-    usedSongIds: new Set<string>(),
-    mysterySong: null as Song | null
-  };
-}
-
-/**
- * Get a starting card for a newly joined player
- * Implements the JOIN_ROOM case requirement from Part 1.2
- */
-export function getStartingCardForPlayer(
-  availableSongs: Song[],
-  usedSongIds: Set<string>
-): Song | null {
-  return fetchUniqueRandomSong(availableSongs, usedSongIds);
-}
-
-/**
- * Get the first mystery song when game starts
- * Implements the START_GAME case requirement from Part 1.2
- */
-export function getFirstMysterySong(
-  availableSongs: Song[],
-  usedSongIds: Set<string>
-): Song | null {
-  return fetchUniqueRandomSong(availableSongs, usedSongIds);
-}
-
-/**
- * Get a new mystery song after a player guess
- * Implements the PLAYER_GUESS case requirement from Part 1.2
- */
-export function getNewMysterySong(
-  availableSongs: Song[],
-  usedSongIds: Set<string>
-): Song | null {
-  return fetchUniqueRandomSong(availableSongs, usedSongIds);
-}
+export const initializeUniqueRoom = () => {
+  const usedSongIds = new Set<string>();
+  return { usedSongIds, mysterySong: null };
+};
