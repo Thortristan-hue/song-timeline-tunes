@@ -26,6 +26,25 @@ function Index() {
   const [mysterySong, setMysterySong] = useState<Song | null>(null);
   const [playerCards, setPlayerCards] = useState<Song[]>([]);
 
+  // Load default songs on component mount
+  useEffect(() => {
+    const loadSongs = async () => {
+      try {
+        console.log('🎵 Loading default songs...');
+        const { defaultPlaylistService } = await import('@/services/defaultPlaylistService');
+        const songs = await defaultPlaylistService.loadOptimizedGameSongs(50);
+        console.log('✅ Loaded', songs.length, 'songs for game');
+        setCustomSongs(songs);
+      } catch (error) {
+        console.error('❌ Failed to load songs:', error);
+        // Use empty array as fallback - game will show appropriate error
+        setCustomSongs([]);
+      }
+    };
+
+    loadSongs();
+  }, []);
+
   // Part 2.2: Add new WebSocket message handlers
   const handlePlayerCardDealt = useCallback((data: { card: Song }) => {
     console.log('🃏 PLAYER_CARD_DEALT received:', data);
@@ -203,7 +222,6 @@ function Index() {
   const handleBackToMenu = () => {
     leaveRoom();
     setGamePhase('menu');
-    setCustomSongs([]);
     setPlayerName('');
     setWinner(null);
     setAutoJoinCode(''); // Clear auto-join code

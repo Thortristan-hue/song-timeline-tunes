@@ -33,7 +33,8 @@ export function useSoundEffects() {
       console.log(`🎵 Successfully played audio: ${filename}`);
       return true;
     } catch (error) {
-      console.log(`❌ Audio playback failed for ${filename}:`, error);
+      // Mute audio errors - they're not critical and spam the console
+      // console.log(`❌ Audio playback failed for ${filename}:`, error);
       return false;
     }
   }, []);
