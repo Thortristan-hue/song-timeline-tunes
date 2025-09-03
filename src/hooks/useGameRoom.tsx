@@ -29,7 +29,9 @@ export function useGameRoom(): UseGameRoomReturn {
   const { toast } = useToast();
   const subscriptionRef = useRef<any>(null);
 
-  const isHost = currentPlayer?.id?.includes('host-') || false;
+  // Host is determined by room data, not by being a player
+  // If there's a room but no currentPlayer, this is likely the host
+  const isHost = room && !currentPlayer;
 
   const createRoom = useCallback(async (hostSessionId: string, gamemode: string = 'classic'): Promise<boolean> => {
     setIsLoading(true);
@@ -42,19 +44,10 @@ export function useGameRoom(): UseGameRoomReturn {
       console.log('✅ Room created:', roomData);
       setRoom(roomData);
       
-      // Set host as current player (create a pseudo-player for host)
-      const hostPlayer: Player = {
-        id: `host-${hostSessionId}`,
-        name: 'Host',
-        color: '#FFD700',
-        timelineColor: '#FFD700', 
-        score: 0,
-        timeline: [],
-        character: 'char_dave'
-      };
-      
-      setCurrentPlayer(hostPlayer);
-      setPlayers([hostPlayer]);
+      // Host is NOT a player - they just manage the game
+      // Set current player to null since host doesn't participate in gameplay
+      setCurrentPlayer(null);
+      setPlayers([]); // Start with empty players array
 
       // Initialize real-time sync for the room
       if (roomData && roomData.id) {
@@ -109,8 +102,8 @@ export function useGameRoom(): UseGameRoomReturn {
   }, []);
 
   const startGame = useCallback(async (songs: Song[]): Promise<boolean> => {
-    if (!room || !currentPlayer) {
-      setError('No room or player available');
+    if (!room) {
+      setError('No room available');
       return false;
     }
 
