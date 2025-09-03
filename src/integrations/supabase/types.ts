@@ -177,6 +177,10 @@ export type Database = {
         Args: { session_id: string }
         Returns: string
       }
+      get_user_session_room_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       player_belongs_to_room: {
         Args: { session_id: string; target_room_id: string }
         Returns: boolean
