@@ -38,9 +38,9 @@ export class RealtimeGameSync {
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         console.log('👋 Player left presence:', key, leftPresences);
       })
-      .on('broadcast', { event: 'game_update' }, (payload) => {
+      .on('broadcast', { event: 'game_update' }, (payload: { payload: GameStateUpdate }) => {
         console.log('📡 Received game update:', payload);
-        this.handleGameUpdate(payload);
+        this.handleGameUpdate(payload.payload);
       })
       .subscribe();
   }

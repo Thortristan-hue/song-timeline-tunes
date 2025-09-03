@@ -250,11 +250,15 @@ function Index() {
 
           {gamePhase === 'hostLobby' && (
             <HostLobby
-              roomCode={room?.lobby_code || ''}
+              room={room}
+              lobbyCode={room?.lobby_code || ''}
               players={players}
               onStartGame={async () => { await handleStartGame(); }}
               onBackToMenu={handleBackToMenu}
-              customSongs={customSongs}
+              setCustomSongs={setCustomSongs}
+              isLoading={roomLoading}
+              createRoom={handleCreateRoom}
+              updateRoomGamemode={async () => { return true; }}
             />
           )}
 

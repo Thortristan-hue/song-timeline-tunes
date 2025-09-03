@@ -185,11 +185,11 @@ export function useGameRoom(): UseGameRoomReturn {
           phase: roomResponse.data.phase as 'lobby' | 'playing' | 'finished',
           gamemode: roomResponse.data.gamemode as 'classic' | 'fiend' | 'sprint',
           gamemode_settings: (roomResponse.data.gamemode_settings as any) || {},
-          songs: Array.isArray(roomResponse.data.songs) ? (roomResponse.data.songs as Song[]) : [],
+          songs: Array.isArray(roomResponse.data.songs) ? (roomResponse.data.songs as unknown as Song[]) : [],
           created_at: roomResponse.data.created_at,
           updated_at: roomResponse.data.updated_at,
           current_turn: roomResponse.data.current_turn,
-          current_song: (roomResponse.data.current_song as Song | null)
+          current_song: (roomResponse.data.current_song as unknown as Song | null)
         };
         
         setRoom(roomData);
@@ -204,7 +204,7 @@ export function useGameRoom(): UseGameRoomReturn {
           color: p.color,
           timelineColor: p.timeline_color,
           score: p.score || 0,
-          timeline: Array.isArray(p.timeline) ? (p.timeline as Song[]) : [],
+          timeline: Array.isArray(p.timeline) ? (p.timeline as unknown as Song[]) : [],
           character: p.character || 'char_dave'
         }));
         
