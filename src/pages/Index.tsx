@@ -298,7 +298,7 @@ function Index() {
             />
           )}
 
-          {gamePhase === 'playing' && room && currentPlayer && (
+          {gamePhase === 'playing' && room && (
             <GamePlay
               room={room}
               players={players}

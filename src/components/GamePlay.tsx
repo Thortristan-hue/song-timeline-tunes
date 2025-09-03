@@ -15,7 +15,7 @@ import { Music2 } from 'lucide-react';
 interface GamePlayProps {
   room: GameRoom;
   players: Player[];
-  currentPlayer: Player;
+  currentPlayer: Player | null; // Can be null for hosts
   isHost: boolean;
   onPlaceCard: (song: Song, position: number) => Promise<{ success: boolean; correct?: boolean; gameEnded?: boolean; winner?: Player }>;
   onSetCurrentSong: (song: Song) => Promise<void>;
@@ -60,9 +60,13 @@ export function GamePlay({
   const currentTurnPlayer = players.find(p => p.id === room.current_player_id) || players[0];
 
   useEffect(() => {
-    if (room && currentPlayer && players) {
-      const newGameLogic = new GameLogic(room, players, currentPlayer);
-      setGameLogic(newGameLogic);
+    if (room && players) {
+      // For hosts, use the first player as a placeholder for GameLogic initialization
+      const playerForLogic = currentPlayer || players[0];
+      if (playerForLogic) {
+        const newGameLogic = new GameLogic(room, players, playerForLogic);
+        setGameLogic(newGameLogic);
+      }
     }
   }, [room, players, currentPlayer]);
 
@@ -73,7 +77,7 @@ export function GamePlay({
   }, [winner, fire]);
 
   const handleCardPlacement = async (song: Song, position: number): Promise<{ success: boolean; }> => {
-    if (!currentPlayer || !room || gameLogic?.isGameOver) {
+    if (!room || gameLogic?.isGameOver) {
       return { success: false };
     }
 
@@ -100,7 +104,7 @@ export function GamePlay({
           });
 
           // Show host feedback if host
-          if (isHost) {
+          if (isHost && currentPlayer) {
             setHostFeedbackData({
               player: currentPlayer,
               song: song,
@@ -307,23 +311,38 @@ export function GamePlay({
     );
   }
 
-  // Player view - use MobilePlayerGameView component
+  // Player view - use MobilePlayerGameView component (only if currentPlayer exists)
+  if (currentPlayer) {
+    return (
+      <>
+        {currentSongAudio}
+        <MobilePlayerGameView
+          currentPlayer={currentPlayer}
+          currentTurnPlayer={currentTurnPlayer}
+          currentSong={room.current_song}
+          roomCode={room.lobby_code}
+          isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
+          isPlaying={isPlaying}
+          onPlayPause={handlePlayPause}
+          onPlaceCard={handleCardPlacement}
+          mysteryCardRevealed={mysteryCardRevealed}
+          cardPlacementResult={cardPlacementResult}
+          gameEnded={room.phase === 'finished'}
+        />
+      </>
+    );
+  }
+
+  // Fallback: if neither host nor player, show loading
   return (
-    <>
-      {currentSongAudio}
-      <MobilePlayerGameView
-        currentPlayer={currentPlayer}
-        currentTurnPlayer={currentTurnPlayer}
-        currentSong={room.current_song}
-        roomCode={room.lobby_code}
-        isMyTurn={currentPlayer.id === currentTurnPlayer?.id}
-        isPlaying={isPlaying}
-        onPlayPause={handlePlayPause}
-        onPlaceCard={handleCardPlacement}
-        mysteryCardRevealed={mysteryCardRevealed}
-        cardPlacementResult={cardPlacementResult}
-        gameEnded={room.phase === 'finished'}
-      />
-    </>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-secondary/20 flex items-center justify-center">
+      <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl text-center space-y-4">
+        <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-primary/60 rounded-full animate-spin-slow flex items-center justify-center">
+          <Music2 className="w-8 h-8 text-primary-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold">Connecting...</h2>
+        <p className="text-muted-foreground">Setting up game view</p>
+      </div>
+    </div>
   );
 }
